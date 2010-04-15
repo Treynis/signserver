@@ -24,6 +24,7 @@ import javax.naming.InitialContext;
 
 import junit.framework.TestCase;
 
+import org.bouncycastle.util.encoders.Hex;
 import org.signserver.cli.CommonAdminInterface;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GenericSignResponse;

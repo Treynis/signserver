@@ -90,12 +90,6 @@ rmi.server.port           = ${rmi.server.port}
         	<exclude name="org/signserver/web/**"/>
         	<exclude name="org/signserver/protocol/**/**"/>
         </javac>
-        <copy todir="${build}">
-            <!-- Include properties files (signservercompile.properties in special) -->
-            <fileset dir="${src.java}">
-                <include name="**/*.properties"/>
-            </fileset>
-	    </copy>
     </target>
 	
 	<property name="mailsigner.jar" value="${server.dist.dir}/mailsigner.jar"/>
@@ -328,11 +322,6 @@ rmi.server.port           = ${rmi.server.port}
         <copy file="${src.java}/jndi.properties" todir="${test.dir}" />
         <copy file="${src.java}/log4j.properties" todir="${test.dir}" />
     </target>
-
-    <target name="test:mailsigner:runall" if="buildMailSigner">
-        <!-- Just run the default test cases -->
-        <antcall target="test:mailsigner:run" />
-    </target>
 	
     <target name="test:mailsigner:run" depends="test:mailsigner:compile" description="run JUnit testcases" if="buildMailSigner">
         <fail message="Please set the environment variable 'SIGNSERVER_HOME' before running the junit tests." unless="env.SIGNSERVER_HOME"/>
@@ -343,7 +332,8 @@ rmi.server.port           = ${rmi.server.port}
                 <path refid="mailsigner.test.compile.classpath" />
                 <path location="${test.dir}" />
             </classpath>
-            <formatter type="xml" />
+            <formatter usefile="false" type="brief"/>
+            <formatter type="xml"/>
             <batchtest fork="yes" todir="${test.dir}/reports" >
                 <fileset dir="${test.dir}">    
                     <include name="**/mailsigner/core/TestQ*" /> 
