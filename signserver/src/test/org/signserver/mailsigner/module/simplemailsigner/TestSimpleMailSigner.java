@@ -99,8 +99,8 @@ public class TestSimpleMailSigner extends BaseMailSignerTester {
 		String data = (String) part0.getContent();
 		assertTrue(data.trim().equals("This is a Dummy Message"));
 		verifySMIMESig(multiPart);
-
-	    		
+	    
+		
 	    // Test with Explanation
 	    iMailSignerRMI.setWorkerProperty(getWorkerId(), SMIMEHelper.EXPLAINATION_TEXT, "This is a signed email.");
 	    iMailSignerRMI.setWorkerProperty(getWorkerId(), SimpleMailSigner.FROMNAME,"Test1 Test1");
@@ -228,7 +228,7 @@ public class TestSimpleMailSigner extends BaseMailSignerTester {
 		clearTestInbox();
 		sendMail("dummy3@localhost", "dummy2@localhost2", "DummyMessage", "This is a Dummy Message");
 		MimeMessage mail10 = readTestInbox();
-		assertNull(mail10);
+		assertNull(mail10);	
 
 
                 // TODO for some reason this method can not be run independantly.
@@ -249,7 +249,7 @@ public class TestSimpleMailSigner extends BaseMailSignerTester {
                 iMailSignerRMI.removeWorkerProperty(getWorkerId(), SimpleMailSigner.OPTOUT);
                 atest02SendernameTrue();
 	}
-
+	
         /**
          * Tests the SENDERNAME property (DSS-228).
          *

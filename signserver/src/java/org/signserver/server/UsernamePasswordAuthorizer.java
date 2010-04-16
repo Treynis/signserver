@@ -111,17 +111,17 @@ public class UsernamePasswordAuthorizer implements IAuthorizer {
                         digestAlgorithm = parts[1];
                         if (parts.length > 2) {
                             salt = parts[2];
+                            }
                         }
-                    }
                     try {
-                        if (LOG.isDebugEnabled()) {
+                    if (LOG.isDebugEnabled()) {
                             LOG.debug("Loading account: " + key);
-                        }
+                    }
 
                         digest = digestAlgorithm == null ? null
                                 : MessageDigest.getInstance(digestAlgorithm, "BC");
 
-                        userMap.put(key.substring(USER_PREFIX.length()).toUpperCase(),
+                    userMap.put(key.substring(USER_PREFIX.length()).toUpperCase(),
                                 new Account(password, salt, digest));
 
                     } catch (NoSuchAlgorithmException ex) {
@@ -130,10 +130,10 @@ public class UsernamePasswordAuthorizer implements IAuthorizer {
                     } catch (NoSuchProviderException ex) {
                         LOG.error("No BC provider getting digest algorithm",
                             ex);
-                    }
                 }
             }
         }
+    }
     }
 
     private boolean isAuthorized(
@@ -156,22 +156,16 @@ public class UsernamePasswordAuthorizer implements IAuthorizer {
                 if (a.getDigest() != null) {
                     a.getDigest().reset();
                     password = new String(Hex.encode(a.getDigest().digest(password.getBytes())));
-                }
-                result = password.equals(a.getPassword());
             }
+                result = password.equals(a.getPassword());
+        }
         }
         return result;
     }
 
     private static void logUsername(final String username,
             final RequestContext requestContext) {
-        Map<String, String> logMap = (Map)
-                requestContext.get(RequestContext.LOGMAP);
-        if (logMap == null) {
-            logMap = new HashMap<String, String>();
-            requestContext.put(RequestContext.LOGMAP, logMap);
-        }
-        logMap.put(IAuthorizer.LOG_USERNAME, username);
+        LOG.info("AUTHORIZED_USER: " + username);
     }
 
     private static class Account {

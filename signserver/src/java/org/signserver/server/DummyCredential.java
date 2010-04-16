@@ -13,6 +13,7 @@
 package org.signserver.server;
 
 import java.io.Serializable;
+import org.signserver.server.IClientCredential;
 
 /**
  * Dummy custom credential.

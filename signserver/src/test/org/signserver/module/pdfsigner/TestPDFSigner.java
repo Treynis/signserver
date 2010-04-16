@@ -46,7 +46,7 @@ import org.signserver.testutils.TestingSecurityManager;
  */
 public class TestPDFSigner extends TestCase {
 
-
+	
 
         private static final int WORKERID = 5675;
 
@@ -55,7 +55,7 @@ public class TestPDFSigner extends TestCase {
 	
 	private static String signserverhome;
 	private static int moduleVersion;
-
+	
         private static Random random = new Random(WORKERID);
 
         private static final String CERTIFICATION_LEVEL = "CERTIFICATION_LEVEL";
@@ -116,8 +116,8 @@ public class TestPDFSigner extends TestCase {
 	}
 
 	public void test02GetStatus() throws Exception {
-		
-		
+
+
 		SignerStatus stat = (SignerStatus) sSSession.getStatus(WORKERID);
 		assertTrue(stat.getTokenStatus() == SignerStatus.STATUS_ACTIVE);		
 
@@ -132,7 +132,7 @@ public class TestPDFSigner extends TestCase {
             // Test default which is no certification
             sSSession.removeWorkerProperty(WORKERID, CERTIFICATION_LEVEL);
             sSSession.reloadConfiguration(WORKERID);
-
+		
             final GenericSignResponse res = signDocument(WORKERID,
                     Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
@@ -141,18 +141,18 @@ public class TestPDFSigner extends TestCase {
             assertEquals("certificationLevel",
                     PdfSignatureAppearance.NOT_CERTIFIED,
                     reader.getCertificationLevel());
-        }
+	}
 
         /**
          * Tests certification level NOT_CERTIFIED.
          * @throws Exception in case of exception
          */
         public void test04CertificationLevelNotCertified() throws Exception {
-
+		
             // Test default which is no certification
             sSSession.setWorkerProperty(WORKERID, CERTIFICATION_LEVEL, "NOT_CERTIFIED");
             sSSession.reloadConfiguration(WORKERID);
-
+		
             final GenericSignResponse res = signDocument(WORKERID,
                     Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
@@ -161,14 +161,14 @@ public class TestPDFSigner extends TestCase {
             assertEquals("certificationLevel",
                     PdfSignatureAppearance.NOT_CERTIFIED,
                     reader.getCertificationLevel());
-        }
+	}
 
         /**
          * Tests certification level NO_CHANGES_ALLOWED.
          * @throws Exception in case of exception
          */
         public void test05CertificationLevelNoChangesAllowed() throws Exception {
-
+	
             // Test default which is no certification
             sSSession.setWorkerProperty(WORKERID, CERTIFICATION_LEVEL, "NO_CHANGES_ALLOWED");
             sSSession.reloadConfiguration(WORKERID);
@@ -239,7 +239,7 @@ public class TestPDFSigner extends TestCase {
     private static GenericSignResponse signDocument(final int workerId,
             final byte[] data) throws IllegalRequestException,
                 CryptoTokenOfflineException, SignServerException {
-
+  
         final int requestId = random.nextInt();
 
         final GenericSignRequest request = new GenericSignRequest(requestId,

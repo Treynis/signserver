@@ -24,9 +24,9 @@ public class UsernamePasswordClientCredential implements IClientCredential,
     private String hashedPassword;
 
     public UsernamePasswordClientCredential(final String username,
-            final String hashedPassword) {
+            final String password) {
         this.username = username;
-        this.hashedPassword = hashedPassword;
+        this.hashedPassword = password;
     }
 
     public String getPassword() {
