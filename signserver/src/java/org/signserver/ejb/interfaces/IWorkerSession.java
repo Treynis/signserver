@@ -4,7 +4,6 @@ import java.math.BigInteger;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 
 import javax.ejb.Local;
@@ -167,48 +166,6 @@ public interface IWorkerSession {
     ICertReqData getCertificateRequest(int signerId,
             ISignerCertReqInfo certReqInfo) throws CryptoTokenOfflineException,
             InvalidWorkerIdException;
-
-    /**
-     * Method returning the current signing certificate for the signer.
-     * @param signerId Id of signer
-     * @return Current signing certificate if the worker is a signer and it has
-     * been configured. Otherwise null or an exception is thrown.
-     * @throws CryptoTokenOfflineException In case the crypto token or the worker
-     * is not active
-     */
-    Certificate getSignerCertificate(int signerId)
-            throws CryptoTokenOfflineException;
-
-    /**
-     * Method returning the current signing certificate chain for the signer.
-     * @param signerId Id of signer
-     * @return Current signing certificate chain if the worker is a signer and it
-     * has been configured. Otherwise null or an exception is thrown.
-     * @throws CryptoTokenOfflineException In case the crypto token or the worker
-     * is not active
-     */
-    public List<Certificate> getSignerCertificateChain(int signerId)
-            throws CryptoTokenOfflineException;
-
-    /**
-     * Gets the last date the specified worker can do signings.
-     * @param workerId Id of worker to check.
-     * @return The last date or null if no last date (=unlimited).
-     * @throws CryptoTokenOfflineException In case the cryptotoken is offline
-     * for some reason.
-     */
-    Date getSigningValidityNotAfter(int workerId)
-            throws CryptoTokenOfflineException;
-
-    /**
-     * Gets the first date the specified worker can do signings.
-     * @param workerId Id of worker to check.
-     * @return The first date or null if no last date (=unlimited).
-     * @throws CryptoTokenOfflineException In case the cryptotoken is offline
-     * for some reason.
-     */
-    Date getSigningValidityNotBefore(int workerId)
-            throws CryptoTokenOfflineException;
 
     /**
      * Method used to remove a key from a signer.

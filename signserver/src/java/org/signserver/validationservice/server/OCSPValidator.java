@@ -56,9 +56,9 @@ import org.signserver.validationservice.common.X509Certificate;
  * 
  * 
  * @author rayback2
- * @version $Id$
  *
  */
+
 public class OCSPValidator extends BaseValidator {
 
 	public void testConnection() throws ConnectException, SignServerException {
@@ -84,25 +84,23 @@ public class OCSPValidator extends BaseValidator {
 			return new Validation(cert,null,Validation.Status.NOTYETVALID,"Certificate is not yet valid. " + e1.toString());
 		}
 
-		List<ICertificate> certChain = getCertificateChain(cert);		
+		List<ICertificate> certChain = getCertificateChain(cert);
+		
+		LOG.debug("***********************");
+		LOG.debug("printing certchain for "+ cert.getSubject());
+		for(ICertificate tempcert : certChain)
+			LOG.debug(tempcert.getSubject());
+		LOG.debug("***********************");
+		
 		// if no chain found for this certificate and if it is not trust anchor (as configured in properties) return null
 		// if it is trust anchor return valid
 		if(certChain == null ){
-			if(isTrustAnchor(xcert)) {
+			if(isTrustAnchor(xcert))
 				return new Validation(cert,Collections.singletonList(cert),Validation.Status.VALID,"This certificate is defined as Trust Anchor.");
-			} else {
-				return null;
-			}
+			else
+				return null;				
 		}
-		if (LOG.isDebugEnabled()) {
-			LOG.debug("***********************");
-			LOG.debug("printing certchain for "+ cert.getSubject());
-			for(ICertificate tempcert : certChain) {
-				LOG.debug(tempcert.getSubject());
-			}
-			LOG.debug("***********************");
-		}
-		
+				
 		// certStore & certPath construction
 		CertPath certPath = null;
 		CertStore certStore  = null;
@@ -121,17 +119,16 @@ public class OCSPValidator extends BaseValidator {
 			certs.add(cert);
 			certStore  = CertStore.getInstance("Collection", new CollectionCertStoreParameters(certs), "BC");
 
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("***********************");
-				LOG.debug("printing certs in certstore");
-				Iterator<?> tempIter = certStore.getCertificates(null).iterator();
-				while(tempIter.hasNext())
-				{
-					X509Certificate tempcert = (X509Certificate)tempIter.next();
-					LOG.debug(tempcert.getSubject() + " issuer is " + tempcert.getIssuer());
-				}
-				LOG.debug("***********************");
+			LOG.debug("***********************");
+			LOG.debug("printing certs in certstore");
+			Iterator<?> tempIter = certStore.getCertificates(null).iterator();
+			while(tempIter.hasNext())
+			{
+				X509Certificate tempcert = (X509Certificate)tempIter.next();
+				LOG.debug(tempcert.getSubject() + " issuer is " + tempcert.getIssuer());
 			}
+			LOG.debug("***********************");
+			
 			
 			// CertPath Construction
 			for(ICertificate currentCACert: certChain)
@@ -153,15 +150,13 @@ public class OCSPValidator extends BaseValidator {
 			certChainWithoutRootCert.add((X509Certificate)cert);
 			
 			certPath = certFactory.generateCertPath(certChainWithoutRootCert);
-
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("***********************");
-				LOG.debug("printing certs in certpath");
-				for(Certificate tempcert : certPath.getCertificates()) {
-					LOG.debug(((X509Certificate)tempcert).getSubject() + " issuer is " + ((X509Certificate)tempcert).getIssuer());
-				}
-				LOG.debug("***********************");
-			}
+			
+			LOG.debug("***********************");
+			LOG.debug("printing certs in certpath");
+			for(Certificate tempcert : certPath.getCertificates())
+				LOG.debug(((X509Certificate)tempcert).getSubject() + " issuer is " + ((X509Certificate)tempcert).getIssuer());
+			LOG.debug("***********************");
+			
 			// init cerpathvalidator 
 			validator = CertPathValidator.getInstance("PKIX", "BC");
 			
@@ -171,11 +166,10 @@ public class OCSPValidator extends BaseValidator {
 			params.addCertStore(certStore);
 			params.setDate(new Date());
 			
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("***********************");
-				LOG.debug("printing trust anchor "+ trustAnc.getTrustedCert().getSubjectDN().getName());
-				LOG.debug("***********************");
-			}						
+			LOG.debug("***********************");
+			LOG.debug("printing trust anchor "+ trustAnc.getTrustedCert().getSubjectDN().getName());
+			LOG.debug("***********************");
+			
 			// disable default crl validaton
 			params.setRevocationEnabled(false);
 			// add custom ocsp pathchecker
@@ -228,9 +222,8 @@ public class OCSPValidator extends BaseValidator {
 	protected List<X509Certificate> getIssuerAuthorizedOCSPResponderCertificates(ICertificate cert) throws SignServerException, CertificateException, IOException { 
 		ArrayList<X509Certificate> x509Certs = new ArrayList<X509Certificate>();
 		Properties props = getIssuerProperties(cert);
-		if(props == null) {
+		if(props == null)
 			return null;
-		}
 		String key;
 		for(int i = 1;i<=ValidationServiceConstants.NUM_OF_SUPPORTED_AUTHORIZED_OCSP_RESPONDER_CERTS;i++)
 		{

@@ -10,7 +10,6 @@
  *  See terms of license at gnu.org.                                     *
  *                                                                       *
  *************************************************************************/
-
 package org.signserver.module.pdfsigner;
 
 import java.io.ByteArrayOutputStream;
@@ -30,7 +29,7 @@ import com.lowagie.text.pdf.PdfSignatureAppearance;
 
 /**
  * Class that holds configuration values passed to pdfsigner.
- * 
+ *
  * @author rayback_2
  * @version $Id$
  */
@@ -276,7 +275,7 @@ public class PDFSignerParameters {
                     } else {
                         throw new SignServerException(
                                 "Unknown value for CERTIFICATION_LEVEL");
-                    }
+	}
                 }
                 if (log.isDebugEnabled()) {
                     log.debug("using certification level: " + certification_level);
@@ -285,7 +284,7 @@ public class PDFSignerParameters {
 
 	/**
 	 * Read byte[] data from file.
-	 *
+	 * 
 	 * @param pFilePath
 	 * @return content of file
 	 * @throws IOException
@@ -413,5 +412,5 @@ public class PDFSignerParameters {
 
     public int getCertification_level() {
         return certification_level;
-    }
+}
 }

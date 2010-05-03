@@ -125,10 +125,10 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
     private X509Certificate cert = null;	
  
 	/**
-	 * Method that returns the certificate used when signing
+	 * Private method that returns the certificate used when signing
 	 * @throws CryptoTokenOfflineException 
 	 */
-	public Certificate getSigningCertificate() throws CryptoTokenOfflineException {
+	protected Certificate getSigningCertificate() throws CryptoTokenOfflineException {
 		if(cert==null){
 			if(getCryptoToken() != null){
 			  cert = (X509Certificate) getCryptoToken().getCertificate(ICryptoToken.PURPOSE_SIGN);
@@ -143,10 +143,10 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
 	
 	private Collection<Certificate> certChain = null;
 	/**
-	 * Method that returns the certificate chain used when signing
+	 * Private method that returns the certificate used when signing
 	 * @throws CryptoTokenOfflineException 
 	 */
-	public Collection<Certificate> getSigningCertificateChain() throws CryptoTokenOfflineException {
+	protected Collection<Certificate> getSigningCertificateChain() throws CryptoTokenOfflineException {
 		if(certChain==null){
 			ICryptoToken cToken =  getCryptoToken();
 			if(cToken != null){

@@ -61,6 +61,7 @@ public class UploadSignerCertificateChainCommand extends BaseCommand {
         try {            
         	
         	int signerid = getWorkerId(args[1], hostname);
+        	checkThatWorkerIsSigner(signerid,hostname);
         	
         	String scope = args[2];
         	
@@ -100,6 +101,11 @@ public class UploadSignerCertificateChainCommand extends BaseCommand {
         	throw new ErrorAdminCommandException(e);            
         }
     }
+
+    private void checkThatWorkerIsSigner(int signerid, String hostname) {
+		// TODO Auto-generated method stub
+		
+	}
 
 	public void execute(String hostname) throws IllegalAdminCommandException, ErrorAdminCommandException {
     	String[] resources =  {"Usage: signserver uploadsignercertificatechain <-host hostname (optional)> <signerid | name> <NODE | GLOB> <filename> \n" + 

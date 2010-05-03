@@ -36,8 +36,6 @@ public class SignerStatus extends CryptoTokenStatus{
 
 
 	private Certificate signerCertificate = null;
-
-        private long keyUsageCounterValue;
 	
 	/** 
 	 * Main constructor
@@ -47,14 +45,6 @@ public class SignerStatus extends CryptoTokenStatus{
 	
 	    this.signerCertificate = signerCertificate;
 	}
-
-    public SignerStatus(final int workerId, final int status,
-            final ProcessableConfig config, final Certificate signerCertificate,
-            final long counter) {
-        super(workerId, status, config.getWorkerConfig());
-        this.signerCertificate = signerCertificate;
-        this.keyUsageCounterValue = counter;
-    }
 
 
 
@@ -70,23 +60,9 @@ public class SignerStatus extends CryptoTokenStatus{
 	@Override
 	public void displayStatus(int workerId, PrintStream out, boolean complete) {
 		out.println("Status of Signer with Id " + workerId + " is :\n" +
-				"  SignToken Status : "+signTokenStatuses[getTokenStatus()]);
+				"  SignToken Status : "+signTokenStatuses[getTokenStatus()] + " \n\n" );
 
-                out.print("  Signings: " + keyUsageCounterValue);
-
-                long keyUsageLimit = -1;
-                try {
-                    keyUsageLimit = Long.valueOf(getActiveSignerConfig()
-                        .getProperty(SignServerConstants.KEYUSAGELIMIT));
-                } catch(NumberFormatException ignored) {}
-                if (keyUsageLimit >= 0) {
-                    out.print(" of " + keyUsageLimit);
-                }
-                out.println();
-
-                out.println("\n\n");
-
-		if(complete){
+		if(complete){    	
 			out.println("Active Properties are :");
 
 

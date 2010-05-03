@@ -58,7 +58,7 @@ import org.signserver.testutils.TestingSecurityManager;
  */
 public class TestPDFSigner extends TestCase {
 
-
+	
 
         private static final int WORKERID = 5675;
 
@@ -67,7 +67,7 @@ public class TestPDFSigner extends TestCase {
 	
 	private static String signserverhome;
 	private static int moduleVersion;
-
+	
         private static Random random = new Random(WORKERID);
 
         private static final String CERTIFICATION_LEVEL = "CERTIFICATION_LEVEL";
@@ -128,8 +128,8 @@ public class TestPDFSigner extends TestCase {
 	}
 
 	public void test02GetStatus() throws Exception {
-		
-		
+
+
 		SignerStatus stat = (SignerStatus) sSSession.getStatus(WORKERID);
 		assertTrue(stat.getTokenStatus() == SignerStatus.STATUS_ACTIVE);		
 
@@ -144,7 +144,7 @@ public class TestPDFSigner extends TestCase {
             // Test default which is no certification
             sSSession.removeWorkerProperty(WORKERID, CERTIFICATION_LEVEL);
             sSSession.reloadConfiguration(WORKERID);
-
+		
             final GenericSignResponse res = signDocument(WORKERID,
                     Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
@@ -153,18 +153,18 @@ public class TestPDFSigner extends TestCase {
             assertEquals("certificationLevel",
                     PdfSignatureAppearance.NOT_CERTIFIED,
                     reader.getCertificationLevel());
-        }
+	}
 
         /**
          * Tests certification level NOT_CERTIFIED.
          * @throws Exception in case of exception
          */
         public void test04CertificationLevelNotCertified() throws Exception {
-
+		
             // Test default which is no certification
             sSSession.setWorkerProperty(WORKERID, CERTIFICATION_LEVEL, "NOT_CERTIFIED");
             sSSession.reloadConfiguration(WORKERID);
-
+		
             final GenericSignResponse res = signDocument(WORKERID,
                     Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
@@ -173,14 +173,14 @@ public class TestPDFSigner extends TestCase {
             assertEquals("certificationLevel",
                     PdfSignatureAppearance.NOT_CERTIFIED,
                     reader.getCertificationLevel());
-        }
+	}
 
         /**
          * Tests certification level NO_CHANGES_ALLOWED.
          * @throws Exception in case of exception
          */
         public void test05CertificationLevelNoChangesAllowed() throws Exception {
-
+	
             // Test default which is no certification
             sSSession.setWorkerProperty(WORKERID, CERTIFICATION_LEVEL, "NO_CHANGES_ALLOWED");
             sSSession.reloadConfiguration(WORKERID);
@@ -261,7 +261,7 @@ public class TestPDFSigner extends TestCase {
             }
         }
 
-        public void test09FormatFromPattern() throws Exception {
+         public void test09FormatFromPattern() throws Exception {
             Pattern p1 = Pattern.compile("\\$\\{(.+?)\\}");
 
             Calendar cal = Calendar.getInstance(Locale.US);
@@ -271,7 +271,7 @@ public class TestPDFSigner extends TestCase {
             Map<String, String> fields = new HashMap<String, String>();
             fields.put("WORKERID", "4311");
 
-            String actual = PDFSigner.formatFromPattern(p1, 
+            String actual = PDFSigner.formatFromPattern(p1,
                     "${WORKERID}/${DATE: yyyy}/${DATE:MMMMMMMMM}", date, fields);
             assertEquals("4311/2010/April", actual);
         }
@@ -300,7 +300,7 @@ public class TestPDFSigner extends TestCase {
             final Calendar cal = Calendar.getInstance();
             final String year = String.valueOf(cal.get(Calendar.YEAR));
 
-            final File exptectedFile = new File(archiveFolder, 
+            final File exptectedFile = new File(archiveFolder,
                     year + "/" + String.valueOf(WORKERID) + "/"
                     + String.valueOf(res.getRequestID()) + ".pdf");
 
@@ -327,7 +327,7 @@ public class TestPDFSigner extends TestCase {
     private static GenericSignResponse signDocument(final int workerId,
             final byte[] data) throws IllegalRequestException,
                 CryptoTokenOfflineException, SignServerException {
-
+  
         final int requestId = random.nextInt();
 
         final GenericSignRequest request = new GenericSignRequest(requestId,
@@ -3431,24 +3431,24 @@ private static String testpdf4 =
      * </pre>
      */
     private static final String CERT_PDFSIGNER12 =
-        "-----BEGIN CERTIFICATE-----\n"
-        +"MIIC0zCCAjygAwIBAgIIUjJvvp08TdcwDQYJKoZIhvcNAQEFBQAwQjEUMBIGA1UE"
-        +"AwwLRGVtb1N1YkNBMTExHTAbBgNVBAoMFERlbW8gT3JnYW5pemF0aW9uIDEwMQsw"
-        +"CQYDVQQGEwJTRTAeFw0xMDA0MDMyMjE3NDFaFw0xMjA0MDIyMjE3NDFaMCoxKDAm"
-        +"BgNVBAMMH3BkZnNpZ25lcjEyLTJ0ZXN0Y3JsLXdpdGgtc3ViY2EwgZ8wDQYJKoZI"
-        +"hvcNAQEBBQADgY0AMIGJAoGBAN6Z2oCtAyE8GMxBH61K/C1pIT00UnyknDPfqDZa"
-        +"7r109guxk3k852ahctQfCLZDowoalIxk5BBxMr5LAAijJRGFKtOv+tzUrHpI6NNj"
-        +"0AZKz86EDqWIbh9EwZ+tiR6L0BdTIEC16bN9FnTgIqdDRJlqulwm7fjHjKUUokCD"
-        +"1lJ1AgMBAAGjgekwgeYwHQYDVR0OBBYEFI8jJgWdA1dPZgj14zTTqnB2nJmyMAwG"
-        +"A1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUkP2n9uyYR1ZMEJbCrYUvUOsm6TQwgYUG"
-        +"A1UdHwR+MHwweqB4oHaGdGh0dHA6Ly92bXNlcnZlcjE6ODA4MC9lamJjYS9wdWJs"
-        +"aWN3ZWIvd2ViZGlzdC9jZXJ0ZGlzdD9jbWQ9Y3JsJmlzc3Vlcj1DTj1EZW1vU3Vi"
-        +"Q0ExMSxPPURlbW8lMjBPcmdhbml6YXRpb24lMjAxMCxDPVNFMA4GA1UdDwEB/wQE"
-        +"AwIHgDANBgkqhkiG9w0BAQUFAAOBgQBu8LkmuH3rsqvs5xull1xbiP6K7Ls9evUA"
-        +"THI4NhlT1EchMExifAJpAIysVzzyvzhXEwtLfpJ0VkwbnASdCOiOIE287LwTx1WA"
-        +"2hoBn5++lhHUfGTyN5EBn8CRr7aKYoBxdeY09VeFedh943Fx+nzKyAMT1QwS9fYn"
-        +"KTaZ5OyLsQ=="
-        +"\n-----END CERTIFICATE-----";
+    "-----BEGIN CERTIFICATE-----\n"
+    +"MIIC0zCCAjygAwIBAgIIUjJvvp08TdcwDQYJKoZIhvcNAQEFBQAwQjEUMBIGA1UE"
+    +"AwwLRGVtb1N1YkNBMTExHTAbBgNVBAoMFERlbW8gT3JnYW5pemF0aW9uIDEwMQsw"
+    +"CQYDVQQGEwJTRTAeFw0xMDA0MDMyMjE3NDFaFw0xMjA0MDIyMjE3NDFaMCoxKDAm"
+    +"BgNVBAMMH3BkZnNpZ25lcjEyLTJ0ZXN0Y3JsLXdpdGgtc3ViY2EwgZ8wDQYJKoZI"
+    +"hvcNAQEBBQADgY0AMIGJAoGBAN6Z2oCtAyE8GMxBH61K/C1pIT00UnyknDPfqDZa"
+    +"7r109guxk3k852ahctQfCLZDowoalIxk5BBxMr5LAAijJRGFKtOv+tzUrHpI6NNj"
+    +"0AZKz86EDqWIbh9EwZ+tiR6L0BdTIEC16bN9FnTgIqdDRJlqulwm7fjHjKUUokCD"
+    +"1lJ1AgMBAAGjgekwgeYwHQYDVR0OBBYEFI8jJgWdA1dPZgj14zTTqnB2nJmyMAwG"
+    +"A1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUkP2n9uyYR1ZMEJbCrYUvUOsm6TQwgYUG"
+    +"A1UdHwR+MHwweqB4oHaGdGh0dHA6Ly92bXNlcnZlcjE6ODA4MC9lamJjYS9wdWJs"
+    +"aWN3ZWIvd2ViZGlzdC9jZXJ0ZGlzdD9jbWQ9Y3JsJmlzc3Vlcj1DTj1EZW1vU3Vi"
+    +"Q0ExMSxPPURlbW8lMjBPcmdhbml6YXRpb24lMjAxMCxDPVNFMA4GA1UdDwEB/wQE"
+    +"AwIHgDANBgkqhkiG9w0BAQUFAAOBgQBu8LkmuH3rsqvs5xull1xbiP6K7Ls9evUA"
+    +"THI4NhlT1EchMExifAJpAIysVzzyvzhXEwtLfpJ0VkwbnASdCOiOIE287LwTx1WA"
+    +"2hoBn5++lhHUfGTyN5EBn8CRr7aKYoBxdeY09VeFedh943Fx+nzKyAMT1QwS9fYn"
+    +"KTaZ5OyLsQ=="
+    +"\n-----END CERTIFICATE-----";
 
     /**
      * Cert with CDP without URI.
@@ -3551,5 +3551,4 @@ private static String testpdf4 =
         +"LG9NcoIM7VZ0sp25qy0rHRBf2yd1cI/9HdfiAqB55Rzl/69kQFEtnptH20KlfB/C"
         +"pkiw176SaU2k9ilXxXgRGNyHUcoTsmKdTysyvTGlwfpSqwWIyA=="
         +"\n-----END CERTIFICATE-----";
-  
 }
