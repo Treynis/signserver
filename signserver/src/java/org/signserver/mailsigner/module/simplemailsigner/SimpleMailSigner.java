@@ -130,9 +130,9 @@ public class SimpleMailSigner extends BaseMailProcessor {
 	 * (Required if USEREBUILDFROM is true)
 	 */
 	public static final String FROMADDRESS = "FROMADDRESS";
+	
 
-
-        /**
+	/**
          * If the From/Sender fields should be composed of the
          * FROMADDRESS/SIGNERADDRESS and the name from the From field of the
          * original e-mail.
@@ -664,7 +664,7 @@ public class SimpleMailSigner extends BaseMailProcessor {
 	protected String getSignatureHashAlgorithm() {
 		return config.getProperties().getProperty(SIGNATUREALG,DEFAULT_SIGNATUREALG);
 	}
-
+	
     /**
      * Method for extracting the personal (name) of a mail-address. First it
      * tries with the sender address and if that does not contain a name the

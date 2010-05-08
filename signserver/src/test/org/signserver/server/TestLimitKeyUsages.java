@@ -34,7 +34,7 @@ import org.signserver.testutils.TestUtils;
  * Tests limits for the key usages.
  *
  * @author Markus Kilas
- * @version $Id: TestFirstActiveDispatcher.java 950 2010-04-17 19:36:04Z netmackan $
+ * @version $Id$
  */
 public class TestLimitKeyUsages extends TestCase {
 

@@ -25,18 +25,18 @@ import org.signserver.server.KeyUsageCounter;
 /**
  * Base class that all signers can extend to cover basic in common
  * functionality.
- *
+ * 
  * @author Philip Vendil
  * $Id$
  */
 public abstract class BaseSigner extends BaseProcessable implements ISigner {
-
-    /**
-     * @see org.signserver.server.signers.IProcessable#getStatus()
-     */
-    public WorkerStatus getStatus() {
-        SignerStatus retval = null;
-
+	
+	/**
+	 * @see org.signserver.server.signers.IProcessable#getStatus()
+	 */
+	public WorkerStatus getStatus() {
+		SignerStatus retval = null;
+		
         try {
 
             final Certificate cert = getSigningCertificate();
@@ -60,11 +60,11 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
             } else {
                 retval = new SignerStatus(workerId, getCryptoToken().getCryptoTokenStatus(), new ProcessableConfig(config), cert);
             }
-        } catch (CryptoTokenOfflineException e) {
+		} catch (CryptoTokenOfflineException e) {
             retval = new SignerStatus(workerId, getCryptoToken().getCryptoTokenStatus(), new ProcessableConfig(config), null);
-        }
-
-
-        return retval;
-    }
+		}
+		
+		
+		return retval;
+	}
 }

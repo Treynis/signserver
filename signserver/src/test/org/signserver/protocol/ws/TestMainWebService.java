@@ -71,7 +71,7 @@ import org.signserver.validationservice.server.ValidationTestUtils;
 public class TestMainWebService extends TestCase {
 
     private static final Logger LOG = Logger.getLogger(TestMainWebService.class);
-    
+
 	private static IGlobalConfigurationSession.IRemote gCSession = null;
 	private static IWorkerSession.IRemote sSSession = null;
 	
@@ -382,6 +382,5 @@ public class TestMainWebService extends TestCase {
         }
         return ret;
     }
-    
 
 }

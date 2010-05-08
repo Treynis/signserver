@@ -88,7 +88,7 @@ public class SetDBType {
 				content.write(data,0,numberread);
 			}
 			if(next.getName().equals("signserver-ejb.jar")){
-				content = replaceEntityMappings(content, entityMappingXML);
+				content = replaceEntityMappings(earFile, next, content, entityMappingXML);
 				next = new ZipEntry("signserver-ejb.jar");
 			}
 
@@ -106,7 +106,8 @@ public class SetDBType {
 	}
 
 
-	private static ByteArrayOutputStream replaceEntityMappings(ByteArrayOutputStream content, File entityMappingXML) throws IOException {
+	private static ByteArrayOutputStream replaceEntityMappings(
+			ZipInputStream earFile, ZipEntry next, ByteArrayOutputStream content, File entityMappingXML) throws IOException {
 		JarInputStream jarInputStream = new JarInputStream(new ByteArrayInputStream(content.toByteArray()));
 		ByteArrayOutputStream retval = new ByteArrayOutputStream();
 		JarOutputStream tempJar = new JarOutputStream(retval);

@@ -155,24 +155,24 @@ public class PDFSigner extends BaseSigner {
 	public void init(int signerId, WorkerConfig config,
 			WorkerContext workerContext, EntityManager workerEntityManager) {
 		super.init(signerId, config, workerContext, workerEntityManager);
+            
+            // Check properties for archive to disk
+            if (StringUtils.equalsIgnoreCase("TRUE",
+                    config.getProperty(PROPERTY_ARCHIVETODISK))) {
+                log.debug("Archiving to disk");
 
-                // Check properties for archive to disk
-                if (StringUtils.equalsIgnoreCase("TRUE",
-                        config.getProperty(PROPERTY_ARCHIVETODISK))) {
-                    log.debug("Archiving to disk");
-
-                    final String path = config.getProperty(PROPERTY_ARCHIVETODISK_PATH_BASE);
-                    if (path == null) {
-                        log.warn("Worker[" + workerId
-                                + "]: Archiving path missing");
-                    } else if (!new File(path).exists()) {
-                        log.warn("Worker[" + workerId
-                                + "]: Archiving path does not exists: "
-                                + path);
-                    }
+                final String path = config.getProperty(PROPERTY_ARCHIVETODISK_PATH_BASE);
+                if (path == null) {
+                    log.warn("Worker[" + workerId
+                            + "]: Archiving path missing");
+                } else if (!new File(path).exists()) {
+                    log.warn("Worker[" + workerId
+                            + "]: Archiving path does not exists: "
+                            + path);
                 }
+            }
 
-                archivetodiskPattern = Pattern.compile(ARCHIVETODISK_PATTERN_REGEX);
+            archivetodiskPattern = Pattern.compile(ARCHIVETODISK_PATTERN_REGEX);
 	}
 
 	/**
@@ -418,7 +418,7 @@ public class PDFSigner extends BaseSigner {
 
 	}
 
-        static URL getCRLDistributionPoint(final Certificate certificate)
+        static URL getCRLDistributionPoint(final Certificate certificate) 
                 throws CertificateParsingException {
             return org.signserver.module.pdfsigner.org.ejbca.util
                     .CertTools.getCrlDistributionPoint(certificate);
@@ -462,9 +462,8 @@ public class PDFSigner extends BaseSigner {
         fields.put("WORKERID", String.valueOf(workerId));
         fields.put("WORKERNAME", config.getProperty("NAME"));
         fields.put("REMOTEIP", (String) requestContext.get(RequestContext.REMOTE_IP));
-        fields.put("TRANSACTIONID", (String) requestContext.get(RequestContext.TRANSACTION_ID));
         fields.put("REQUESTID", String.valueOf(sReq.getRequestID()));
-
+        
         Object credential = requestContext.get(RequestContext.CLIENT_CREDENTIAL);
         if (credential instanceof UsernamePasswordClientCredential) {
             fields.put("USERNAME",
@@ -479,7 +478,7 @@ public class PDFSigner extends BaseSigner {
                 new Date(), fields);
 
         final File outputPath = new File(new File(config.getProperty(
-                PROPERTY_ARCHIVETODISK_PATH_BASE)), 
+                PROPERTY_ARCHIVETODISK_PATH_BASE)),
                 pathFromPattern);
 
         if (!outputPath.exists()) {
@@ -529,7 +528,7 @@ public class PDFSigner extends BaseSigner {
      * "${WORKERID}-${REQUESTID}_${DATE:yyyy-MM-dd}.pdf"
      * Could be:
      * "42-123123123_2010-04-28.pdf"
-     * 
+     *
      * @param pattern Pre-compiled pattern to use for parsing
      * @param text The text that contains keys to be replaced with values
      * @param date The date to use if date should be inserted
