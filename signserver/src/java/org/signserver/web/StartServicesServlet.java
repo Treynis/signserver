@@ -14,7 +14,6 @@ package org.signserver.web;
 
 import java.io.IOException;
 
-import javax.ejb.EJB;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -25,27 +24,24 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.log4j.Logger;
-import org.signserver.common.CompileTimeSettings;
 import org.signserver.ejb.interfaces.IServiceTimerSession;
 import org.signserver.ejb.interfaces.IServiceTimerSession.ILocal;
-import org.signserver.ejb.interfaces.IStatusRepositorySession;
 
 /**
- * Servlet used to start services by calling the ServiceTimerSession.load() at
+ * Servlet used to start services by calling the ServiceTimerSession.load() at 
  * startup.
+ *
+ * 
  * 
  * @version $Id$
  */
 public class StartServicesServlet extends HttpServlet {
 
-    private static final long serialVersionUID = 1L;
-    private static final Logger log = Logger.getLogger(StartServicesServlet.class);
+	private static final long serialVersionUID = 1L;
+	private static final Logger log = Logger.getLogger(StartServicesServlet.class);
+    
 
-    @EJB
     private IServiceTimerSession.ILocal timedServiceSession;
-
-    @EJB
-    private IStatusRepositorySession.ILocal statusRepositorySession;
 
     private IServiceTimerSession.ILocal getTimedServiceSession(){
     	if(timedServiceSession == null){
@@ -56,59 +52,36 @@ public class StartServicesServlet extends HttpServlet {
     			log.error(e);
     		}
     	}
-
+    	
     	return timedServiceSession;
     }
-
-    private IStatusRepositorySession.ILocal getStatusRepositorySession() {
-        if (statusRepositorySession == null) {
-            try {
-                Context context = new InitialContext();
-
-                statusRepositorySession = (IStatusRepositorySession.ILocal) 
-                        context.lookup(
-                            IStatusRepositorySession.ILocal.JNDI_NAME);
-            } catch (NamingException e) {
-                log.error(e);
-            }
-        }
-        return statusRepositorySession;
-    }
-
+    
     /**
      * Method used to remove all active timers
-     * @see javax.servlet.GenericServlet#destroy()
-     */
-    public void destroy() {
-        log.info("Destroy,  " + CompileTimeSettings.getInstance().getProperty(
-                CompileTimeSettings.SIGNSERVER_VERSION) + " shutdown.");
-
+	 * @see javax.servlet.GenericServlet#destroy()
+	 */
+	public void destroy() {		
+        log.info("Destroy, @signserver.version@ shutdown.");
+        
         log.debug(">destroy calling ServiceSession.unload");
 
         getTimedServiceSession().unload(0);
 
-        super.destroy();
-    }
+		super.destroy();
+	}
 
     public void init(ServletConfig config) throws ServletException {
         super.init(config);
 
-        log.info("Init, " + CompileTimeSettings.getInstance().getProperty(
-                CompileTimeSettings.SIGNSERVER_VERSION) + " startup.");
+        log.info("Init, @signserver.version@ startup.");
 
         log.debug(">init calling ServiceSession.load");
-        
-        // Start the timed services session
+
         getTimedServiceSession().load(0);
-
-        // Instantiate the status repository session and also set a value
-        getStatusRepositorySession().setProperty("INIT",
-                String.valueOf(System.currentTimeMillis()));
-
     } // init
 
     public void doPost(HttpServletRequest req, HttpServletResponse res)
-            throws IOException, ServletException {
+        throws IOException, ServletException {
         log.debug(">doPost()");
         doGet(req, res);
         log.debug("<doPost()");
@@ -119,4 +92,5 @@ public class StartServicesServlet extends HttpServlet {
         res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Servlet doesn't support requests is only loaded on startup.");
         log.debug("<doGet()");
     } // doGet
+
 }

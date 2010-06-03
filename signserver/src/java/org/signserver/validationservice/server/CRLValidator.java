@@ -58,9 +58,9 @@ import org.signserver.validationservice.common.X509Certificate;
  * NOTE : com.sun.security.enableCRLDP not used for CertPath validation, since it affects entire jvm.
  *  
  * @author rayback2
- * @version $Id$
  *
  */
+
 public class CRLValidator extends BaseValidator {
 
 	private static final Logger log = Logger.getLogger(CRLValidator.class);
@@ -115,7 +115,14 @@ public class CRLValidator extends BaseValidator {
 			return new Validation(cert,null,Validation.Status.NOTYETVALID,"Certificate is not yet valid. " + e1.toString());
 		}
 		
-		List<ICertificate> certChain = getCertificateChain(cert);		
+		List<ICertificate> certChain = getCertificateChain(cert);
+		
+		log.debug("***********************");
+		log.debug("printing certchain for "+ cert.getSubject());
+		for(ICertificate tempcert : certChain)
+			log.debug(tempcert.getSubject());
+		log.debug("***********************");
+		
 		// if no chain found for this certificate and if it is not trust anchor (as configured in properties) return null
 		// if it is trust anchor return valid
 		if(certChain == null ){
@@ -128,15 +135,7 @@ public class CRLValidator extends BaseValidator {
 				return null;
 			}
 		}
-
-		if (log.isDebugEnabled()) {
-			log.debug("***********************");
-			log.debug("printing certchain for "+ cert.getSubject());
-			for(ICertificate tempcert : certChain) {
-				log.debug(tempcert.getSubject());
-			}
-			log.debug("***********************");
-		}
+		
 		ICertificate rootCert = null; // represents root Certificate of the certificate in question
 		List<X509Certificate> certChainWithoutRootCert = new ArrayList<X509Certificate>(); // chain without root for CertPath construction 
 		List<URL> cDPURLs = new ArrayList<URL>(); // list of CDPs obtained from certificates 
@@ -214,16 +213,15 @@ public class CRLValidator extends BaseValidator {
 						}
 					}
 				}
-				else {
+				else
 					cDPURLs.add(certURL);
-				}
+
 			} catch (Exception e) {
 				throw new SignServerException(e.toString(), e);
 			}
 
-			if(!cACerts.hasNext()) {
+			if(!cACerts.hasNext())
 				break;
-			}
 		}
 
 
@@ -258,30 +256,25 @@ public class CRLValidator extends BaseValidator {
 			}
 
 			certStore  = CertStore.getInstance("Collection", new CollectionCertStoreParameters(certsAndCRLS));
-
-			if (log.isDebugEnabled()) {
-				log.debug("***********************");
-				log.debug("printing certs in certstore");
-				Iterator<?> tempIter = certStore.getCertificates(null).iterator();
-				while(tempIter.hasNext())
-				{
-					X509Certificate tempcert = (X509Certificate)tempIter.next();
-					log.debug(tempcert.getSubject() + " issuer is " + tempcert.getIssuer());
-				}
-				log.debug("***********************");
+			
+			log.debug("***********************");
+			log.debug("printing certs in certstore");
+			Iterator<?> tempIter = certStore.getCertificates(null).iterator();
+			while(tempIter.hasNext())
+			{
+				X509Certificate tempcert = (X509Certificate)tempIter.next();
+				log.debug(tempcert.getSubject() + " issuer is " + tempcert.getIssuer());
 			}
+			log.debug("***********************");
 			
 			// CertPath Construction
 			certPath = certFactory.generateCertPath(certChainWithoutRootCert);
 			
-			if (log.isDebugEnabled()) {
-				log.debug("***********************");
-				log.debug("printing certs in certpath");
-				for(Certificate tempcert : certPath.getCertificates()) {
-					log.debug(((X509Certificate)tempcert).getSubject() + " issuer is " + ((X509Certificate)tempcert).getIssuer());
-				}
-				log.debug("***********************");
-			}
+			log.debug("***********************");
+			log.debug("printing certs in certpath");
+			for(Certificate tempcert : certPath.getCertificates())
+				log.debug(((X509Certificate)tempcert).getSubject() + " issuer is " + ((X509Certificate)tempcert).getIssuer());
+			log.debug("***********************");
 			
 			// init cerpathvalidator 
 			validator = CertPathValidator.getInstance("PKIX", "BC");
@@ -292,11 +285,10 @@ public class CRLValidator extends BaseValidator {
 			params.addCertStore(certStore);
 			params.setDate(new Date());
 			
-			if (log.isDebugEnabled()) {
-				log.debug("***********************");
-				log.debug("printing trust anchor "+ trustAnc.getTrustedCert().getSubjectDN().getName());
-				log.debug("***********************");
-			}
+			log.debug("***********************");
+			log.debug("printing trust anchor "+ trustAnc.getTrustedCert().getSubjectDN().getName());
+			log.debug("***********************");
+			
 		} catch (Exception e) {
 			log.error("Exception on preparing parameters for validation", e);
 			throw new SignServerException(e.toString(), e);

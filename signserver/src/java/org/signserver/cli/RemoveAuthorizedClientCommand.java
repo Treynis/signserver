@@ -52,6 +52,7 @@ public class RemoveAuthorizedClientCommand extends BaseCommand {
         try {            
         	
         	int signerid = getWorkerId(args[1], hostname);
+        	checkThatWorkerIsSigner(signerid,hostname);
         	
         	String certsn = args[2];
         	String issuerdn = args[3];
@@ -76,6 +77,11 @@ public class RemoveAuthorizedClientCommand extends BaseCommand {
         	throw new ErrorAdminCommandException(e);            
         }
     }
+
+	private void checkThatWorkerIsSigner(int signerid, String hostname) {
+		// TODO Auto-generated method stub
+		
+	}
 
 	public int getCommandType() {
 		return TYPE_EXECUTEONMASTER;

@@ -190,7 +190,7 @@ public interface IWorkerSession {
     public List<Certificate> getSignerCertificateChain(int signerId)
             throws CryptoTokenOfflineException;
 
-    /**
+     /**
      * Gets the last date the specified worker can do signings.
      * @param workerId Id of worker to check.
      * @return The last date or null if no last date (=unlimited).

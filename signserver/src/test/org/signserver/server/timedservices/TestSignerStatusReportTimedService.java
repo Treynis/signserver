@@ -19,7 +19,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Map;
+import javax.naming.Context;
+import javax.naming.InitialContext;
 
 import junit.framework.TestCase;
 
@@ -29,7 +32,6 @@ import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.clusterclassloader.MARFileParser;
 import org.signserver.ejb.interfaces.IWorkerSession;
-import org.signserver.common.ServiceLocator;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.testutils.TestUtils;
 import org.signserver.testutils.TestingSecurityManager;
@@ -84,10 +86,9 @@ public class TestSignerStatusReportTimedService extends TestCase {
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
-        workerSession = ServiceLocator.getInstance().lookupRemote(
-                IWorkerSession.IRemote.class);
-        globalSession = ServiceLocator.getInstance().lookupRemote(
-                IGlobalConfigurationSession.IRemote.class);
+        Context context = getInitialContext();
+        workerSession = (IWorkerSession.IRemote) context.lookup(IWorkerSession.IRemote.JNDI_NAME);
+        globalSession = (IGlobalConfigurationSession.IRemote) context.lookup(IGlobalConfigurationSession.IRemote.JNDI_NAME);
         
         TestUtils.redirectToTempOut();
         TestUtils.redirectToTempErr();
@@ -298,6 +299,20 @@ public class TestSignerStatusReportTimedService extends TestCase {
         } catch (InterruptedException ex) {
             LOG.error("Interrupted", ex);
         }
+    }
+
+    /**
+     * Get the initial naming context.
+     */
+    private Context getInitialContext() throws Exception {
+        Hashtable<String, String> props = new Hashtable<String, String>();
+        props.put(Context.INITIAL_CONTEXT_FACTORY,
+                        "org.jnp.interfaces.NamingContextFactory");
+        props.put(Context.URL_PKG_PREFIXES,
+                        "org.jboss.naming:org.jnp.interfaces");
+        props.put(Context.PROVIDER_URL, "jnp://localhost:1099");
+        Context ctx = new InitialContext(props);
+        return ctx;
     }
 
 }

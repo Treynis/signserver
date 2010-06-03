@@ -132,7 +132,7 @@ public class SignerStatusReportTimedService extends BaseTimedService {
             for (String worker : workers) {
                 int workerId = workerSession.getWorkerId(worker);
                 if (workerId == 0) {
-                    LOG.warn("No such worker: \"" + worker + "\"");
+                    LOG.warn("No such worker: " + worker);
                 } else {
                     LOG.debug("Worker: " + worker);
                     String statusString = STATUS_ACTIVE;
@@ -151,12 +151,12 @@ public class SignerStatusReportTimedService extends BaseTimedService {
                         if (status == null || status.isOK() != null) {
                             statusString = STATUS_OFFLINE;
                         }
+
                         if (status instanceof CryptoTokenStatus &&
                                 ((CryptoTokenStatus) status).getTokenStatus()
                                     == CryptoTokenStatus.STATUS_OFFLINE) {
                             statusString = STATUS_OFFLINE;
                         }
-
 
                         try {
                         signings = em.find(
@@ -165,7 +165,7 @@ public class SignerStatusReportTimedService extends BaseTimedService {
                             LOG.warn(ex, ex);
                         }
                     }
-                    
+
                     final StringBuilder sb = new StringBuilder();
                     sb.append("workerName=");
                     sb.append(worker);

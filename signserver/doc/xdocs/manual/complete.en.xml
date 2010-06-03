@@ -718,169 +718,80 @@ List currently authorized STMP users.
                     </subsubsection>
                 </subsection>
 
-                <subsection name="Administration GUI">
-                    <p>
-As a complement to the command line interface there is also a graphical user
-interface for managing some of the most basic administrative tasks.
-                    </p>
-                    <p>
-The SignServer AdminGUI can be build by running "ant jar" in the
-SignServer-AdminGUI folder.
-                    </p>
-                </subsection>
-
-                <subsection name="Working with Workers">
-                    <p>
+                <subsection name="Setup Workers">
+                <p>
 In SignServer operations are performed by workers. There can be many workers 
 and each worker has its own configuration. Each worker is identified by an unique 
 ID. A worker can also be configured with a name by setting the property NAME. 
 After the configuration has been activated (by issuing reload with the worker ID) 
 that name can also be used to address the worker.
-                    </p>
+                </p>
                     <p>
 Workers are configured slitly differently depending on if the cluster class
 loader is used and the plugin is a separate module or if the plugin is built-in
 to SignServer.
                     </p>
+                    <subsubsection name="Configuring using a built-in plugin">
+                    <p>
+A worker is configured by setting properties for it. Specifically if the plugin
+is built-in it is specified by setting the property CLASSPATH to the fully
+qualified name of the class implementing the plugin.
+                    </p>
+                    <p>
+The properties can be set manually using the setproperty command or by loading
+them all at once from a configuration file using the setproperties command.
+Sample configuration files are available in SIGNSERVER_HOME/sample-configs.
+                    </p>
+                    <p>
+To setup a PDFSigner using the quick start configuration file issue the
+following command:
+                    </p>
+                        <source>
+bin/signserver.sh setproperties sample-configs/qs_pdfsigner_configuration.properties
+                        </source>
+                    <p>
+Notice the created workerId and use it when applying the configuration using the
+reload command:
+                    </p>
+                        <source>
+bin/signserver.sh reload WORKER-ID
+                        </source>
+                    </subsubsection>
                     <subsubsection name="Configuring using a module">
-                        <p>
+                    <p>
 To configure the worker using a module the cluster class loader must be 
 activated (see <a href="complete.en.html#Changing%20the%20default%20configuration%20of%20the%20Cluster%20Class%20Loader">Changing the default configuration of the Cluster Class Loader</a>)
 and the code for the plugin available as .MAR-file. To setup a worker using a
 module archive issue the following command:
-                        </p>
+                    </p>
                         <source>
 bin/signserver.sh module add dist-server/MODULE.MAR ENVIRONMENT
                         </source>
-                        <p>
+                <p>
 Replace "MODULE.MAR" with the name of the module file and "ENVIRONMENT" with the
 name of the built-in configuration to load. For example to load the TSA module
 using the demo configuration issue the following command:
-                        </p>
-                        <source>
+                </p>
+                    <source>
 bin/signserver.sh module add dist-server/tsa.mar demo
-                        </source>
-                        <p>
+                    </source>
+                    <p>
 Notice the created workerId and use it when applying the configuration using the
 reload command:
-                        </p>
-                        <source>
+                    </p>
+                    <source>
 bin/signserver.sh reload WORKER-ID
                         </source>
                     </subsubsection>
-                    <subsubsection name="Configuring using a built-in plugin">
-                    <p>Configuring using a build-in plugin only works if you have set the option includemodulesinbuild=true in signserver_build.properties.</p>
-                        <p>
-A worker is configured by setting properties for it. Specifically if the plugin
-is built-in it is specified by setting the property CLASSPATH to the fully
-qualified name of the class implementing the plugin.
-                        </p>
-                        <p>
-The properties can be set manually using the setproperty command or by loading
-them all at once from a configuration file using the setproperties command.
-Sample configuration files are available in SIGNSERVER_HOME/sample-configs.
-                        </p>
-                        <p>
-To setup a PDFSigner using the quick start configuration file issue the
-following command:
-                        </p>
-                        <source>
-bin/signserver.sh setproperties sample-configs/qs_pdfsigner_configuration.properties
-                        </source>
-                        <p>
-Notice the created workerId and use it when applying the configuration using the
-reload command:
-                        </p>
-                        <source>
-bin/signserver.sh reload WORKER-ID
-                        </source>
-                    </subsubsection>
-                <subsubsection name="Remove Workers">
-                    <p>
-                    You can list which workers you have with the command:
-                    </p>
-                    <source>
-bin/signserver.sh getstatus brief all                    
-                    </source>
-                    <p>
-                    If will display for example:
-                    </p>
-                    <source>
-===========================================
-Executing Command on host : localhost
-===========================================
 
-
-Current version of server is : SignServer 3.2-svn
-
-
-Status of Signer with Id 1 is :
-  SignToken Status : Offline
-  Signings: 0
-                    </source>
-                    <p>
-                    You can remove the worker with Id 1 with the command:                    
-					</p>
-                    <source>
-bin/signserver.sh removeworker 1
-bin/signserver.sh reload all                    
-                    </source>
-                </subsubsection>
-            </subsection>
-            <subsection name="Working with Modules">
-                <subsubsection name="Remove modules">
-					<p>
-					If you have made changes to the module, and you are using the cluser classloader (i.e. not built in modules) you have to remove the module before deploying a new one.
-					</p>
-                    <source>
-bin/signserver.sh modules list
-
-===========================================
-  Executing Command on host : localhost
-===========================================
-
-
-Using cluster class loader.
-
-Listing all available modules :
-  Module : MRTDSODSIGNER, version 3200
-    Parts : 
-      server
-
-bin/signserver.sh module remove MRTDSODSIGNER 3200
-
-===========================================
-  Executing Command on host : localhost
-===========================================
-
-
-Using cluster class loader.
-
-  Removing module MRTDSODSIGNER version 3200 ...
-  Removal of module successful.
-                    </source>
-                </subsubsection>
-                <subsubsection name="Add updated modules">
-					<note>
-					If you added configurations under src/module-configs you must rebuild the modules with the command 'ant', before you can use 'module add' with your updated configs.
-					</note>					
-					<p>
-					After rebuilding the modules you can add updated modules.
-					</p>                    
-					<source>
-bin/signserver.sh module add dist-server/pdfsigner.mar soft					
-bin/signserver.sh reload all
-bin/signserver.sh getstatus complete all
-					</source>
-				</subsubsection>                 
 
                 </subsection>
             </section>
 
             <section name="Making the SignServer highly-available">
-                <p>
+                    <p>
 Here are some tips on configuration used to make the SignServer redundant. Usually is the SignServer set-up with three nodes (required minimum for MySQL cluster) where one node is a management node from were all deployment and administration is done and the other two services are service nodes processing the actual requests.
-                </p>
+                    </p>
                 
                 <subsection name="HTTP access requires a load balancer">
                     <p>
@@ -1253,37 +1164,8 @@ The time-stamp signer requires a time-stamp certificate with the extended key us
 The following properties can be configured with the signer:
                         </p>
                         <p>
-<b>TIMESOURCE</b> = property containing the fully qualified name of the class implementing  the ITimeSource that should be used (OPTIONAL). Below are the built-in TimeSourceS available:
+<b>TIMESOURCE</b> = property containing the class path to the ITimeSource implementation that should be used. (OPTIONAL, default LocalComputerTimeSource)
                         </p>
-                        <table>
-<!-- LocalComputerTimeSource -->
-                            <tr>
-                                <td>
-<b>org.signserver.server.LocalComputerTimeSource</b>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-This is the default TimeSource and uses the time from the local computer and
-always returns the time.
-                                </td>
-                            </tr>
-
-<!-- StatusReadingLocalComputerTimeSource -->
-                            <tr>
-                                <td>
-<b>org.signserver.server.StatusReadingLocalComputerTimeSource</b>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-This TimeSource returns the time from the local computer but only if the
-status property <i>INSYNC</i> is returned as <i>true</i> from the
-Status Repository.
-                                </td>
-                            </tr>
-                        </table>
-                        
                         <p>
 <b>ACCEPTEDALGORITHMS</b> = A ';' separated string containing accepted algorithms, can be null if it shouldn't be used. (OPTIONAL, Strongly recommended)
 Supported Algorithms are: GOST3411, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, RIPEMD128, RIPEMD160, RIPEMD256
@@ -1503,8 +1385,8 @@ Default is not set (no timestamping).
                         <p>
 		Default value is False.
                         </p>
-                        <p>
 
+                        <p>
         <b>ARCHIVETODISK</b>=
                 If we want the produced signed document to be stored in the
                 local file system set this property to true and add the
@@ -1531,7 +1413,6 @@ Default is not set (no timestamping).
             <li>${WORKERNAME}</li>
             <li>${REMOTEIP}</li>
             <li>${REQUESTID}</li>
-            <li>${TRANSACTIONID}</li>
             <li>${USERNAME}</li>
         </ul>
                         </p>
@@ -1621,7 +1502,7 @@ The XML validator validates the signature of XML documents. The certificate is c
                 </subsection>
             </section>
 
-            <section name="SignServer Dispatchers">
+                       <section name="SignServer Dispatchers">
                 <p>
 Dispatchers are workers that forwards the request to other workers.
                 </p>
@@ -1631,7 +1512,7 @@ Dispatchers are workers that forwards the request to other workers.
                     <p>
 Fully qualified class name: org.signserver.server.dispatchers.FirstActiveDispatcher
                     </p>
-                        
+
                     <subsubsection name="Overview">
                         <p>
 Dispatches the request to the first of the configured workers that has an active
@@ -1924,10 +1805,10 @@ other properties needed by the particular crypto token are available.
 
                 <subsection name="P12CryptoToken">
                     <subsubsection name="Overview">
-                        <p>
+                    <p>
 A CryptoToken using a PKCS#12 (.p12/.pfx) key-store in the local file-system. It can only
 contain one signing key.
-                        </p>
+                    </p>
                         <p>
 In a clustered environment the key store must placed at the same location at all nodes.
                         </p>
@@ -1935,7 +1816,7 @@ In a clustered environment the key store must placed at the same location at all
 The P12CryptoToken, doesn't support the destroyKey() method
                         </p>
                     </subsubsection>
-
+                    
                     <subsubsection name="SIGNERTOKEN.CLASSPATH">
                         <p>
 The fully qualified class name is: <b>org.signserver.server.cryptotokens.JKSCryptoToken</b>
@@ -2989,8 +2870,8 @@ Sets the server to not require any authentication.
 This authorizer requires a valid username and password. User accounts are
 configured by setting properties of the form shown above, where
 [NAME] is the username and [PASSWORD] is the clear-text password. In the second
-form [HASHED_PASSWORD] should be replaced with the output of the digest algorithm 
-specified in [HASH_ALGORITHM]. The third form uses a hash value that is appended 
+form [HASHED_PASSWORD] should be replaced with the output of the digest algorithm
+specified in [HASH_ALGORITHM]. The third form uses a hash value that is appended
 to the password before hashing it.
                         </p>
                         <p>
@@ -3043,24 +2924,6 @@ If there is a need to save all generated responses, then set the property "ARCHI
                 <p>
 The archived responses can later be extracted from data base using the CLI interface. See the CLI section for more information.
                 </p>
-            </section>
-
-            <section name="Checking validity of signer certificates (SignServer only)">
-                <p>
-By default the SignServer checks if the signer certificate of a signer is valid before letting the signer process a request. If the signers certificate is not valid an error message is returned.
-There are two properties that can be set to disable this check:
-                </p>
-                <ul>
-                    <li>
-CHECKCERTVALIDITY: default value is true, meaning that the validity period of the certificate will be verified before processing. Set to false to ignore if the certificate is expired or not yet valid.
-                    </li>
-                    <li>
-CHECKCERTPRIVATEKEYVALIDITY: default value is true, meaning that the validity period in the PrivateKeyUsagePeriod of the certificate will be verified before processing. This is only done if this extension exists (it is optional in a certificate). Set to false to ignore the PrivateKeyUsagePeriod.
-                    </li>
-                    <li>
-MINREMAININGCERTVALIDITY: default value is 0. This property defines a minimum remaining validity time required of the signing certificate. If the signing certificate expires within the number of days specified an error occurs. Set to 0 (default) to disable this check.
-                    </li>
-                </ul>
             </section>
 
             <section name="The Global Configuration Store">
@@ -3186,22 +3049,10 @@ be monitored.</p>
 <p><b>OUTPUTFILE</b> = File that the information will be written to. If the file
 exists the content will be overwritten. The application server needs to have write
 access to this file when the service is executed.
-
+                            
                         </p>
                     </subsubsection>
                 </subsection>
-            </section>
-
-            <section name="Status Repository">
-                <p>
-The status repository holds local (per JVM) status information (properties)
-with optional expiration times. After the expiration time the property is not
-returned.
-                </p>
-                <p>
-This could be used by having workers read status from the repository while it
-is an external service updating it.
-                </p>
             </section>
 
             <section name="Installation Packages">
@@ -3213,7 +3064,7 @@ At the current moment are the platforms Linux (mainly Debian distribution is tes
                 </p>
                 <subsection name="Using the Installation Packages">
                     <p>
-The installation package can be used either by using a GUI or on the command line by specifying the argument '–mode text'
+The installation package can be used either by using a GUI or on the command line by specifying the argument '--mode text'
                     </p>
                     <p>
 For an advanced set-up, for instance if many nodes should be installed with similar configuration, it is possible to preconfigure the installation by specifying a properties file containing some or all the properties asked during the installation. The properties will be used directly during installation and there will be no questions about it. See each package section for details about supported properties.
