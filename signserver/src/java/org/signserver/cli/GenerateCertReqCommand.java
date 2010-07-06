@@ -51,7 +51,7 @@ import org.signserver.common.PKCS10CertReqInfo;
              throw new IllegalAdminCommandException( resources[HELP]);
          }
          try{
-        	 
+             
         	 final String workerid = args[1];        	        	
         	 final String dn= args[2];
         	 final String sigAlg =  args[3];

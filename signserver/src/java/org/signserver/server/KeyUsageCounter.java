@@ -24,7 +24,7 @@ import org.bouncycastle.util.encoders.Hex;
 
 /**
  * Counter in database for number of signings made with a particular key.
- * 
+ *
  * @author markus
  */
 @Entity

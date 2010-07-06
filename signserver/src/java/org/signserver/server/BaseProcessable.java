@@ -209,7 +209,7 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
 	public boolean destroyKey(int purpose) {
 		return getCryptoToken().destroyKey(purpose);
 	}
-
+	
     /**
      * @see IKeyGenerator#generateKey(java.lang.String, java.lang.String,
      * java.lang.String, char[])
@@ -226,7 +226,7 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
         } else {
             throw new IllegalArgumentException(
                     "Key generation not supported by crypto token");
-        }
+}
     }
 
     /**

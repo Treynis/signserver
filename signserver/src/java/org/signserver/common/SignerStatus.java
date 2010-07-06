@@ -36,7 +36,7 @@ public class SignerStatus extends CryptoTokenStatus{
 
 
 	private Certificate signerCertificate = null;
-
+	
         private long keyUsageCounterValue;
 	
 	/** 
@@ -57,7 +57,7 @@ public class SignerStatus extends CryptoTokenStatus{
     }
 
 
-
+	 
 	 
 	/**
 	 * Method used to retrieve the currently used signercertficate.
@@ -86,7 +86,7 @@ public class SignerStatus extends CryptoTokenStatus{
 
                 out.println("\n\n");
 
-		if(complete){
+		if(complete){    	
 			out.println("Active Properties are :");
 
 

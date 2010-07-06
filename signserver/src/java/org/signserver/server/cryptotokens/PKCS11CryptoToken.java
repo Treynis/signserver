@@ -26,6 +26,7 @@ import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.Properties;
 
+
 import org.apache.log4j.Logger;
 import org.ejbca.core.model.ca.catoken.PKCS11CAToken;
 import org.ejbca.util.keystore.KeyStoreContainer;
@@ -37,15 +38,15 @@ import org.signserver.server.KeyTestResult;
 
 /**
  * Class used to connect to a PKCS11 HSM.
- *
+ * 
  * Properties:
  *   sharedLibrary
  *   slot
  *   defaultKey
  *   pin
  *   attributesFile
- *
- *
+ * 
+ * 
  * @see org.signserver.server.cryptotokens.ICryptoToken
  * @author Tomas Gustavsson, Philip Vendil
  * @version $Id$
@@ -55,9 +56,9 @@ public class PKCS11CryptoToken extends CryptoTokenBase implements ICryptoToken,
     IKeyGenerator {
 
 	private static final Logger log = Logger.getLogger(PKCS11CryptoToken.class);
-
-        private Properties properties;
 	
+        private Properties properties;
+
 	public PKCS11CryptoToken() throws InstantiationException{
 		catoken = new PKCS11CAToken(); 
 	}
@@ -86,7 +87,7 @@ public class PKCS11CryptoToken extends CryptoTokenBase implements ICryptoToken,
 		log.debug("<init");
 	}
 
-    /**
+        /**
      * @see IKeyGenerator#generateKey(java.lang.String, java.lang.String, java.lang.String, char[])
      */
     public void generateKey(final String keyAlgorithm, String keySpec,
@@ -174,8 +175,8 @@ public class PKCS11CryptoToken extends CryptoTokenBase implements ICryptoToken,
             final String pin = properties.getProperty("pin");
             if (pin == null) {
                 log.debug("pin == null");
-                pp = new KeyStore.ProtectionParameter() {};
-            } else {
+            pp = new KeyStore.ProtectionParameter() {};
+        } else {
                 log.debug("pin specified");
                 pp = new KeyStore.PasswordProtection(pin.toCharArray());
             }
@@ -250,5 +251,4 @@ public class PKCS11CryptoToken extends CryptoTokenBase implements ICryptoToken,
 
         return result;
     }
-
 }

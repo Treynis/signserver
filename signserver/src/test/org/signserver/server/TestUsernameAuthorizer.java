@@ -36,7 +36,7 @@ import org.signserver.testutils.TestingSecurityManager;
  *
  *
  * @author Markus Kilas
- * @version $Id: TestUsernamePasswordAuthorizer.java 898 2010-03-21 10:38:56Z netmackan $
+ * @version $Id$
  */
 public class TestUsernameAuthorizer extends TestCase {
 

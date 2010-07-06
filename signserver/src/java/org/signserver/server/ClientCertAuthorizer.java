@@ -40,7 +40,7 @@ import org.signserver.common.WorkerConfig;
 public class ClientCertAuthorizer implements IAuthorizer {
 
     private transient Logger log = Logger.getLogger(this.getClass());
-    
+
     private int workerId;
     private ProcessableConfig config = null;
 

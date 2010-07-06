@@ -226,7 +226,7 @@ public abstract class CryptoTokenBase implements ICryptoToken{
         public Collection<KeyTestResult> testKey(String alias, char[] authCode)
                 throws CryptoTokenOfflineException, KeyStoreException {
             throw new UnsupportedOperationException("Not supported yet.");
-        }
+}
 
         public static String createKeyHash(PublicKey key) {
         try {

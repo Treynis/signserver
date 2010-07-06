@@ -47,8 +47,8 @@ public class TestUsernamePasswordAuthorizer extends TestCase {
     private static File signServerHome;
     private static int moduleVersion;
 
-    /** 
-     * WORKERID used in this test case as defined in 
+    /**
+     * WORKERID used in this test case as defined in
      * junittest-part-config.properties
      */
     private static final int WORKERID = 5676;
@@ -97,16 +97,16 @@ public class TestUsernamePasswordAuthorizer extends TestCase {
 
         // Add a user account: user1, foo123 (plain-text password)
         workSession.setWorkerProperty(WORKERID, "USER.USER1", "foo123");
-        
+
         // Add a user account: user2, foo123 (SHA1 hashed password) = SHA1(foo123)
         workSession.setWorkerProperty(WORKERID, "USER.USER2",
                 "3b303d8b0364d9265c06adc8584258376150c9b5:SHA1");
 
-        // Add a user account: user3, foo123 (SHA1 hashed password and salted 
+        // Add a user account: user3, foo123 (SHA1 hashed password and salted
         // with "salt123") = SHA1(foo123salt123)
         workSession.setWorkerProperty(WORKERID, "USER.USER3",
                 "26c110963ad873c9b7db331e4c3130c266416d47:SHA1:salt123");
-        
+
         workSession.reloadConfiguration(WORKERID);
     }
 
@@ -137,7 +137,7 @@ public class TestUsernamePasswordAuthorizer extends TestCase {
         }
 
         // With other type of credentials
-        
+
         context.put(RequestContext.CLIENT_CREDENTIAL, new DummyCredential());
         try {
              res = (GenericSignResponse) workSession.process(WORKERID,

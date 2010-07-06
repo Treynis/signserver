@@ -12,9 +12,7 @@
  *************************************************************************/
 package org.signserver.server;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
@@ -26,6 +24,7 @@ import org.signserver.common.IllegalRequestException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
+import org.signserver.server.IAuthorizer;
 
 /**
  * Authorizer only accepting requests from certain IP addresses.
@@ -109,12 +108,6 @@ public class RemoteAddressAuthorizer implements IAuthorizer {
 
     private void logRemoteAddress(final String remoteAddress,
             final RequestContext requestContext) {
-        Map<String, String> logMap = (Map)
-                requestContext.get(RequestContext.LOGMAP);
-        if (logMap == null) {
-            logMap = new HashMap<String, String>();
-            requestContext.put(RequestContext.LOGMAP, logMap);
-        }
-        logMap.put(IAuthorizer.LOG_REMOTEADDRESS, remoteAddress);
+        LOG.info("AUTHORIZED_ADDRESS: " + remoteAddress);
     }
 }

@@ -182,7 +182,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
                                 + chain.length + " from keystore.");
                     }
 
-                    final KeyEntry entry = new KeyEntry((PrivateKey) key, 
+                    final KeyEntry entry = new KeyEntry((PrivateKey) key,
                             chain[0], Arrays.asList(chain));
 
                     entries.put(ICryptoToken.PURPOSE_SIGN, entry);
@@ -213,7 +213,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
                     LOG.error("Not a private key for alias " + defaultKey);
                 }
             }
-            
+
         } catch (KeyStoreException e1) {
             LOG.error("Error :", e1);
             throw new CryptoTokenAuthenticationFailureException("KeyStoreException " + e1.getMessage());
@@ -250,7 +250,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
     }
 
     /**
-     * 
+     *
      * @see org.signserver.server.cryptotokens.ICryptoToken#getPrivateKey(int)
      */
     public PrivateKey getPrivateKey(int purpose)
@@ -282,7 +282,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
     }
 
     /**
-     * 
+     *
      * @see org.signserver.server.cryptotokens.ICryptoToken#getPublicKey(int)
      */
     public PublicKey getPublicKey(int purpose) throws
@@ -507,7 +507,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
         }
         try {
 
-            final KeyStore keystore = getKeystore(keystoretype, keystorepath, 
+            final KeyStore keystore = getKeystore(keystoretype, keystorepath,
                     authCode);
             final Provider prov = keystore.getProvider();
             if (LOG.isDebugEnabled()) {
@@ -517,7 +517,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
             // Generate the RSA Keypair
             final KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", prov);
             kpg.initialize(Integer.valueOf(keySpec));
-            
+
             final String sigAlgName = "SHA1WithRSA";
 
             LOG.debug("generating...");
@@ -618,6 +618,6 @@ public class KeystoreCryptoToken implements ICryptoToken,
         public PrivateKey getPrivateKey() {
             return privateKey;
         }
-        
+
     }
 }

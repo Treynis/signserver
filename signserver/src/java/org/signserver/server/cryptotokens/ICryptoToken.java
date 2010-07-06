@@ -41,7 +41,7 @@ public interface ICryptoToken {
 	
 	public static final int PURPOSE_SIGN = 1;
 	public static final int PURPOSE_DECRYPT = 2;
-	
+        
         /** 
          * Indicating the next key. Property: "nextCertSignKey".
          * @see org.ejbca.core.model.SecConst#CAKEYPURPOSE_CERTSIGN_NEXT
@@ -50,7 +50,7 @@ public interface ICryptoToken {
 	
 	public static final int PROVIDERUSAGE_SIGN    = 1;
 	public static final int PROVIDERUSAGE_DECRYPT = 2;
-
+	
         String ALL_KEYS = "all";
 	
    /** 

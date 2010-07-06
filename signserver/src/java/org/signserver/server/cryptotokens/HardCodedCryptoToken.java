@@ -252,6 +252,6 @@ public class HardCodedCryptoToken implements ICryptoToken {
             final char[] authCode)
             throws CryptoTokenOfflineException, KeyStoreException {
         throw new UnsupportedOperationException("Not supported yet.");
-    }
+}
 
 }

@@ -31,7 +31,6 @@ import javax.xml.ws.handler.MessageContext;
 import org.apache.log4j.Logger;
 import org.ejbca.util.Base64;
 import org.ejbca.util.CertTools;
-import org.signserver.common.CompileTimeSettings;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.IllegalRequestException;
@@ -184,13 +183,12 @@ public class ValidationWS implements IValidationWS {
 		return retval;
 	}
 
+	private static final String MINIMUMFREEMEMORY = "@healthcheck.minimumfreememory@";
     private int minimumFreeMemory = 1;
     private int getMinimumFreeMemory(){
-        final String minMemory = CompileTimeSettings.getInstance().getProperty(
-                CompileTimeSettings.HEALTHECK_MINIMUMFREEMEMORY);
-      if (minMemory != null) {
+      if(!MINIMUMFREEMEMORY.startsWith("@healthcheck.minimumfreememory")){
     	  try{
-    	    minimumFreeMemory = Integer.parseInt(minMemory.trim());
+    	    minimumFreeMemory = Integer.parseInt(MINIMUMFREEMEMORY.trim());
     	  }catch(NumberFormatException e){
     		  log.error("Error: SignServerWS badly configured, setting healthcheck.minimumfreememory should only contain integers");
     	  }
@@ -198,12 +196,11 @@ public class ValidationWS implements IValidationWS {
       return minimumFreeMemory;
     }
     
+    private static final String CHECKDBSTRING = "@healthcheck.checkdbstring@";
     private String checkDBString = "Select count(*) from signerconfigdata";
     private String getCheckDBString(){
-        final String dbString = CompileTimeSettings.getInstance().getProperty(
-                CompileTimeSettings.HEALTHECK_CHECKDBSTRING);
-      if (dbString != null) {
-    	  checkDBString = dbString;
+      if(!CHECKDBSTRING.startsWith("@healthcheck.checkdbstring")){
+    	  checkDBString = CHECKDBSTRING;
       }
       return checkDBString;
     }

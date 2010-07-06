@@ -172,7 +172,7 @@ public class TestRemoteAddressAuthorizer extends TestCase {
                 + WORKERID + "&data=%3Croot/%3E"));
         assertEquals("HTTP response code", 200, responseCode);
     }
-
+    
     public void test05RequestFromEJB() throws Exception {
 
         // No address is provided with EJB unless the requestor fills it in
