@@ -57,7 +57,7 @@ import org.signserver.testutils.TestingSecurityManager;
  * @version $Id$
  */
 public class TestMRTDSODSigner extends TestCase {
-	
+
     /** Worker7897: Default algorithms, default hashing setting */
     private static final int WORKER1 = 7897;
 
@@ -74,7 +74,7 @@ public class TestMRTDSODSigner extends TestCase {
     private static final int WORKER1B = 7901;
 
     private static final int WORKER1C = 7902;
-    
+
     private static final int WORKER1D = 7903;
 
     private static IWorkerSession.IRemote sSSession = null;
@@ -142,9 +142,9 @@ public class TestMRTDSODSigner extends TestCase {
     	Map<Integer, byte[]> dataGroupHashes = new HashMap<Integer, byte[]>();
     	dataGroupHashes.put(Integer.valueOf(1), "12345".getBytes());
     	dataGroupHashes.put(Integer.valueOf(4), "abcdef".getBytes());
-    	
+
     	KeyPair keys = KeyTools.genKeys("1024", "RSA");
-    	X509Certificate cert = CertTools.genSelfCert("CN=mrtdsodtest", 33, null, keys.getPrivate(), keys.getPublic(), "SHA256WithRSA", false); 
+    	X509Certificate cert = CertTools.genSelfCert("CN=mrtdsodtest", 33, null, keys.getPrivate(), keys.getPublic(), "SHA256WithRSA", false);
         SODFile sod = new SODFile("SHA256", "SHA256withRSA", dataGroupHashes, keys.getPrivate(), cert);
         assertNotNull(sod);
         boolean verify = sod.checkDocSignature(cert);
@@ -220,7 +220,7 @@ public class TestMRTDSODSigner extends TestCase {
 
         // Set property to limit remaining cert validity
         CertificateFactory cf = CertificateFactory.getInstance("X.509", "BC");
-        X509Certificate cert = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(HardCodedCryptoToken.certbytes));			
+        X509Certificate cert = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(HardCodedCryptoToken.certbytes));
 
         sSSession.uploadSignerCertificate(WORKER1, cert, GlobalConfiguration.SCOPE_GLOBAL);
         sSSession.setWorkerProperty(WORKER1, SignServerConstants.MINREMAININGCERTVALIDITY, "6300");
@@ -228,7 +228,7 @@ public class TestMRTDSODSigner extends TestCase {
     	// Signing operation should not work now
         boolean thrown = false;
         try {
-            signHelper(WORKER1, 12, dataGroups1, false, "SHA256", "SHA256withRSA");        	
+            signHelper(WORKER1, 12, dataGroups1, false, "SHA256", "SHA256withRSA");
         } catch (CryptoTokenOfflineException e) {
         	thrown = true;
         }
@@ -431,7 +431,7 @@ public class TestMRTDSODSigner extends TestCase {
     	} else {
             expectedHashes = dataGroups;
     	}
-    	
+
         SODSignResponse res = (SODSignResponse) sSSession.process(workerId, new SODSignRequest(requestId, dataGroups), new RequestContext());
         assertNotNull(res);
         assertEquals(requestId, res.getRequestID());
@@ -457,7 +457,7 @@ public class TestMRTDSODSigner extends TestCase {
         MessageDigest md = MessageDigest.getInstance(digestAlgorithm);
         return md.digest(data);
     }
-    
+
     /**
      * Test method for 'org.signserver.server.MRTDSigner.getStatus()'
      */
@@ -465,7 +465,7 @@ public class TestMRTDSODSigner extends TestCase {
         SignerStatus stat = (SignerStatus) sSSession.getStatus(7897);
         assertTrue(stat.getTokenStatus() == SignerStatus.STATUS_ACTIVE);
     }
-    
+
 
     public void test99TearDownDatabase() throws Exception {
         TestUtils.assertSuccessfulExecution(new String[]{"removeworker", ""+WORKER1});

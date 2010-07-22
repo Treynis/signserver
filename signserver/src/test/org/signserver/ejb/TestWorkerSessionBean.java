@@ -216,7 +216,7 @@ public class TestWorkerSessionBean extends TestCase {
 	
 		assertFalse(exists);
 	}
-
+	
     /**
      * Test for nextAliasInSequence.
      * @throws Exception in case of exception

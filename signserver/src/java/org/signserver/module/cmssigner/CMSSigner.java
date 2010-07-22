@@ -126,7 +126,7 @@ public class CMSSigner extends BaseSigner {
                     new CollectionCertStoreParameters(certs), "BC"));
             final CMSProcessable content = new CMSProcessableByteArray(data);
             final CMSSignedData signedData = generator.generate(content, true,
-                    getCryptoToken().getProvider(ICryptoToken.PROVIDERUSAGE_SIGN));
+                getCryptoToken().getProvider(ICryptoToken.PROVIDERUSAGE_SIGN));
 
             final byte[] signedbytes = signedData.getEncoded();
 
@@ -161,4 +161,5 @@ public class CMSSigner extends BaseSigner {
             throw new SignServerException("Error constructing CMS", ex);
         }
     }
+
 }

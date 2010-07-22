@@ -22,7 +22,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.annotation.Resource;
-import javax.ejb.EJB;
 import javax.jws.WebService;
 import javax.naming.Context;
 import javax.naming.InitialContext;
@@ -33,7 +32,6 @@ import javax.xml.ws.handler.MessageContext;
 
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.signserver.common.CompileTimeSettings;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ProcessRequest;
@@ -74,10 +72,9 @@ public class SignServerWS implements ISignServerWS {
 	@Resource
 	private WebServiceContext wsContext;	
 
-	private static final Logger log = Logger.getLogger(SignServerWS.class);
-
         private static final String HTTP_AUTH_BASIC_AUTHORIZATION = "Authorization";
-        
+	
+	private static final Logger log = Logger.getLogger(SignServerWS.class);
 
 	public Collection<WorkerStatusWS> getStatus(String workerIdOrName)
 			throws InvalidWorkerIdException {
@@ -162,8 +159,8 @@ public class SignServerWS implements ISignServerWS {
 			throws InvalidWorkerIdException, IllegalRequestException,
 			CryptoTokenOfflineException, SignServerException {
 		ArrayList<ProcessResponseWS> retval = new ArrayList<ProcessResponseWS>();
-
-                final HttpServletRequest servletRequest =
+		
+		final HttpServletRequest servletRequest =
                         (HttpServletRequest) wsContext.getMessageContext()
                         .get(MessageContext.SERVLET_REQUEST);
                 String requestIP = getRequestIP();
@@ -293,13 +290,12 @@ public class SignServerWS implements ISignServerWS {
     }
     
     
+    private static final String MINIMUMFREEMEMORY = "@healthcheck.minimumfreememory@";
     private int minimumFreeMemory = 1;
     private int getMinimumFreeMemory(){
-        final String minMemory = CompileTimeSettings.getInstance().getProperty(
-                CompileTimeSettings.HEALTHECK_MINIMUMFREEMEMORY);
-      if (minMemory != null) {
+      if(!MINIMUMFREEMEMORY.startsWith("@healthcheck.minimumfreememory")){
     	  try{
-    	    minimumFreeMemory = Integer.parseInt(minMemory.trim());
+    	    minimumFreeMemory = Integer.parseInt(MINIMUMFREEMEMORY.trim());
     	  }catch(NumberFormatException e){
     		  log.error("Error: SignServerWS badly configured, setting healthcheck.minimumfreememory should only contain integers");
     	  }
@@ -307,17 +303,15 @@ public class SignServerWS implements ISignServerWS {
       return minimumFreeMemory;
     }
     
+    private static final String CHECKDBSTRING = "@healthcheck.checkdbstring@";
     private String checkDBString = "Select count(*) from signerconfigdata";
     private String getCheckDBString(){
-        final String dbString = CompileTimeSettings.getInstance().getProperty(
-                CompileTimeSettings.HEALTHECK_CHECKDBSTRING);
-      if (dbString != null) {
-    	  checkDBString = dbString;
+      if(!CHECKDBSTRING.startsWith("@healthcheck.checkdbstring")){
+    	  checkDBString = CHECKDBSTRING;
       }
       return checkDBString;
     }
-
-    @EJB
+    
 	private IWorkerSession.ILocal workersession;
 	
     private IWorkerSession.ILocal getWorkerSession(){
@@ -332,8 +326,7 @@ public class SignServerWS implements ISignServerWS {
     	
     	return workersession;
     }
-
-    @EJB
+    
 	private IGlobalConfigurationSession.ILocal globalconfigsession;
 	
     private IGlobalConfigurationSession.ILocal getGlobalConfigurationSession(){

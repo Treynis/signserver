@@ -718,169 +718,80 @@ List currently authorized STMP users.
                     </subsubsection>
                 </subsection>
 
-                <subsection name="Administration GUI">
-                    <p>
-As a complement to the command line interface there is also a graphical user
-interface for managing some of the most basic administrative tasks.
-                    </p>
-                    <p>
-The SignServer AdminGUI can be build by running "ant jar" in the
-SignServer-AdminGUI folder.
-                    </p>
-                </subsection>
-
-                <subsection name="Working with Workers">
-                    <p>
+                <subsection name="Setup Workers">
+                <p>
 In SignServer operations are performed by workers. There can be many workers 
 and each worker has its own configuration. Each worker is identified by an unique 
 ID. A worker can also be configured with a name by setting the property NAME. 
 After the configuration has been activated (by issuing reload with the worker ID) 
 that name can also be used to address the worker.
-                    </p>
+                </p>
                     <p>
 Workers are configured slitly differently depending on if the cluster class
 loader is used and the plugin is a separate module or if the plugin is built-in
 to SignServer.
                     </p>
+                    <subsubsection name="Configuring using a built-in plugin">
+                    <p>
+A worker is configured by setting properties for it. Specifically if the plugin
+is built-in it is specified by setting the property CLASSPATH to the fully
+qualified name of the class implementing the plugin.
+                    </p>
+                    <p>
+The properties can be set manually using the setproperty command or by loading
+them all at once from a configuration file using the setproperties command.
+Sample configuration files are available in SIGNSERVER_HOME/sample-configs.
+                    </p>
+                    <p>
+To setup a PDFSigner using the quick start configuration file issue the
+following command:
+                    </p>
+                        <source>
+bin/signserver.sh setproperties sample-configs/qs_pdfsigner_configuration.properties
+                        </source>
+                    <p>
+Notice the created workerId and use it when applying the configuration using the
+reload command:
+                    </p>
+                        <source>
+bin/signserver.sh reload WORKER-ID
+                        </source>
+                    </subsubsection>
                     <subsubsection name="Configuring using a module">
-                        <p>
+                    <p>
 To configure the worker using a module the cluster class loader must be 
 activated (see <a href="complete.en.html#Changing%20the%20default%20configuration%20of%20the%20Cluster%20Class%20Loader">Changing the default configuration of the Cluster Class Loader</a>)
 and the code for the plugin available as .MAR-file. To setup a worker using a
 module archive issue the following command:
-                        </p>
+                    </p>
                         <source>
 bin/signserver.sh module add dist-server/MODULE.MAR ENVIRONMENT
                         </source>
-                        <p>
+                <p>
 Replace "MODULE.MAR" with the name of the module file and "ENVIRONMENT" with the
 name of the built-in configuration to load. For example to load the TSA module
 using the demo configuration issue the following command:
-                        </p>
-                        <source>
+                </p>
+                    <source>
 bin/signserver.sh module add dist-server/tsa.mar demo
-                        </source>
-                        <p>
+                    </source>
+                    <p>
 Notice the created workerId and use it when applying the configuration using the
 reload command:
-                        </p>
-                        <source>
+                    </p>
+                    <source>
 bin/signserver.sh reload WORKER-ID
                         </source>
                     </subsubsection>
-                    <subsubsection name="Configuring using a built-in plugin">
-                    <p>Configuring using a build-in plugin only works if you have set the option includemodulesinbuild=true in signserver_build.properties.</p>
-                        <p>
-A worker is configured by setting properties for it. Specifically if the plugin
-is built-in it is specified by setting the property CLASSPATH to the fully
-qualified name of the class implementing the plugin.
-                        </p>
-                        <p>
-The properties can be set manually using the setproperty command or by loading
-them all at once from a configuration file using the setproperties command.
-Sample configuration files are available in SIGNSERVER_HOME/sample-configs.
-                        </p>
-                        <p>
-To setup a PDFSigner using the quick start configuration file issue the
-following command:
-                        </p>
-                        <source>
-bin/signserver.sh setproperties sample-configs/qs_pdfsigner_configuration.properties
-                        </source>
-                        <p>
-Notice the created workerId and use it when applying the configuration using the
-reload command:
-                        </p>
-                        <source>
-bin/signserver.sh reload WORKER-ID
-                        </source>
-                    </subsubsection>
-                <subsubsection name="Remove Workers">
-                    <p>
-                    You can list which workers you have with the command:
-                    </p>
-                    <source>
-bin/signserver.sh getstatus brief all                    
-                    </source>
-                    <p>
-                    If will display for example:
-                    </p>
-                    <source>
-===========================================
-Executing Command on host : localhost
-===========================================
 
-
-Current version of server is : SignServer 3.2-svn
-
-
-Status of Signer with Id 1 is :
-  SignToken Status : Offline
-  Signings: 0
-                    </source>
-                    <p>
-                    You can remove the worker with Id 1 with the command:                    
-					</p>
-                    <source>
-bin/signserver.sh removeworker 1
-bin/signserver.sh reload all                    
-                    </source>
-                </subsubsection>
-            </subsection>
-            <subsection name="Working with Modules">
-                <subsubsection name="Remove modules">
-					<p>
-					If you have made changes to the module, and you are using the cluser classloader (i.e. not built in modules) you have to remove the module before deploying a new one.
-					</p>
-                    <source>
-bin/signserver.sh modules list
-
-===========================================
-  Executing Command on host : localhost
-===========================================
-
-
-Using cluster class loader.
-
-Listing all available modules :
-  Module : MRTDSODSIGNER, version 3200
-    Parts : 
-      server
-
-bin/signserver.sh module remove MRTDSODSIGNER 3200
-
-===========================================
-  Executing Command on host : localhost
-===========================================
-
-
-Using cluster class loader.
-
-  Removing module MRTDSODSIGNER version 3200 ...
-  Removal of module successful.
-                    </source>
-                </subsubsection>
-                <subsubsection name="Add updated modules">
-					<note>
-					If you added configurations under src/module-configs you must rebuild the modules with the command 'ant', before you can use 'module add' with your updated configs.
-					</note>					
-					<p>
-					After rebuilding the modules you can add updated modules.
-					</p>                    
-					<source>
-bin/signserver.sh module add dist-server/pdfsigner.mar soft					
-bin/signserver.sh reload all
-bin/signserver.sh getstatus complete all
-					</source>
-				</subsubsection>                 
 
                 </subsection>
             </section>
 
             <section name="Making the SignServer highly-available">
-                <p>
+                    <p>
 Here are some tips on configuration used to make the SignServer redundant. Usually is the SignServer set-up with three nodes (required minimum for MySQL cluster) where one node is a management node from were all deployment and administration is done and the other two services are service nodes processing the actual requests.
-                </p>
+                    </p>
                 
                 <subsection name="HTTP access requires a load balancer">
                     <p>
@@ -1155,148 +1066,6 @@ try {
 		</section>
         </chapter>
 
-        <chapter name="Common configuration" shortname="commonconf">
-
-		<p>
-		Configuring workers are done by setting properties in the worker configuration.
-		There is one set of configuration options that are handled by the framework, and that applies to all workers, then there are worker specific properties handled by the worker implementation.
-		</p>
-		<p>Properties are usually defined in the module configuration file used to install a module, or configured manually using one of the <i>bin/signserver.sh setproperty</i> variant.</p>
-		
-            <section name="Setting Authorization Type">
-                <subsection name="SignServer">
-                    <p>
-By default (if the property is not set) is client-certificate authentication required for a signature request to be processed. This can be changed with the AUTHTYPE property.
-                    </p>
-                    <subsubsection name="No authentication">
-                        <p>
-<b>AUTHTYPE</b> =  NOAUTH
-                        </p>
-                        <p>
-Sets the server to not require any authentication.
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="Client certificate authentication">
-                        <p>
-<b>AUTHTYPE</b> =  CLIENTCERT
-                        </p>
-                        <p>
- (default) requires a certificate of all the clients. The certificates must be in the signers access control list and be trusted by the Java distribution, i.e imported in JAVA_HOME/jre/lib/security/cacerts. Authorized clients is configured manually using the CLI interface.
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="Username/password-based authentication">
-                        <p>
-<b>AUTHTYPE</b> = org.signserver.server.UsernamePasswordAuthorizer
-                        </p>
-                        <p>
-<b>USER.[NAME]</b> = [PASSWORD]<br/>
-<b>USER.[NAME]</b> = [HASHED_PASSWORD]:[HASH_ALGORITHM]<br/>
-<b>USER.[NAME]</b> = [HASHED_PASSWORD]:[HASH_ALGORITHM]:[SALT]<br/>
-                        </p>
-                        <p>
-This authorizer requires a valid username and password. User accounts are
-configured by setting properties of the form shown above, where
-[NAME] is the username and [PASSWORD] is the clear-text password. In the second
-form [HASHED_PASSWORD] should be replaced with the output of the digest algorithm 
-specified in [HASH_ALGORITHM]. The third form uses a hash value that is appended 
-to the password before hashing it.
-                        </p>
-                        <p>
-If a valid username and
-password is not supplied the worker throws an AuthorizationRequiredException
-which in case of the HTTP interfaces causes a HTTP Basic Authentication (RFC 2617).
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="Username-based authentication">
-                        <p>
-<b>AUTHTYPE</b> = org.signserver.server.UsernameAuthorizer
-                        </p>
-                        <p>
-Form 1: ACCEPT_ALL_USERNAMES = false (default) and usernames are specified:<br/>
-<b>ACCEPT_ALL_USERNAMES</b> = false<br/>
-<b>ACCEPT_USERNAMES</b> = user1;user2;user3
-                        </p>
-                        <p>
-Form 2, ACCEPT_ALL_USERNAMES = true and no usernames are specified:<br/>
-<b>ACCEPT_ALL_USERNAMES</b> = true
-                        </p>
-                        <p>
-An Authorizer that can be used for instance if SignServer sits behind an Apache
-front-end which uses HTTP basic authentication. With this Authorizer the username
-is logged but the password is not checked as it is assumed to be checked by the
-front-end.
-                        </p>
-                        <p>
-The Authorizer can be configured to either accept all usernames or only accept
-those usernames listed in one of its properties.
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="Remote address authentication">
-                        <p>
-<b>AUTHTYPE</b> = org.signserver.server.RemoteAddressAuthorizer
-                        </p>
-                        <p>
-<b>ALLOW_FROM</b> = Comma separated list of IP addresses to allow requests from.
-By default all other addresses are denied access.
-                        </p>
-                        <p>
-If a worker is invoked directly using an EJB call and no REMOTE_IP is specified
-in the RequestContext the IP-address is set to the String "null". In that case,
-to allow requests using EJB calls, null can be added to the list of allowed
-addresses.
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="Custom">
-                        <p>
-This authorization functionality doesn't work for all use cases. Then it's possible to create a customized authorizer and specify it's class path as value in the AUTHTYPE property. The Processable will then automatically instantiate and use it. How to develop such a plug-in is explained in the developers section.
-                        </p>
-                    </subsubsection>
-                </subsection>
-                <subsection name="MailSigner">
-                    <p>
-The MailSigner support SMTP Authentication which is configured in the build properties. It's then possible to authorize users by adding them manually through the CLI interface. SMTP authorization is global for all MailProcessors.
-                    </p>
-                </subsection>
-            </section>
-
-            <section name="Archiving Responses (SignServer only)">
-                <p>
-If there is a need to save all generated responses, then set the property "ARCHIVE" to "TRUE" and all generated responses for that signer will be saved to database.
-                </p>
-                <p>
-The archived responses can later be extracted from data base using the CLI interface. See the CLI section for more information.
-                </p>
-            </section>
-
-            <section name="Checking validity of signer certificates (SignServer only)">
-                <p>
-By default the SignServer checks if the signer certificate of a signer is valid before letting the signer process a request. If the signers certificate is not valid an error message is returned.
-There are two properties that can be set to disable this check:
-                </p>
-                <p>
-<b>CHECKCERTVALIDITY</b>: default value is true, meaning that the validity period of the certificate will be verified before processing. Set to false to ignore if the certificate is expired or not yet valid.
-                </p>
-                <p>
-<b>CHECKCERTPRIVATEKEYVALIDITY</b>: default value is true, meaning that the validity period in the PrivateKeyUsagePeriod of the certificate will be verified before processing. This is only done if this extension exists (it is optional in a certificate). Set to false to ignore the PrivateKeyUsagePeriod.
-                </p>
-                <p>
-<b>MINREMAININGCERTVALIDITY</b>: default value is 0. This property defines a minimum remaining validity time required of the signing certificate. If the signing certificate expires within the number of days specified an error occurs. Set to 0 (default) to disable this check.
-				</p>
-            </section>
-
-			<section name="Limiting the number of signatures">
-                <p>
-<b>KEYUSAGELIMIT</b> = Sets how many signatures that are allowed to be created
-with the same key by this worker (default is -1 = no limit). After the limit has
-been reached the worker is considered offline.
-
-Note that the counter is per key and not per worker so if multiple workers share
-the same key they will all increment the counter. This also means that the worker
-is active again after it has gotten a new certificate/key.
-                </p>			
-			</section>                    
-		</chapter>
-		
         <chapter name="Plugins" shortname="plugins">
             <!--<p> TODO:
 from: manual31.odt:ch7, src
@@ -1315,10 +1084,36 @@ A worker component is configured by entering its class path (and optionally its 
 There exists multiple signers. One is the time stamp signer generating RFC 3161 compliant timestamps using the Bouncycastle library.
 An MRTD signer creating "Machine Reader Travel Document" signatures using the RSA algorithm from pre-padded data and
 another is the MRTD SOD Signer which creates the complete Security Object (SOd) by signing the datagroups for the passport.
-There are also signers for automatically signing of specific document-types 
+There are also signers for automatically signing of specific document-types
 such as PDF, XML, ODF and OOXML and there is a general purpose signer that
 can sign any document-type and produces the output in Cryptographic Message Syntax (CMS).
                 </p>
+
+                <subsection name="General Properties">
+                    <p>
+By default SignServer checks the validity of the signer certificate and keys
+before letting the signer process a request. If the signers certificate or key
+is not valid an error message is returned.
+                </p>
+                <p>
+<b>CHECKCERTVALIDITY</b> = default value is true, meaning that the validity period of the certificate will be verified before processing. Set to false to ignore if the certificate is expired or not yet valid.
+                </p>
+                <p>
+<b>CHECKCERTPRIVATEKEYVALIDITY</b> = default value is true, meaning that the validity period in the PrivateKeyUsagePeriod of the certificate will be verified before processing. This is only done if this extension exists (it is optional in a certificate). Set to false to ignore the PrivateKeyUsagePeriod.
+                </p>
+                <p>
+<b>MINREMAININGCERTVALIDITY</b> = default value is 0. This property defines a minimum remaining validity time required of the signing certificate. If the signing certificate expires within the number of days specified an error occurs. Set to 0 (default) to disable this check.
+                </p>
+                <p>
+<b>KEYUSAGELIMIT</b> = Sets how many signatures that are allowed to be created
+with the same key by this worker (default is -1 = no limit). After the limit has
+been reached the worker is considered offline.
+
+Note that the counter are per key and not per worker so if multiple workers share
+the same key they will all increment the counter. This also means that the worker
+is active again after it has got a new certificate/key.
+                </p>
+                </subsection>
 
                 <subsection name="Time-stamp Signer">
                     <p>
@@ -1371,37 +1166,8 @@ The time-stamp signer requires a time-stamp certificate with the extended key us
 The following properties can be configured with the signer:
                         </p>
                         <p>
-<b>TIMESOURCE</b> = property containing the fully qualified name of the class implementing  the ITimeSource that should be used (OPTIONAL). Below are the built-in TimeSourceS available:
+<b>TIMESOURCE</b> = property containing the class path to the ITimeSource implementation that should be used. (OPTIONAL, default LocalComputerTimeSource)
                         </p>
-                        <table>
-<!-- LocalComputerTimeSource -->
-                            <tr>
-                                <td>
-<b>org.signserver.server.LocalComputerTimeSource</b>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-This is the default TimeSource and uses the time from the local computer and
-always returns the time.
-                                </td>
-                            </tr>
-
-<!-- StatusReadingLocalComputerTimeSource -->
-                            <tr>
-                                <td>
-<b>org.signserver.server.StatusReadingLocalComputerTimeSource</b>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-This TimeSource returns the time from the local computer but only if the
-status property <i>INSYNC</i> is returned as <i>true</i> from the
-Status Repository.
-                                </td>
-                            </tr>
-                        </table>
-                        
                         <p>
 <b>ACCEPTEDALGORITHMS</b> = A ';' separated string containing accepted algorithms, can be null if it shouldn't be used. (OPTIONAL, Strongly recommended)
 Supported Algorithms are: GOST3411, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, RIPEMD128, RIPEMD160, RIPEMD256
@@ -1621,8 +1387,8 @@ Default is not set (no timestamping).
                         <p>
 		Default value is False.
                         </p>
-                        <p>
 
+                        <p>
         <b>ARCHIVETODISK</b>=
                 If we want the produced signed document to be stored in the
                 local file system set this property to true and add the
@@ -1649,7 +1415,6 @@ Default is not set (no timestamping).
             <li>${WORKERNAME}</li>
             <li>${REMOTEIP}</li>
             <li>${REQUESTID}</li>
-            <li>${TRANSACTIONID}</li>
             <li>${USERNAME}</li>
         </ul>
                         </p>
@@ -1754,7 +1519,7 @@ The XML validator validates the signature of XML documents. The certificate is c
                 </subsection>
             </section>
 
-            <section name="SignServer Dispatchers">
+                       <section name="SignServer Dispatchers">
                 <p>
 Dispatchers are workers that forwards the request to other workers.
                 </p>
@@ -1764,7 +1529,7 @@ Dispatchers are workers that forwards the request to other workers.
                     <p>
 Fully qualified class name: org.signserver.server.dispatchers.FirstActiveDispatcher
                     </p>
-                        
+
                     <subsubsection name="Overview">
                         <p>
 Dispatches the request to the first of the configured workers that has an active
@@ -2072,9 +1837,10 @@ implementation to use. See below for available crypto tokens.
 
                 <subsection name="P12CryptoToken">
                     <subsubsection name="Overview">
-                        <p>
-A CryptoToken using a PKCS#12 (.p12/.pfx) key-store in the local file-system. 
-                        </p>
+                    <p>
+A CryptoToken using a PKCS#12 (.p12/.pfx) key-store in the local file-system. It can only
+contain one signing key.
+                    </p>
                         <p>
 In a clustered environment the key store must placed at the same location at all nodes.
                         </p>
@@ -2082,7 +1848,7 @@ In a clustered environment the key store must placed at the same location at all
 The P12CryptoToken, doesn't support the destroyKey() method
                         </p>
                     </subsubsection>
-
+                    
                     <subsubsection name="SIGNERTOKEN.CLASSPATH">
                         <p>
 The fully qualified class name is: <b>org.signserver.server.cryptotokens.JKSCryptoToken</b>
@@ -2098,6 +1864,9 @@ The fully qualified class name is: <b>org.signserver.server.cryptotokens.JKSCryp
                         </p>
                         <p>
 <b>DEFAULTKEY</b>: The key to use. If not specified the first found key is used. (optional)
+                        </p>
+                        <p>
+<b>NEXTCERTSIGNKEY</b>: The next key to use. See PKCS11CryptoToken. (optional)
                         </p>
                     </subsubsection>
                 </subsection>
@@ -2159,9 +1928,6 @@ The fully qualified class name is: <b>org.signserver.server.cryptotokens.PrimeCa
                     <subsubsection name="Available Properties">
                         <p>
 <b>DEFAULTKEY</b> =   Hash value of the signing key on the card. See PrimeCardHSM documentation for more information.(Required)
-                        </p>
-                                                <p>
-<b>NEXTCERTSIGNKEY</b>: The next key to use. See PKCS11CryptoToken. (optional)
                         </p>
                         <p>
 <b>AUTHCODE</b> = Authentication code for automatic activation (Optional).
@@ -3137,20 +2903,8 @@ cd dist-client
 java -jar timeStampClient.jar "http://&lt;hostname&gt;:8080/signserver/tsa?signerId=1"
                         </pre>
                         <p>
-It will continuously make one request per second. Run the test client without arguments to get a list of possible arguments, you can use it as a full time stamp client to get real document time stamps.
+It will continuously make one request per second.
                         </p>
-                        <pre>
-java -jar timeStampClient.jar
- -instr &lt;string&gt;      String to be time stamped, if neither instr or
-                      infile is given, the client works in test-mode generating it's own
-                      message.
- -base64              Give this option if the stored request/reply should
-                      be base64 encoded, default is not.
- -help                Print this message.
- -infile &lt;file&gt;       File containing message to time stamp.
-
-...snip...
-                        </pre>
                     </subsubsection>
 
                     <subsubsection name="Manual Tests">
@@ -3163,10 +2917,136 @@ The time stamp signer have been tested with the OpenTSA client with both HTTP an
         </chapter>
 
         <chapter name="Miscellaneous" shortname="misc">
+            <section name="Setting Authorization Type">
+                <subsection name="SignServer">
+                    <p>
+By default is client-certificate authentication required for a signature request to be processed. This can be changed with the AUTHTYPE property.
+                    </p>
+                    <subsubsection name="No authentication">
+                        <p>
+<b>AUTHTYPE</b> =  NOAUTH
+                        </p>
+                        <p>
+Sets the server to not require any authentication.
+                        </p>
+                    </subsubsection>
+                    <subsubsection name="Client certificate authentication">
+                        <p>
+<b>AUTHTYPE</b> =  CLIENTCERT
+                        </p>
+                        <p>
+ (default) requires a certificate of all the clients. The certificates must be in the signers access control list and be trusted by the Java distribution, i.e imported in JAVA_HOME/jre/lib/security/cacerts. Authorized clients is configured manually using the CLI interface.
+                        </p>
+                    </subsubsection>
+                    <subsubsection name="Username/password-based authentication">
+                        <p>
+<b>AUTHTYPE</b> = org.signserver.server.UsernamePasswordAuthorizer
+                        </p>
+                        <p>
+<b>USER.[NAME]</b> = [PASSWORD]<br/>
+<b>USER.[NAME]</b> = [HASHED_PASSWORD]:[HASH_ALGORITHM]<br/>
+<b>USER.[NAME]</b> = [HASHED_PASSWORD]:[HASH_ALGORITHM]:[SALT]<br/>
+                        </p>
+                        <p>
+This authorizer requires a valid username and password. User accounts are
+configured by setting properties of the form shown above, where
+[NAME] is the username and [PASSWORD] is the clear-text password. In the second
+form [HASHED_PASSWORD] should be replaced with the output of the digest algorithm
+specified in [HASH_ALGORITHM]. The third form uses a hash value that is appended
+to the password before hashing it.
+                        </p>
+                        <p>
+If a valid username and
+password is not supplied the worker throws an AuthorizationRequiredException
+which in case of the HTTP interfaces causes a HTTP Basic Authentication (RFC 2617).
+                        </p>
+                    </subsubsection>
+                    <subsubsection name="Username-based authentication">
+                        <p>
+<b>AUTHTYPE</b> = org.signserver.server.UsernameAuthorizer
+                        </p>
+                        <p>
+Form 1: ACCEPT_ALL_USERNAMES = false (default) and usernames are specified:<br/>
+<b>ACCEPT_ALL_USERNAMES</b> = false<br/>
+<b>ACCEPT_USERNAMES</b> = user1;user2;user3
+                        </p>
+                        <p>
+Form 2, ACCEPT_ALL_USERNAMES = true and no usernames are specified:<br/>
+<b>ACCEPT_ALL_USERNAMES</b> = true
+                        </p>
+                        <p>
+An Authorizer that can be used for instance if SignServer sits behind an Apache
+front-end which uses HTTP basic authentication. With this Authorizer the username
+is logged but the password is not checked as it is assumed to be checked by the
+front-end.
+                        </p>
+                        <p>
+The Authorizer can be configured to either accept all usernames or only accept
+those usernames listed in one of its properties.
+                        </p>
+                    </subsubsection>
+                    <subsubsection name="Remote address authentication">
+                        <p>
+<b>AUTHTYPE</b> = org.signserver.server.RemoteAddressAuthorizer
+                        </p>
+                        <p>
+<b>ALLOW_FROM</b> = Comma separated list of IP addresses to allow requests from.
+By default all other addresses are denied access.
+                        </p>
+                        <p>
+If a worker is invoked directly using an EJB call and no REMOTE_IP is specified
+in the RequestContext the IP-address is set to the String "null". In that case,
+to allow requests using EJB calls, null can be added to the list of allowed
+addresses.
+                        </p>
+                    </subsubsection>
+                    <subsubsection name="Custom">
+                        <p>
+This authorization functionality doesn't work for all use cases. Then it's possible to create a customized authorizer and specify it's class path as value in the AUTHTYPE property. The Processable will then automatically instantiate and use it. How to develop such a plug-in is explained in the developers section.
+                        </p>
+                    </subsubsection>
+                </subsection>
+                <subsection name="MailSigner">
+                    <p>
+The MailSigner support SMTP Authentication which is configured in the build properties. It's then possible to authorize users by adding them manually through the CLI interface. SMTP authorization is global for all MailProcessors.
+                    </p>
+                </subsection>
+            </section>
+
+            <section name="Archiving Responses (SignServer only)">
+                <p>
+If there is a need to save all generated responses, then set the property "ARCHIVE" to "TRUE" and all generated responses for that signer will be saved to database.
+                </p>
+                <p>
+The archived responses can later be extracted from data base using the CLI interface. See the CLI section for more information.
+                </p>
+            </section>
+
+            <section name="The Global Configuration Store">
+                <p>
+The available workers and its crypto tokens and services is configured in something called the global configuration store that is slightly different from a worker configuration.
+                </p>
+                <p>
+Is is dynamically configured and activated immediately. I can contain any type of data (in string representation) and can be of two types, either with global scope or node scope. A Global scoped property can be accessed by  all nodes in the cluster while a Node scoped property in only used within a node and cannot be accessed by the other nodes.
+                </p>
+                <subsection name="SignServer specific">
+                    <p>
+Database failure is handled differently. If a node looses connection to the database it put itself in a state called 'unsynchronised' and will continue its operation without storing the data to database by using a cached global configuration. It is possible to later resynchronise one nodes cached global configuration data  with the database with a CLI command called 'resync'. But it is only possible to sync one of the nodes global configuration to the database.
+                    </p>
+                </subsection>
+                <subsection name="MailSigner Specific">
+                    <p>
+The MailSigner doesn't store its data in database but in a regular file handled internally. It have therefore no functionality for database fail-over and cannot be resynchronized. There currently aren't any difference in global and node scoped variables.
+                    </p>
+                </subsection>
+            </section>
 
             <section name="Timed Services">
                 <p>
 A Timed Service (formerly called just service) is a task that is run on a timely basis, performing maintenance tasks like changing active key, or it could generate a report.
+                </p>
+                <p>
+Currently isn't the SignServer shipped with any services out of the box, but read the developer section about how to write custom services. The MailSigner although have a timed service that checks if a Mail Processor have an expiring certificate and sends e-mail notifications about this to the administrators.
                 </p>
                 <p>
 A Timed Service framework supports a couple basic properties that is used to calculate when and how a timed service should run. These properties are:
@@ -3265,41 +3145,10 @@ be monitored.</p>
 <p><b>OUTPUTFILE</b> = File that the information will be written to. If the file
 exists the content will be overwritten. The application server needs to have write
 access to this file when the service is executed.
-
+                            
                         </p>
                     </subsubsection>
                 </subsection>
-            </section>
-
-            <section name="The Global Configuration Store">
-                <p>
-The available workers and its crypto tokens and services is configured in something called the global configuration store that is slightly different from a worker configuration.
-                </p>
-                <p>
-Is is dynamically configured and activated immediately. I can contain any type of data (in string representation) and can be of two types, either with global scope or node scope. A Global scoped property can be accessed by  all nodes in the cluster while a Node scoped property in only used within a node and cannot be accessed by the other nodes.
-                </p>
-                <subsection name="SignServer specific">
-                    <p>
-Database failure is handled differently. If a node looses connection to the database it put itself in a state called 'unsynchronised' and will continue its operation without storing the data to database by using a cached global configuration. It is possible to later resynchronise one nodes cached global configuration data  with the database with a CLI command called 'resync'. But it is only possible to sync one of the nodes global configuration to the database.
-                    </p>
-                </subsection>
-                <subsection name="MailSigner Specific">
-                    <p>
-The MailSigner doesn't store its data in database but in a regular file handled internally. It have therefore no functionality for database fail-over and cannot be resynchronized. There currently aren't any difference in global and node scoped variables.
-                    </p>
-                </subsection>
-            </section>
-
-            <section name="Status Repository">
-                <p>
-The status repository holds local (per JVM) status information (properties)
-with optional expiration times. After the expiration time the property is not
-returned.
-                </p>
-                <p>
-This could be used by having workers read status from the repository while it
-is an external service updating it.
-                </p>
             </section>
 
             <section name="Installation Packages">
@@ -3311,7 +3160,7 @@ At the current moment are the platforms Linux (mainly Debian distribution is tes
                 </p>
                 <subsection name="Using the Installation Packages">
                     <p>
-The installation package can be used either by using a GUI or on the command line by specifying the argument '–mode text'
+The installation package can be used either by using a GUI or on the command line by specifying the argument '--mode text'
                     </p>
                     <p>
 For an advanced set-up, for instance if many nodes should be installed with similar configuration, it is possible to preconfigure the installation by specifying a properties file containing some or all the properties asked during the installation. The properties will be used directly during installation and there will be no questions about it. See each package section for details about supported properties.
