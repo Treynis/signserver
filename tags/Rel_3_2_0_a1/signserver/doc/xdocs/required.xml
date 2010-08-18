@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<document>
+  <properties>
+    <title>Required software</title>
+  </properties>
+
+  <body>
+<section name="Required software">
+
+<subsection name="Apache Ant">
+    <p>
+    <a href="http://ant.apache.org/">Ant web site</a>
+    </p>    
+    <p>
+    Build tool used to build SignServer. Version 1.7.1 and up should work.
+    </p>
+</subsection>
+<subsection name="JBoss, (Not MailSigner builds)">
+    <p>
+    <a href="http://www.jboss.org/">JBoss web site</a>
+    </p>    
+    <p>
+    The recommended application server used by SignServer. Version 4.2.3 is recommended.
+    </p>
+</subsection>
+<subsection name="Java Development Kit">
+    <p>
+    <a href="http://java.sun.com/">Java web site</a>
+    </p>    
+    <p>
+    The Java Development Kit is required to compile and execute. Version 1.6 or above is required.
+    </p>
+</subsection>
+<subsection name="Database">
+    <p>
+    <a href="http://www.mysql.com/">Mysql web site</a>
+    </p>    
+    <p>
+    MySQL is recommended for a SignServer database. MySQL 5.1 is the most tested version. 
+    </p>
+</subsection>
+</section>
+
+  </body>
+</document>
