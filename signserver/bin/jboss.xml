@@ -11,18 +11,7 @@
 	<property name="keystore.file" value="conf/keystore/keystore.jks"/>
 	<property name="truststore.file" value="conf/keystore/truststore.jks"/>
 	<property name="remote.keystore.path" value="conf"/>
-
-    <!--
-        Define all extra jar files that needs to be included in the lib
-        folder of signserver.ear when building for this application server.
-        The zipfileset should have the id "appserver.extralibs" and the
-        prefix "lib".
-    -->
-    <zipfileset id="appserver.extralibs" prefix="lib" dir="lib/ext/ejb">
-            <!-- Currently no extra jars are needed for JBoss. -->
-            <exclude name="*"/>
-    </zipfileset>
-
+	
 	<!--
 	 Do not configure the servlet container, deploys blindly ears
 	 This is ideally passed by the caller and is just here as a reminder
@@ -116,7 +105,6 @@
         <available file="${jboss.deploy.dir}/jbossweb-${jboss.web}.sar" type="dir" property="tomcat.dir" value="${jboss.deploy.dir}/jbossweb-${jboss.web}.sar"/>
 		<!-- For JBoss 4.2.x tomcat is bundled in jboss-web.deployer dir, i.e. new naming scheme -->
         <available file="${jboss.deploy.dir}/jboss-web.deployer" type="dir" property="tomcat.dir" value="${jboss.deploy.dir}/jboss-web.deployer"/>
-        <available file="${jboss.deploy.dir}/jbossweb.sar" type="dir" property="tomcat.dir" value="${jboss.deploy.dir}/jbossweb.sar"/>
         <copy todir="${tomcat.dir}" overwrite="true">
 			<fileset dir="src/appserver/jboss/${jboss.web}"/>
 			<filterchain>

@@ -20,7 +20,6 @@ fi
 
 
 class_name=org.signserver.cli.signserver
-ADMINCLI_JAR=SignServer-AdminCLI.jar
 
 # discard $1 from the command line args
 #shift
@@ -34,8 +33,36 @@ ADMINCLI_JAR=SignServer-AdminCLI.jar
 #    fi
 #fi
 
+#if [ -n "$APPSRV_HOME" ]; then
+#    J2EE_DIR="${APPSRV_HOME}"/client
+#    if [ -r "$APPSRV_HOME"/server/lib/weblogic.jar ]; then
+#        echo "Using Weblogic JNDI provider..."
+#        J2EE_DIR="${APPSRV_HOME}"/server/lib
+#    elif [ -r "$APPSRV_HOME"/lib/appserv-rt.jar ]; then
+#        echo Using Glassfish JNDI provider...
+#        J2EE_DIR="${APPSRV_HOME}"/lib
+#    elif [ -r "$APPSRV_HOME"/j2ee/home/oc4jclient.jar ]; then
+#        echo Using Oracle JNDI provider...
+#        J2EE_DIR="${APPSRV_HOME}"/j2ee/home
+#    elif [ -d "$APPSRV_HOME"/runtimes ]; then
+#        echo Using Websphere JNDI provider...
+#        J2EE_DIR="${APPSRV_HOME}"/runtimes
+#    else 
+#        echo "Using JBoss JNDI provider..."
+#    fi
+#else
+#    echo "Could not find a valid J2EE server for JNDI provider.."
+#    echo "Specify a APPSRV_HOME environment variable"
+#    exit 1
+#fi
 
 if [ ! -n "${SIGNSERVER_HOME}" ]; then
+  if [ -f /etc/signserver/signservermgmt.env ]; then
+     . /etc/signserver/signservermgmt.env
+  fi
+  if [ -f /etc/mailsigner/mailsignermgmt.env ]; then
+     . /etc/mailsigner/mailsignermgmt.env
+  fi
   if [ -f /usr/share/signserver/bin/signserver.sh ]; then
      SIGNSRV_HOME=/usr/share/signserver
   fi
@@ -56,14 +83,17 @@ else
 fi 
 
 # Check that classes exist
-if [ ! -f ${SIGNSRV_HOME}/dist-client/${ADMINCLI_JAR} ]
-then
-	echo "You must build SignServer before using the cli, use 'ant'."
+if [ ! -f ${SIGNSRV_HOME}/dist-client/signserver-cli.jar ]
+then    
+    if [ ! -f ${SIGNSRV_HOME}/lib/signserver-cli.jar ]
+    then
+        echo "You must build SIGNSERVER before using the cli, use 'ant'."
         exit 1
+    fi
 fi
 
 # library classpath
-CP="$SIGNSRV_HOME/dist-client/${ADMINCLI_JAR}"
+CP="$SIGNSRV_HOME/dist-client/signserver-cli.jar"
 for i in "${SIGNSRV_HOME}"/dist-client/lib/*.jar
 do
 	CP="$i":"$CP"
@@ -88,15 +118,12 @@ for i in "${SIGNSRV_HOME}"/lib/ext/ejb/*.jar
 do
 	CP="$i":"$CP"
 done
-CP="${SIGNSRV_HOME}/bin":"${SIGNSRV_HOME}/bin/jndi.properties":"$CP"
+for i in "${SIGNSRV_HOME}"/lib/ext/james/*.jar
+do
+	CP="$i":"$CP"
+done
+CP="${SIGNSRV_HOME}/bin":"$CP"
 #echo $CP
-
-if [ -r "$APPSRV_HOME"/lib/appserv-rt.jar ]; then
-    echo Using Glassfish JNDI provider...
-    CP=$CP:"$APPSRV_HOME/lib/appserv-rt.jar"
-else
-    echo "Assuming JBoss JNDI provider..."
-fi
 
 export SIGNSRV_HOME
 
@@ -106,3 +133,4 @@ if $cygwin; then
 fi
 
 exec "$JAVACMD" -cp $CP $class_name "$@"
+

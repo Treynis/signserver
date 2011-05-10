@@ -15,7 +15,10 @@
 package org.signserver.client;
 
 import java.rmi.RemoteException;
+import java.util.Hashtable;
 
+import javax.naming.Context;
+import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
 import org.signserver.common.IllegalRequestException;
@@ -24,7 +27,6 @@ import org.signserver.common.MRTDSignResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.CryptoTokenOfflineException;
-import org.signserver.common.ServiceLocator;
 import org.signserver.ejb.interfaces.IWorkerSession;
 /**
  * Client class connecting to the sign server and requesting 
@@ -46,6 +48,21 @@ public class MRTDSignerClient {
 	 */
 	public MRTDSignerClient() {}
 	
+
+	
+    protected Context getInitialContext() throws NamingException  {
+    	Hashtable<String, String> props = new Hashtable<String, String>();
+    	props.put(
+    		Context.INITIAL_CONTEXT_FACTORY,
+    		"org.jnp.interfaces.NamingContextFactory");
+    	props.put(
+    		Context.URL_PKG_PREFIXES,
+    		"org.jboss.naming:org.jnp.interfaces");
+    	props.put(Context.PROVIDER_URL, "jnp://localhost:14444");
+    	Context ctx = new InitialContext(props);
+    	return ctx;
+    }
+	
 	/**
 	 * Main method used to sign MRTD data.
 	 *  
@@ -56,9 +73,8 @@ public class MRTDSignerClient {
 	 */
 	public MRTDSignResponse signData(MRTDSignRequest request) throws RemoteException, SignServerException {
 		try{
-			IWorkerSession.IRemote signsession 
-                                = ServiceLocator.getInstance().lookupRemote(
-                                    IWorkerSession.IRemote.class);
+			Context context = getInitialContext();			
+			IWorkerSession.IRemote signsession = (IWorkerSession.IRemote) context.lookup(IWorkerSession.IRemote.JNDI_NAME);		
 		
 		return (MRTDSignResponse) signsession.process(1,request, new RequestContext());
 		}catch(CryptoTokenOfflineException e){

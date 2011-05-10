@@ -11,13 +11,6 @@
     <module>
         <ejb>signserver-ejb.jar</ejb>
     </module>
-    
-    <!--@signserverws-ejb.jar@-->
-
-    <!--@validationws-ejb.jar@-->
-
-    <!--@adminws-ejb.jar@-->
-
     <module>
         <web>
             <web-uri>web.war</web-uri>
@@ -30,6 +23,8 @@
             <context-root>/signserver/healthcheck</context-root>
         </web>
     </module>
-
+    <!--@signserverws.war@-->
+    
+    <!--@validationws.war@-->
 </application>
 
