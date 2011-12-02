@@ -68,7 +68,7 @@ public class ValidationUtils {
         }
         return fetchCRLFromURLwithRetry(url, certFactory, 3, 100);
     }
-
+    
     private static X509CRL fetchCRLFromURLwithRetry(URL url, CertificateFactory certFactory, int retries, long waitTime) throws SignServerException {
         X509CRL result = null;
         Exception lastException = null;
