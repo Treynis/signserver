@@ -13,25 +13,7 @@
     <import file="../modules.xml"/>
 
     <!-- Copy to client-dist etc. -->
-    <target name="-post-jar" depends="-do-client-dist">
-        
-    	<echo message="Ignore warnings about jar files that can not be copied, they are for other application servers"/>
-    	<!-- JBoss:
-            For JBoss 4.2.3.GA only jbossall-client.jar is needed.
-            For JBoss 5.1.0.GA jbossall-client.jar is referencing the needed
-            libraries so all of them needs to be copied.
-            <copy file="${appserver.home}/client/jbossall-client.jar" todir="${client.dist.dir}/lib" failonerror="false"/>
-        -->
-        <copy todir="${client.dist.dir}/lib" failonerror="false">
-          <fileset dir="${appserver.home}/client">
-             <include name="*.jar"/>
-           </fileset>
-       </copy>
-    	<!-- Glassfish -->
-    	<copy file="${appserver.home}/lib/appserv-rt.jar" todir="${client.dist.dir}/lib" failonerror="false"/> 
-    	<copy file="${appserver.home}/lib/appserv-deployment-client.jar" todir="${client.dist.dir}/lib" failonerror="false"/> 
-    	<copy file="${appserver.home}/lib/appserv-ext.jar" todir="${client.dist.dir}/lib" failonerror="false"/> 
-     </target>
+    <target name="-post-jar" depends="-do-client-dist"/>
 
      <!--
         ===================
@@ -39,8 +21,36 @@
         ===================
  -->
 
-    <!-- Setup APPSRV_HOME etc -->
-    <target name="-pre-init" depends="-modules-set-appserver-home"/>
+    <target name="-pre-init" depends="-set-from-file,-set-from-env">
+        <echo message="var.APPSRV_HOME = ${var.APPSRV_HOME}"/>
+        <property name="j2ee.server.home" value="${var.APPSRV_HOME}"/>
+    </target>
+
+    <target name="-set-from-file" unless="var.APPSRV_HOME">
+        <!-- Read properties from the main SignServer configuration if available -->
+        <property file="${user.home}/signserver_build.properties" />
+        <property file="../../signserver_build.properties" />
+        <echo message="appserver.home = ${appserver.home}"/>
+        <!-- JBoss -->
+        <available file="${appserver.home}/client/jbossall-client.jar" property="var.APPSRV_HOME" value="${appserver.home}" />
+        <!-- GlassFish -->
+        <available file="${appserver.home}/lib/appserv-rt.jar" property="var.APPSRV_HOME" value="${appserver.home}"/>
+    </target>
+
+    <target name="-set-from-env" unless="var.APPSRV_HOME">
+        <!-- Get property from environment variable -->
+        <property environment="env" />
+        <echo message="env.APPSRV_HOME = ${env.APPSRV_HOME}"/>
+        <!-- JBoss -->
+        <available file="${env.APPSRV_HOME}/client/jbossall-client.jar" property="var.APPSRV_HOME" value="${env.APPSRV_HOME}" />
+        <!-- GlassFish -->
+        <available file="${env.APPSRV_HOME}/lib/appserv-rt.jar" property="var.APPSRV_HOME" value="${env.APPSRV_HOME}"/>
+    </target>
+
+    <target name="-post-init">
+        <echo message="var.APPSRV_HOME = ${var.APPSRV_HOME}"/>
+        <fail unless="var.APPSRV_HOME" message="Missing variable APPSRV_HOME. Either set the environment variable APPSRV_HOME or edit ../signserver_build.propertes and set appserver.home."/>
+    </target>
     
     <!--
 
