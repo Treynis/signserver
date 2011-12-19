@@ -79,11 +79,11 @@ public class ODFSignerTest extends TestCase {
     public void test00SetupDatabase() throws Exception {
 
         MARFileParser marFileParser = new MARFileParser(signserverhome
-                + "/lib/odfsigner.mar");
+                + "/dist-server/odfsigner.mar");
         moduleVersion = marFileParser.getVersionFromMARFile();
 
         TestUtils.assertSuccessfulExecution(new String[]{"module", "add",
-                    signserverhome + "/lib/odfsigner.mar", "junittest"});
+                    signserverhome + "/dist-server/odfsigner.mar", "junittest"});
         assertTrue(TestUtils.grepTempOut("Loading module ODFSIGNER"));
         assertTrue(TestUtils.grepTempOut("Module loaded successfully."));
 

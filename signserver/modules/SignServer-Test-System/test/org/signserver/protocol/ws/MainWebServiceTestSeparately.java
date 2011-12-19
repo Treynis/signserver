@@ -109,10 +109,10 @@ public class MainWebServiceTestSeparately extends TestCase {
     }
 
     public void test00SetupDatabase() throws Exception {
-        MARFileParser marFileParser = new MARFileParser(signserverhome + "/lib/tsa.mar");
+        MARFileParser marFileParser = new MARFileParser(signserverhome + "/dist-server/tsa.mar");
         moduleVersion = marFileParser.getVersionFromMARFile();
         TestUtils.assertSuccessfulExecution(new String[]{"module", "add",
-                    signserverhome + "/lib/tsa.mar"});
+                    signserverhome + "/dist-server/tsa.mar"});
         assertTrue(TestUtils.grepTempOut("Module loaded successfully."));
 
         gCSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER9.CLASSPATH", "org.signserver.module.tsa.TimeStampSigner");
@@ -124,7 +124,7 @@ public class MainWebServiceTestSeparately extends TestCase {
         sSSession.setWorkerProperty(9, "NAME", "TestTimeStamp");
         String signserverhome = System.getenv("SIGNSERVER_HOME");
         assertNotNull(signserverhome);
-        sSSession.setWorkerProperty(9, "KEYSTOREPATH", signserverhome + "/res/test/timestamp1.p12");
+        sSSession.setWorkerProperty(9, "KEYSTOREPATH", signserverhome + "/src/test/timestamp1.p12");
         //sSSession.setWorkerProperty(9, "KEYSTOREPASSWORD", "foo123");
         sSSession.setWorkerProperty(9, TimeStampSigner.DEFAULTTSAPOLICYOID, "1.0.1.2.33");
         sSSession.setWorkerProperty(9, TimeStampSigner.TSA, "CN=TimeStampTest1");

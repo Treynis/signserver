@@ -12,15 +12,11 @@
     <import file="nbproject/build-impl.xml"/>
     <import file="../modules.xml"/>
 
-    <property name="modulename" value="admingui"/>
-    <property name="dist-module.available" value="true"/>
-    <property name="clean.available" value="true"/>
-
     <!-- Setup APPSRV_HOME etc -->
     <target name="-pre-init" depends="-modules-set-appserver-home"/>
 
     <!-- Copy to client-dist etc. -->
-    <target name="dist-module" depends="jar,-do-client-dist"/>
+    <target name="-post-jar" depends="-do-client-dist"/>
 
     <!--
         ===================
@@ -31,15 +27,15 @@
     <target name="release:bin-zip" depends="clean, jar"
         description="Creates binary release in ZIP format">
 
-        <property file="../../res/compile.properties"/>
+        <property file="../../src/compile.properties"/>
 
         <property name="zipname" 
             value="signserver-admingui-${app.version.number}"/>
 
         <zip destfile="dist/${zipname}.zip">
-            <zipfileset dir="../../conf/" prefix="${zipname}" 
+            <zipfileset dir="." prefix="${zipname}"
                 filemode="600" dirmode="700">
-                <include name="admingui_default.properties"/>
+                <include name="default_connect.properties"/>
             </zipfileset>
             <zipfileset dir="./dist" prefix="${zipname}"
                 filemode="600" dirmode="700">

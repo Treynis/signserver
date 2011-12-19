@@ -81,13 +81,13 @@ public class XMLSignerTest extends TestCase {
     public void test00SetupDatabase() throws Exception {
 
         final MARFileParser marFileParser = new MARFileParser(signserverhome
-                + "/lib/xmlsigner.mar");
+                + "/dist-server/xmlsigner.mar");
         moduleVersion = marFileParser.getVersionFromMARFile();
 
         TestUtils.assertSuccessfulExecution(new String[] {
                 "module",
                 "add",
-                signserverhome + "/lib/xmlsigner.mar",
+                signserverhome + "/dist-server/xmlsigner.mar",
                 "junittest"
             });
         assertTrue("Loading module",
@@ -99,7 +99,7 @@ public class XMLSignerTest extends TestCase {
 
         // Update path to JKS file
         workerSession.setWorkerProperty(WORKERID2, "KEYSTOREPATH",
-                new File(signserverhome + File.separator + "res" + File.separator + "test" + File.separator + "xmlsigner4.jks").getAbsolutePath());
+                new File(signserverhome + File.separator + "src" + File.separator + "test" + File.separator + "xmlsigner4.jks").getAbsolutePath());
         workerSession.reloadConfiguration(WORKERID2);
     }
 

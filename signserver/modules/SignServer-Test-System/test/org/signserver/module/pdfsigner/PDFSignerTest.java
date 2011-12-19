@@ -94,11 +94,11 @@ public class PDFSignerTest extends TestCase {
 
     public void test00SetupDatabase() throws Exception {
 
-        MARFileParser marFileParser = new MARFileParser(signserverhome + "/lib/pdfsigner.mar");
+        MARFileParser marFileParser = new MARFileParser(signserverhome + "/dist-server/pdfsigner.mar");
         moduleVersion = marFileParser.getVersionFromMARFile();
 
         TestUtils.assertSuccessfulExecution(new String[]{"module", "add",
-                    signserverhome + "/lib/pdfsigner.mar", "junittest"});
+                    signserverhome + "/dist-server/pdfsigner.mar", "junittest"});
         assertTrue(TestUtils.grepTempOut("Loading module PDFSIGNER"));
         assertTrue(TestUtils.grepTempOut("Module loaded successfully."));
 
@@ -263,7 +263,7 @@ public class PDFSignerTest extends TestCase {
         Date date = cal.getTime();
         Map<String, String> fields = new HashMap<String, String>();
         fields.put("WORKERID", "4311");
-
+        
         SimpleDateFormat sdf = new SimpleDateFormat("MMMMMMMMM");
         String expectedMonth = sdf.format(date);
 
@@ -381,7 +381,7 @@ public class PDFSignerTest extends TestCase {
         final ByteArrayOutputStream bout = new ByteArrayOutputStream();
 
         final File file = new File(signserverhome,
-                "res" + File.separator + "test" + File.separator + name);
+                "src" + File.separator + "test" + File.separator + name);
         FileInputStream in = null;
         try {
             in = new FileInputStream(file);

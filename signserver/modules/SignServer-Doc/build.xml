@@ -2,7 +2,6 @@
 <!-- Version: $Id: tests.xml 1791 2011-07-07 15:43:05Z netmackan $ -->
 <project name="SignServer-doc" default="build" basedir=".">
     <property file="nbproject/project.properties"/>
-    <import file="../modules.xml"/>
 
     <target name="build" depends="doc"/>
     
@@ -27,7 +26,7 @@
             <classpath refid="anakia.classpath"/>
         </available>
         <path id="xmltask.classpath">
-            <fileset dir="../../lib/ext/ext/">
+            <fileset dir="../../lib/ext/">
                 <include name="xmltask.jar"/>
             </fileset>
         </path>

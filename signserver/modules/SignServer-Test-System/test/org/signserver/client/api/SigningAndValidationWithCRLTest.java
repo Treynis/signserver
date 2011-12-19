@@ -87,17 +87,17 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
         signserverhome = System.getenv("SIGNSERVER_HOME");
         assertNotNull("Please set SIGNSERVER_HOME environment variable", signserverhome);
 
-        keystoreFileEndentity8 = new File(signserverhome + File.separator + "res/test/org/signserver/client/api/endentity8.p12");
+        keystoreFileEndentity8 = new File(signserverhome + File.separator + "src/test/org/signserver/client/api/endentity8.p12");
         if (!keystoreFileEndentity8.exists()) {
             throw new FileNotFoundException("Keystore file: " + keystoreFileEndentity8.getAbsolutePath());
         }
 
         crlWithCertOk = new File(signserverhome + File.separator
-                + "res/test/org/signserver/client/api/EightCA-ok.crl");
+                + "src/test/org/signserver/client/api/EightCA-ok.crl");
         crlWithCertRevoked = new File(signserverhome + File.separator
-                + "res/test/org/signserver/client/api/EightCA-revoked.crl");
+                + "src/test/org/signserver/client/api/EightCA-revoked.crl");
         crlToUse = new File(signserverhome + File.separator
-                + "res/test/org/signserver/client/api/EightCA-use.crl");
+                + "src/test/org/signserver/client/api/EightCA-use.crl");
 
         if (!crlWithCertOk.exists()) {
             throw new FileNotFoundException("Missing CRL: "
@@ -142,9 +142,9 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
     public void test00SetupDatabase() throws Exception {
 
         // XMLSIGNER: module
-        MARFileParser marFileParser = new MARFileParser(signserverhome + "/lib/xmlsigner.mar");
+        MARFileParser marFileParser = new MARFileParser(signserverhome + "/dist-server/xmlsigner.mar");
         moduleVersion = marFileParser.getVersionFromMARFile();
-        TestUtils.assertSuccessfulExecution(new String[]{"module", "add", signserverhome + "/lib/xmlsigner.mar", "junittest"});
+        TestUtils.assertSuccessfulExecution(new String[]{"module", "add", signserverhome + "/dist-server/xmlsigner.mar", "junittest"});
         assertTrue(TestUtils.grepTempOut("Loading module XMLSIGNER"));
         assertTrue(TestUtils.grepTempOut("Module loaded successfully."));
 
@@ -157,9 +157,9 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
         setupValidation();
 
         // XMLVALIDATOR: module
-        marFileParser = new MARFileParser(signserverhome + "/lib/xmlvalidator.mar");
+        marFileParser = new MARFileParser(signserverhome + "/dist-server/xmlvalidator.mar");
         moduleVersion = marFileParser.getVersionFromMARFile();
-        TestUtils.assertSuccessfulExecution(new String[]{"module", "add", signserverhome + "/lib/xmlvalidator.mar", "junittest"});
+        TestUtils.assertSuccessfulExecution(new String[]{"module", "add", signserverhome + "/dist-server/xmlvalidator.mar", "junittest"});
         assertTrue(TestUtils.grepTempOut("Loading module XMLVALIDATOR"));
         assertTrue(TestUtils.grepTempOut("Module loaded successfully."));
 

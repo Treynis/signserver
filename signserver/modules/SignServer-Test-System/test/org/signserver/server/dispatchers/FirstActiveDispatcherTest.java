@@ -62,16 +62,16 @@ public class FirstActiveDispatcherTest extends TestCase {
     public void test00SetupDatabase() throws Exception {
 
         System.out.println("File: " + getSignServerHome()
-                + "/lib/xmlsigner.mar");
+                + "/dist-server/xmlsigner.mar");
 
         final MARFileParser marFileParser = new MARFileParser(getSignServerHome()
-                + "/lib/xmlsigner.mar");
+                + "/dist-server/xmlsigner.mar");
         moduleVersion = marFileParser.getVersionFromMARFile();
 
         TestUtils.assertSuccessfulExecution(new String[] {
                 "module",
                 "add",
-                getSignServerHome() + "/lib/xmlsigner.mar",
+                getSignServerHome() + "/dist-server/xmlsigner.mar",
                 "junittest"
             });
         assertTrue("Loading module",

@@ -80,13 +80,13 @@ public class AnySignerTest extends TestCase {
     public void test00SetupDatabase() throws Exception {
 
         final MARFileParser marFileParser = new MARFileParser(signserverhome
-                + "/lib/xmlsigner.mar");
+                + "/dist-server/xmlsigner.mar");
         moduleVersion = marFileParser.getVersionFromMARFile();
 
         TestUtils.assertSuccessfulExecution(new String[] {
                 "module",
                 "add",
-                signserverhome + "/lib/xmlsigner.mar",
+                signserverhome + "/dist-server/xmlsigner.mar",
                 "junittest"
             });
         assertTrue("Loading module",

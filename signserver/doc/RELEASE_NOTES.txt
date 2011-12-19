@@ -1,16 +1,3 @@
-SignServer 3.3.0
-----------------
-
-TODO
-
-
-Notice:
- - The property "custom.commandfactory" previously defined in 
-   signserver_build.properties should now be defined in 
-   signserver_cli.properties instead.
-
-
-
 SignServer 3.2.1
 ----------------
 
@@ -38,9 +25,6 @@ Bug fixes:
  - Ant target for testing individual tests did not work
  - Switching application server type did not update jndi.properties    
  - JavaDoc failed to build
-
-
-
 
 Notice:
  - In signserver_build.properties the property "useclusterclassloader" now 

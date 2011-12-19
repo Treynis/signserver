@@ -1678,7 +1678,7 @@ New to version 3.0 is the Main WebService interface. It replaces the RMI-SSL int
 The WebService interface have two calls, the main one is 'process' which takes a collection of process request to a processable worker and returns a collection of process responses, the second one is getStatus that performs a health check of the node and returns an OK message if the node is healthy.
                     </p>
                     <p>
-The WebService stack used is JAX-WS and the actual process data is a externalized Base64 byte-arrays. The reason why the are externalized is to simply the integration towards non-Java platforms. See the source of the actual request to see how the data is structured.
+The WebService stack used is the JAX-WS stack from SUN. And the actual process data is a externalized Base64 byte-arrays. The reason why the are externalized is to simply the integration towards non-Java platforms. See the source of the actual request to see how the data is structured.
                     </p>
                     <p>
 The getStatus call can be used to implement high-availability towards the client. The Java client API described in the next section have built in support for different high availability policies.
@@ -1690,13 +1690,16 @@ The WebService WSDL file is located at the URL http://&lt;hostname&gt;:8080/sign
 It's possible to turn off the WebService interface by disabling it in the build configuration.
                     </p>
                     <p>
+Important, Due to class path conflict in JBoss 4.2.x own JBoss WebService stack and the JAX-WS stack used by the SignServer must the JBoss WebService stack be removed before the WebService is used. This is done by going to JBOSS_HOME/server/default/deploy and remove the directory jbossws.sar.
+                    </p>
+                    <p>
 Since SignServer >=3.2.1 it is possible to supply extra request data called RequestMetadata containing key/value pairs that can be used by the signers. For instance the PDFSigner uses this feature to let the client supply a PDF password. 
                     </p>
 		</section>
 
 		<section name="Java Client API">
                     <p>
-Built along with the WebService is a Java API that can be used by clients. It's available in the file lib/SignServer-Client-SignServerWS.jar. The client API have support for different high availability policies to avoid the need for load balance hardware.
+Built along with the WebService is a Java API that can be used by clients. It's located in dist-client/signserverwscli and the file signserverws.jar and all the files in the lib directory is required to use the API. The client API have support for different high availability policies to avoid the need for load balance hardware.
                     </p>
                     <p>
 The client classes is in the package org.signserver.protocol.ws.client and the main code are SignServerWSClientFactory creating a client using the specified load balance policy, it returns a
@@ -1720,7 +1723,9 @@ Other future load balance policies could be round robin or that all nodes are ca
 				is the same regardless if WebService or EJB Remote calls are used.
 			</p>
 			<p>
-				To use the API include the file lib/SignServer-Client-SigningAndValidationAPI.jar.
+				To use the API include the file signingandvalidationapi.jar
+				as well as all JAR-files in the lib-folder available in
+				SIGNSERVER_HOME/dist-client/signingandvalidationapi/.
 			</p>
 			<subsection name="Sample Code">
 				<subsubsection name="Signing and validating an XML document">
@@ -3049,6 +3054,9 @@ If not configured otherwise will the validation service use the DefaultX509CertT
 There exists a validation specific WebService that can be used for platform independent client calls.
 The WebService must be enabled during the build and isn't by default. The WebService WSDL file is located at the URL http://&lt;hostname&gt;:8080/signserver/validationws/validationws?wsdl and it contains two calls one is 'isValid' that performs the validation check and the other is a getStatus call that checks the health of the node and its underlying systems. The last calls can be used by clients for monitoring or implementing redundancy.
                         </p>
+                        <p>
+Important, Due to class path conflict in JBoss 4.2.x own JBoss WebService stack and the JAX-WS stack used by the SignServer must the JBoss WebService stack be removed before the WebService is used. This is done by going to JBOSS_HOME/server/default/deploy and remove the directory jbossws.sar.
+                        </p>
                     </subsubsection>
                     <subsubsection name="Available Properties">
                         <p>
@@ -3115,10 +3123,10 @@ WORKER1.VAL2.ISSUER1.CERTCHAIN=EFWAASDFADFASDFKASDKFW1231.....
 There exists a Java CLI tool that can be used to check the validity of a certificate from scripts. It supports a clustered SignServer installation by using the "Use first host that response OK" policy.
                     </p>
                     <p>
-When compiling, make sure that setting validationclient.enabled is set to "true" in the build properties. The client is lib/SignServer-Client-ValidationCLI.jar.
+When compiling, make sure that setting validationclient.enabled is set to "true" in the build properties. The client is found in dist-client/validationclient. Just copy the validate.jar and all the files in the 'lib' directory to the location where you want to use the client.
                     </p>
                     <p>
-Use the client with 'java -jar lib/SignServer-Client-ValidationCLI.jar &lt;options&gt;'.
+Use the client with 'java -jar validate.jar &lt;options&gt;'.
                     </p>
                     <pre>
 Here is a list of available options:
@@ -3532,7 +3540,7 @@ by running "ant". After that the tool can be executed with something similar
 to:
                         </p>
                         <pre>
-java -cp lib/signserver-ejb.jar:lib/ext/1.6/bcprov-jdk.jar:lib/SignServer-Common.jar:lib/ext/ejbca-util.jar org.signserver.server.cryptotokens.CryptoTokenUtils createsoft src/test/dss10/dss10_signer1.p12 "signer 1" foo123
+java -cp dist-server/signserver-ejb.jar:lib/1.6/bcprov-jdk.jar:dist-server/lib/SignServer-Common.jar:lib/ejbca-util.jar org.signserver.server.cryptotokens.CryptoTokenUtils createsoft src/test/dss10/dss10_signer1.p12 "signer 1" foo123
                         </pre>
                     </subsubsection>
                     <subsubsection name="SIGNERTOKEN.CLASSPATH">
@@ -4415,7 +4423,9 @@ It only works without client authentication requirements and through HTTP.
 To run the client do
                         </p>
                         <pre>
-bin/client timestamp "http://&lt;hostname&gt;:8080/signserver/tsa?signerId=1"
+ant
+cd dist-client
+java -jar timeStampClient.jar "http://&lt;hostname&gt;:8080/signserver/tsa?signerId=1"
                         </pre>
                         <p>
 It will continuously make one request per second. Run the test client without arguments to get a list of possible arguments, you can use it as a full time stamp client to get real document time stamps.

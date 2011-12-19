@@ -12,10 +12,12 @@
  *************************************************************************/
 package org.signserver.cli;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-import org.apache.log4j.Logger;
+import org.signserver.common.CompileTimeSettings;
 
 import org.signserver.common.InvalidWorkerIdException;
 
@@ -25,20 +27,9 @@ import org.signserver.common.InvalidWorkerIdException;
  * @version $Id$
  */
 public class signserver {
-    
-    /** Logger for this class. */
-    private static final Logger LOG = Logger.getLogger(signserver.class);
 
     private ISignServerCommandFactory signServerCommandFactory;
-    private Properties cliProperties;
-    private Properties defaultCliProperties = new Properties();
-
-    public signserver() {
-        defaultCliProperties.setProperty("hostname.masternode", "localhost");
-        defaultCliProperties.setProperty("hostname.allnodes", "localhost");
-        defaultCliProperties.setProperty("custom.commandfactory", "org.signserver.cli.DefaultSignServerCommandFactory");
-    }
-
+    
     protected signserver(String[] args) {
         try {
             String hostname = checkHostParameter(args);
@@ -122,26 +113,41 @@ public class signserver {
     }
 
     private Properties getProperties() throws IOException {
-        if (cliProperties == null) {
-            Properties properties = new Properties(defaultCliProperties);
-            InputStream in = null; 
-            try {
-                in = getClass().getResourceAsStream("/signserver_cli.properties");
-                if (in != null) {
-                    properties.load(in);
-                }
-                cliProperties = properties;
-            } finally {
-                if (in != null) {
-                    try {
-                        in.close();
-                    } catch (IOException ex) {
-                        LOG.error("Failed to close configuration", ex);
+        String propsfile = "signserver_cli.properties";
+
+        File unixConfigFile = new File("/etc/signserver/signserver.conf");
+        File windowsConfigFile = new File(System.getenv("SYSTEMROOT") + "/signserver.conf");
+        File mailSignerUnixConfigFile = new File("/etc/mailsigner/mailsigner.conf");
+        File mailSignerWindowsConfigFile = new File(System.getenv("SYSTEMROOT") + "/mailsigner.conf");
+        if (unixConfigFile.exists()) {
+            propsfile = "/etc/signserver/signserver.conf";
+        } else {
+            if (windowsConfigFile.exists()) {
+                propsfile = System.getenv("SYSTEMROOT") + "/signserver.conf";
+            } else {
+                if (mailSignerUnixConfigFile.exists()) {
+                    propsfile = "/etc/mailsigner/mailsigner.conf";
+                } else {
+                    if (mailSignerWindowsConfigFile.exists()) {
+                        propsfile = System.getenv("SYSTEMROOT") + "/mailsigner.conf";
+                    } else {
+                        if (System.getenv("SIGNSERVER_HOME") != null) {
+                            propsfile = System.getenv("SIGNSERVER_HOME") + "/" + propsfile;
+                        } else {
+                            if (System.getenv("SIGNSRV_HOME") != null) {
+                                propsfile = System.getenv("SIGNSRV_HOME") + "/" + propsfile;
+                            }
+                        }
                     }
                 }
             }
         }
-        return cliProperties;
+
+        InputStream is = new FileInputStream(propsfile);
+        Properties properties = new Properties();
+        properties.load(is);
+        is.close();
+        return properties;
     }
 
     /**
@@ -196,13 +202,9 @@ public class signserver {
 
     private ISignServerCommandFactory getSignServerCommandFactory() {
         if (signServerCommandFactory == null) {
-            String commandFactoryClass = null;
-            try {
-                commandFactoryClass = getProperties().getProperty("custom.commandfactory");
-            } catch (IOException ex) {
-                LOG.error("Failed to load CLI configuration", ex);
-            }
-            
+            final String commandFactoryClass =
+                    CompileTimeSettings.getInstance().getProperty(
+                    CompileTimeSettings.SIGNSERVERCOMMANDFACTORY);
             if (commandFactoryClass == null) {
                 signServerCommandFactory = new DefaultSignServerCommandFactory();
             } else {
