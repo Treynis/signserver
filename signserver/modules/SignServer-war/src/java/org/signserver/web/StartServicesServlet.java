@@ -15,8 +15,6 @@ package org.signserver.web;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-
 import javax.ejb.EJB;
 import javax.naming.NamingException;
 import javax.servlet.ServletConfig;
@@ -24,17 +22,16 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
 import org.apache.log4j.Logger;
 import org.signserver.common.CompileTimeSettings;
 import org.signserver.common.ServiceLocator;
-import org.signserver.statusrepo.common.StatusEntry;
-import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.ejb.interfaces.IServiceTimerSession;
-import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.server.log.ISystemLogger;
 import org.signserver.server.log.SystemLoggerException;
 import org.signserver.server.log.SystemLoggerFactory;
+import org.signserver.statusrepo.IStatusRepositorySession;
+import org.signserver.statusrepo.common.NoSuchPropertyException;
+import org.signserver.statusrepo.common.StatusEntry;
 import org.signserver.statusrepo.common.StatusName;
 
 /**
@@ -147,7 +144,7 @@ public class StartServicesServlet extends HttpServlet {
         } catch (NoSuchPropertyException ex) {
             throw new RuntimeException(ex);
         }
-        
+
     } // init
 
     public void doPost(HttpServletRequest req, HttpServletResponse res)

@@ -174,7 +174,7 @@ public abstract class WebTestCase extends ModulesTestCase {
         out.close();
         return con;
     }
-
+    
     protected static byte[] sendPostFormUrlencodedReadBody(final String baseURL,
             final Map<String, String> fields) throws MalformedURLException, IOException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();

@@ -48,18 +48,95 @@ public class GlobalConfiguration implements Serializable {
     public static final String OLD_CRYPTOTOKENPROPERTY_BASE = ".SIGNERTOKEN";
     public static final String CRYPTOTOKENPROPERTY_CLASSPATH = ".CLASSPATH";
 
+    /** Indicates if ClusterClassLoading should be enabled. */
+    private static Boolean clusterClassLoaderEnabled;
+
+    /** Indicates if ClusterClassLoading should support class versions. */
+    private static Boolean useClassVersions;
+
+    /** Indicates if ClusterClassLoading the full path to the jks trust store. */
+    private static String pathToTrustStore;
+
+    /** Indicates if ClusterClassLoading should require signing. */
+    private static Boolean requireSigning;
+
+    /**
+     * The password to unlock the truststore password. Indicates if
+     * ClusterClassLoading the full path to the jks trust store.
+     */
+    private static char[] cclTrustStorePWD;
     private Properties config;
     private String state;
-    private String appVersion;
 
     /**
      * Constructor that should only be called within
      * the GlobalConfigurationSessionBean.
      */
-    public GlobalConfiguration(Properties config, String state, String appVersion) {
+    public GlobalConfiguration(Properties config, String state) {
         this.config = config;
         this.state = state;
-        this.appVersion = appVersion;
+    }
+
+    /**
+     * @return True if ClusterClassLoading should be enabled
+     */
+    public static boolean isClusterClassLoaderEnabled() {
+        if (clusterClassLoaderEnabled == null) {
+            clusterClassLoaderEnabled = Boolean.parseBoolean(
+                    CompileTimeSettings.getInstance().getProperty(
+                    CompileTimeSettings.SIGNSERVER_USECLUSTERCLASSLOADER).trim());
+        }
+        return clusterClassLoaderEnabled;
+    }
+
+    /**
+     * @return True if ClusterClassLoading should support class versions
+     */
+    public static boolean isUseClassVersions() {
+        if (useClassVersions == null) {
+            useClassVersions = Boolean.parseBoolean(
+                    CompileTimeSettings.getInstance().getProperty(
+                    CompileTimeSettings.SIGNSERVER_USECLASSVERSIONS).trim());
+        }
+        return useClassVersions;
+    }
+
+    /**
+     * @return True if ClusterClassLoading should require signing
+     */
+    public static boolean isRequireSigning() {
+        if (requireSigning == null) {
+            requireSigning = Boolean.parseBoolean(
+                    CompileTimeSettings.getInstance().getProperty(
+                    CompileTimeSettings.SIGNSERVER_REQUIRESIGNATURE).trim());
+        }
+        return requireSigning;
+    }
+
+    /**
+     * @return the full path to the jks trust store
+     */
+    public static String getPathToTrustStore() {
+        if (pathToTrustStore == null) {
+            pathToTrustStore = CompileTimeSettings.getInstance().getProperty(
+                    CompileTimeSettings.SIGNSERVER_PATHTOTRUSTSTORE);
+        }
+        return pathToTrustStore;
+    }
+
+    /**
+     * @return the trust store password
+     */
+    public static char[] getCCLTrustStorePasswd() {
+        if (cclTrustStorePWD == null) {
+            final String trustStoreValue = CompileTimeSettings.getInstance().getProperty(CompileTimeSettings.SIGNSERVER_TRUSTSTOREPWD);
+            if (trustStoreValue == null || trustStoreValue.trim().isEmpty()) {
+                LOG.error("Error cluster classloader truststore password isn't configured");
+            } else {
+                cclTrustStorePWD = trustStoreValue.toCharArray();
+            }
+        }
+        return cclTrustStorePWD;
     }
 
     /**
@@ -136,7 +213,15 @@ public class GlobalConfiguration implements Serializable {
      * @return the version of the server
      */
     public String getAppVersion() {
-        return appVersion;
+        return CompileTimeSettings.getInstance().getProperty(
+                CompileTimeSettings.SIGNSERVER_VERSION);
     }
 
+    /**
+     * @return the build mode
+     */
+    public static String getBuildMode() {
+        return CompileTimeSettings.getInstance().getProperty(
+                CompileTimeSettings.BUILDMODE).trim();
+    }
 }

@@ -14,8 +14,13 @@ package org.signserver.server;
 
 import java.security.cert.Certificate;
 import org.apache.log4j.Logger;
-import org.signserver.common.*;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerUtil;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
 
 /**
  * Tests limits for the key usages.
@@ -40,6 +45,8 @@ public class LimitKeyUsagesTest extends ModulesTestCase {
     @Override
     protected void setUp() throws Exception {
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
     }
 
     @Override

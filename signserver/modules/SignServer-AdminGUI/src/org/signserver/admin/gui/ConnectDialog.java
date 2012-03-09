@@ -75,11 +75,9 @@ public class ConnectDialog extends javax.swing.JDialog {
     private AdminWS ws;
     private String serverHost;
     
-    private static final File LEGACY_DEFAULT_CONNECT_FILE =
-            new File("default_connect.properties");
     private static final File DEFAULT_CONNECT_FILE =
-            new File("admingui_default.properties");
-    private static final File CONNECT_FILE = new File("admingui.properties");
+            new File("default_connect.properties");
+    private static final File CONNECT_FILE = new File("connect.properties");
 
     private static final String TRUSTSTORE_TYPE_PEM = "PEM";
     private static final String TRUSTSTORE_TYPE_KEYSTORE = "Use keystore";
@@ -113,8 +111,6 @@ public class ConnectDialog extends javax.swing.JDialog {
 
         if (connectFile.exists()) {
             loadSettingsFromFile(connectFile);
-        } else if (LEGACY_DEFAULT_CONNECT_FILE.exists()) {
-            loadSettingsFromFile(LEGACY_DEFAULT_CONNECT_FILE);
         } else {
             loadSettingsFromFile(defaultConnectFile);
         }

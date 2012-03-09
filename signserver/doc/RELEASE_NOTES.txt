@@ -1,14 +1,13 @@
-SignServer 3.3.0
+SignServer 3.2.2
 ----------------
 
-TODO
-
+<TODO: Add when all issues are closed>
 
 Notice:
- - Apache Ant 1.8.0 or later is now required to build SignServer.
- - The property "custom.commandfactory" is no longer supported. See the manual 
-   for how to add custom Admin or Client CLI commands.
- - The Admin CLI now ignores the "-host" argument if present.
+ - The status property "INSYNC" is now called "TIMESOURCE0_INSYNC" applications 
+   relaying on the name of this property should be updated.
+
+Read the full changelog for details (https://jira.primekey.se/browse/DSS?report=com.atlassian.jira.plugin.system.project:changelog-panel).
 
 
 SignServer 3.2.1
@@ -38,9 +37,6 @@ Bug fixes:
  - Ant target for testing individual tests did not work
  - Switching application server type did not update jndi.properties    
  - JavaDoc failed to build
-
-
-
 
 Notice:
  - In signserver_build.properties the property "useclusterclassloader" now 

@@ -15,16 +15,21 @@ package org.signserver.module.xmlsigner;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.security.*;
+import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PublicKey;
 import java.util.Collection;
+
 import org.bouncycastle.jce.ECKeyUtil;
 import org.bouncycastle.jce.PKCS10CertificationRequest;
 import org.bouncycastle.util.encoders.Hex;
 import org.ejbca.util.Base64;
 import org.signserver.common.Base64SignerCertReqData;
-import org.signserver.common.KeyTestResult;
 import org.signserver.common.PKCS10CertReqInfo;
 import org.signserver.common.SignServerUtil;
+import org.signserver.common.KeyTestResult;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestUtils;
 import org.signserver.testutils.TestingSecurityManager;
@@ -51,6 +56,9 @@ public class AnySignerTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
         signserverhome = System.getenv("SIGNSERVER_HOME");
         assertNotNull("Please set SIGNSERVER_HOME environment variable", signserverhome);
     }
@@ -239,7 +247,11 @@ public class AnySignerTest extends ModulesTestCase {
     }
 
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(WORKERID);
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID)
+        });
+        workerSession.reloadConfiguration(WORKERID);
     }
 
     public static String createKeyHash(byte[] key) {

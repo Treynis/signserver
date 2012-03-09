@@ -53,15 +53,10 @@ public class SignServerBuildProperties {
 
     private SignServerBuildProperties() {
         // Load built-in compile-time properties
-        File confFile1 = new File(System.getenv("SIGNSERVER_HOME"), "signserver_build.properties");
-        File confFile2 = new File(System.getenv("SIGNSERVER_HOME"), "signserver_build.properties");
         InputStream in = null;
         try {
-            if (confFile1.exists()) {
-                in = new FileInputStream(confFile1);
-            } else {
-                in = new FileInputStream(confFile2);
-            }
+            in = new FileInputStream(new File(System.getenv("SIGNSERVER_HOME"),
+                    "signserver_build.properties"));
             properties.load(in);
         } catch (IOException ex) {
             throw new RuntimeException(

@@ -77,14 +77,8 @@ public class SignServerWSServiceTest extends TestCase {
     /** Setup keystores for SSL. **/
     private void setupKeystores() {
         Properties config = new Properties();
-        File confFile1 = new File("../../signserver_build.properties");
-        File confFile2 = new File("../../conf/signserver_build.properties");
         try {
-            if (confFile1.exists()) {
-                config.load(new FileInputStream(confFile1));
-            } else {
-                config.load(new FileInputStream(confFile2));
-            }
+            config.load(new FileInputStream(new File("../../signserver_build.properties")));
         } catch (FileNotFoundException ignored) {
             LOG.debug("No signserver_build.properties");
         } catch (IOException ex) {

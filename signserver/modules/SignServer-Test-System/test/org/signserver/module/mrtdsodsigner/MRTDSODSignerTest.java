@@ -19,12 +19,25 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.*;
-import org.signserver.cli.CommandLineInterface;
-import org.signserver.common.*;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SODSignRequest;
+import org.signserver.common.SODSignResponse;
+import org.signserver.common.SignServerConstants;
+import org.signserver.common.SignServerUtil;
+import org.signserver.common.SignerStatus;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
 import org.signserver.server.cryptotokens.HardCodedCryptoToken;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
 import org.signserver.testutils.TestingSecurityManager;
 
 /**
@@ -60,6 +73,9 @@ public class MRTDSODSignerTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     /* (non-Javadoc)
@@ -72,48 +88,49 @@ public class MRTDSODSignerTest extends ModulesTestCase {
     }
 
     public void test00SetupDatabase() throws Exception {
-        assertEquals(CommandLineInterface.RETURN_SUCCESS, 
-                getAdminCLI().execute("setproperties", getSignServerHome().getAbsolutePath() + "/modules/SignServer-Module-MRTDSODSigner/src/conf/junittest-part-config.properties"));
+        TestUtils.assertSuccessfulExecution(new String[]{"setproperties",
+                    getSignServerHome().getAbsolutePath()
+                    + "/modules/SignServer-Module-MRTDSODSigner/src/conf/junittest-part-config.properties"});
 
         // WORKER1 uses a P12 keystore
         workerSession.setWorkerProperty(WORKER1, "KEYSTOREPATH",
                 getSignServerHome().getAbsolutePath()
-                + File.separator + "res" + File.separator + "test"
+                + File.separator + "src" + File.separator + "test"
                 + File.separator + "demods1.p12");
         workerSession.setWorkerProperty(WORKER1, "KEYSTOREPASSWORD", "foo123");
 
         // WORKER1B uses a P12 keystore
         workerSession.setWorkerProperty(WORKER1B, "KEYSTOREPATH",
                 getSignServerHome().getAbsolutePath()
-                + File.separator + "res" + File.separator + "test"
+                + File.separator + "src" + File.separator + "test"
                 + File.separator + "dss10/dss10_signer1.p12");
         workerSession.setWorkerProperty(WORKER1B, "KEYSTOREPASSWORD", "foo123");
 
         // WORKER2 uses a P12 keystore
         workerSession.setWorkerProperty(WORKER2, "KEYSTOREPATH",
                 getSignServerHome().getAbsolutePath()
-                + File.separator + "res" + File.separator + "test"
+                + File.separator + "src" + File.separator + "test"
                 + File.separator + "demods1.p12");
         workerSession.setWorkerProperty(WORKER2, "KEYSTOREPASSWORD", "foo123");
 
         // WORKER3 uses a P12 keystore
         workerSession.setWorkerProperty(WORKER3, "KEYSTOREPATH",
                 getSignServerHome().getAbsolutePath()
-                + File.separator + "res" + File.separator + "test"
+                + File.separator + "src" + File.separator + "test"
                 + File.separator + "demods1.p12");
         workerSession.setWorkerProperty(WORKER3, "KEYSTOREPASSWORD", "foo123");
 
         // WORKER4 uses a P12 keystore
         workerSession.setWorkerProperty(WORKER4, "KEYSTOREPATH",
                 getSignServerHome().getAbsolutePath()
-                + File.separator + "res" + File.separator + "test"
+                + File.separator + "src" + File.separator + "test"
                 + File.separator + "demods1.p12");
         workerSession.setWorkerProperty(WORKER4, "KEYSTOREPASSWORD", "foo123");
 
         // WORKER5 uses a P12 keystore and ECC
         workerSession.setWorkerProperty(WORKER5, "KEYSTOREPATH",
                 getSignServerHome().getAbsolutePath()
-                + File.separator + "res" + File.separator + "test"
+                + File.separator + "src" + File.separator + "test"
                 + File.separator + "demodsecc1.p12");
         workerSession.setWorkerProperty(WORKER5, "KEYSTOREPASSWORD", "foo123");
 
@@ -442,13 +459,21 @@ public class MRTDSODSignerTest extends ModulesTestCase {
     }
 
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(WORKER1);
-        removeWorker(WORKER2);
-        removeWorker(WORKER3);
-        removeWorker(WORKER4);
-        removeWorker(WORKER5);
-        removeWorker(WORKER1B);
-        removeWorker(WORKER1C);
-        removeWorker(WORKER1D);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + WORKER1});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + WORKER2});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + WORKER3});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + WORKER4});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + WORKER5});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + WORKER1B});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + WORKER1C});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + WORKER1D});
+        workerSession.reloadConfiguration(WORKER1);
+        workerSession.reloadConfiguration(WORKER2);
+        workerSession.reloadConfiguration(WORKER3);
+        workerSession.reloadConfiguration(WORKER4);
+        workerSession.reloadConfiguration(WORKER5);
+        workerSession.reloadConfiguration(WORKER1B);
+        workerSession.reloadConfiguration(WORKER1C);
+        workerSession.reloadConfiguration(WORKER1D);
     }
 }
