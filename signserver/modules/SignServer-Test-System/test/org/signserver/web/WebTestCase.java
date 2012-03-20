@@ -122,7 +122,7 @@ public abstract class WebTestCase extends ModulesTestCase {
     		fail(ex.getMessage());
     	}
     }
-
+    
     /**
      * Tests that the returned HTTP status code is not the one passed to the method,
      * use the specified HTTP method.
@@ -200,7 +200,7 @@ public abstract class WebTestCase extends ModulesTestCase {
         out.close();
         return con;
     }
-
+    
     protected static byte[] sendPostFormUrlencodedReadBody(final String baseURL,
             final Map<String, String> fields) throws MalformedURLException, IOException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();

@@ -14,7 +14,12 @@ package org.signserver.server.dispatchers;
 
 import java.io.File;
 import java.security.cert.X509Certificate;
-import org.signserver.common.*;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerUtil;
+import org.signserver.common.ServiceLocator;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestUtils;
@@ -41,6 +46,8 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
         SignServerUtil.installBCProvider();
         workerSession = ServiceLocator.getInstance().lookupRemote(
                         IWorkerSession.IRemote.class);
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
     }
 
     @Override
@@ -112,7 +119,8 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
 
         // Send request to dispatcher
         try {
-            workerSession.process(WORKERID_DISPATCHER, request, context);
+            res = (GenericSignResponse) workerSession.process(WORKERID_DISPATCHER,
+                request, context);
             fail("Should have got CryptoTokenOfflineException");
         } catch(CryptoTokenOfflineException ex) {
             // OK
@@ -132,10 +140,28 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
     }
 
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(WORKERID_DISPATCHER);
-        removeWorker(WORKERID_1);
-        removeWorker(WORKERID_2);
-        removeWorker(WORKERID_3);
+
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_DISPATCHER)
+        });
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_1)
+        });
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_2)
+        });
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_3)
+        });
+
+        workerSession.reloadConfiguration(WORKERID_DISPATCHER);
+        workerSession.reloadConfiguration(WORKERID_1);
+        workerSession.reloadConfiguration(WORKERID_2);
+        workerSession.reloadConfiguration(WORKERID_3);
     }
 
 }

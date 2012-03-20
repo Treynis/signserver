@@ -39,9 +39,9 @@ public class DispatchedAuthorizer implements IAuthorizer {
     private static final String AUTHORIZEALLDISPATCHERS = "AUTHORIZEALLDISPATCHERS";
     
     private int workerId;
-
+    
     private boolean authorizeAllDispatchers;
-
+    
     
 
     @Override

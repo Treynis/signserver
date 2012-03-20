@@ -14,7 +14,7 @@
                 <p>
 The SignServer is an application framework performing cryptographic operations
 for other applications. It's intended to be used in environments where keys are
-supposed to be protected in hardware but it isn't possible to connect such
+supposed to be protected in hardware but there isn't possible to connect such
 hardware to existing enterprise applications or where the operations are
 considered extra sensitive so the hardware have to protected more carefully.
 Another usage is to provide a simplified method to provide signatures in
@@ -39,19 +39,6 @@ lookup the validation of a given certificate.
             </section>
 
             <section name="Changes from previous versions">
-                <subsection name="Changes between version 3.2 and 3.3">
-                    <ul>
-<!-- New major features -->
-<!-- New support -->
-<!-- New workers -->
-<!-- Improvements -->
-<!-- Other -->
-                        <li>
-Clusterclassloader has been removed.
-                        </li>
-
-                    </ul>
-                </subsection>
                 <subsection name="Changes between version 3.1 and 3.2">
                     <ul>
 <!-- New major features -->
@@ -263,6 +250,8 @@ PKCS11 Crypto Token to connect to different PKCS11 implementations.
                     </tr><tr><td>ODF (Open Document Format) Document</td><td>XML-based file format for representing electronic documents such as spreadsheets, charts, presentations and word processing documents. <a href="http://en.wikipedia.org/wiki/OpenDocument">more...</a></td>
                     </tr><tr><td>OOXML (Office Open XML) Document</td><td>XML-based file format  for representing spreadsheets, charts, presentations and word processing documents. <a href="http://en.wikipedia.org/wiki/Office_Open_XML">more...</a></td>
                     </tr><tr><td>OOXML Signer</td><td>A Signer that attaches an electronic signature to an OOXML document.</td>
+                    </tr><tr><td>Cluster Class Loader</td><td>A Java Class Loader specific for the SignServer project. The class loader simplifies the distribution of new code to a cluster by uploading and fetching it from database. It also enables the use of multiple versions of the same worker code in the same cluster.</td>
+                    </tr><tr><td>Module Archive or MAR file</td><td>A 'Module Archive' is a specific packaging format used by the cluster class loader to upload code to a cluster. A MAR files is structured in a specific way with a descriptor containing module and version information.  The MAR file also contains one or more parts depending on were in the system the code will be deployed.<br/>A Module Archive have the postfix .mar and can be generated with a specific ANT-task.</td>
                     </tr>
                     <tr>
                         <td>Archiver</td>
@@ -312,7 +301,7 @@ Make sure all required softwares are installed:
                         <li>Java: Sun/Oracle JDK 6 Update 10 or later or OpenJDK*</li>
                         <li>Application server: JBoss 4.2.3.GA**, JBoss 5.1.0.GA or GlassFish Server Open Source Edition 2.1.1</li>
                         <li>Database: HypersonicSQL (bundled with JBoss), MySQL 5.1 or Oracle Database 10/11g</li>
-                        <li>Build tool: Apache Ant 1.8.0 or later</li>
+                        <li>Build tool: Apache Ant 1.7.1 or later</li>
                     </ul>
                     <p>
 * The ODFSigner has issues with OpenJDK. Please see <a href="https://jira.primekey.se/browse/DSS-168">DSS-168</a> for a workaround.<br/>
@@ -324,7 +313,7 @@ Make sure all required softwares are installed:
                     <p>
 Download and unzip the
 <a href="http://sourceforge.net/projects/signserver/files/signserver/">latest
-SignServer release</a> archive from SourceForge or for the absolutely latest
+SignServer release</a> archive from SourceForge or for the absolutly latest
 unstable version checkout from the Subversion (SVN)
 <a href="http://sourceforge.net/projects/signserver/develop">repository</a>.
                     </p>
@@ -337,6 +326,14 @@ Set APPSRV_HOME to point to your application server installation.
                         </p>
                         <source>
 export APPSRV_HOME=/opt/jboss-4.2.3.GA
+                        </source>
+                    </subsubsection>
+                    <subsubsection name="ANT_HOME">
+                        <p>
+Set ANT_HOME to point to your Apache Ant installation.
+                        </p>
+                        <source>
+export ANT_HOME=/usr/share/ant
                         </source>
                     </subsubsection>
                     <subsubsection name="ANT_OPTS">
@@ -369,7 +366,7 @@ export SIGNSERVER_NODEID=node1
                     <p>
 Create a database and user for SignServer. The application server will try to
 create tables during startup of SignServer but if the database user does not
-have table create permissions or if you run on GlassFish the tables must be
+have table create permissions or if you run on Glassfish the tables must be
 created manually. See doc/howtos/create-tables-signserver32-*.sql.
                     </p>
                     <p>
@@ -442,11 +439,11 @@ when it's time for upgrades! This is a bug tracked by JBoss as JBAS-7882.
 
                 <subsection name="6. Configure build">
                     <p>
-Copy conf/signserver_build.properties.sample to conf/signserver_build.properties and open
+Copy signserver_build.properties.sample to signserver_build.properties and open
 it for editing in your favorite text editor.
                     </p>
                     <source>
-cp conf/signserver_build.properties.sample conf/signserver_build.properties
+cp signserver_build.properties.sample signserver_build.properties
                     </source>
 
                     <subsubsection name="Application server configuration">
@@ -533,6 +530,24 @@ module.log4j.include=true
                         </source>
                     </subsubsection>
 
+                    <subsubsection name="Cluster Class Loader Configuration">
+                        <p>
+The cluster class loader can be used in development for having the code of the
+signers loaded on all nodes. If it is not used the modules must be built into
+signserver.ear either by specifying that for each module (as in previous
+section) or by specifying includemodulesinbuild=true to include all modules.
+                        </p>
+						<p>
+Notice that this feature is experimental and should not be used in production. It will be removed in future versions of SignServer.
+						</p>
+                        <p>
+To enable the cluster class loader specify:                            
+                        </p>
+                        <source>
+useclusterclassloader=true
+                        </source>
+                    </subsubsection>
+
                 </subsection>
 
                 <subsection name="7. Build and deploy SignServer">
@@ -542,7 +557,7 @@ server. If the configuration changed since the last build run the clean target
 first.
                     </p>
                     <source>
-bin/ant clean build deploy
+ant clean deploy
                     </source>
                     <p>
 Start the application server and verify that SignServer was deployed and
@@ -555,19 +570,19 @@ After startup a few different user interfaces are available.
 					</p>
 					<subsubsection name="Command Line Interface">
                     <source>
-bin/signserver getstatus brief all
+bin/signserver.sh getstatus brief all
 Assuming JBoss JNDI provider...
 ===========================================
 Executing Command on host : localhost
 ===========================================
 
 
-Current version of server is : SignServer 3.3.0alpha0
+Current version of server is : SignServer 3.2-svn
                     </source>
 					</subsubsection>
 					<subsubsection name="Graphical User Interface">
 						<source>
-bin/signserver-gui	
+bin/admingui.sh	
 						</source>
 					</subsubsection>
 					<subsubsection name="Web Interface">
@@ -585,7 +600,9 @@ SignServer CLI.
                 </p>
                 <subsection name="Loading signers">
                     <p>
-Signers (and other workers) can be loaded by setting properties using "setproperty" or "setproperties" etc.
+Signers (and other workers) can be loaded in two different ways. Either using
+"module add" or by setting properties using "setproperty" or "setproperties"
+etc.
                     </p>
                     <subsubsection name="setproperties">
                         <p>
@@ -596,16 +613,28 @@ includemodulesinbuild=true to include all modules or by setting individual
 module.MODULENAME.include=true properties in signserver_build.properties.
                         </p>
                         <source>
-bin/signserver setproperties doc/sample-configs/CONFIGURATION.PROPERTIES
+bin/signserver.sh setproperties doc/sample-configs/CONFIGURATION.PROPERTIES
+                        </source>
+                    </subsubsection>
+                    <subsubsection name="module add">
+                        <p>
+Notice: This method is deprecated and will not be supported in future versions.
+                        </p>
+                        <p>
+The "module add" command loads both the code and the configuration from a MAR
+file and thus requires the clustered class loader to be enabled.
+                        </p>
+                        <source>
+bin/signserver.sh modules add dist-server/MODULE.mar CONFIGURATION
                         </source>
                     </subsubsection>
                     <p>
-After adding or changing a property for a worker (by
+After adding or changing a property for a worker (either with "module add" or by
 any of the "setpropery" or "setproperties" commands) the configuration needs be
 applied by issuing the reload command with the ID of the worker.
                     </p>
                     <source>
-bin/signserver reload 4711
+bin/signserver.sh reload 4711
                     </source>
                 </subsection>
 
@@ -624,19 +653,19 @@ modules built in.
                         <li>
 Load the Timestamp demo configuration and notice the generated worker ID (in this
 example 1):<br/>
-<code>$ bin/signserver setproperties doc/sample-configs/qs_timestamp_configuration.properties</code>
+<code>$ bin/signserver.sh setproperties doc/sample-configs/qs_timestamp_configuration.properties</code>
                         </li>
                         <li>
 Activate the configuration with:<br/>
-<code>$ bin/signserver reload 1</code>
+<code>$ bin/signserver.sh reload 1</code>
                         </li>
                         <li>
 You can check the status and configuration with:<br/>
-<code>$ bin/signserver getstatus complete all</code>
+<code>$ bin/signserver.sh getstatus complete all</code>
                         </li>
                         <li>
 Run the test client to see that everything is up:<br/>
-<code>$ bin/signclient timestamp http://localhost:8080/signserver/process?workerName=TimeStampSigner</code>
+<code>$ bin/client.sh timestamp http://localhost:8080/signserver/process?workerName=TimeStampSigner</code>
 <br/>The message "TimeStampRequest validated" should appear once a second. Also
 check JBOSS_HOME/server/default/log/server.log or
 GLASSFISH_HOME/domains/domain1/logs/server.log that successful messages appear.
@@ -658,15 +687,15 @@ modules built in.
                         <li>
 Load the PDF signer demo configuration and notice the generated worker ID (in this
 example 2):<br/>
-<code>$ bin/signserver setproperties doc/sample-configs/qs_pdfsigner_configuration.properties</code>
+<code>$ bin/signserver.sh setproperties doc/sample-configs/qs_pdfsigner_configuration.properties</code>
                         </li>
                         <li>
 Activate the configuration with:<br/>
-<code>$ bin/signserver reload 2</code>
+<code>$ bin/signserver.sh reload 2</code>
                         </li>
                         <li>
 You can check the status and configuration with:<br/>
-<code>$ bin/signserver getstatus complete all</code>
+<code>$ bin/signserver.sh getstatus complete all</code>
                         </li>
 </ol>
 <p>
@@ -688,15 +717,15 @@ modules built in.
                         <li>
 Load the OOXML signer demo configuration and notice the generated worker ID (in this
 example 3):<br/>
-<code>$ bin/signserver setproperties doc/sample-configs/qs_ooxmlsigner_configuration.properties</code>
+<code>$ bin/signserver.sh setproperties doc/sample-configs/qs_ooxmlsigner_configuration.properties</code>
                         </li>
                         <li>
 Activate the configuration with:<br/>
-<code>$ bin/signserver reload 3</code>
+<code>$ bin/signserver.sh reload 3</code>
                         </li>
                         <li>
 You can check the status and configuration with:<br/>
-<code>$ bin/signserver getstatus complete all</code>
+<code>$ bin/signserver.sh getstatus complete all</code>
                         </li>
                     </ol>
 <p>
@@ -718,15 +747,15 @@ modules built in.
                         <li>
 Load the ODF signer demo configuration and notice the generated worker ID (in this
 example 4):<br/>
-<code>$ bin/signserver setproperties doc/sample-configs/qs_odfsigner_configuration.properties</code>
+<code>$ bin/signserver.sh setproperties doc/sample-configs/qs_odfsigner_configuration.properties</code>
                         </li>
                         <li>
 Activate the configuration with:<br/>
-<code>$ bin/signserver reload 4</code>
+<code>$ bin/signserver.sh reload 4</code>
                         </li>
                         <li>
 You can check the status and configuration with:<br/>
-<code>$ bin/signserver getstatus complete all</code>
+<code>$ bin/signserver.sh getstatus complete all</code>
                         </li>
                     </ol>
                     <p>
@@ -749,16 +778,16 @@ modules built in.
                         <li>
 Load the XML signer demo configuration and notice the generated worker ID (in this
 example 5):<br/>
-<code>$ bin/signserver setproperties doc/sample-configs/qs_xmlsigner_configuration.properties</code>
+<code>$ bin/signserver.sh setproperties doc/sample-configs/qs_xmlsigner_configuration.properties</code>
                         </li>
                         <li>
 Activate the configuration with:<br/>
-<code># bin/signserver reload 5</code>
+<code># bin/signserver.sh reload 5</code>
 <br/>
                         </li>
                         <li>
 You can check the status and configuration with:<br/>
-<code>$ bin/signserver getstatus complete all</code>
+<code>$ bin/signserver.sh getstatus complete all</code>
                         </li>
                     </ol>
                     <p>
@@ -778,16 +807,16 @@ To install a certificate validation service worker issue the following commands:
                     <ol>
                         <li>
 Load the configuration and notice the worker ID (in this example: 6):<br/>
-<code>$ bin/signserver setproperties doc/sample-configs/qs_validator_dummy_configuration.properties</code>
+<code>$ bin/signserver.sh setproperties doc/sample-configs/qs_validator_dummy_configuration.properties</code>
                         </li>
                         <li>
 Activate the configuration with:<br/>
-<code>$ bin/signserver reload 6</code>
+<code>$ bin/signserver.sh reload 6</code>
 <br/>
                         </li>
                         <li>
 The status of the Worker can now be viewed with:<br/>
-<code>$ bin/signserver getstatus complete CertValidationWorker</code>
+<code>$ bin/signserver.sh getstatus complete CertValidationWorker</code>
 <br/>
                         </li>
                     </ol>
@@ -804,21 +833,21 @@ modules built in.
                         <li>
 Load the XML validator demo configuration and notice the generated worker ID (in this
 example 7):
-<br/>$ bin/signserver setproperties doc/sample-configs/qs_xmlvalidator_configuration.properties
+<br/>$ bin/signserver.sh setproperties doc/sample-configs/qs_xmlvalidator_configuration.properties
                         </li>
                     <li>
 Verify the configuration with (notice that VALIDATIONSERVICEWORKER is set to "CertValidationWorker"):<br/>
-<code>$ bin/signserver getconfig 7</code>
+<code>$ bin/signserver.sh getconfig 7</code>
 <br/>
                     </li>
                     <li>
 Activate the configuration with:<br/>
-<code>$ bin/signserver reload 7</code>
+<code>$ bin/signserver.sh reload 7</code>
 <br/>
                     </li>
                     <li>
 The status of the Validator can now be viewed with:<br/>
-<code>$ bin/signserver getstatus complete DemoXMLValidator</code>
+<code>$ bin/signserver.sh getstatus complete DemoXMLValidator</code>
 <br/>
                     </li>
                     </ol>
@@ -844,15 +873,15 @@ modules built in.
                         <li>
 Load the MRTD SOD signer demo configuration and notice the generated worker ID (in this
 example 8):<br/>
-<code>$ bin/signserver setproperties doc/sample-configs/qs_mrtdsodsigner_configuration.properties</code>
+<code>$ bin/signserver.sh setproperties doc/sample-configs/qs_mrtdsodsigner_configuration.properties</code>
                         </li>
                         <li>
 Activate the configuration with:<br/>
-<code>$ bin/signserver reload 8</code><br/>
+<code>$ bin/signserver.sh reload 8</code><br/>
                         </li>
                         <li>
 The status of the signer can now be viewed with:<br/>
-<code>$ bin/signserver getstatus complete mrtdsodsigner</code><br/>
+<code>$ bin/signserver.sh getstatus complete mrtdsodsigner</code><br/>
                         </li>
                     </ol>
                     <p>
@@ -877,10 +906,10 @@ Before starting with an HSM installation you should read the about the
 section of the manual.
                         </p>
 <source>
-bin/signserver setproperties doc/sample-config/qs_mrtdsodsigner_configuration.properties
-bin/signserver getconfig 9
-bin/signserver reload 9
-bin/signserver generatecertreq 9 "C=SE,CN=MRTD SOD Signer" SHA256WithRSA mrtdsodsigner.req
+bin/signserver.sh setproperties doc/sample-config/qs_mrtdsodsigner_configuration.properties
+bin/signserver.sh getconfig 9
+bin/signserver.sh reload 9
+bin/signserver.sh generatecertreq 9 "C=SE,CN=MRTD SOD Signer" SHA256WithRSA mrtdsodsigner.req
 </source>
                         <p>
 Where 9 is the signerId that you got when running the 'setproperties' command.<br/>
@@ -889,9 +918,9 @@ If you have the returned signer certificate as cert.pem and the CA certificate a
                         </p>
 <source>
 cat cert.pem cacert.pem &gt; certchain.pem
-bin/signserver uploadsignercertificate 9 glob cert.pem
-bin/signserver uploadsignercertificatechain 9 glob certchain.pem
-bin/signserver reload 9
+bin/signserver.sh uploadsignercertificate 9 glob cert.pem
+bin/signserver.sh uploadsignercertificatechain 9 glob certchain.pem
+bin/signserver.sh reload 9
 </source>
                         <p>
 Hint: you can use EJBCA to create keys on a PKCS#11 HSM using clientToolBox.<br/>
@@ -928,7 +957,7 @@ Version 2.0 of the same documentation.<a href="../docs/SignServer_2_0_Installati
             <section name="Configuration/Administration">
                 <p>
 The SignServer administration command line interface (Admin CLI) is started
-using bin/signserver (or bin/signserver.cmd).
+using bin/signserver.sh (or bin/signserver.cmd).
                 </p>
                 <p>
 Every worker is identified by an ID and an optional name that can be used in all
@@ -1141,6 +1170,25 @@ Command used to remove group keys not used any more. A time range of when create
 Command used manually switch the encryption key used to secure the group keys in database. Usually is the encryption key switched automatically but this command can be used to override this default behaviour.
                         </p>
 
+                        <p><b>Module Archive Related</b></p>
+                        <p>
+There exists three commands for managing module archives in a cluster, they are quite straightforward. Use the command 'signserver.sh/cmd module' command for more details.
+                        </p>
+                        <p>
+<b>module add:</b>
+The 'add' command uploads a '.mar' file to the cluster. It is possible to define in which environment the module should be used, for instance 'production' or 'test' but this is all depending on which environments the module supports.
+                        </p>
+                        <p>
+If signature verification is required by the server it is also possible to specify a path to a JKS key store along with an alias and password to the key used.
+                        </p>
+                        <p>
+<b>module remove:</b>
+Command used to remove a specified version of a module.
+                        </p>
+                        <p>
+<b>module list:</b>
+Command to list all uploaded modules, it is also possible to see all JAR files that is included in the  modules.
+                        </p>
                         <p><b>Administrators Related</b></p>
                         <p>
 <b>wsadmins -list:</b>
@@ -1434,7 +1482,39 @@ ID. A worker can also be configured with a name by setting the property NAME.
 After the configuration has been activated (by issuing reload with the worker ID) 
 that name can also be used to address the worker.
                     </p>
-                    <subsubsection name="Configuring">
+                    <p>
+Workers are configured slitly differently depending on if the cluster class
+loader is used and the plugin is a separate module or if the plugin is built-in
+to SignServer.
+                    </p>
+                    <subsubsection name="Configuring using a module">
+                        <p>
+To configure the worker using a module the cluster class loader must be 
+activated (see <a href="complete.en.html#Changing%20the%20default%20configuration%20of%20the%20Cluster%20Class%20Loader">Changing the default configuration of the Cluster Class Loader</a>)
+and the code for the plugin available as .MAR-file. To setup a worker using a
+module archive issue the following command:
+                        </p>
+                        <source>
+bin/signserver.sh module add dist-server/MODULE.MAR ENVIRONMENT
+                        </source>
+                        <p>
+Replace "MODULE.MAR" with the name of the module file and "ENVIRONMENT" with the
+name of the built-in configuration to load. For example to load the TSA module
+using the demo configuration issue the following command:
+                        </p>
+                        <source>
+bin/signserver.sh module add dist-server/tsa.mar demo
+                        </source>
+                        <p>
+Notice the created workerId and use it when applying the configuration using the
+reload command:
+                        </p>
+                        <source>
+bin/signserver.sh reload WORKER-ID
+                        </source>
+                    </subsubsection>
+                    <subsubsection name="Configuring using a built-in plugin">
+                    <p>Configuring using a build-in plugin only works if you have set the option includemodulesinbuild=true in signserver_build.properties.</p>
                         <p>
 A worker is configured by setting properties for it. Specifically if the plugin
 is built-in it is specified by setting the property CLASSPATH to the fully
@@ -1450,14 +1530,14 @@ To setup a PDFSigner using the quick start configuration file issue the
 following command:
                         </p>
                         <source>
-bin/signserver setproperties sample-configs/qs_pdfsigner_configuration.properties
+bin/signserver.sh setproperties sample-configs/qs_pdfsigner_configuration.properties
                         </source>
                         <p>
 Notice the created workerId and use it when applying the configuration using the
 reload command:
                         </p>
                         <source>
-bin/signserver reload WORKER-ID
+bin/signserver.sh reload WORKER-ID
                         </source>
                     </subsubsection>
                 <subsubsection name="Remove Workers">
@@ -1465,7 +1545,7 @@ bin/signserver reload WORKER-ID
                     You can list which workers you have with the command:
                     </p>
                     <source>
-bin/signserver getstatus brief all                    
+bin/signserver.sh getstatus brief all                    
                     </source>
                     <p>
                     If will display for example:
@@ -1476,7 +1556,7 @@ Executing Command on host : localhost
 ===========================================
 
 
-Current version of server is : SignServer 3.3.0alpha0
+Current version of server is : SignServer 3.2-svn
 
 
 Status of Signer with Id 1 is :
@@ -1487,11 +1567,59 @@ Status of Signer with Id 1 is :
                     You can remove the worker with Id 1 with the command:                    
 					</p>
                     <source>
-bin/signserver removeworker 1
-bin/signserver reload all                    
+bin/signserver.sh removeworker 1
+bin/signserver.sh reload all                    
                     </source>
                 </subsubsection>
             </subsection>
+            <subsection name="Working with Modules">
+                <subsubsection name="Remove modules">
+					<p>
+					If you have made changes to the module, and you are using the cluser classloader (i.e. not built in modules) you have to remove the module before deploying a new one.
+					</p>
+                    <source>
+bin/signserver.sh modules list
+
+===========================================
+  Executing Command on host : localhost
+===========================================
+
+
+Using cluster class loader.
+
+Listing all available modules :
+  Module : MRTDSODSIGNER, version 3200
+    Parts : 
+      server
+
+bin/signserver.sh module remove MRTDSODSIGNER 3200
+
+===========================================
+  Executing Command on host : localhost
+===========================================
+
+
+Using cluster class loader.
+
+  Removing module MRTDSODSIGNER version 3200 ...
+  Removal of module successful.
+                    </source>
+                </subsubsection>
+                <subsubsection name="Add updated modules">
+					<note>
+					If you added configurations under src/module-configs you must rebuild the modules with the command 'ant', before you can use 'module add' with your updated configs.
+					</note>					
+					<p>
+					After rebuilding the modules you can add updated modules.
+					</p>                    
+					<source>
+bin/signserver.sh module add dist-server/pdfsigner.mar soft					
+bin/signserver.sh reload all
+bin/signserver.sh getstatus complete all
+					</source>
+				</subsubsection>                 
+
+                </subsection>
             </section>
 
             <section name="Making the SignServer highly-available">
@@ -1572,7 +1700,7 @@ Since SignServer >=3.2.1 it is possible to supply extra request data called Requ
 
 		<section name="Java Client API">
                     <p>
-Built along with the WebService is a Java API that can be used by clients. It's available in the file lib/SignServer-Client-SignServerWS.jar. The client API have support for different high availability policies to avoid the need for load balance hardware.
+Built along with the WebService is a Java API that can be used by clients. It's located in dist-client/signserverwscli and the file signserverws.jar and all the files in the lib directory is required to use the API. The client API have support for different high availability policies to avoid the need for load balance hardware.
                     </p>
                     <p>
 The client classes is in the package org.signserver.protocol.ws.client and the main code are SignServerWSClientFactory creating a client using the specified load balance policy, it returns a
@@ -1596,7 +1724,9 @@ Other future load balance policies could be round robin or that all nodes are ca
 				is the same regardless if WebService or EJB Remote calls are used.
 			</p>
 			<p>
-				To use the API include the file lib/SignServer-Client-SigningAndValidationAPI.jar.
+				To use the API include the file signingandvalidationapi.jar
+				as well as all JAR-files in the lib-folder available in
+				SIGNSERVER_HOME/dist-client/signingandvalidationapi/.
 			</p>
 			<subsection name="Sample Code">
 				<subsubsection name="Signing and validating an XML document">
@@ -1604,7 +1734,7 @@ Other future load balance policies could be round robin or that all nodes are ca
 try {
     System.setProperty("javax.net.ssl.trustStore", "p12/truststore.jks");
     System.setProperty("javax.net.ssl.trustStorePassword", "changeit");
-  
+
     ISigningAndValidation signserver = new SigningAndValidationWS("localhost", 8442, true);
 
     // Document to sign
@@ -1907,50 +2037,45 @@ superadmin.jks -truststorepwd foo123
                     <subsection name="timestamp">
                         <source>
 $ bin/client.sh timestamp
-usage: signclient timestamp &lt;options&gt; &lt;url&gt;
- -base64                Give this option if the stored request/reply
-                        should be base64 encoded, default is not.
- -certreq               Request signer certificate
- -help                  Print this message.
- -infile &lt;file&gt;         File containing message to time stamp.
- -inrep &lt;file&gt;          Input file containing an earlier stored base64
-                        encoded response, to verify.You must specify the
-                        verify flag also.
- -inreq &lt;file&gt;          Input file containing an earlier stored request to
-                        use instead of creating a new. You must specify
-                        the request flag also.
- -instr &lt;string&gt;        String to be time stamped, if neither instr or
-                        infile is given, the client works in test-mode
-                        generating it's own message.
- -keyalias &lt;arg&gt;        Alias of the key in the keystore to use for
-                        authentication.
- -keystore &lt;arg&gt;        Keystore with private key and certificate for
-                        client certificate authentication.
- -keystorepwd &lt;arg&gt;     Password for reading the keystore.
- -outrep &lt;file&gt;         Output file to store the recevied TSA reply, if
-                        not given the reply is not stored.
- -outreq &lt;file&gt;         Output file to store the sent TSA request, if not
-                        given the request is not stored.
- -reqpolicy &lt;oid&gt;       Request timestamp issued under a policy OID
- -signerfile &lt;file&gt;     Input file containing the PEM encoded certificate
-                        of the TSA signer.Used to verify a stored
-                        response.
- -sleep &lt;num&gt;           Sleep a number of milliseconds after each request.
-                        Default 1000 ms.
- -truststore &lt;arg&gt;      Keystore with trusted certificates to use with
-                        HTTPS.
- -truststorepwd &lt;arg&gt;   Password for the keystore with trusted
-                        certificates.
- -url &lt;url&gt;             Url of TSA, e.g.
-                        http://127.0.0.1:8080/signserver/process?workerId=
-                        1.
- -verify                Give this option if verification of a stored reply
-                        should be done, work together with inrep and
-                        cafile. If given, no request to the TSA will
-                        happen.
+usage: java -jar timeStampClient.jar &lt;options> &lt;url&gt;
+ -instr &lt;string&gt;      String to be time stamped, if neither instr or
+                      infile is given, the client works in test-mode generating it's own
+                      message.
+ -base64              Give this option if the stored request/reply should
+                      be base64 encoded, default is not.
+ -certreq             Request signer certificate
+ -help                Print this message.
+ -infile &lt;file&gt;       File containing message to time stamp.
+ -inrep &lt;file&gt;        Input file containing an earlier stored base64
+                      encoded response, to verify.You must specify the verify flag also.
+ -inreq &lt;file&gt;        Input file containing an earlier stored request to
+                      use instead of creating a new. You must specify the request flag also.
+ -keyalias            Alias of the key in the keystore to use for
+                      authentication.
+ -keystore            Keystore with private key and certificate for client
+                      certificate authentication.
+ -keystorepwd         Password for reading the keystore.
+ -outrep &lt;file&gt;       Output file to store the recevied TSA reply, if not
+                      given the reply is not stored.
+ -outreq &lt;file&gt;       Output file to store the sent TSA request, if not
+                      given the request is not stored.
+ -reqpolicy &lt;oid&gt;     Request timestamp issued under a policy OID
+ -signerfile &lt;file&gt;   Input file containing the PEM encoded certificate of
+                      the TSA signer.Used to verify a stored response.
+ -sleep &lt;num&gt;         Sleep a number of milliseconds after each request.
+                      Default 1000 ms.
+ -truststore          Keystore with trusted certificates to use with
+                      HTTPS.
+ -truststorepwd       Password for the keystore with trusted certificates.
+ -url &lt;url&gt;           Url of TSA, e.g.
+                      http://127.0.0.1:8080/signserver/process?workerId=1.
+ -verify              Give this option if verification of a stored reply
+                      should be done, work together with inrep and cafile. If given, no request
+                      to the TSA will happen.
 
 Sample usages:
 a) timestamp -url http://localhost:8080/signserver/tsa?workerName=TimeStampSigner
+
                         </source>
                     </subsection>
 
@@ -2107,7 +2232,7 @@ $ sudo ln -s ../mods-available/ssl.load ssl.load
                 </source>
     
    
-                <subsection name="Example: Rewrite URLs for TSA (using mod_proxy and mod_rewrite)">
+                <subsection name="Example: Rewrite URLs for TSA (using mod_proxy)">
    
                     <p>
 A sample configuration how to fix up nice URLs for time-stamping so that you can point your TSA clients to http://tsa.example.com/ instead of http://tsa.example.com:8080/signserver/process?workerName=TimeStampSigner1.
@@ -2163,7 +2288,6 @@ Notice: Some application servers (i.e. JBoss 4) might have problems writing the 
     ServerName signserver.example.com
     ServerAlias signserver.example.com
 
-    ProxyRequests Off
     <Proxy balancer://mycluster-3>
         BalancerMember ajp://localhost:8009/signserver
     </Proxy>
@@ -2193,7 +2317,6 @@ Notice: Some application servers (i.e. JBoss 4) might have problems writing the 
     ServerName auth.signserver.example.com
     ServerAlias auth.signserver.example.com
 
-    ProxyRequests Off
     <Proxy balancer://mycluster-4>
         BalancerMember ajp://localhost:8009/signserver
     </Proxy>
@@ -2302,7 +2425,7 @@ Also remember if you are proxying from multiple virtual hosts (i.e. if you have 
 		Configuring workers are done by setting properties in the worker configuration.
 		There is one set of configuration options that are handled by the framework, and that applies to all workers, then there are worker specific properties handled by the worker implementation.
 		</p>
-		<p>Properties are usually defined in the module configuration file used to install a module, or configured manually using one of the <i>bin/signserver setproperty</i> variant.</p>
+		<p>Properties are usually defined in the module configuration file used to install a module, or configured manually using one of the <i>bin/signserver.sh setproperty</i> variant.</p>
 		
             <section name="Setting Authorization Type">
                 <subsection name="SignServer">
@@ -2504,7 +2627,7 @@ can sign any document-type and produces the output in Cryptographic Message Synt
 
                 <subsection name="Time-stamp Signer">
                     <p>
-The time-stamp signer has the class name: org.signserver.server.signers.TimeStampSigner
+The time-stamp signer have the class path: org.signserver.server.signers.TimeStampSigner
                     </p>
 
                     <subsubsection name="Overview">
@@ -2611,7 +2734,7 @@ Supported Algorithms are: GOST3411, MD5, SHA1, SHA224, SHA256, SHA384, SHA512, R
 
                 <subsection name="MRTD Signer">
                     <p>
-The MRTD signer has the class name: org.signserver.server.signers.MRTDSigner
+The MRTD signer have the class path: org.signserver.server.signers.MRTDSigner
                     </p>
                     <subsubsection name="Overview">
                         <p>
@@ -3287,6 +3410,9 @@ If not configured otherwise will the validation service use the DefaultX509CertT
 There exists a validation specific WebService that can be used for platform independent client calls.
 The WebService must be enabled during the build and isn't by default. The WebService WSDL file is located at the URL http://&lt;hostname&gt;:8080/signserver/validationws/validationws?wsdl and it contains two calls one is 'isValid' that performs the validation check and the other is a getStatus call that checks the health of the node and its underlying systems. The last calls can be used by clients for monitoring or implementing redundancy.
                         </p>
+                        <p>
+Important, Due to class path conflict in JBoss 4.2.x own JBoss WebService stack and the JAX-WS stack used by the SignServer must the JBoss WebService stack be removed before the WebService is used. This is done by going to JBOSS_HOME/server/default/deploy and remove the directory jbossws.sar.
+                        </p>
                     </subsubsection>
                     <subsubsection name="Available Properties">
                         <p>
@@ -3353,10 +3479,10 @@ WORKER1.VAL2.ISSUER1.CERTCHAIN=EFWAASDFADFASDFKASDKFW1231.....
 There exists a Java CLI tool that can be used to check the validity of a certificate from scripts. It supports a clustered SignServer installation by using the "Use first host that response OK" policy.
                     </p>
                     <p>
-When compiling, make sure that setting validationclient.enabled is set to "true" in the build properties. The client is lib/SignServer-Client-ValidationCLI.jar.
+When compiling, make sure that setting validationclient.enabled is set to "true" in the build properties. The client is found in dist-client/validationclient. Just copy the validate.jar and all the files in the 'lib' directory to the location where you want to use the client.
                     </p>
                     <p>
-Use the client with 'java -jar lib/SignServer-Client-ValidationCLI.jar &lt;options&gt;'.
+Use the client with 'java -jar validate.jar &lt;options&gt;'.
                     </p>
                     <pre>
 Here is a list of available options:
@@ -3558,11 +3684,13 @@ access to this file when the service is executed.
                 <subsection name="Installing a service">
                     <p>To install a service you use the same commands as for installing a worker:</p>
                     <source>
-$ bin/signserver setproperties configuration.properties
+bin/signserver.sh setproperties configuration.properties
                     </source>
                     <p>Example:</p>
                     <source>
-$ bin/signserver setproperties doc/sample-configs/qs_signerstatusreport_configuration.properties
+> bin/signserver.sh setproperties doc/sample-configs/qs_signerstatusreport_configuration.properties
+
+Using Glassfish JNDI provider...
 ===========================================
   Executing Command on host : localhost
 ===========================================
@@ -3574,7 +3702,9 @@ Setting the property WORKERS to PDFSigner1 for worker 2
 Setting the property NAME to SignerStatusReporter for worker 2
 Setting the property OUTPUTFILE to /tmp/statusreport for worker 2
 
-$ bin/signserver reload 2
+> bin/signserver.sh reload 2
+
+Using Glassfish JNDI provider...
 ===========================================
 Executing Command on host : localhost
 ===========================================
@@ -3707,7 +3837,6 @@ The StatusPropertiesWorker can be used to query and setting status properties in
                     </subsubsection>
                 </subsection>
                 
-                                
                 <subsection name="SignerStatusReportWorker">
                     <p>
 Fully qualified class name: org.signserver.module.signerstatusreport.SignerStatusReportWorker
@@ -3916,19 +4045,19 @@ attributes(generate, CKO_PRIVATE_KEY,*) = {
                     <subsubsection name="Example usage">
                         <p>
 Edit qs_pdfsigner_configuration.properties and choose the sign token setting for the PKCS11 sign token. Run the following command to set up a PDF signer using the PKCS11 properties configured:
-bin/signserver setproperties qs_pdfsigner_configuration.properties
+bin/signserver.sh setproperties qs_pdfsigner_configuration.properties
                         </p>
                         <p>
 Generate a keypair for the signer:
-bin/signserver generatekey 8 -alias defaultKey -keyalg RSA -keyspec 2048
+bin/signserver.sh generatekey 8 -alias defaultKey -keyalg RSA -keyspec 2048
                         </p>
                         <p>
 Test the keypair:
-bin/signserver testkey 8
+bin/signserver.sh testkey 8
                         </p>
                         <p>
 You also need a certificate for the signer. Generate a certificate request with the command:
-bin/signserver generatecertreq 8 "CN=PKCS11 Signer token" SHA1WithRSA /tmp/certreq.pem
+bin/signserver.sh generatecertreq 8 "CN=PKCS11 Signer token" SHA1WithRSA /tmp/certreq.pem
                         </p>
                         <p>
 Add a user in EJBCA with a certificate profile suitable for signing, and enrol for a "Server Certificate" using the public web pages.
@@ -3942,7 +4071,7 @@ The signer certificate must be first, and the root CA certificate last.
                         </p>
                         <p>
 Upload the signing certificate chain to the signer using the command:
-bin/signserver uploadsignercertificatechain 8 GLOB /tmp/certchain.pem
+bin/signserver.sh uploadsignercertificatechain 8 GLOB /tmp/certchain.pem
                         </p>
                         <p>
 After the certificate chain has been uploaded to the server, the configuration must be reloaded and the server must be restarted. It is not sufficient to only reload the configuration.
@@ -3965,7 +4094,7 @@ by running "ant". After that the tool can be executed with something similar
 to:
                         </p>
                         <pre>
-java -cp lib/signserver-ejb.jar:lib/ext/1.6/bcprov-jdk.jar:lib/SignServer-Common.jar:lib/ext/ejbca-util.jar org.signserver.server.cryptotokens.CryptoTokenUtils createsoft src/test/dss10/dss10_signer1.p12 "signer 1" foo123
+java -cp dist-server/signserver-ejb.jar:lib/1.6/bcprov-jdk.jar:dist-server/lib/SignServer-Common.jar:lib/ejbca-util.jar org.signserver.server.cryptotokens.CryptoTokenUtils createsoft src/test/dss10/dss10_signer1.p12 "signer 1" foo123
                         </pre>
                     </subsubsection>
                     <subsubsection name="SIGNERTOKEN.CLASSPATH">
@@ -3992,13 +4121,13 @@ First change the global property of WORKER&lt;ID&gt;.CRYPTOTOKEN.CLASSPATH of th
 Then generate a certificate request with the command, in this step will new keys be generated
                         </p>
                         <pre>
-bin/signserver generatecertreq &lt;id&gt; "CN=Soft Signer token" SHA1WithRSA /tmp/certreq.pem
+bin/signserver.sh generatecertreq &lt;id&gt; "CN=Soft Signer token" SHA1WithRSA /tmp/certreq.pem
                         </pre>
                         <p>
 Then upload the signing certificate  to the worker using the command:
                         </p>
                         <pre>
-bin/signserver uploadsignercertificatechain &lt;id&gt; GLOB /tmp/cert.pem
+bin/signserver.sh uploadsignercertificatechain &lt;id&gt; GLOB /tmp/cert.pem
                         </pre>
                         <p>
 After the certificate chain has been uploaded to the server, the configuration must be reloaded and the SoftCryptoToken will be active and ready to use.
@@ -4025,85 +4154,8 @@ It is possible to have your own code in a separate code tree to avoid a mix of c
                 <p>
 <b>custom.build.xml</b> = This can point to a custom build.xml that will be imported from the main build.xml and lets the developer include his own ant tasks if necessary.
                 </p>
-            </section>
-            
-            <section name="Custom modules">
                 <p>
-Custom code can be included in the SignServer build process by placing the projects under the modules directory and adhere to the modules contract.    
-                </p>
-                <p>
-First, the property modules.build.includes in res/modules-project.properties defines which projects that should be included in the build process. All projects with a folder name starting with SignServer-Module-*, SignServer-ejb* or SignServer-war are included. Other patterns can be included by setting a property extra.modules.build.includes.
-                </p>
-                <p>
-Second, in the project folder there should be an Ant script called build.xml.    
-                </p>
-                <p>
-Third, if the project should be called it should define the properties:
-                    <ul>
-                        <li><b>modulename</b>: The name of the module. Will be used as prefix to the enable-property. Example: module.pdfsigner (the enable property will then be module.pdfsigner.enabled)</li>
-                        <li><b>clean.available</b>: True if the "clean" target should be called when the rest of SignServer is getting cleaned.</li>
-                        <li><b>dist-module.available</b>: True if the "dist-module" target should be called when SignServer is getting built</li>
-                    </ul>
-                    Example:
-                </p>
-                <pre>
-&lt;property name="modulename" value="module.pdfsigner"/&gt;
-&lt;property name="clean.available" value="true"/&gt;
-&lt;property name="dist-module.available" value="true"/&gt;    
-                </pre>
-                <p>
-Forth, the dist-module target should take care of moving all distributables to the ../../lib directory and if the module should be deployed as part of the signserver.ear file a module descriptor should be placed in ../../mods-available. The name of the descriptor file should be priority_modulename.properties where priority is the order in which the module should be built and modulename is the name as defined by the property with the same name.
-                </p>
-                <p>
-The priorities are basically like this:
-                    <ul>
-                        <li>10: Essential core modules (like signserverejb and signservercommon)</li>
-                        <li>20: Other core modules (like web services)</li>
-                        <li>30: Other core modules (like web components etc)</li>
-                        <li>40: Other modules (like signers/validators etc)</li>
-                    </ul>
-                </p>
-                <p>
-The module descriptor can contain:
-                    <ul>
-                        <li>module.name: Same as the modulename property</li>
-                        <li>module.type: The type of the module. "lib" if the module should be put in signserver.ear/lib, "ejb" if it is an EJB module or "war" if it is and WAR module.</li>
-                        <li>to.root: Comma separated list of files to move to the root of signserver.ear. Basedir is SIGNSERVER_HOME and all files should be taken from lib/ (not modules/ as it is not available in the binary distribution).</li>
-                        <li>to.lib: Same as to.root but for jar files to be moved to signserver.ear/lib/.</li>
-                        <li>module.ejb: Only if module.type is "ear" or "war". The name of the enterprise module file (example: signserver.war).</li>
-                        <li>module.web.web-uri: Only if module.type is "war". The name to put in the web-uri part of the application.xml for this enterprise module.</li>
-                        <li>module.web.context-root: Only if module.type is "war". The name to put in the context-root part of the application.xml for this enterprise module.</li>
-                        <li>postprocess.files: Optionally. Comma separated list of property name prefixes for each file to postprocess (example: postprocess.file1)</li>
-                        <li>postprocess.file1.src: Only if postprocess.files specified. Path of file to postprocess (relative to SIGNSERVER_HOME/lib/, example: SignServer-ejb-SignServerWS.jar)</li>
-                        <li>postprocess.file1.includes: Only if postprocess.files. Ant includes pattern with files in the jar to postprocess (example: META-INF/ejb-jar.xml)</li>
-                    </ul>
-                    Example (mods-available/40_module.pdfsigner.properties):
-                </p>
-                <pre>
-module.name=module.pdfsigner
-module.type=lib
-to.root=
-to.lib=lib/ext/1.6/bcmail-jdk.jar,lib/ext/1.6/bcprov-jdk.jar,lib/ext/1.6/bctsp-jdk.jar,lib/ext/cert-cvc.jar,lib/ext/commons-collections-3.2.jar,lib/ext/commons-io-1.4.jar,lib/ext/commons-lang-2.4.jar,lib/ext/commons-logging.jar,lib/ext/ejbca-util.jar,lib/ext/log4j.jar,lib/ext/module/pdfsigner/itext/itext.jar,lib/SignServer-Common.jar,lib/SignServer-ejb-interfaces.jar,lib/SignServer-Module-PDFSigner.jar
-                </pre>
-                <p>
-                Example (mods-available/20_signserverws.properties):    
-                </p>
-                <pre>
-module.name=signserverws
-module.type=ejb
-module.ejb=SignServer-ejb-SignServerWS.jar
-to.root=lib/SignServer-ejb-SignServerWS.jar
-to.lib=lib/ext/1.6/bcmail-jdk.jar,lib/ext/1.6/bcprov-jdk.jar,lib/ext/1.6/bctsp-jdk.jar,lib/ext/cert-cvc.jar,lib/ext/commons-collections-3.2.jar,lib/ext/commons-io-1.4.jar,lib/ext/commons-lang-2.4.jar,lib/ext/commons-logging.jar,lib/ext/ejbca-util.jar,lib/ext/log4j.jar,lib/SignServer-Common.jar,lib/SignServer-ejb-interfaces.jar
-postprocess.files=postprocess.file1
-postprocess.file1.src=SignServer-ejb-SignServerWS.jar
-postprocess.file1.includes=META-INF/ejb-jar.xml
-                </pre>
-            
-            </section>
-                    
-           <section name="Custom CLI">
-               <p>
-The SignServer AdminCLI or ClientCLI can be extended by putting additional JAR files with custom implementations of the ClientCommandFactory or AdminCommandFactory interfaces on the classpath. The implementation classes should be listed in the JAR files under META-INF/services in a file with the full class name of the interface. See SignServer-Client-ValidationCLI as an example. 
+<b>custom.commandfactory</b> = Should point to a custom implementation of the interface org.signserver.cli.ISignServerCommandFactory. This gives to ability to extend (or replace) the default CLI with another one. The best way of extending the CLI is to look at  how the DefaultSignServerCommandFactory  is structured.
                 </p>
             </section>
             <section name="Plugin development">
@@ -4606,6 +4658,267 @@ Reserved values are all property keys starting with "WORKER".
                 </subsection>
             </section>
 
+            <section name="The Cluster Class Loader">
+                <p>
+Important, this feature is very new in version 3.1 and should still be considered experimental.
+                </p>
+                <p>
+New to SignServer 3.1.x is the Cluster Class Loader.  Simplifying the management of code in clusters. Instead of manually having to synchronize all the required JAR files to all nodes, it is possible to upload the code once and it will be accessible to all nodes in the cluster directly without having to restart the cluster. This is archived by storing the JAR resource data (such as class files) in database instead of in the application server class path.
+                </p>
+                <p>
+Each worker will have their own Cluster Class Loader instance that will be reinitialized upon reload.
+                </p>
+                <p>
+It is also possible to run multiple code versions of a worker simultaneously in a cluster, something that haven't been possible until now since only one version of class can exists in one JVM. This is a great feature for migration purposes where you have an old worker that is known to be stable, then it is possible to upload a new module beside the old one, with newer code, and migrate calling clients one by one.  Under the hood is actually a version prefix appended on the fly to the class name by the Cluster Class Loader when converting the byte code into a class. For example a class called somepkg.SomeWorker with version 3 will be called v3.somepkg.SomeWorker internally in the JVM. A developer should have to thing about this when developing his module but it might cause problems when remotely debugging the SignServer since the IDE won't find the source class to the modified code. If remote debugging is going to be used should class versioning be turned off.
+                </p>
+                <p>
+To improve the security of the code stored in database it is possible to enforce signature verification of all the uploaded code. This is a good feature if the database is in a different security zone or managed by different administrator than the SignServer nodes itself. If verification is turned on will the Cluster Class Loader check that the class is signed with a certificate issued by issuers stored in a specific trust key store for this purpose. Important, make sure the v the code signing certificate and it's issuers have a validity long enough to avoid production stop since the signature will not verify after the certificate have expired. The code is signed by a separate JKS key store when the module is uploaded to a cluster. The code signing certificate must have the extended key usage 'code signing' in order for the Cluster Class Loader to verify it.
+                </p>
+                <p>
+Before code can be uploaded to the Cluster Class Loader must it's JAR files be packaged in something called a Module Archive (MAR). See section 15.2 for details about generating a MAR file.
+                </p>
+
+                <subsection name="Building Module Archives">
+                    <p>
+A 'Module Archive' is a package containing all the jars required by the module along with a descriptor with information about the name of the module and it's version. A module archive is uploaded once and is then accessible for all the nodes in the cluster. A module archive can also have multiple parts indicating where in the system the code should be uploaded. In 3.1.x is only one part called 'server' supported, but in the future will other parts such as 'admin' exist. In that case will the code that should be executed on the server, such as worker code, be sent to the cluster, while the administrative part of the code is only sent to the node with an administrative web interface.
+                    </p>
+                    <p>
+A 'Module Archive' have the postfix '.mar' and is managed with the CLI interface using the 'module' commands.
+                    </p>
+                </subsection>
+
+                <subsection name="The MAR Descriptor">
+                    <p>
+Every Module archive should have a descriptor file in it's META-INF directory. It follows the JAVA Properties notation and is used to specify general information about the module such as version and name of the module. This file is generated automatically when using the ANT tasks.
+                    </p>
+                    <p>
+The MAR descriptor supports the following properties:
+                    </p>
+                    <table>
+                        <tr>
+                            <th>Property</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td>version</td>
+                            <td>The version of the module archive, can only contain digits. If not set "1" will be used. (Optional)</td>
+                        </tr>
+                        <tr>
+                            <td>modulename</td>
+                            <td>The name of the module, if not set will the MAR file name be used, but  without '.mar'. The name will always be converted to upper case. (Optional)</td>
+                        </tr>
+                        <tr>
+                            <td>default-description</td>
+                            <td>The default description of all the resources in the module (Optional)</td>
+                        </tr>
+                        <tr>
+                            <td>parts</td>
+                            <td>The parts in the module archive, if not set will only the 'server' part be used. (Optional)</td>
+                        </tr>
+                    </table>
+                </subsection>
+
+                <subsection name="Including Worker Configurations">
+                    <p>
+It is also possible to include a set of worker configurations in the 'server' part of the module archive, these settings is configured directly after all the JAR files have been uploaded. These worker configurations should be property files that follows the same notation as if they where used with the 'setproperties' CLI command.
+                    </p>
+                    <p>
+By default it should be named 'part-config.properties' and be in the 'server' part directory. It is also possible to have multiple configurations that is used depending on the environment the SignServer cluster is used. For instance it is possible to have one configuration file for test, another for production and a third for development. This makes it easy to manage the module since exactly the same file will be used in all environments. In case of multiple configurations should every property file be named '&lt;environment&gt;-part-config.properties', for instance test-part-config.properties. Later when the module is uploaded and the environment 'test' is specified will the test configuration be used.
+                    </p>
+                    <p>
+Important, if a part-config.properties file is included in the MAR file will the worker properties MODULENAME and MODULEVERION automatically the be set to all workers defined in the  configuration file and there is no need to manually define these settings.
+                    </p>
+                </subsection>
+
+                <subsection name="Using ANT">
+                    <p>
+The simplest way to build a Module Archive is by using ANT. The SignServer have provided two ant tasks to do this.
+                    </p>
+                    <p>
+All that is required to use these tasks is to add the following two lines in your target:
+                    </p>
+                    <source>
+    &lt;taskdef name="mar" classname="org.signserver.anttasks.MarAntTask"
+       classpathref="signserver.test.compile.classpath"/&gt;
+    &lt;taskdef name="part" classname="org.signserver.anttasks.PartAntTask"
+       classpathref="signserver.test.compile.classpath"/&gt;
+                    </source>
+                    <p>
+With these two lines included you will have access the the 'mar' and 'part' tasks. The tasks have the following properties.
+                    </p>
+                    <p>
+MAR Task Properties
+                    </p>
+                    <table>
+                        <tr>
+                            <th>Property</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td>version</td>
+                            <td>
+The version of the module archive, can only contain digits. If not set will "1" be used. (Optional)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>modulename</td>
+                            <td>
+The name of the module, if not set will the destfile property be used, but only the file name without '.mar'. Will always be converted to upper case. (Optional)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>description</td>
+                            <td>
+The default description of the module that is set in the MAR descriptor.(Optional)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>destfile</td>
+                            <td>
+The path and file name of the mar file to generate. (Required)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>verbose</td>
+                            <td>
+Set to true if verbose output should be done during execution.(Optional)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>part</td>
+                            <td>
+One or more 'part' tasks is required in order to generate a MAR file. (Required)
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p>
+PART Task Properties
+                    </p>
+                    <table>
+                        <tr>
+                            <th>Property</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td>name</td>
+                            <td>The name of the part, if not set will the default 'server' (and the only part supported in 3.1.x) be used. (Optional)</td>
+                        </tr>
+                        <tr>
+                            <td>fileset</td>
+                            <td>One or more 'filesets' are required containing JAR file or worker configurations. (Required)</td>
+                        </tr>
+                    </table>
+                    <p>
+Here is an example of a simple ANT task building a MAR file, it will have the module name of SOME, version of 3 and have a 'server' part with all the JARs in 'somejarlocation' and all the worker properties in the directory 'someworkerpropertieslocation' :
+                    </p>
+                    <source>
+    &lt;target name="gensomemar" depends="signserver.ear"&gt;
+    &lt;taskdef name="mar" classname="org.signserver.anttasks.MarAntTask"
+       classpathref="signserver.test.compile.classpath"/&gt;
+    &lt;taskdef name="part" classname="org.signserver.anttasks.PartAntTask"
+       classpathref="signserver.test.compile.classpath"/&gt;
+    	&lt;mar version="3" destfile="dist/some.mar" verbose="true"&gt;
+    		&lt;part&gt;
+    	         &lt;fileset dir="${somelibrarylocation}"&gt;
+    	           &lt;include name="*.jar"/&gt;
+    	         &lt;/fileset&gt;
+    	         &lt;fileset dir="${somejarlocation}"&gt;
+    	           &lt;include name="*.jar"/&gt;
+    	         &lt;/fileset&gt;
+    	         &lt;fileset dir="${someworkerproperiteslocation}"&gt;
+    	           &lt;include name="*.properties"/&gt;
+    	         &lt;/fileset&gt;
+    		&lt;/part&gt;
+    	&lt;/mar&gt;
+    &lt;/target&gt;</source>
+
+
+                </subsection>
+
+                <subsection name="Building Manually">
+                    <p>
+A Module Archive is just like a JAR or EAR file basically a ZIP with a certain file structure. And it is quite easy to create one manually if the ANT task cannot be used. The following rules should be followed when creating a MAR file:
+                    </p>
+                    <p>
+The module descriptor file should be in META-INF/mar-descriptor.properties. If other than  just the 'server' part is used, then it is important that the 'parts' property is set correctly.
+Every part should have a directory with the same name as the part containing all the JAR files and worker configuration files. In 3.1.x is only one part supported and it should be named 'server'. No subdirectories should exists in the parts directory.
+                    </p>
+                </subsection>
+
+               <subsection name="Managing Module Archives">
+                    <p>
+Managing of MAR files is done using the CLI command 'signserver.sh/.cmd module' it have three subcommands: add, remove and list. See chapter 17.2.5 for more details.
+                    </p>
+                    <p>
+Here is an example usage of adding a module to a SignServer:
+                    </p>
+                    <pre>
+'bin/signserver.sh module add dist-server/tsa.mar demo'
+                    </pre>
+                    <p>
+This will load the Time-Stamp Authority module with the demo environment, this requires that the mar file have a file called demo-part-config.properties in the server directory.
+                    </p>
+                </subsection>
+
+                <subsection name="Changing the default configuration of the Cluster Class Loader">
+                    <p>
+                        When enabled, the default configuration of the Cluster Class Loader is to support multiple versions but not requiring signature verification. This behaviour can be changed in the signserver_build.properties file under the 'Cluster Class Loader Configurations' section.
+                    </p>
+                    <p>
+The following properties can be set:
+                    </p>
+                    <table>
+                        <tr>
+                            <th>Property</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td>useclusterclassloader</td>
+                            <td>Set to true to enable the use of the cluster class loader. Default is true.</td>
+                        </tr>
+                        <tr>
+                            <td>
+clusterclassloader.useclassversions
+                            </td>
+                            <td>
+Indicates if multiple versions of the same worker code should be supported. Default true. Turn this of if remote debugging should be used.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+clusterclassloader.requiresignature
+                            </td>
+                            <td>
+Set to true if signing of resource data should be required. Default false
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+clusterclassloader.pathtotruststore
+                            </td>
+                            <td>
+Path to the JKS trust store containing all CA certificates that is trusted for signing of resource data.
+
+Only required if signature verification is used.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+clusterclassloader.truststorepwd
+                            </td>
+                            <td>
+Password to unlock the trust store. Only required if signature verification is used.
+                            </td>
+                        </tr>
+                    </table>
+                    <p>
+                        Remember to do an 'ant clean' when changing settings in the signserver_build.properties
+                    </p>
+                </subsection>
+
+
+            </section>
 
             <section name="Testing">
                 <p>
@@ -4664,7 +4977,9 @@ It only works without client authentication requirements and through HTTP.
 To run the client do
                         </p>
                         <pre>
-bin/client timestamp "http://&lt;hostname&gt;:8080/signserver/tsa?signerId=1"
+ant
+cd dist-client
+java -jar timeStampClient.jar "http://&lt;hostname&gt;:8080/signserver/tsa?signerId=1"
                         </pre>
                         <p>
 It will continuously make one request per second. Run the test client without arguments to get a list of possible arguments, you can use it as a full time stamp client to get real document time stamps.
@@ -4774,7 +5089,15 @@ WORKERLOGGER=org.signserver.server.log.NullWorkerLogger
 WORKERLOGGER=org.signserver.module.tsa.CustomTimeStampLogger1
                         </source>
                     </subsubsection>
-                    </subsection>
+                </subsection>
+                <subsection name="System Log">
+                    <p>
+The System Logger is instead for logging all other audit events that are not
+associated with a particular worker. The default System Logger is the
+AllFieldsSystemLogger that logs all the available fields one after each other
+separated by semi colons.
+                    </p>
+                </subsection>
                 <subsection name="Debug Log">
                     <p>
 The debug log is just the normal log that can be useful for finding out
@@ -4813,8 +5136,163 @@ put the audit logs in a separate file.
 
             <section name="Installation Packages">
                 <p>
-See res/install/debian/README.building for instructions for creating Debian packages for SignServer.
+From version 3.1 and upwards will there be binary installation packages released alongside the regular source packages. The packages includes all software necessary except for Java, were JDK 1.6+ is required.
                 </p>
+                <p>
+At the current moment are the platforms Linux (mainly Debian distribution is tested but it should work for other distributions as well) and Windows XP/2003 supported. The SignServer have two packages, one server part that should be installed in every node in the cluster and one management package containing the CLI.
+                </p>
+                <subsection name="Using the Installation Packages">
+                    <p>
+The installation package can be used either by using a GUI or on the command line by specifying the argument '-mode text'
+                    </p>
+                    <p>
+For an advanced set-up, for instance if many nodes should be installed with similar configuration, it is possible to preconfigure the installation by specifying a properties file containing some or all the properties asked during the installation. The properties will be used directly during installation and there will be no questions about it. See each package section for details about supported properties.
+                    </p>
+                    <p>
+The configuration file should be in the following locations:
+                    </p>
+                    <pre>
+Unix SignServer Installation            : /etc/signserver/signserver.conf
+Windows SignServer Installation         : %SYSTEMROOT%\signserver.conf
+                                         (i.e C:\WINDOWS\signserver.conf)
+                    </pre>
+                    <p>
+After installation will all the settings be saved to the configuration file by the installation program to simplify re-installation.
+                    </p>
+                    <p>
+If all necessary properties is given in the property file, it's possible to install the package silently by specifying '--mode unattended' on the command line.
+                    </p>
+                    <subsubsection name="SignServer Node">
+                        <p>
+The server part of the SignServer package contains everything (except Java) that is needed to set-up a node in a cluster. It contains a preconfigured version of JBoss that is ready to use.
+                        </p>
+                        <p>
+The steps performed during the installation process are:
+                        </p>
+                        <p>
+	Unix:
+                        </p>
+                        <ul>
+                            <li>
+By default is everything unpacked in /opt/signserver-&lt;version&gt; .
+                            </li>
+                            <li>
+If a /etc/signserver/signserver.conf file exists, it's read and used during installation.
+                            </li>
+                            <li>
+The user and group 'signserver' is created
+                            </li>
+                            <li>
+JBoss init.d script is configured to run at runlevel 3,4,5
+                            </li>
+                            <li>
+Directory /etc/signserver/ is created to contain all configuration files
+                            </li>
+                            <li>
+Database configuration file /etc/signserver/database-conf.xml is populated.
+                            </li>
+                            <li>
+Log configuration file /etc/signserver/log-conf.xml is populated and configured to log to the directory /var/log/signserver
+                            </li>
+                            <li>
+If no HTTP SSL certificate is specified in the configuration file will dummy key stores be generated to /etc/signserver.
+                            </li>
+                            <li>
+Tomcat is configured for HTTPS and it's configuration file is placed in /etc/signserver/webserver-conf.xml
+                            </li>
+                            <li>
+Finally is Jboss started and ready to be used.
+                            </li>
+                        </ul>
+                        <p>
+	Windows:
+                        </p>
+                        <ul>
+                            <li>
+By default is everything unpacked in C:\Program\SignServer\SignServer-&lt;version&gt; .
+                            </li>
+                            <li>
+If a c:\WINDOWS\signserver.conf file exists it's read and used during installation.
+                            </li>
+                            <li>
+JBoss is configured to be run as a service that is started automatically.
+                            </li>
+                            <li>
+Database configuration file &lt;INSTALLDIR&gt;\database-conf.xml is populated.
+                            </li>
+                            <li>
+Log configuration file &lt;INSTALLDIR&gt;\log-conf.xml is populated and configured to log to the default directory &lt;INSTALLDIR&gt;\jboss\server\default\log
+                            </li>
+                            <li>
+If no HTTP SSL certificate is specified will dummy key stores be generated to &lt;INSTALLDIR&gt;
+                            </li>
+                            <li>
+Tomcat is configured for HTTPS and it's configuration file is placed in &lt;INSTALLDIR&gt;\webserver-conf.xml
+                            </li>
+                            <li>
+Finally is Jboss started and ready to be used.
+                            </li>
+                        </ul>
+                        <p>
+The supported properties in the configuration file /etc/signserver/signserver.conf (or %SYSTEMROOT%\signerserver.conf for windows) are:
+                        </p>
+                        <table>
+                            <tr><th>Property Name</th><th>Description</th><th>Example value</th><th>Where to manually reconfigure </th></tr>
+                            <tr><td>SIGNSERVER_NODEID</td><td>A unique string value (containing alphanumeric characters only) identifying the node in a cluster.</td><td>node1</td><td>Unix: /etc/signserver/signserver.conf<br/>Windows:<br/>%Systemroot%\signserver.conf</td></tr>
+                            <tr><td>database.type</td><td>Type of database, currently are Hypersonic, Mysql, Mysql Cluster, Postgres and MS SQL 2000 supported</td><td>hsqldb, mysql, mysqlndb,  postgres, mssql2000</td><td>Unix:<br/>/etc/signserver/database-conf.xml<br/>Windows: %Installdir%\database-conf.xml</td></tr>
+                            <tr><td>database.hosts</td><td>The hostnames of the databases used. (not used for hsqldb).</td><td>localhost</td><td>Unix:<br/>/etc/signserver/database-conf.xml<br/>Windows: %Installdir%\database-conf.xml</td></tr>
+                            <tr><td>database.port</td><td>The port of the database (not used for hsqldb).</td><td>1433</td><td>Unix:<br/>/etc/signserver/database-conf.xml<br/>Windows: %Installdir%\database-conf.xml</td></tr>
+                            <tr><td>database.name</td><td>The name of the database  (not used for hsqldb).</td><td>signserver</td><td>Unix:<br/>/etc/signserver/database-conf.xml<br/>Windows: %Installdir%\database-conf.xml</td></tr>
+                            <tr><td>database.username</td><td>The username used for authentication against the database (not used for hsqldb).</td><td>signserver</td><td>Unix:<br/>/etc/signserver/database-conf.xml<br/>Windows: %Installdir%\database-conf.xml</td></tr>
+                            <tr><td>database.password</td><td>The password used for authentication against the database (not used for hsqldb).</td><td>foo123</td><td>Unix:<br/>/etc/signserver/database-conf.xml<br/>Windows: %Installdir%\database-conf.xml</td></tr>
+                            <tr><td>httpserver.hostname</td><td>Hostname used as CN in generated SSL Server certificate.</td><td>host1.someorg</td><td>Only used during the of SSL Server certificate generation phase of installation.</td></tr>
+                            <tr><td>httpserver.storepath</td><td>Path to the key store (JKS file) containing the SSL server certificate.</td><td>/etc/signserver/tomcat.jks</td><td>Unix:<br/>/etc/signserver/webserver-conf.xml<br/>Windows: %Installdir%\webserver-conf.xml</td></tr>
+                            <tr><td>httpserver.password</td><td>Password to unlock the SSL server certificate key store.</td><td>foo123</td><td>Unix:<br/>/etc/signserver/webserver-conf.xml<br/>Windows: %Installdir%\webserver-conf.xml</td></tr>
+                            <tr><td>httptrust.storepath</td><td>Path to the key store (JKS file) containing the CA trust store.</td><td>/etc/signserver/truststore.jks</td><td>Unix:<br/>/etc/signserver/webserver-conf.xml<br/>Windows: %Installdir%\webserver-conf.xml</td></tr>
+                            <tr><td>httptrust.password</td><td>Password unlocking the CA truststore.</td><td>foo123</td><td>Unix:<br/>/etc/signserver/webserver-conf.xml<br/>Windows: %Installdir%\webserver-conf.xml</td></tr>
+                            <tr><td>syslog.hostname</td><td>Host name of the Syslog server. This setting also indicates that Syslog should be used.</td><td>loghost.someorg.org</td><td>Unix:<br/>/etc/signserver/log-conf.xml<br/>Windows: %Installdir%\log-conf.xml</td></tr>
+                        </table>
+                    </subsubsection>
+
+                    <subsubsection name="SignServer Management">
+                        <p>
+This package installs the CLI interface on the management station (which can be the same as a node). The following steps are performed during installation:
+                        </p>
+                        <p>
+	Unix:
+                        </p>
+                        <ul>
+                            <li>By default is everything unpacked in /opt/signserver-&lt;version&gt; .</li>
+                            <li>If a /etc/signserver/signserver.conf file exists it's read and used during installation.</li>
+                            <li>The user and group 'signserver' is created</li>
+                            <li>A link from /opt/signserver-&lt;version&gt;/bin/signserver.sh is done to /usr/local/bin.</li>
+                        </ul>
+                        <p>
+	Windows:
+                        </p>
+                        <ul>
+                            <li>Everything is unpacked in C:\Program\SignServer\SignServer-&lt;version&gt; by default.</li>
+                            <li>If a c:\WINDOWS\signserver.conf file exists it's read and used during installation.</li>
+                        </ul>
+                        <p>
+The signserver.conf supports the following settings:
+                        </p>
+                        <table>
+                            <tr><th>Property Name</th><th>Description</th><th>Example value</th><th>Where to manually reconfigure </th></tr>
+                            <tr><td>hostname.masternode</td><td> Hostname of master node in the cluster.</td><td>node1.someorg.org</td><td>Unix:<br/>/etc/signserver/signserver.conf<br/>Windows: %Installdir%\signserver.conf</td></tr>
+                            <tr><td>hostname.allnodes</td><td>Hostname of all hosts in cluster, separated by ';'. </td><td>node1.someorg.org;node2.someorg.org</td><td>Unix:<br/>/etc/signserver/signserver.conf<br/>Windows: %Installdir%\signserver.conf</td></tr>
+                        </table>
+                    </subsubsection>
+                </subsection>
+
+                <subsection name="Generating Installation Packages">
+                    <p>
+Before generating a installation package must Bitrock InstallBuilder be installed on a Linux workstation. Then set the build mode in signserver_build.properties and go to src/install/bitrock. If a SignServer package should be generated must the environment variable JBOSS_PREP point the a prepared JBoss installation that will be included in the package.
+                    </p>
+                    <p>
+Then execute the script './buildsignserverpkgs.sh &lt;version&gt;' to start the generation process. The packages will be generated in BitRocks default output directory.
+                    </p>
+                </subsection>
             </section>
 
             <section name="References">
@@ -4828,6 +5306,7 @@ See res/install/debian/README.building for instructions for creating Debian pack
             </section>
             
         </chapter>
+
     </body>
 </document>
 

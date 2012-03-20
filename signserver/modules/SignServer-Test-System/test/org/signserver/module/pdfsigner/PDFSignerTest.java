@@ -12,21 +12,39 @@
  *************************************************************************/
 package org.signserver.module.pdfsigner;
 
-import com.lowagie.text.pdf.PdfReader;
-import com.lowagie.text.pdf.PdfSignatureAppearance;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.net.URL;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateParsingException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 import java.util.regex.Pattern;
+
 import org.ejbca.util.Base64;
 import org.ejbca.util.CertTools;
-import org.signserver.common.*;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerException;
+import org.signserver.common.SignServerUtil;
+import org.signserver.common.SignerStatus;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestUtils;
 import org.signserver.testutils.TestingSecurityManager;
+
+import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.PdfSignatureAppearance;
 
 /**
  * Unit tests for the PDFSigner.
@@ -48,6 +66,9 @@ public class PDFSignerTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     /* (non-Javadoc)
@@ -219,7 +240,7 @@ public class PDFSignerTest extends ModulesTestCase {
         Date date = cal.getTime();
         Map<String, String> fields = new HashMap<String, String>();
         fields.put("WORKERID", "4311");
-
+        
         SimpleDateFormat sdf = new SimpleDateFormat("MMMMMMMMM");
         String expectedMonth = sdf.format(date);
 
@@ -296,7 +317,9 @@ public class PDFSignerTest extends ModulesTestCase {
     }
 
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(5675);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    "5675"});
+        workerSession.reloadConfiguration(WORKERID);
     }
 
     private GenericSignResponse signNoCheck(final int workerId,
@@ -331,7 +354,7 @@ public class PDFSignerTest extends ModulesTestCase {
         final ByteArrayOutputStream bout = new ByteArrayOutputStream();
 
         final File file = new File(getSignServerHome(),
-                "res" + File.separator + "test" + File.separator + name);
+                "src" + File.separator + "test" + File.separator + name);
         FileInputStream in = null;
         try {
             in = new FileInputStream(file);

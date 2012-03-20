@@ -28,6 +28,7 @@ import org.signserver.common.*;
 import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.StatusName;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
 import org.signserver.testutils.TestingSecurityManager;
 
 /**
@@ -86,6 +87,10 @@ public class TimeStampSignerTest extends ModulesTestCase {
 
         repository = ServiceLocator.getInstance().lookupRemote(
                 IStatusRepositorySession.IRemote.class);
+
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     /* (non-Javadoc)
@@ -240,9 +245,16 @@ public class TimeStampSignerTest extends ModulesTestCase {
     }
 
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(WORKER1);
-        removeWorker(WORKER2);
-        removeWorker(WORKER3);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    String.valueOf(WORKER1)});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    String.valueOf(WORKER2)});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    String.valueOf(WORKER3)});
+        workerSession.reloadConfiguration(WORKER1);
+        workerSession.reloadConfiguration(WORKER2);
+        workerSession.reloadConfiguration(WORKER3);
+        workerSession.reloadConfiguration(WORKER4);
     }
 
 }

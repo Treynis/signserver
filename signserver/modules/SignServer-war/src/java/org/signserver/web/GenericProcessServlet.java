@@ -134,7 +134,6 @@ public class GenericProcessServlet extends HttpServlet {
         	workerId = getWorkerSession().getWorkerId(workerNameOverride);
         	workerRequest = true;
         }
-
         if (ServletFileUpload.isMultipartContent(req)) {
             final FileItemFactory factory = new DiskFileItemFactory();
             final ServletFileUpload upload = new ServletFileUpload(factory);
@@ -167,7 +166,7 @@ public class GenericProcessServlet extends HttpServlet {
 	                            } catch (NumberFormatException ignored) {
 	                            }
 	                        }
-                        }
+                    	}
                     	
                     	if (PDFPASSWORD_PROPERTY_NAME.equals(item.getFieldName())) {
                             if (LOG.isDebugEnabled()) {
@@ -348,7 +347,7 @@ public class GenericProcessServlet extends HttpServlet {
             fileName = stripPath(fileName);
         }
         context.put(RequestContext.FILENAME, fileName);
-
+        
         // PDF Password
         if (pdfPassword != null) {
             metadata.put(RequestContext.METADATA_PDFPASSWORD, pdfPassword);

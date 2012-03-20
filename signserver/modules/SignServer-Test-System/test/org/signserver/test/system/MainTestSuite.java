@@ -17,6 +17,7 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import org.signserver.cli.SignServerCLITest;
 import org.signserver.client.validationservice.ValidationCLITest;
+import org.signserver.common.clusterclassloader.ClusterClassLoaderTestSuite;
 
 /**
  * TODO: Document me!
@@ -33,6 +34,7 @@ public class MainTestSuite extends TestCase {
         TestSuite suite = new TestSuite("MainTestSuite");
         suite.addTest(new TestSuite(SignServerCLITest.class, "SignServerCLI"));
         suite.addTest(new TestSuite(ValidationCLITest.class, "ValidationCLI"));
+        suite.addTest(ClusterClassLoaderTestSuite.suite());
         return suite;
     }
 

@@ -83,7 +83,7 @@ public class MainView extends FrameView {
     private Worker selectedWorker;
     private Worker selectedWorkerBeforeRefresh;
     
-    
+
     private static String[] statusColumns = {
         "Property", "Value"
     };

@@ -12,18 +12,27 @@
  *************************************************************************/
 package org.signserver.client.api;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.security.cert.Certificate;
 import java.util.List;
+
 import javax.naming.NamingException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.apache.log4j.Logger;
 import org.signserver.common.GenericSignResponse;
 import org.signserver.common.GenericValidationResponse;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.server.cryptotokens.P12CryptoToken;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
+import org.signserver.testutils.TestingSecurityManager;
 import org.signserver.validationservice.common.ICertificate;
 import org.signserver.validationservice.common.Validation;
 import org.w3c.dom.Document;
@@ -61,17 +70,21 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        keystoreFileEndentity8 = new File(getSignServerHome() + File.separator + "res/test/org/signserver/client/api/endentity8.p12");
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
+
+        keystoreFileEndentity8 = new File(getSignServerHome() + File.separator + "src/test/org/signserver/client/api/endentity8.p12");
         if (!keystoreFileEndentity8.exists()) {
             throw new FileNotFoundException("Keystore file: " + keystoreFileEndentity8.getAbsolutePath());
         }
 
         crlWithCertOk = new File(getSignServerHome() + File.separator
-                + "res/test/org/signserver/client/api/EightCA-ok.crl");
+                + "src/test/org/signserver/client/api/EightCA-ok.crl");
         crlWithCertRevoked = new File(getSignServerHome() + File.separator
-                + "res/test/org/signserver/client/api/EightCA-revoked.crl");
+                + "src/test/org/signserver/client/api/EightCA-revoked.crl");
         crlToUse = new File(getSignServerHome() + File.separator
-                + "res/test/org/signserver/client/api/EightCA-use.crl");
+                + "src/test/org/signserver/client/api/EightCA-use.crl");
 
         if (!crlWithCertOk.exists()) {
             throw new FileNotFoundException("Missing CRL: "
@@ -95,6 +108,7 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
+        TestingSecurityManager.remove();
     }
 
     /**
@@ -374,7 +388,8 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
 
     public void test99TearDownDatabase() throws Exception {
         // XMLVALIDATOR
-        removeWorker(XMLVALIDATOR_WORKERID);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + XMLVALIDATOR_WORKERID});
+        workerSession.reloadConfiguration(XMLVALIDATOR_WORKERID);
 
         // VALIDATION SERVICE
         globalSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + CERTVALIDATION_WORKERID + ".CLASSPATH");
@@ -387,7 +402,8 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
         workerSession.reloadConfiguration(CERTVALIDATION_WORKERID);
 
         // XMLSIGNER
-        removeWorker(SIGNER1_WORKERID);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + SIGNER1_WORKERID});
+        workerSession.reloadConfiguration(SIGNER1_WORKERID);
     }
 
     private static String getStatus(GenericValidationResponse res) {

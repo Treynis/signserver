@@ -17,9 +17,9 @@ import java.util.Properties;
 import javax.ejb.EJB;
 import org.apache.log4j.Logger;
 import org.signserver.common.ServiceLocator;
-import org.signserver.statusrepo.common.StatusEntry;
-import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.statusrepo.IStatusRepositorySession;
+import org.signserver.statusrepo.common.NoSuchPropertyException;
+import org.signserver.statusrepo.common.StatusEntry;
 import org.signserver.statusrepo.common.StatusName;
 
 /**

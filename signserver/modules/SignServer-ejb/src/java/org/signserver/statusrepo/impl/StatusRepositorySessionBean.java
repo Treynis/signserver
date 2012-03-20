@@ -29,7 +29,7 @@ import org.signserver.statusrepo.common.StatusName;
  * Session bean offering an interface towards the status repository.
  *
  * @author Markus Kilås
- * @version $Id$
+ * @version $Id: StatusRepositorySessionBean.java 1823 2011-08-10 07:53:56Z netmackan $
  */
 @Stateless
 public class StatusRepositorySessionBean implements

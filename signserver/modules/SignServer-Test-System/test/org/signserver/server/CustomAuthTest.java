@@ -16,10 +16,18 @@ import java.math.BigInteger;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Properties;
+
 import org.bouncycastle.tsp.TSPAlgorithms;
 import org.bouncycastle.tsp.TimeStampRequest;
 import org.bouncycastle.tsp.TimeStampRequestGenerator;
-import org.signserver.common.*;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.RequestContext;
+import org.signserver.common.ServiceLocator;
+import org.signserver.common.SignServerConstants;
+import org.signserver.common.SignServerUtil;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.module.tsa.TimeStampSigner;
@@ -42,6 +50,10 @@ public class CustomAuthTest extends ModulesTestCase {
                 IGlobalConfigurationSession.IRemote.class);
         workerSession = ServiceLocator.getInstance().lookupRemote(
                 IWorkerSession.IRemote.class);
+
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
         signserverhome = System.getenv("SIGNSERVER_HOME");
         assertNotNull(signserverhome);
     }
@@ -62,7 +74,7 @@ public class CustomAuthTest extends ModulesTestCase {
         workerSession.setWorkerProperty(9, "AUTHTYPE", "org.signserver.server.DummyAuthorizer");
         workerSession.setWorkerProperty(9, "TESTAUTHPROP", "DATA");
         assertNotNull(signserverhome);
-        workerSession.setWorkerProperty(9, "KEYSTOREPATH", signserverhome + "/res/test/dss10/dss10_tssigner1.p12");
+        workerSession.setWorkerProperty(9, "KEYSTOREPATH", signserverhome + "/src/test/dss10/dss10_tssigner1.p12");
         workerSession.setWorkerProperty(9, "KEYSTOREPASSWORD", "foo123");
         workerSession.setWorkerProperty(9, TimeStampSigner.DEFAULTTSAPOLICYOID, "1.0.1.2.33");
         workerSession.setWorkerProperty(9, TimeStampSigner.TSA, "CN=TimeStampTest1");
@@ -121,6 +133,11 @@ public class CustomAuthTest extends ModulesTestCase {
     }
 
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(9);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    "9"});
+
+        TestUtils.assertSuccessfulExecution(new String[]{"module", "remove", "TSA", "" + moduleVersion});
+
+        workerSession.reloadConfiguration(9);
     }
 }

@@ -17,13 +17,15 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.cert.CertificateException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Properties;
 import javax.naming.NamingException;
 import junit.framework.TestCase;
 import org.apache.log4j.Logger;
 import org.ejbca.util.Base64;
-import org.signserver.admin.cli.AdminCLI;
-import org.signserver.client.cli.ClientCLI;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.ServiceLocator;
@@ -59,10 +61,6 @@ public class ModulesTestCase extends TestCase {
     private static File signServerHome;
 
     private Properties config;
-    
-    private CLITestHelper adminCLI;
-    private CLITestHelper clientCLI;
-    private TestUtils testUtils = new TestUtils();
 
     public ModulesTestCase() {
         try {
@@ -101,22 +99,6 @@ public class ModulesTestCase extends TestCase {
             }
         }
     }
-
-    public CLITestHelper getAdminCLI() {
-        if (adminCLI == null) {
-            adminCLI = new CLITestHelper(AdminCLI.class);
-        }
-        return adminCLI;
-    }
-
-    public CLITestHelper getClientCLI() {
-        if (clientCLI == null) {
-            clientCLI = new CLITestHelper(ClientCLI.class);
-        }
-        return clientCLI;
-    }
-    
-    
 
     protected IWorkerSession getWorkerSession() {
         return workerSession;
@@ -330,10 +312,6 @@ public class ModulesTestCase extends TestCase {
 
     /** Setup keystores for SSL. **/
     protected void setupSSLKeystores() {
-        testUtils.setupSSLTruststore();
-    }
-    
-    protected TestUtils getTestUtils() {
-        return testUtils;
+        TestUtils.setupSSLTruststore();
     }
 }
