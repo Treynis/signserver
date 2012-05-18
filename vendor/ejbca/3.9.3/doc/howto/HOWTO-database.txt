@@ -1,0 +1,384 @@
+Set up a database for EJBCA in JBoss
+====================================
+
+The following databases have in some stage been tested with EJBCA:
+
+* Hypersoniq (hsqldb) (default in JBoss)
+* PostegreSQL 7.2 and 8.x (http://www.postgresql.org/)
+* MySQL 4.x and 5.x (http://www.mysql.com/)
+* Oracle 8i, 9i and 10g (http://www.oracle.com/)
+* Sybase
+* MS-SQL2000 and 2003
+* DB2
+* Informix 9.2
+* Derby
+
+Unless you are adventurous and know what you're doing, it is recommended to define
+another datasource for ejbca and not reconfigure DefaultDS with another database
+as you run the risk to jump into mapping bugs in the JBoss configuration and mess
+up your server default configuration.
+
+If all is well the automatic deployment script of EJBCA will configure all that for
+you and you will be up and running in 30 seconds.
+Configuration is done in conf/database.properties.
+
+In a production environment you should use something else than the default Hypersonic database that comes 
+with JBoss for the reasons:
+1. Hypersonic database is in-memory, which means that over time it will consume more memory. If a large
+numer of certificates is issued, it will become an issue after a while.
+2. Hypersonic does not support full SQL, in particular ALTER statements. When a new version of EJBCA is 
+released we can not create scripts that updates the database if some tables changed. This will make 
+upgrades much much harder.
+
+If you will be running a huuuge system you will probably need to run some analysis tools to perfect indexes
+etc in the database, at least in the long run. Examples of such tools are:
+http://sourceforge.net/projects/mysqa/
+
+NOW ON TO THE HOWTO!
+
+Troubleshooting database problems:
+---------------------------------
+* Have you (ejbca automatically does it) configured a <database-ds.xml> in JBOSS_HOME/server/default/deploy?
+  Configuration is done in conf/database.properties.
+* Do you have the correct username/password configured in <database-ds.xml>?
+  Configuration is done in conf/database.properties.
+* Is the JDBC driver installed in JBOSS_HOME/server/default/lib?
+* Does you database accept incoming connection from the network, not only localhost or vice versa?
+* Do you have a firewall blocking connections to the database?
+* Can you connect to the database from another machine?
+* Use ip-address instead of hostname in <database-ds.xml> (DNS problems?)
+
+Configuring EJBCA
+-----------------
+
+0. Use 'ant clean' to clean up your repository if not already done.
+
+1. Edit 'conf/database.properties' and follow the instructions to change the default values.
+   Specify the 'datasource.jndi-name' to the one you chose.
+   For example: 'EjbcaDS'
+
+   There is a database.properties.sample that is heavily commented.
+
+2. Use 'ant deploy', it will configure automatically all deployment descriptors such
+   as ejb-jar.xml, jbosscmp-jdbc.xml, according to the database/jndi-name you chose before.
+
+  It will also copy ejbca-ds.xml to ${jboss.home}/server/default/deploy.
+  This file defines your database configuration such as the driver, url, username, password.
+  All other parameters are optional, so don't bother with them unless you know what you're doing.
+  Of course this ejbca-ds.xml should define the jndi-name as 'EjbcaDS' (or whatever name you chose
+  in the previous step)
+
+  If something is wrong, you should see it in the logs of your application server
+
+XDoclet merge files for database specific table and column configurations are in src/deploy/ejb/merge/<database name>.
+
+Configuring JBoss
+-----------------
+
+NOTE:
+
+If you are using the default database HSQLDB: Nothing should be done, just install
+JBoss and run.
+
+The following is only if you want to replace the default database with another for EJBCA.
+
+The description given here is for JBoss 3.x. Consider consulting the
+official JBoss documentation.
+
+Database configuration files in JBoss are located in the
+<jboss-home>/server/default/deploy. EJBCA automatically deploys a new datasource
+definition file in JBoss, so you don't have to do anything with that.
+
+1. Install and setup the database your database.
+
+2. Create a database for EJBCA (that is obviously the one you defined in conf/database.properties)
+Check your database documentation for more info (I know it is boring).
+
+Typically for postgres: 'createdb ejbca "database for ejbca"' will create
+a database named 'ejbca' with description "database for ejbca" and with user postgres (add '-E UTF8' for utf8 encoding if not default).
+To create a new user for the ejbca database 'createuser -P ejbca'
+Then you may have to mess around a lot to be able to connect to the database as well...
+for example change in pg_hba.conf to not use ident for logins to the local database, so you can actually connect locally as the ejbca user.
+
+Typically for mysql: 'mysqladmin create ejbca' will create the database. 
+Start 'mysql -u root mysql' and create the user with "grant all on ejbca.* to ejbca@'<host>' identified by '<pwd>';".
+
+3. Put the JDBC driver for the database in <jboss-home>/server/default/lib/ (or replace default if you are running 
+   another JBoss target, perhaps all?).
+
+4. DONE! Start JBoss. Run tests with 'ant test:run'.
+   Use your favorite database graphic editor to look at the beautiful database tables.
+
+Hardening
+---------
+When using logging you probably do not want an attacker to be able to remove log posts, therefore you should limit the
+table rights on ProtectedLogData, ProtectedLogTokenData and LogEntryData.
+
+MySQL specifics
+---------------
+EJBCA have been tested with MySQL 3, 4 and 5.
+
+JDBC driver: mysql-connector-java-5.0.x.jar.
+(use the latest mysql connection you can get for your mysql version)
+
+Download JDBC driver for mySQL from http://www.mysql.com/
+
+Sometimes there can be problems with MySQL related to case sensitivity of database tables.
+If you run into this see:
+http://mysqld.active-venture.com/Name_case_sensitivity.html
+http://dev.mysql.com/doc/refman/4.1/en/name-case-sensitivity.html
+
+To use UTF-8 encoding in the database, which may be nessecary to get your national characters to work, you may have to 
+use the following option to the mysql connect string:
+jdbc:mysql://127.0.0.1:3306/ejbca?characterEncoding=UTF-8
+
+There are also lots of settings that you can do in my.cnf:
+ character-set-server=utf8
+ default-collation=utf8_unicode_ci
+ default-character-set=utf8
+maybe you need them all, maybe you don't need any of them...try you way forward (starting with nothing) and
+try to add stuff if it doesn't work.
+
+The SQL command to show tables in MySQL is:
+show tables;
+
+To limit the table rights to ProtectedLogData, ProtectedLogTokenData and LogEntryData:
+Configure and run $EJBCA_HOME/doc/howto/mysql-privileges.sh to generate an .sql file with the new database privileges.
+After the .sql file is generated you have to run:
+#mysql -u ejbca -p ejbca < <path to the generated .sql file>
+#mysql -u root -p
+mysql> flush privileges;
+Restart jboss
+
+If you use JDBC-driver 3.1.x you may have to add "?useServerPrepStmts=false" to the database connect url in 
+conf/database.properties, i.e.:
+#database.url=jdbc:mysql://127.0.0.1:3306/ejbca?useServerPrepStmts=false
+You will need this if you get errors with "Incorrect arguments to mysql_stmt_execute" when doing install of EJBCA.
+This problem seems to affect the combination of MySQL 4.x with Connector/J 3.1.x.
+
+PostgreSQL specifics
+--------------------
+EJBCA have been tested with PostgreSQL 7.x and 8.x.
+
+JDBC driver: 
+For v7.x the 7.4 driver is needed to support the JDBC used by JBoss.
+For v8.x the 8.1 driver works fine.
+
+Download JDBC driver for PostgreSQL from http://jdbc.postgresql.org/.
+
+Sample setup:
+ admin@host:~$ sudo su postgres
+ postgres@host:~$ createuser -SDRP ejbca
+  <enter password twice>
+ postgres@host:~$ createdb ejbca
+
+Oracle specifics
+----------------
+Note that the default Oracle JDBC driver for Oracle 8 and 9 is seriously flawed and will not update 
+BLOBS larger than a certain size. EJBCA uses some BLOBs, so unforturnately is doesn't work.
+The driver from Oracle 10 works fine and can be downloaded from:
+http://www.oracle.com/technology/software/tech/java/sqlj_jdbc/index.html
+
+The JDBC-driver from http://www.datadirect.com/ also works fine, but it's not for free.
+
+JDBC driver: ojdbc14.zip 
+
+Use latest driver from at least Oracle 10 that can be downloaded from http://www.oracle.com/.
+We also had reports that some version of the Oracle 10 driver does not work, but that the driver 
+from Oracle 9.2i works. Since oracles JDBC driver seems to be of such bad quality, we have to 
+recommend that you try different versions until you find one that works...or use another database.
+Version 10.1.0.4.0 is confirmed to work.
+
+The SQL command to show tables in Oracle is:
+select table_name from user_tables;
+
+
+MS-SQL specifics
+----------------
+Microsofts JDBC driver:
+http://msdn.microsoft.com/downloads/default.asp?url=/downloads/sample.asp?url=/MSDN-FILES/027/001/779/msdncompositedoc.xml&frame=true
+
+There is also an open source JDBC driver at:
+http://jtds.sourceforge.net/
+This driver is not tested by us (yet), but it has received very good reviews as beeing much better than Microsofts
+driver, so I suggest you take it for a spin.
+
+
+DB2 specifics
+----------------
+DB2 Express 9.1.2 and Enterprise 9.1 has been tested.
+
+IBMs JDBC driver for DB2 is named "db2jcc.jar" or "db2jcc_license_c.jar".
+
+1. DB2 does not manage users, so DB2 users have to be local's or ldap's. We create a system user
+called "ejbca" to be used by DB2.
+2. Login as db2inst1 ("su - db2inst1"). Type db2cc, it will launch the administration control center
+of DB2.
+3. Choose your DB2 server and your instance db2inst1 and the Databases directory
+(http://img231.imageshack.us/img231/8499/snapshot1yt1.png)
+4. Create a new database named "EJBCA" (http://img231.imageshack.us/img231/9127/snapshot2jz9.png) and
+the rest default.
+5. Create a new Schema for the EJBCA database (http://img231.imageshack.us/img231/8136/snapshot3up8.png)
+with "EJBCA" as "Schema Name" and "EJBCA" as "Authorization name".
+(http://img231.imageshack.us/img231/9907/snapshot4sh9.png)
+6. Create a new BufferPool "BP16K" with SIZE 2500 and PAGESIZE 16K.
+7. Create a new Tablespace "EJBCADB_DATA_01" with PAGESIZE 16K, EXTENTSIZE 32 and PREFETCHSIZE 32.
+8. Verify that that your temporary tablespace (e.g. TEMPSPACE1) uses a bufferpool
+(e.g. IMBDEFAULTBP or BP16K) with a page size of 16K.
+9. Configure EJBCA_HOME/conf/database.properties and install EJBCA.
+
+Using "Select Tools→Command Editor", 6 & 7 would look something like this:
+    CREATE BUFFERPOOL "BP16K" SIZE 2500 PAGESIZE 16384 NOT EXTENDED STORAGE;
+    CONNECT RESET;
+    CONNECT TO EJBCA;
+    CREATE REGULAR TABLESPACE EJBCADB_DATA_01 IN DATABASE PARTITION
+    GROUP IBMDEFAULTGROUP PAGESIZE 16384 MANAGED BY DATABASE USING
+    (FILE '/home/db2inst1/db2inst1/EJBCA/ejbcadb_data_01.dbf'512000) EXTENTSIZE 32
+    PREFETCHSIZE 32 BUFFERPOOL BP16K OVERHEAD 7.500000
+    TRANSFERRATE 0.060000 FILE SYSTEM CACHING DROPPED TABLE RECOVERY ON;
+'512000' here is not the size of the table space in pages, so 512000*16384 equal 7.9 Gb. You can
+add more space for your database by selecting the tablespace "EJBCA_DATA_01", click on
+"Alter Tablespace", then click on "Containers", then select the only container and click on
+"Change..." and now change the value of the container size
+(http://img230.imageshack.us/img230/8379/snapshot7ve3.png).
+
+On DB2 you have a database, a schema id and a table name. The default database properties works,
+because when you don't specify a schema id, the userid is used. But you can specify the schema name
+in the connection string: 
+    database.url=jdbc:db2://bigfatiron.foo.com:5021/DB2T:currentSchema=EJBCA;
+    
+Earlier DB2 documentation for EJBCA suggest changes in standardjbosscmp-jdbc.xml, but this does not
+seem to be neccessary with the latest EJBCA on DB2 9.1.2 Express Edition. Especially the BLOB(2000)
+change is solved by explicit CMP mapping. Old doc follows:
+
+The size of the constraints names have a limit of 18 characters in DB2, so it is required to unset
+the automatic naming of the constraints at the creation of the scheme by EJBCA under JBOSS. It is
+also required to increase the size limit columns of type BLOB to 200000 bytes in the creation of
+the schema by EJBCA under JBOSS. Indeed under DB2 the size limit  columns of type BLOB created is
+2000 bytes which is insufficient for storing data inserted by EJBCA.
+
+To do those change, it is necessary to modify the file
+$HOME_JBOSS/server/default/conf/standardjbosscmp-jdbc.xml which describe the behavior of driver's
+database. The DB2 section have to be changed like this :
+      ...
+      <type-mapping>
+         <name>DB2</name>
+         <!--
+         | This type-mapping applies to DB2 V7.2 and V8.0
+         -->
+         <row-locking-template/>
+         <pk-constraint-template>PRIMARY KEY (?2)</pk-constraint-template>
+         <fk-constraint-template>ALTER TABLE ?1 ADD CONSTRAINT ?2 FOREIGN KEY (?3) REFERENCES ?4 (?5)</fk-constraint-template>
+         <alias-header-prefix>t</alias-header-prefix>
+         <alias-header-suffix>_</alias-header-suffix>
+         <alias-max-length>18</alias-max-length>
+         <subquery-supported>true</subquery-supported>
+         <true-mapping>1</true-mapping>
+         <false-mapping>0</false-mapping>
+      ...
+      </type-mapping>
+
+
+  
+Informix specifics
+------------------
+EJBCA have been tested Informix Dynamic Server 9.21.HC4
+JDBC Driver: IBM Informix JDBC Driver for IBM Informix Dynamic Server 3.00.JC3
+
+The default mapping in JBoss, InformixDB, does not work for Informix 9.2, so you should use Informix92 in conf/database.properties and do the following:
+Add the mappings from doc/howto/informix-jbossmappings.txt to JBOSS_HOME/server/default/conf/standardjbosscmp-jdbc.xml.
+
+Some Informix database modifications need to be done to be able to insert
+BLOB and TEXT data (which is required by EJBCA):
+You must generate a dbspace of the SmartBlobSpace kind for storing the
+TEXT data type attributes. This require the generation of a Unix RAW
+filesystem and then create the sbspace. After that, change the database
+configuration to recognize the new data space.
+
+Informix JDBC driver:
+http://www14.software.ibm.com/webapp/download/product.jsp?id=MCOS-5MKKAB&s=z&cat=&S_TACT=TrialsAndBetas&S_CMP=
+
+
+Derby specifics
+---------------
+JavaDB has a command-line utility called "ij" (ij is actually generic
+and may be used with any compliant JDBC driver), and you may use
+general open source tools like SQuirreL SQL
+(http://squirrel-sql.sourceforge.net/).
+
+When creating tables in Derby, they get case sensitiva if you quote them, CREATE TABLE "UserData".
+
+Ij started like this:
+    java -jar db-derby-10.2.1.3-bin/lib/derbyrun.jar ij
+in JavaDB 10.2, and like this
+    java -cp db-derby-10.1.3.1-bin/lib/derby.jar:db-derby-10.1.3.1-b in/lib/derbytools.jar org.apache.derby.tools.ij
+in JavaDB 10.1
+
+You can also run directly from glassfish like this:
+> export DERBY_INSTALL=/home/sun/glassfish
+> cd /home/sun/glassfish/bin
+> ../javadb/frameworks/NetworkServer/bin/ij.ksh
+
+Sample run of ij:
+ij version 10.1
+ij> connect 'jdbc:derby://localhost:1527/ejbca;create=true';
+ij> run '/home/tomas/dev/workspace/ejbca/doc/howto/create-tables-ejbca3-derby.sql';
+ij> select tablename from sys.systables;
+TABLENAME
+--------------------------------------------------------------------------------------------------------------------------------
+AccessRulesData
+AdminEntityData
+AdminGroupData
+AdminPreferencesData
+ApprovalData
+AuthorizationTreeUpdateData
+CAData
+CRLData
+CertReqHistoryData
+CertificateData
+CertificateProfileData
+EndEntityProfileData
+GlobalConfigurationData
+HardTokenCertificateMap
+HardTokenData
+HardTokenIssuerData
+HardTokenProfileData
+HardTokenPropertyData
+KeyRecoveryData
+LogConfigurationData
+LogEntryData
+PublisherData
+ServiceData
+TableProtectData
+UserData
+UserDataSourceData
+... some SYS tables ...
+42 rows selected
+ij> exit;
+
+
+Indexes for higher performance
+==============================
+
+This is a starting point for collecting indexes to create in the database to optimize performance (and cpu and disc usage):
+(you can start messing with this when you notice some slowdown, for normal installations it's rarely needed)
+
+Indexes are listed as a script in create-index-ejbca3.sql.
+You can run this script to boost your database performance, if you have many record.
+
+Indexes are in MySQL syntax, it should be general enough though.
+
+On external OCSP responders you should create the following two indexes:
+create index protect_idx1 on TableProtectData (dbKey,dbType);
+create index certificatedata_idx1 on CertificateData (issuerDN,serialNumber);
+
+Indexes for extra security
+==========================
+
+In a PKI every issuerDN, serialNumber pair must be unique. That means that a CA can not issue two certificates
+with the same serialNumber. The default installation has a very, very, very small chance that that can occur.
+SerialNumber are 64 bit random numbers, so the chance of a collision should be virtually nil, unless you issue
+billions of certificates. In any case, the index over (issuerDN, serialNumber) on CertificateData assures that 
+even this slim chance will never occur.
+
+Note that this is the same index as for performance, and that it is unique.

@@ -1,0 +1,87 @@
+# ------------- Database configuration ------------------------
+
+# jndi name of the datasource to use in deployment descriptors of ejbs.
+# default: EjbcaDS
+#datasource.jndi-name=EjbcaDS
+
+# Prefix for the jndi name of the datasource to use in deployment descriptors of ejbs. 
+# JBoss requires 'java:/' as prefix, while Weblogic does not want anything (''), and Glassfish wants jdbc/
+# Oracle usually uses jdbc/ as well.
+# For Websphere use jdbc/.
+# default: java:/
+#datasource.jndi-name-prefix=java:/
+#datasource.jndi-name-prefix=
+#datasource.jndi-name-prefix=jdbc/
+
+# Weblogic in combination with Oracle requires special handling of LONG/BLOB columns
+# If, and only if, you are using Weblogic and Oracle, uncomment the row below.
+# Use OracleBlob in Weblogic 8.x and Blob in Weblogic 9.x
+# Note: This setting is not needed in Weblogic 9.2. Leave it commented out.
+# default: 
+#weblogic-oracle-columntype=@weblogic.dbms-column-type Blob
+
+# The database name selected for deployment, used to copy XDoclet merge files.
+# All supported databases are defined below, others can easily be added
+# See the document doc/howto/HOWTO-database.txt for database specifics and tips and tricks.
+# (Note that the names below are fixed for the database type, it is not the name of your database instance.)
+# Default: hsqldb
+#database.name=mysql
+#database.name=postgres
+#database.name=mssql2000
+#database.name=oracle
+#database.name=sapdb
+#database.name=sybase
+#database.name=informix
+#database.name=derby
+#database.name=db2
+
+# The datasource mapping selected for deployment.
+# The J2EE server needs to be configured with the appropriate datasource mapping. 
+# For JBoss this maps to a setting in standardjbosscmp-jdbc.xml and must match the database chosen above.
+# All supported mappings are defined below, others can easily be added
+# Default: Hypersonic SQL
+#datasource.mapping=mySQL
+#datasource.mapping=PostgreSQL 7.2
+#datasource.mapping=PostgreSQL 8.0
+#datasource.mapping=MS SQLSERVER2000
+#datasource.mapping=Oracle8
+#datasource.mapping=Oracle9i
+#datasource.mapping=SapDB
+#datasource.mapping=Sybase
+#datasource.mapping=Informix92
+#datasource.mapping=InformixDB
+#datasource.mapping=Derby
+#datasource.mapping=DB2
+
+# Database connection url.
+# This is the URL used to connect to the database, used to configure a new datasource in JBoss.
+# Default: jdbc:hsqldb:${jboss.server.data.dir}${/}hypersonic${/}localDB
+#database.url=jdbc:mysql://127.0.0.1:3306/ejbca
+#database.url=jdbc:mysql://127.0.0.1:3306/ejbca?characterEncoding=UTF-8
+#database.url=jdbc:postgresql://127.0.0.1/ejbca
+#database.url=jdbc:sqlserver://localhost:1433;DatabaseName=ejbca
+#database.url=jdbc:oracle:thin:@127.0.0.1:1521:ejbca
+#database.url=jdbc:datadirect:oracle://127.0.0.1:1521;SID=ejbca
+#database.url=jdbc:informix-sqli://127.0.0.1:1525/ejbca:informixserver=mydbservername;DBDATE=DMY4/;
+#database.url=jdbc:derby://127.0.0.1/ejbca;create=true
+#database.url=jdbc:db2://127.0.0.1:50000/ejbca
+
+# JDBC driver classname.
+# The J2EE server needs to be configured with the appropriate JDBC driver for the selected database
+# Default: org.hsqldb.jdbcDriver
+#database.driver=com.mysql.jdbc.Driver
+#database.driver=org.postgresql.Driver
+#database.driver=com.microsoft.sqlserver.jdbc.SQLServerDriver
+#database.driver=oracle.jdbc.driver.OracleDriver
+#database.driver=com.ddtek.jdbc.oracle.OracleDriver
+#database.driver=com.informix.jdbc.IfxDriver
+#database.driver=org.apache.derby.jdbc.ClientDriver
+#database.driver=com.ibm.db2.jcc.DB2Driver
+
+# Database username.
+# Default: sa (works with hsqldb)
+#database.username=ejbca
+
+# Database password.
+# Default: (blank works with hsqldb)
+#database.password=ejbca

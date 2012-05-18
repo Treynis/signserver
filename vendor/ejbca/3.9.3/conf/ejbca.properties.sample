@@ -1,0 +1,273 @@
+#
+# $Id: ejbca.properties.sample 8134 2009-10-21 07:58:11Z anatom $
+#
+# This is a sample file to override properties used
+# during development (or deployment) of EJBCA
+# 
+# You should copy and rename this file to ejbca.properties
+# and customize at will.
+#
+
+# Which application server is used?
+# Possible values: jboss, glassfish, weblogic, oracle, websphere
+# Default jboss
+#appserver.type=jboss
+
+# Application server home directory used during development
+# Default: $APPSRV_HOME
+#appserver.home=/home/jboss/jboss-4.2.3.GA
+#appserver.home=/home/ibm/WebSphere/Appserver
+#appserver.home=${env.APPSRV_HOME}
+
+# See also the section 'cluster configuration' for other JBoss options, for example
+# for deploying on JBoss EAP.
+
+# which java version to use 15 for jdk 1.5 and jdk 6 (note use 15 for jdk6 as well)
+# In EJBCA >= 3.5 only jdk >= 5 is supported, so leave this value as it is.
+# default: 15
+#java.ver=15
+
+# To prevent accidental runs of tests or deploying the wrong thing in a production
+# environment, we could prevent this by setting this variable to either "ca" or "ocsp"
+#ejbca.productionmode=ca
+#ejbca.productionmode=ocsp
+
+# Set to true to allow dynamic re-configuration using properties files in the file 
+# system. Using this you can place a file /etc/ejbca/conf/ocsp.properties in the file system and
+# override default values compiled into ejbca.ear.
+# Currently this only works for some values on ocsp.properties.
+#
+# Default: false
+#allow.external-dynamic.configuration=false
+
+# ------------ Basic CA configuration ---------------------
+# When upgrading, the important options are:
+# - ca.keystorepass
+# - ca.ocspkeystorepass
+
+# This installation will create a first administrative CA. This CA will be used to create the first
+# superadministrator and for the SSL server certificate of administrative web server.
+# When the administrative web server have been setup you can create other CA:s and administrators.
+# This is only used for administrative purposes,
+# Enter a short name for the CA.
+#ca.name=AdminCA1
+
+# The Distinguished Name of the CA. 
+# This is used in the CA certificate to distinguish the CA.
+#ca.dn=CN=AdminCA1,O=EJBCA Sample,C=SE
+
+# The token type the CA will use.
+# Use soft for software generated keys (default) or enter a class path for the HSM class.
+# Normally the HSM class should be the PKCS11CAToken. 
+# Other specific classes like NFastCAToken of SafeNetLunaCAToken are for JCE providers, which was used before PKCS#11 and is not recommended now.
+#
+# Possible values are:
+# soft
+# org.ejbca.core.model.ca.catoken.PKCS11CAToken
+# org.ejbca.core.model.ca.catoken.SafeNetLunaCAToken
+# org.ejbca.core.model.ca.catoken.NFastCAToken
+# org.ejbca.core.model.ca.catoken.EracomCAToken
+# se.primeKey.caToken.card.PrimeCAToken
+#
+# Default: soft
+#ca.tokentype=soft
+
+# Password for the CA token.
+# With soft token, use password null.
+# If no password should be used (for example nCipher module protected), use password ''.
+#ca.tokenpassword=null
+
+# Configuration file were you define key name, password and key alias for the HSM. Same as the Hard CA Token Properties in Admin gui.
+# Remove everything in the file and add your own configuration.
+#ca.tokenproperties=conf/catoken.properties
+
+# The keyspec for the CAs key. 
+# Keyspec for RSA keys is size of RSA keys (1024, 2048, 4096).
+# Keyspec for ECDSA keys is name of curve or 'implicitlyCA', see docs.
+#ca.keyspec=2048
+
+# The keytype, can be RSA or ECDSA
+#ca.keytype=RSA
+
+# Default signing algorithm.
+# Available algorithms are:
+# SHA1WithRSA, SHA1WithECDSA, SHA256WithRSA, SHA256WithECDSA.
+#ca.signaturealgorithm=SHA1WithRSA
+
+# The validity in days for the CA, only digits.
+#ca.validity=3650
+
+# The policy id of the CA. Policy id determines which PKI policy the CA uses.
+# Type your policy id or use '2.5.29.32.0' for 'any policy' (rfc3280) or 'null' for no policy at all.
+#ca.policy=null
+
+# This password is used internally to protect CA keystores in database (i.e. the CAs private key).
+# foo123 is to keep compatibility with default installations of EJBCA 3.0, please change this if possible
+# If upgrading from EJBCA 3.0.x, you should take this value from src/ca/ca/META-INF/ejb-jar.xml -> keyStorePass. 
+# The default value is the same for convenience.
+# Note! If changing this value AFTER installation of EJBCA you must do 'ant clean; ant bootstrap' in order to activate changes.
+#ca.keystorepass=foo123
+#ca.keystorepass=!secret!
+
+# Password user to protect OCSP keystores in the database (CAs OCSP signer certificate).
+# If upgrading from EJBCA 3.0.x, you should take this value from src/ca/ca/META-INF/ejb-jar.xml -> OCSPKeyStorePass. 
+# The default value is the same for convenience.
+#ca.ocspkeystorepass=foo123
+#ca.ocspkeystorepass=ocsp!secret!
+
+# Password user to protect XKMS keystores in the database (CAs XKMS signer/enc certificate).
+# The default value is the same for convenience.
+#ca.xkmskeystorepass=foo123
+
+# Password user to protect CMS keystores in the database (CAs CMS signer/enc certificate).
+# The default value is the same for convenience.
+#ca.cmskeystorepass=foo123
+
+# The length in octets of certificate serial numbers generated. 8 octets is a 64 bit serial number.
+# It is really recommended to use at least 64 bits, so please leave as default unless you are really sure, 
+# and have a really good reason to change it.
+# Possible values: 8 or 4
+# Default: 8
+#ca.serialnumberoctetsize=8
+
+# The date and time from which an expire date of a certificate is to be considered to be too far in the future.
+# The time could be specified in two ways:
+# 1. The unix time see http://en.wikipedia.org/wiki/Unix_time given as an integer decoded to an hexadecimal string.
+#    The value 80000000 will give the time when the integer becomes negative if casted to 32 bit.
+#    This is when the year 2038 problem occurs. See http://en.wikipedia.org/wiki/Year_2038_problem .
+#    Set to this value if you don't want to issue any certificates that could cause this problem.
+#
+# 2. Otherwise the SHORT date and MEDIUM time format of the java.text.DateFormat class is used when parsing the time and date string.
+#    You should specify it in the used local. See examples below.
+#    The date and time is given in UTC.
+#    First the default local is tried when parsing. If the default is not working available locales is tried until one works.
+# Default: no limitation
+# The 2038 problem:
+#ca.toolateexpiredate=80000000
+# 'Sun Apr 26 19:25:00 2015' with different locales.
+# English (United States)
+#ca.toolateexpiredate=1/19/2038 3:14:08 AM
+# Svenska (Sverige)
+#ca.toolateexpiredate=2038-01-19 03:14:08
+# English (United Kingdom)
+#ca.toolateexpiredate=19/1/2038 3:14:08 AM
+
+# ------------- Approval configuration ------------------------
+# Settings working as default values in the approval functionality
+#
+# Default request validity in seconds
+# Default : 28800 (8 Hours)
+#approval.defaultrequestvalidity=28800
+
+# Default approval validity (how long an approved request should stay valid)
+# Default : 28800 (8 Hours)
+#approval.defaultapprovalvalidity=28800
+
+# Setting excluding som classes from approval. When one of the classes in this list calls a method that normally 
+# required approval, the call is immediately allowed, bypassing the approval mechanism. The list is comma separated.
+# Example: org.ejbca.extra.caservice.ExtRACAServiceWorker
+# Default : empty 
+#approval.excludedClasses=
+
+# ------------ Log4j logging configuration ---------------------
+# 
+# Enable this by setting it to a log4j.xml configuration file configuring the logging for EJBCA.
+# Not needed for JBoss, that configures log4j itself. Glassfish and Weblogic does not use log4j, so here we need to configure this.
+# Possible values: false (don't explicitly configure log4j), basic (use basic configurator putting everything on the console) 
+#                  or a path to a log4j.properties (or xml) configuration file.
+# Default: false
+#logging.log4j.config=basic
+#logging.log4j.config=/home/ejbca/conf/log4j.properties
+
+# ----------------- cluster configuration ----------------
+# The configuration. Use "all" when clustering, 
+# or for example "production" when deploying on JBoss EAP.
+# Default: default
+#jboss.config=all
+
+# Name of the farm directory. Use "farm" when clustering.
+# Default: deploy
+#jboss.farm.name=farm
+
+#------------------- HW token ------------------------------
+# ----- Configuration for PrimeCardHSM, ignore if not using PrimeCardHSM ----
+# The directory of the HW token classes. If this is an empty directory no HW token will be used.
+# If the directory is not existing an empty directory will be created.
+# Default: ./hwtoken
+#hwtoken_classes=../primecard/caTokenClasses-1.5-3.5
+
+# ----- Configuration for Luna JCE (java) interface, ignore if using PKCS#11 wich is the recommended way ----
+# Define this property when Luna HW token should be used.
+# You must have the Luna jars available in the build classpath (lib) when enabling this option.
+# Any value of the property will compile with Luna support. No Luna if undefined.
+#hsm.luna=X
+
+#------------------- EJBCA Healthcheck settings -------------
+# Specifies the basic settings of the EJBCA Healtcheck servlet
+# for more detailed configuration edit the file src/publicweb/healthcheck/WEB-INF/web.xml
+# URL: http://localhost:8080/ejbca/publicweb/healthcheck/ejbcahealth
+#
+# Parameter specifying amount of free memory (Mb) before alarming
+# Default: 1
+#healthcheck.amountfreemem=1
+
+# Parameter specifying database test query string. Used to check that
+# the database is operational.
+# Default : Select 1 From CertificateData where fingerprint='XX'
+#healthcheck.dbquery=Select 1 From CertificateData where fingerprint='XX'
+
+# Parameter specifying IP addresses authorized to access the healthcheck
+# servlet. Use ';' for between multiple IPs.
+# Default: 127.0.0.1 
+#healthcheck.authorizedips=127.0.0.1
+
+# Parameter to specify if the check of CA tokens should actually perform a signature test
+# on the CA token, or it should only see if the token status is active.
+# Default: false (don't perform a signature operation) 
+#healthcheck.catokensigntest=false
+
+# Parameter to specify location of file containing information about maintenance
+# Use this file to specify wether to include node in healthcheck or report as down for maintenance, 
+# which will return an error message (either the property name specified below or a custom message specified in web.xml).
+# Default: empty (not used)
+#healthcheck.maintenancefile=~/maintenance.properties
+
+# Parameter to configure name of maintenance property, default = DOWN_FOR_MAINTENANCE
+# The healthcheck.maintenancefile should contain a single line like this:
+# DOWN_FOR_MAINTENANCE=true
+# Where the node will be down for maintenenace of the property is true, and not down for maintenance if the property is false.
+# Default: DOWN_FOR_MAINTENANCE
+#healthcheck.maintenancepropertyname=DOWN_FOR_MAINTENANCE
+
+#------------------- ECDSA implicitlyCA settings -------------
+# Sets pre-defined EC curve parameters for the implicitlyCA facility.
+# See the User's Guide for more information about the implicitlyCA facility.
+# Setting these parameters are not neccesary when using regular named curves. 
+# if you don't know what this means, you can safely ignore these settings.
+#
+# Default values that you can experiment with:
+# ecdsa.implicitlyca.q=883423532389192164791648750360308885314476597252960362792450860609699839
+# ecdsa.implicitlyca.a=7fffffffffffffffffffffff7fffffffffff8000000000007ffffffffffc
+# ecdsa.implicitlyca.b=6b016c3bdcf18941d0d654921475ca71a9db2fb27d1d37796185c2942c0a
+# ecdsa.implicitlyca.g=020ffa963cdca8816ccc33b8642bedf905c3d358573d3f27fbbd3b3cb9aaaf
+# ecdsa.implicitlyca.n=883423532389192164791648750360308884807550341691627752275345424702807307
+ 
+#------------------- Debug and special settings -------------
+# 
+# Specifies if the DN order should be constructed in forward (standard and default)
+# or reverse order.
+# NOTE: What is called forward or reverse depends if you reference LDAP or X.500, our notion is LDAP and is explained below.
+#
+# Forward is: CN=Tomas Gustavsson, O=PrimeKey, C=SE
+# Reverse is: C=SE, O=PrimeKey, CN=Tomas Gustavsson
+# 
+# Do not change this unless you really know what you are doing.
+# You can NOT install a CA in one order and then change the order, you have to re-install completely,
+# otherwise strange phenomenon will happen.
+#
+# NOTE!
+# Deprecated: Use the CA setting "Use LDAP DN order" in the Admin-GUI instead to configure this per CA.
+# Unless you are upgrading and had this setting in the old installation.
+#
+# Default: false
+#certtools.dnorderreverse=false

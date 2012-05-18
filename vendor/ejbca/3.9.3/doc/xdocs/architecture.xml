@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<document>
+
+  <properties>
+    <title>Architecture</title>
+  </properties>
+
+<body>
+  <section name="Internal architecture">
+    <p>
+    	The following diagram is a very rough schema of the current architecture of EJBCA.
+    </p>
+    <p>
+    <img src="images/architecture.gif" alt="EJBCA architecture" />
+    </p>
+  </section>
+  <section name="Sample setup architecture">
+    <p>
+    	The following diagram shows a good example setup of a secured CA with external OCSP responders
+    	and an external RA server that receives certificate requests. The request are periodically 
+    	pulled by the CA and responses returned to the external RA. 
+    	No network traffic flows from the right the left across FW2.
+    </p>
+    <p>
+    <img src="images/sample-full-setup.jpg" alt="EJBCA sample setup" />
+    </p>
+  </section>
+
+  <section name="External RA">
+    <p>
+In some cases, for security reasons, is it preferable to deny all inbound traffic to the CA and instead let the CA periodically 
+fetch and process information from external trusted data sources. 
+For an overview of the solution see the illustration.
+<br/>
+The ExtRA API contains the most basic functions like:
+
+<ul>
+<li>Generate Certificate from PKCS10</li>
+<li>Generate PKCS12 for the end user</li>
+<li>KeyRecovery of the users key (if requested using PKCS12)</li>
+<li>Edit users</li>
+<li>Revoke Certificates</li>
+</ul>
+
+The external API, named extra, is downloaded separately, or checked out separately from the SVN using the module name 'extra'.
+</p><p>
+Documentation about the ExtRA API is in the doc subdirectory of the extra subproject.    
+</p>
+    <p>
+    <img src="images/extra-architecture.jpg" alt="EJBCA with External RA" />
+    </p>
+  </section>
+
+</body>
+</document>
+

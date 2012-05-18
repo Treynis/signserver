@@ -1,0 +1,369 @@
+<%               
+
+   LdapPublisher ldappublisher = (LdapPublisher) publisherhelper.publisherdata;
+
+%> 
+   <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+         &nbsp;
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         &nbsp;
+      </td>
+   </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("LDAPSETTINGS") %>:
+          <%= ejbcawebbean.getHelpReference("/manual.html#Configure%20LDAP%20publishers") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         &nbsp;
+      </td>
+    </tr>  
+   <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("HOSTNAMES") %>:
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPHOSTNAME%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getHostnames ()%>'>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("PORT") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPPORT%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getPort ()%>'> <%= ejbcawebbean.getText("USESSL") %>
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAPUSESSL %>" onClick='setUseSSLPort()' value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher. getUseSSL())
+                 out.write(" CHECKED ");
+           %>>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("BASEDN") %>
+          <br>
+          <%= ejbcawebbean.getText("BASEDNDESCR") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPBASEDN%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getBaseDN()%>'> 
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("LOGINDN") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPLOGINDN%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getLoginDN()%>'> 
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("LOGINPWD") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="password" name="<%=EditPublisherJSPHelper.PASSWORD_LDAPLOGINPASSWORD%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getLoginPassword()%>'> 
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("CONFIRMPASSWORD") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="password" name="<%=EditPublisherJSPHelper.PASSWORD_LDAPCONFIRMLOGINPWD%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getLoginPassword()%>'> 
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("CONNECTIONTIMEOUT") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPTIMEOUT%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getConnectionTimeOut()%>'> 
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("READTIMEOUT") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPREADTIMEOUT%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getReadTimeOut()%>'> 
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("STORETIMEOUT") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPSTORETIMEOUT%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getStoreTimeOut()%>'> 
+      </td>
+    </tr>
+   <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+         &nbsp;
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         &nbsp;
+      </td>
+   </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("CREATENONEXISTINGUSERS") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAPCREATENONEXISTING %>" value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher.getCreateNonExistingUsers())
+                 out.write(" CHECKED ");
+           %>>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("MODIFYEXISTINGUSERS") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAPMODIFYEXISTING %>" value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher.getModifyExistingUsers())
+                 out.write(" CHECKED ");
+           %>>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("MODIFYEXISTINGATTRIBUTES") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAPMODIFYEXISTINGATTRIBUTES %>" value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher.getModifyExistingAttributes())
+                 out.write(" CHECKED ");
+           %>>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("ADDNONEXISTINGATTRIBUTES") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAPADDNONEXISTING %>" value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher.getAddNonExistingAttributes())
+                 out.write(" CHECKED ");
+           %>>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("CREATEINTERMEDIATENODES") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAP_CREATEINTERMEDIATENODES %>" value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher.getCreateIntermediateNodes()) {
+                 out.write(" CHECKED ");
+			   }
+           %>>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("ADDMULTIPLECERTIFICATES") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAPADDMULTIPLECERTIFICATES %>" value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher.getAddMultipleCertificates())
+                 out.write(" CHECKED ");
+           %>>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right">         
+          <%= ejbcawebbean.getText("REMOVEREVOKEDCERTIFICATES") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAP_REVOKE_REMOVECERTIFICATE %>" value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher.getRemoveRevokedCertificates()) {
+                 out.write(" CHECKED ");
+			   }
+           %>>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("REMOVEUSERONCERTREVOKE") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAP_REVOKE_REMOVEUSERONCERTREVOKE %>" value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher.getRemoveUsersWhenCertRevoked()) {
+                 out.write(" CHECKED ");
+			   }
+           %>>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("LDAPSETUSERPASSWORD") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+          <input type="checkbox" name="<%= EditPublisherJSPHelper.CHECKBOX_LDAP_SET_USERPASSWORD %>" value="<%=EditPublisherJSPHelper.CHECKBOX_VALUE %>" 
+           <%  if(ldappublisher.getSetUserPassword()) {
+                 out.write(" CHECKED ");
+			   }
+           %>>
+      </td>
+    </tr>
+   <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+         &nbsp;
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         &nbsp;
+      </td>
+   </tr>
+   <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("USEROBJECTCLASS") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPUSEROBJECTCLASS%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getUserObjectClass()%>'>
+      </td>
+    </tr>
+   <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("CAOBJECTCLASS") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPCAOBJECTCLASS%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getCAObjectClass()%>'>
+      </td>
+    </tr>
+   <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("USERCERTIFICATEATTR") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPUSERCERTATTRIBUTE%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getUserCertAttribute()%>'>
+      </td>
+    </tr>
+   <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("CACERTIFICATEATTR") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPCACERTATTRIBUTE%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getCACertAttribute()%>'>
+      </td>
+    </tr>
+   <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("CRLATTRIBUTE") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPCRLATTRIBUTE%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getCRLAttribute()%>'>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right">
+          <%= ejbcawebbean.getText("DELTACRLATTRIBUTE") %>:
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPDELTACRLATTRIBUTE%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getDeltaCRLAttribute()%>'>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right">          
+      <%= ejbcawebbean.getText("ARLATTRIBUTE") %>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+         <input type="text" name="<%=EditPublisherJSPHelper.TEXTFIELD_LDAPARLATTRIBUTE%>" size="30" maxlength="255" 
+               value='<%= ldappublisher.getARLAttribute()%>'>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="right"> 
+          <%= ejbcawebbean.getText("USEFIELDSINDN") %><br>
+          <%= ejbcawebbean.getText("DCOCSHOULDBEDEFINED") %>
+        </div>
+      </td>
+      <td width="50%" valign="top">   
+        <select name="<%=EditPublisherJSPHelper.SELECT_LDAPUSEFIELDINLDAPDN%>" size="13" multiple >       
+            <% HashSet currentfields = new HashSet(ldappublisher.getUseFieldInLdapDN());
+               Integer[] usefieldsindn = DNFieldExtractor.getUseFields(DNFieldExtractor.TYPE_SUBJECTDN);
+               String[] usefieldsindntexts = (String[])DnComponents.getDnLanguageTexts().toArray(new String[0]);
+               for(int i=0;i < usefieldsindn.length; i++){ %>                                  
+              <option value="<%=usefieldsindn[i]%>" <% if(currentfields.contains(usefieldsindn[i])) out.write(" selected "); %>> 
+                  <%= ejbcawebbean.getText(usefieldsindntexts[i]) %>
+               </option>
+            <%}%>
+          </select>         
+      </td>
+    </tr>

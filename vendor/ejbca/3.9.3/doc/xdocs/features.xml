@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<document>
+
+  <properties>
+    <title>Features</title>
+  </properties>
+
+<body>
+  <section name="Features">
+    <p>Built on the J2EE 1.3 (EJB 2.0) specification.</p>
+<ul>
+<li>Flexible, component based architecture.</li>
+<li>Using standard, high performance RDBMS for storage.</li>
+<li>Multiple CAs and levels of CAs, build a complete infrastructure (or several) within one instance of EJBCA.</li>
+<li>Unlimited number of Root CAs and SubCAs. Request cross certificates and bridge certificates from other CAs and Bridge CAs. Issue cross certificates to other CAs.</li>
+<li>Supports RSA key algorithm up to 4096 bits.</li>
+<li>Supports DSA key algorithm with 1024 bits.</li>
+<li>Supports ECDSA key algorithm with named curves or implicitlyCA.</li>
+<li>Support multiple hash algorithms for signatures, MD5, SHA-1, SHA-256.</li>
+<li>Support for X.509 certificates and Card Verifiable certificates (CVC used by EU EAC ePassports).</li> 
+<li>Standalone or integrated in any J2EE application.</li>
+<li>Simple installation and configuration.</li>
+<li>Powerful Web based administration GUI using strong authentication.</li>
+<li>Administration GUI available in several languages - Chinese, English, French, German, Italian, Portuguese, Spanish and Swedish.</li>
+<li>Internal log messages are localizable for different languages.</li>
+<li>Command line administration for scripts etc.</li>
+<li>Web service interface for remote administration and integration.</li>
+<li>Modular API for HSMs. Built in support for nCipher, PrimeCardHSM, Eracom (now SafeNet), SafeNet Luna, Utimaco CryptoServer, AEP Keyper, ARX CoSign and other HSMs with a good PKCS#11 library.</li>
+<li>Supports different architectures; all-in-one, clustered, external RA, external OCSP, etc.</li>
+<li>Individual enrollment or batch production of certificates.</li>
+<li>Server and client certificates can be exported as PKCS12, JKS or PEM.</li>
+<li>Browser enrollment with Firefox, IE, etc.</li>
+<li>Enrollment for other applications through open APIs and tools.</li>
+<li>Enrollment generating complete OpenVPN installers for VPN users.</li>
+<li>Smart card logon certificates.</li>
+<li>Notification system for e-mail notification to users and administrators when a user is added or certificates expire etc.</li>
+<li>Random or manual password for initial user authentication.</li>
+<li>Hard token module for integrating with hard token issuing system (smart cards).</li>
+<li>Multiple levels of administrators with specified privileges and user groups.</li>
+<li>Configurable certificate profiles for different types and contents of certificates.</li>
+<li>Configurable entity profiles for different types of users.</li>
+<li>Supports the Simple Certificate Enrollment Protocol (SCEP).</li>
+<li>Follows X509 and PKIX (RFC3280) standards where applicable.</li>
+<li>Qualified Certificate Statement (RFC3739) for issuing EU/ETSI qualified certificates.</li>
+<li>Supports the Online Certificate Status Protocol (OCSP - RFC2560), including AIA-extension.</li>
+<li>OCSP responder can run integrated with EJBCA or stand alone (clustered) for security, high-performance and high-availability.</li>
+<li>External OCSP also works with any other CA than EJBCA and support large scale OCSP deployments.</li> 
+<li>Simple OCSP client in pure java.</li>
+<li>Supports a subset of CMP (RFC4210 and RFC4211).</li>
+<li>Supports synchronous XKMS version 2 requests.</li>
+<li>Revocation and Certificate Revocation Lists (CRLs).</li>
+<li>CRL creation and URL-based CRLDistribution Points according to RFC3280.</li> 
+<li>Stores Certificates and CRLs in SQL database, LDAP and/or other custom data source.</li>
+<li>Optional multiple publishers for publishing certificates and CRLs in LDAP or legacy databases. Several flexible standard publishers exist to meet different demands.</li>
+<li>Supports authentication and publishing of certificates to Microsoft Active Directory.</li>
+<li>Autoenrollment for windows clients.</li>
+<li>Component- and plug-in based architecture  for publishing certificates and CRLs to different sources.</li>
+<li>Key recovery module to store private keys for recovery for selected users and certificates.</li>
+<li>Advanced log signing of PKI audit logs.</li>
+<li>API for an external RA, restricting in-bound traffic to CA.</li>
+<li>Optional approval mechanism so several admins are required to perform an action, a.k.a. dual-authentication.</li>
+<li>Component based architecture for various authorization methods of entities when issuing certificates.</li>
+<li>Possible to integrate into large java applications for optimal integration into bussiness process.</li>
+<li>Deploys easily in a clustered, high availability environment.</li>
+<li>Health check service to support efficient clustering and monitoring.</li>
+<li>Supports multiple application servers: JBoss, Weblogic, Glassfish, OC4J, Websphere</li>
+<li>Supports multiple databases: Hypersoniq, MySQL, PostgreSQL, Oracle, DB2, MS-SQL, Derby, Sybase, Informix.</li>
+</ul>    
+
+  </section>
+
+</body>
+</document>
+

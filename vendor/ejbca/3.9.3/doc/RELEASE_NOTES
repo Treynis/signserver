@@ -1,0 +1,904 @@
+EJBCA 3.9.3
+-----------
+This is a minor release but packed with new minor features and fixes, 41 issues have been resolved. 
+Some minor features and options and some bug fixes and stabilizations.
+
+Noteworthy changes:
+- Fixed a regression in 3.9.2 where you could not upload files in the admin GUI.
+- Certificate profiles can now specify a different signature algorithm than the CA. Useful to start migrating SHA1 CAs to issue SHA256 certificates.
+- Possibility to use part of user data in LDAP DN but not in certificate DN when publishing certificate to LDAP.
+- Possibility to set fixed end date of certificates in certificate profile and CA configuration.  
+- Possibility to configure several notification services for expiring certificates, notifying at different times, i.e. 30 days, 7 days, etc.   
+- Browser enrollment tested with Windows 7.  
+- ECC improvements and fixes for CAs and HSMs, CA renew keys, CA import, brainpool curves, explicit ec parameters, clientToolBox etc.
+- GUI improvement to the admin GUI with nicer navigation menu and CSS. Contributed by Linagora, France.
+- cert-cvc: fixed rare possibility to get bad encoding of EC points in certificates. Contributed by DGBK, Netherlands.
+- CVC CA fixes and improvements for EAC PKI, approvals, import CAs, fix cli info command, .cvcert instear of .crt when downloading certs, etc.
+- Don't publish certificates for inactive CA services to LDAP.
+- Fix so renewing CA keys in admin GUI does not reload all CA tokens. 
+- Fixed an OutOfMemory error when failing to publish large CRLs with connection closed error.
+- Fix download issues with IE for exported CA keystores.
+- Many small optimizations, fixes and improvements.
+
+Read the full changelog for details.
+
+For upgrade instructions, please see UPGRADE. 
+
+EJBCA 3.9.2
+-----------
+This is a minor release but packed with new minor features and fixes, 38 issues have been resolved. 
+Some minor features and options and many bug fixes and stabilizations.
+
+Noteworthy changes:
+- Sign and verify of files with clientToolBox when the private key is stored on a HSM.
+- Possible to limit signing keys for an external OCSP responder to keys within a set of key aliases.
+- Add support for the TSL signer extended key usage
+- Use improved validity period parsing in Certificate Profiles
+- Add option to use publisher queue or not for CRLs and certificates
+- Document MS application policies extension
+- Fixes for ejbcaClientToolBox.bat for windows platform
+- Timeouts for LDAP publishers to handle unstable LDAP servers
+- For issue where CRL service may stop running if database is stopped for some period
+- Change so that Issuing Distribution Point on CRLs is not used by default in CA configuration
+- Fix issue using IAIK provider with several CAs
+- Fix slow revocation if a user have many certificates
+- cert-cvc: getting expiration date returns 00.00 hours but it means it's valid the whole day
+- cert-cvc: bad encoding of EC points in certificates in rare cases where affineX and affineY is not same size
+- Many small optimizations, fixes and improvements.
+
+Read the full changelog for details.
+
+For upgrade instructions, please see UPGRADE. 
+
+EJBCA 3.9.1
+-----------
+This is a minor release but packed with new minor features and fixes, 46 issues have been resolved.
+
+Noteworthy changes:
+- Improvements to public enrollment process including automatic renewal.
+- Ability to specify approvals on certificate profiles.
+- Configurable list of extended key usages.
+- Dynamic update of max-age and nextUpdate for OCSP responders, also per certificate profile.
+- In CRL update service you can select which CAs to generate CRLs for.
+- Possible to schedule CRLs more often than hourly.
+- Possible to remove soft CA key and possibility to import it back again.
+- Possibility to remove passwords from properties files.
+- Support for CRL distribution points with URI:s containing semicolon.
+- Transaction log for web service certificate issuance.
+- Possibility to specify Any CA in end entity profiles.
+- More flexible configuration of CA validity, years, months days.
+- Improved error message in GUI when HSM activation fails.
+- Many small optimizations, fixes and improvements.
+    
+Read the full changelog for details.
+
+For upgrade instructions, please see UPGRADE. 
+
+EJBCA 3.9.0
+-----------
+This is a major release adding many new features and improvements, and fixing numerous bugs. 
+126 issues have been resolved for this release. Check the changelog, there is a good chance that your favorite issue has been resolved.
+
+Some noteworthy changes:
+- Support for CAs using DSA keys. EJBCA now supports all major algorithms; RSA, DSA and ECDSA.
+- External RA improvements. CA service running as an EJBCA services gives full cluster functionality and support for multiple external RAs. 
+  As a bonus it is now much easier to install and configure.
+- Robust re-publishing mechanism for publishers that fail, running as an EJBCA service.
+- OCSP responder improvements with performance improvements and support for on-line renewal of OCSP responder keys and certificates. 
+  The external OCSP responder can now saturate high performance HSMs.
+- OCSP monitoring tool for monitoring synchronization between EJBCA and external OCSP responders.
+- GUI for configuring the external OCSP publisher with new options.
+- Possible to change OCSP signing keys in a running external OCSP responder.
+- New commands and stress tests in the client toolbox.
+- A new admin web gui front page with status overview panels.
+- Possible to configure status of certificates issued for end entities, i.e. issue certificate revoked "on hold".
+- New DN attribute, Name.
+- Performance improvement by caching and lowering number of database queries.
+- XKMS now works also on Java 6.
+- Possibility to set user validity start and end time in WS API. 
+- Lots of small fixes and improvements to the admin GUI.
+- Lots of small bugfixes.
+- Keon CA to EJBCA migration guide.
+
+Read the changelog for details.
+
+Note that the configuration of External RA changed dramatically (to the better). If using the external RA, please read the manual how to 
+install and configure the RA CA service in EJBCA 3.9.
+
+Note that this version brings database changes. Read the UPGRADE document for upgrade instructions.
+
+This release should, as always, work on JBoss, Glassfish, Weblogic and OC4J, together with most available databases.
+
+EJBCA 3.8.3
+-----------
+This is a minor release with only a few fixes
+Read the changelog for details.
+- Fixed unability to deploy on PostgreSQL + Glassfish combination.
+- Fixed possible extensive CPU usage for crafted messages to CMP RA service (not default config).
+- Fixed Ugly error message in LDAP publisher if no certificate to remove exists.
+
+For upgrade instructions, please see UPGRADE. 
+
+EJBCA 3.8.2
+-----------
+This is a minor release adding improvements and bugfixes
+Read the changelog for details.
+- Add street and pseudonym DN attributes.
+- OCSP improvements, RFC 5019, nextUpdate, support for requests using GET, improved configuration and error handling.
+- Correct coding of optional Issuing Distribution Point in CRLs.
+- Possible to publish userPassword in LDAP.
+- A few minor fixes.
+
+For upgrade instructions, please see UPGRADE. 
+
+EJBCA 3.8.1
+-----------
+This is a minor release, targeted for adding support for JBoss 5 and fixing a mistake that caused install on Glassfish to fail.
+It also adds a few minor improvements and bugfixes.
+Read the changelog for details.
+- Add support for JBoss 5.
+- Fix support for Glassfish caused by a forgotten commit in 3.8.0.
+- Improve support for Weblogic 10.3.
+- Fix support for IPv6 subject alternative names.
+- A few minor CMP, OCSP and CVC fixes.
+
+For upgrade instructions, please see UPGRADE. 
+
+EJBCA 3.8.0
+-----------
+This is a major release, particularly focusing on support for administrators to log in with certificates from other CAs, 
+not in EJBCA.
+Read the changelog for details.
+
+Notable changes in no specific order:
+- Restructure administrator validation to allow admins using externally issued certificates.
+- Add a CLI subcommand to add an administrator in an admin group using the serial number.
+- Drop administrator flag in end entities, it's not needed, makes configuration easier together with remade admin GUI.
+- Possible to generate CA PKCS#10 request without giving CA certificate.
+- Add support for SEIS Card Number extension.
+- Added KRB5PrincipalName subjectAltName.
+- Option in certificate profiles for reversing DN order.  
+- Enroll for CV certificate on public web.
+- Upload PEM or binary certificate requests on public web.
+- Possible to sign releases and deployed code.
+- Enhanced basic custom certificate extension.
+- Command to list objects in Luna HSM partition.
+- Some bug fixes.  
+  
+For upgrade instructions, please see UPGRADE. 
+NOTE: There are database upgrades in this release, so read UPGRADE carefully.
+
+Because there are binary files in EJBCA_HOME/lib changed there is no patch file for upgrading
+EJBCA 3.7.x to 3.8.0. Use the full package from EJBCA 3.8.0 and follow the upgrade instructions in UPGRADE.
+
+Note that if using JBoss, you need JBoss 4.2.x or later to run EJBCA 3.8.x.
+
+EJBCA 3.7.5
+-----------
+This is a minor release that makes a few minor changes in the CVC WS-API and adds a variable in OCSP audit log.
+- Allow logging of REPLY_TIME in both audit and transaction logs  
+- Fixed CVC certificate requests with error leaves user status as new  
+- Fixed that cvcgetchain does not return latest cert
+- Add brazilian portuguese translation of admin GUI
+- A few minor bugs  
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.7.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.7.4
+-----------
+This is a minor release that replaces 3.7.3 where initial install was broken. It has a few additional fixes from 3.7.3 as well.
+- Substitute email from- and to- as well in user notifications
+- Create a built-in Server certificate profile
+- OCSP improvements
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.7.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.7.3
+-----------
+This is a minor release mainly put out to fix building on Glassfish that broke in 3.7.2.
+- Fix on Glassfish that was broken in 3.7.2
+- Glassfish support for PostgreSQL
+- A couple of trivial fixes.
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.7.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.7.2
+-----------
+This is a minor release with focus on fixing making OCSP optimizations, introducing some minor features and fixing a few annoying bugs.
+- Add Intel AMT extended key usage
+- Optimize OCSP servlet for better performance
+- OCSP responder improvements: reload of p11 when connection broken, return error of audit logging fails.
+- CA certificates with SerialNumber in DN does not work with External OCSP
+- WS-API, make mathtype contains with with matchwith username
+- Key length changes when editing CA in admin-GUI
+- Minor GUI fixes.
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.7.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.7.1
+-----------
+This is a minor release with major focus on enhancements to CVC CA support for EU EAC ePassport PKIs.
+- Support for both RSA and ECC with all EAC algorithms.
+- Interoperability fixes tested with other implementation at the Prague 2008 event.
+- Usability enhancements for CVC PKIs, for example download and import of binary certificates.
+- Changes to the CVC cli to mimic the WS-API functions.
+- Fixed that upgrade from 3.6 to 3.7 causes error when autogenerated password are used
+- Other minor bugfixes.
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.7.x. See UPGRADE for the simple instructions.
+Because there are binary files in EJBCA_HOME/lib changed there is no patch file for upgrading
+EJBCA 3.7.0 to 3.7.1. Use the full package from EJBCA 3.7.1 and follow the upgrade instructions in UPGRADE.
+
+EJBCA 3.7.0
+-----------
+This is a major release, particularly focusing on support for CVC certificates as used in EU EAC ePassport PKI.
+Read the changelog for details.
+
+Notable changes in no specific order:
+- Support for CV Certificates (CVC) for EU EAC ePassports, you can now build a CVC PKI for EU ePassport using EJBCA.
+- Upgrade of jaxb jars using for Webservice API, and new WS-API calls.
+- Support for error codes in Exceptions from Webservice API.
+- New service to automatically renew expiring CAs.
+- Possible to use IAIK PKCS#11 provider as well as Sun PKCS#11.
+- Client Tool box with client CLI tools easy to deploy stand-alone on other machines.
+- Minor fixes and enhancements.
+
+For upgrade instructions, please see UPGRADE. 
+There are no database upgrades in this release.
+
+Because there are binary files in EJBCA_HOME/lib changed there is no patch file for upgrading
+EJBCA 3.6.x to 3.7.0. Use the full package from EJBCA 3.7.0 and follow the upgrade instructions in UPGRADE.
+
+EJBCA 3.6.4
+-----------
+This is a minor release, only fixing one single issue.
+- [ECA-921] - EjbcaHealthCheck does not work on OC4J
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.6.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.6.3
+-----------
+This is a minor release, targeted for fixing a few annoying bugs.
+- Upgrade fails to set internal state of CA expire time for externally signed CAs
+- Key length changes when editing CA in admin-GUI
+- TestProtectedLog fails if ProtectedLogDevice is not enabled in configuration
+- PKCS11 support problem on OCSP responder
+- LdapPublisher searches for old objects on certDN instead of Ldap DN
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.6.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.6.2
+-----------
+This is a minor release but with a record amount of fixes for a point release. New features, improvements and a lot of bugfixes 
+rounding a lot of rough edges.
+Some very notable changes are:
+- Major improvements to the External OCSP responder with more configuration options and 
+  completely new Audit and Account logging. With the new, highly configurable, logging it is 
+  suitable for using as a service charging for, and auditing, requests.
+- New documentation feature with on-line documentation deployed in the Web interface by default. 
+  Question mark links from options that are hard to understand in the Admin-GUI are now possible.
+- Lots of improvements to the Admin-GUI with configuration for autogenerated passwords and fixing a lot of small GUI bugs and quirks. 
+- Fail over mechanism for the LDAP publisher.
+- Improved documentation for more HSMs, Admin-GUI, etc.
+- Improvements for other app servers apart from JBoss.
+- MS document signing extended key usage, and tool for importing certificates from MS CA. 
+- Lots and lots of small bugfixes. 
+- Updated translations. 
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.6.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.6.1
+-----------
+This is a minor release with a few new features, from EJBCA 3.5.6, and some minor fixes.
+Apart form the fixes from EJBCA 3.5.6 nCipherHSM.sh now hides the password the user enters and
+an index collision in profilemappings.properties is fixed. Also an error when enrolling with approvals 
+activated was fixed.
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.6.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.6.0
+-----------
+This is a major release with many new interesting features and framework improvements.
+Read the changelog for details.
+Notable changes in no specific order:
+- New (optional) fully clusterable log system with advanced log signing.
+- Support for more extensions (FreshestCRL, caIssuers, more extended key usages, multiple policy statements)  
+- More WebService API commands.
+- Support for Oracle Application Server and Websphere, improvements for Weblogic.
+- Support for DB2 database.
+- Support for delta CRLs
+- Auto-enroll certificates for Microsoft systems (see ejbca.org->Howto).
+- Improved PKCS#11 support for HSMs.
+- OCSP improvements, support for PKCS#11 HSMs on external OCSP responder.
+- External RA improvements, better configuration and SCEP improvements.
+- LDAP publisher improvements.
+- User notification improvements.
+- New Wiki web, wiki.ejbca.org.
+
+For upgrade instructions, please se UPGRADE. 
+There are database upgrades in this release so please pay attention!
+
+Because there are binary files in EJBCA_HOME/lib and many massive changes there is no patch file for upgrading
+EJBCA 3.5.x to 3.6.0. Use the full package from EJBCA 3.6.0 and follow the upgrade instructions in UPGRADE.
+
+For the Oracle database we have made a switch from the deprecated type LONG to CLOB. Do not fear though,
+EJBCA 3.6 still works if you continue to use the LONG data type (i.e. does not make any changes to your database).
+If you decide to migrate, there is a migration sql script in src/upgrade/35_36/oracle-long-to-clob.sql.
+
+EJBCA 3.5.12
+-----------
+This is a minor release, fixing a performance issue with getCerts webservice call when a single user have lots of certificates, and 
+also an issue with authorization in UserDataSource.
+- Optimize performance of findCerts WS call
+- Serious bug in UserDataSource Authorization
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.11
+-----------
+This is a minor release, fixing two minor issues with webservice calls used by HardTokenMgmt.
+- Change genTokenCertificates WS call behavior to not temporary revoke certificates for MS logon
+- Fix error in EJBCAWS.genTokenCertificate temporary cards aren't revoked properly
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.10
+-----------
+This is a minor release, only backorting a fix done in 3.6.
+- CertificateExpirationNotifier service not working on Weblogic-Oracle
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.9
+-----------
+This is a minor release, targeted for fixing a few annoying bugs.
+- Upgrade fails to set internal state of CA expire time for externally signed CAs
+- Key length changes when editing CA in admin-GUI
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.8
+-----------
+This is a minor release, adding two minor improvements.
+ - Option to Health Check to perform sign test on CA token
+ - Attempt to revoke a certificate.user that is already revoked generates an error
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.7
+-----------
+This is a minor release, fixing a few bugs.
+ - Deadlock under stress test involving revocation
+ - Importing certificate to CA with off-line token did not work
+ - NPE issuing some sparecard with HTMF
+ - Error enrolling certificate using SSL with client cert
+ - CRL generation for CAs waiting for certificate response throws exception  
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.6
+-----------
+This is a minor release, fixing a few bugs and adding a new activation page to the admin-GUI.
+ - New activation page to effectively be able to activate many CAs quickly
+ - Possibility to exclude CAs from monitoring by the HealthCheckServlet
+ - Improve generation of CRL with the CRL worker
+ - Fix bugs listing many log or user entries
+ - Fix WS issues and a few other issues affecting hard token administration
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.5
+-----------
+This is a minor release, fixing a few bugs and adding support for dual authentication for CATokens.
+ - LDAPPublisher initialized the fakeCRL incorrectly
+ - Add support for the fields PostalCode and BusinessCategory, now natively supported by BouncyCastle.
+ - Add Approval option for activation of CAToken
+
+EJBCA 3.5.4
+-----------
+This is a minor release, fixing a few bugs.
+- A configuration file according to the Sun notation can now be used when creating keys on PKCS11 HSMs.
+- A DB synchronization bug is fixed. Before two EJBCAs could update the log table with same sequence number.
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.3
+-----------
+This is a minor release, fixing a few bugs and introducing a new tool.
+
+Notable changes are:
+- Support for AEP KeyPer HSM using the EJBCA tools.
+- Fix for broken pkcs11HSM.sh.
+- A new tool for stress testing over the WS-API.
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.2
+-----------
+This is a minor release, fixing some bugs and introducing some minor improvements.
+
+Notable changes are:
+- Support for Luna HSM was broken
+- Files for building debian package included
+- Portugeese translation of Admin-GUI
+- Optimized CRL generation for generating CRLs with more than 100.000 revoked certificate
+- Possible to use altNames in External RA SCEP service, and require a specific password 
+- Several bugfixes related to using external CAs
+- and other minor fixes... 
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.1
+-----------
+This is a minor fix release, fixing an installation issue with 3.5.0 and some other minor bugs.
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.5.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.5.0
+-----------
+This is a major release with many new interesting features and framework improvements.
+Read the changelog for details.
+Notable changes in no specific order: 
+- PKCS#11 interface to HSMs, support for Utimaco CryptoServer, and improved auto-activation of HSMs.
+- Much enhanced Webservice API for administration.
+- Import CA function supports HSM, possible to create initial CA on HSM and initial admin on smart card.
+- Soft CA keystores uses same framework as HSMs, possible to give private password to every soft CA.
+- New options for specifying certificate validity, per end entity, fixed date etc.
+- Possible to keep configuration/modifications in an external directory.
+- Possible to use different profiles in CMP RA mode.
+- you can now require approvals for revocation.
+- Support multiple email altNames in admin-GUI.
+- Option to choose reverse DN for a CA.
+- Root-less install, using custom SSL truststore for JBoss/Tomcat.
+- Lots of other small fixes and improvements, 69 issues resolved. 
+
+For upgrade instructions, please se UPGRADE.
+
+Because there are binary files in EJBCA_HOME/lib and many massive changes there is no patch file for upgrading
+EJBCA 3.4.x to 3.5.0. Use the full package from EJBCA 3.5.0 and follow the upgrade instructions.
+
+EJBCA 3.4.5
+-----------
+This is a patch release with only minor fixes.
+Notable changes: 
+- Now it is configurable which interface JBoss http service listens to, eases hardening.
+- Fixed a bug where path validation failed when using a MS-CA as External Root CA.
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.4.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.4.4
+-----------
+This is a patch release with only minor fixes.
+Notable changes: 
+- You can now use empty password to activate a HSM CA, which means that you can have operator cards without passwords, or that you can use module protected keys on the HSM (nCipher lingo). 
+- The interesting function for generating OpenVPN installers automatically for users have a fix so it works and is tested again. 
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.4.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.4.3
+-----------
+This is a patch release with some fixes and minor new features.
+Notable new features are:
+- Support for JBoss 4.2.x
+- Support RSASHA256WithRSAAndMGF1 again, this algorithm was temporarily removed for a few versions due to code cleanups.
+  Used mostly for electronic passports in EU.
+- Support for JavaDB/Derby
+
+The release contains binary file changes (new BC JCE provider) so no patch file is provided.
+
+If you upgrade to JBoss 4.2.0 and have a customized conf/web.properties, 
+remove web.jsfimpl from your conf/web.properties.
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.4.x. See UPGRADE for the simple instructions.
+
+Since there is a new version of the BC provider, you should run tests for yourself before upgrading
+in production. We have run alot of tests, but can not guard against everying related to your environment.
+
+EJBCA 3.4.2
+-----------
+This is a patch release with several fixes and minor new features. There are more issues fixed then normal in a 
+patch release, but they are mostly minor features and supposedly safe fixes.  
+Notable new features are:
+- many enhancements for running EJBCA smoothly on both Weblogic and Glassfish
+- fixes for enrollment in windows vista
+- possibility to export a soft CA keystore
+- a new publisher for publishing certificates and CRL with custom made scripts
+- support for SCEP RA polling mode using the external RA module
+- lots of small bug fixes
+
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.4.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.4.1
+-----------
+This is a minor release with only two bug fixes.
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.4.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.4.0
+-----------
+This is a major release with many new interesting features and framework improvements.
+Read the changelog for details.
+
+For upgrade instructions, please se UPGRADE.
+
+Because there are binary files in EJBCA_HOME/lib and many massive changes there is no patch file for upgrading
+EJBCA 3.3.x to 3.4.0. Use the full package from EJBCA 3.4.0 and follow the upgrade instructions.
+
+Important changes:
+In EJBCA 3.4.0 the default ASN.1 string encoding for DNs are now UTF8. In EJBCA 3.3.x and earlier, the default encoding was
+PrintableString, unless the character set forced the usage of UTF8 (international characters). 
+Now DN components are always encoded as UTF8 (except for components that does not allow UTF8 such as C and SerialNumber).
+See UPGRADE for information regarding upgrading from an old CA, and how the behaviour can be configured.
+
+If you used to deploy with 'deploywithjbossservices', this is now done using the regular 'deploy', but you have to set an option
+in conf/ejbca.properties.
+
+EJBCA 3.3.3
+-----------
+This is a minor release with some improvement, most notably for LDAP.
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.3.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.3.2
+-----------
+This is a minor release with some bugfixes, most notably for oracle and weblogic.
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.3.x. See UPGRADE for the simple instructions.
+
+EJBCA 3.3.1
+-----------
+This is a minor release with some bugfixes, most notably for Luna HSM.
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.3.0. See UPGRADE for the simple instructions.
+
+EJBCA 3.3.0
+-----------
+This is a major release with new features, improvements and bugfixes.
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.2.2. See UPGRADE for the simple instructions.
+
+EJBCA 3.2.2
+-----------
+This is a minor release with minor improvements and some bugfixes, mostly for MS-SQL.
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.2.1. See UPGRADE for the simple instructions.
+
+EJBCA 3.2.1
+-----------
+This is a minor release with one new features and some bugfixes.
+Read the changelog for details.
+
+This is a plug-in upgrade from 3.2.0. See UPGRADE for the simple instructions.
+
+EJBCA 3.2.0
+-----------
+This is a release with new enterprise features and an internal restucturing of the code base.
+Read the changelog for details.
+
+There are database upgrades in this version (from 3.1.x). 
+See doc/UPGRADE for instruction how to upgrade your database.
+You MUST do that!
+
+Otherwise simply keep/copy ejbca.properties from the earlier installation.
+Merge changes from ejbca.properties.sample into your ejbca.properties, 
+specially datasource.jndi-name and datasource.jndi-name-prefix if you changed them from the default values.
+Copy the directory 'p12' from the earlier installation and 'ant deploy' 
+(or deploywithjbossservice) this new one.
+
+Because there are binary files in EJBCA_HOME/lib and many massive changes there is no patch file for upgrading
+EJBCA 3.1.3 to 3.2.0. Use the full package from EJBCA 3.2.0 and follow the upgrade instructions.
+
+EJBCA V3.1.4
+------------
+This is a minor release with some new features and some bugfixes.
+Read the changelog for details.
+
+This is a plugin-upgrade from 3.1.3. Except for the following:
+Merge changes from ejbca.properties.sample into your ejbca.properties, 
+specially datasource.jndi-name and datasource.jndi-name-prefix if you changed them from the default values.
+
+Otherwise simply keep/copy ejbca.properties from the earlier installation.
+Merge changes from ejbca.properties.sample into your ejbca.properties.
+Copy the directory 'p12' from the earlier installation and 'ant deploy' 
+(or deploywithjbossservice) this new one.
+
+EJBCA V3.1.3
+------------
+This is a minor release with some new features and some bugfixes.
+Read the changelog for details.
+
+This is a plugin-upgrade from 3.1.2.
+Simply keep/copy ejbca.properties from the earlier installation, 
+copy the directory 'p12' from the earlier installation and 'ant deploy' 
+(or deploywithjbossservice) this new one.
+
+Note that to fix ECA-144, 148 and 75, new version of lib/bcmail*.jar and
+lib/bcprov*.jar are used. Since they are binary files they are not
+included in the patch from version 3.1.2 to 3.1.3. You can use the patch and
+manually replace the jar-files from the full distribution.
+
+The 3.1.3 release have support for RSASSA-PSS signatures to conform to the 
+Swedish standard for MRTD certificates (Electronic Passports). 
+The RSASSA-PSS parameters can be seen and edited in the file
+src/java/se/anatom/ejbca/ca/caadmin/ExtendedX509Util.java.15 
+
+IMPORTANT, compliation using jdk1.5 is required for this algorithm. 
+Otherwise this algorithm option won't show up
+
+Enhanced support for international characters in the adminweb gui (Add/Edit pages). 
+Should work with most languages now.
+
+It's now also possible to select a subset of a users SubjectDN and SubjectAltName 
+fields used in a particular kind of certificate. This is defined in the certificate profiles
+
+EJBCA V3.1.2
+------------
+This is a minor release with two new features and some bugfixes.
+Read the changelog for details.
+
+This is a plugin-upgrade from 3.1/3.1.1.
+Simply keep ejbca.properties from the earlier release, and 'ant deploy' this
+new one.
+
+Note that to fix ECA-126, new version of lib/bcmail-jdk14.jar and
+lib/bcprov-jdk14.jar are used. Since they are binary files they are not
+included in the patch from version 3.1 to 3.1.2. You can use the patch and
+manually replace the jar-files.
+
+
+EJBCA V3.1.1
+------------
+This is a minor release with a few small bugfixes found in the 3.1 release.
+Read the changelog for details.
+
+This is a plugin-upgrade from 3.1.
+
+EJBCA V3.1
+----------
+This is a major release including many new features, improvements, and bug fixes. 
+Read the full changelog.
+We are very proud of this release and recommend an upgrade.
+
+This is mostly a plugin-upgrade from 3.0.7, no database changes needed. 
+
+Since the changes are massive, no patch file is provided. 
+
+To upgrade from 3.0.x follow doc/UPGRADE. 
+Please read this carefully!
+
+EJBCA V3.0.7
+------------
+This is a plugin-upgrade from 3.0.6 or 3.0.5. 
+Apply patch, build and redeploy.
+
+EJBCA V3.0.6
+------------
+
+This is a plugin-upgrade from 3.0.5. 
+Apply patch, build and redeploy.
+
+If you are using the hard token stuff on MySQL (which you probably aren't or you would have noticed 
+this bug), you should drop the table HardTokenData and restart JBoss to recreate the table.
+
+EJBCA V3.0.5
+------------
+
+This is a plugin-upgrade from 3.0.4. 
+Apply patch, build and redeploy.
+
+For users of MS SQL 2000 you should note the column name 'rule_' (earlier 'rule' which is 
+a reserved word) in the table AccessRulesData.
+
+EJBCA V3.0.4
+------------
+
+This is a plugin-upgrade from 3.0.3. 
+Apply patch, build and redeploy.
+
+EJBCA V3.0.3
+------------
+
+The database table 'hardtokenprofiledata' using the database HypersonicSQL changed. 
+If you are using the hardtoken functionality on the HypersonicSQL database
+(which you should not be doing in production), the table must be removed and
+recreated. No migration script is provided since we don't anticipate anyone using
+this combination in production.
+
+EJBCA V3.0
+----------
+EJBCA 3.0 is a major new release taking the Open Source CA to new heights. 
+The most important improvment is that it is now possible to run several
+PKI infrastructures within one single instance of EJBCA. Among other major improvements are also 
+complete support for OCSP, enanced Hard token interface and flexible 
+LDAP configuration through the Web-GUI.
+
+This is a plugin-upgrade from beta3.
+
+This release is not backwards compatible with EJBCA 2.1 without database upgrade.
+Upgrade instructions must be followed if upgrading from EJBCA 2.1, 
+backup your database before trying any upgrades.
+
+EJBCA V3.0Beta3
+---------------
+This is a plugin-upgrade from beta2.
+There is an upgrade function from EJBCA2->EJBCA3 for the MySQL database, see doc/UPGRADE.
+
+EJBCA V3.0Beta2
+---------------
+Thanks to a bug in Beta1 the database table 'HardTokenPropertyData' has changed. If you have been
+using the HardToken features in Beta1, or plan to use them in the future, this table must be rebuilt.
+'drop table hardtokenpropertydata' will delete and rebuild the table (data must be entered again).
+
+Apart from this, it is a plug-in upgrade.
+
+EJBCA V3.0beta1
+---------------
+EJBCA 3.0 is a major new release taking the Open Source CA to new heights. 
+The most noteworthy change is that it is now possible to run a complete (or several)
+PKI infrastructure within one single instance of EJBCA.
+
+This release is not backwards compatible with EJBCA 2.1 without database upgrade.
+Upgrade instructions must be followed if upgrading from EJBCA 2.1, 
+backup your database before trying any upgrades.
+
+The (default) LDAP schema has been changed to follow RFC 2256. If using LDAP, 
+the schema should be checked. You can configure the schema 
+(in ca/ca/META-INF/ejb-jar.xml) to be the same as before if needed.
+
+EJBCA V2.1.2
+------------
+This is a plugin upgrade from V2.1.
+
+The (default) LDAP schema has been changed to follow RFC 2256. If using LDAP, 
+the schema should be checked. You can configure the schema 
+(in ca/ca/META-INF/ejb-jar.xml) to be the same as before if needed. See HOWTO-LDAP.txt.
+
+EJBCA V2.1.1
+------------
+This is a plugin upgrade from V2.1.
+
+EJBCA V2.1
+----------
+New method to revoke certificates with external publishers.
+
+EJBCA V2.0.1
+------------
+
+Except from notes below this is a plugin upgrade from v2.0.
+
+Java >= 1.4 is now required.
+
+Delete bcmail-jdk13*, jce-jdk13*, ldap.jar and regexp1_0_0.jar
+from $JBOSS_HOME/server/default/lib.
+
+EJBCA V2.0
+----------
+Name of initial temporary super administrator changed from "CN=
+Walter" to "CN=
+SuperAdmin". A new must be created.
+
+All defined administrator privileges must be redefined.
+
+Certificate profiles should be redefined.
+
+Drop tables GlobalConfigurationData, AdminGroupData,
+AdminEntityData,
+AccessRulesData and EndEntityProfileData to flush configuration
+and
+administrator privileges (actually deleting the content would be
+enough but you
+might as well drop the tables).
+
+Delete bcmail-jdk13-116.jar, jce-jdk13-116.jar, ldap.jar and
+regexp1_0_0.jar from $JBOSS_HOME/server/default/lib.
+
+EJBCA V2.0B1
+----------
+We have moved to EJB 2.0. JBoss 3 is now required.
+A complete reinstall from EJBCA 1.x is required, old jars, wars
+and ears must be
+deleted.
+Database schema has changed, old data in the database must be
+migrated.
+A Web GUI for administration is available through https, see
+doc/README for
+installation instructions.
+
+EJBCA V1.3
+----------
+This is a plugin upgrade from v1.2 or 1.1. Just build and deploy
+the new
+files.
+
+EJBCA V1.2
+----------
+This is a plugin upgrade from v1.1. Just build and deploy the
+new
+files.
+
+EJBCA V1.1
+----------
+
+Upgrading from version 1.0:
+
+If upgrading from version 1.0 the database tables need to be
+migrated if the
+DN attributes L or ST have been used. This is because the
+ordering of those
+attributes have changed (for string matching the order must be
+defined).
+
+If L or ST have not been used in DNs, migration is NOT needed.
+
+What need to be done are to:
+1. Read column with DN to me migrated from table.
+2. Run 'newDN=CertTools.stringToBCDNString(oldDN)'.
+3. Update column with DN in table.
+
+Columns that need updating are:
+issuerDN in table CRLData
+subjectDN, issuerDN in table CertificateData
+subjectDN in table UserData.
+
+If a tool is needed to perform the migration, please contact us.
+See http://sourceforge.net/projects/ejbca
+
+
+
+
+
+
