@@ -1,0 +1,1179 @@
+<%               
+  TreeMap rootcaprofiles = info.getAuthorizedRootCACertificateProfileNames();
+  TreeMap subcaprofiles = info.getAuthorizedSubCACertificateProfileNames();    
+  
+  TreeMap casigners = info.getCANames();
+
+  HashMap certprofileidtonamemap = info.getCertificateProfileIdToNameMap();
+  HashMap publisheridtonamemap = ejbcawebbean.getInformationMemory().getPublisherIdToNameMap();
+
+  Collection availablecatokens = CATokenManager.instance().getAvailableCATokens();
+  String[] availablecatokentypes = new String[availablecatokens.size()];
+  String[] availablecatokentypetexts = new String[availablecatokens.size()];  
+
+  Iterator availablecatokensiter = availablecatokens.iterator();
+  int numberofavailabletokens = 0;
+  while(availablecatokensiter.hasNext()){
+    AvailableCAToken nextavailable = (AvailableCAToken) availablecatokensiter.next();
+    if(nextavailable.isUsed()){
+      availablecatokentypes[numberofavailabletokens] = nextavailable.getClassPath();
+      if(nextavailable.isTranslateable()){
+        availablecatokentypetexts[numberofavailabletokens] =  ejbcawebbean.getText(nextavailable.getName());
+      }else{
+        availablecatokentypetexts[numberofavailabletokens] =  nextavailable.getName();
+      }
+      numberofavailabletokens++;
+    }
+  }
+ 
+  row = 0;
+  CAInfo cainfo = null;
+  
+  String catokentext = null;
+  CATokenInfo catokeninfo = null;
+  
+  boolean revokable = true;
+  boolean signbyexternal = false;
+  boolean isexternal = false;
+  boolean waitingresponse = false;  
+
+  if(editca){
+    cainfo = cabean.getCAInfo(caid).getCAInfo();
+    catokeninfo = cainfo.getCATokenInfo();
+    signbyexternal = cainfo.getSignedBy() == CAInfo.SIGNEDBYEXTERNALCA;
+    isexternal = cainfo.getStatus() == SecConst.CA_EXTERNAL;
+
+    if(catokeninfo instanceof SoftCATokenInfo){
+       catokentype = CATokenInfo.CATOKENTYPE_P12;
+    }
+    if(catokeninfo instanceof HardCATokenInfo){
+       catokentype = CATokenInfo.CATOKENTYPE_HSM;
+    }
+    if(catokeninfo instanceof NullCATokenInfo){
+        catokentype = CATokenInfo.CATOKENTYPE_NULL;
+     }
+       catokenpath = catokeninfo.getClassPath();
+       AvailableCAToken availablecatoken = CATokenManager.instance().getAvailableCAToken(catokenpath); 
+       if(availablecatoken==null)
+         throw new Exception("CA Token with classpath "+catokenpath+" is not available.");
+       // External CAs use NullCAToken which is not used
+       if(!availablecatoken.isUsed() && !isexternal)
+         throw new Exception("HardCAToken is not used, configuration error.");
+      if(availablecatoken.isTranslateable()){
+        catokentext =  ejbcawebbean.getText(availablecatoken.getName());
+      }else{
+        catokentext =  availablecatoken.getName();
+      }      
+
+    
+    revokable = cainfo.getStatus() != SecConst.CA_REVOKED  && cainfo.getStatus() != SecConst.CA_WAITING_CERTIFICATE_RESPONSE && !cadatahandler.isCARevoked(cainfo);
+
+    waitingresponse = cainfo.getStatus() == SecConst.CA_WAITING_CERTIFICATE_RESPONSE;
+
+  }
+
+  OCSPCAServiceInfo ocspcainfo = null; 
+  java.security.cert.X509Certificate ocspcert = null; 
+  if(editca && !isexternal){
+    Iterator iter = cainfo.getExtendedCAServiceInfos().iterator();       
+    while(iter.hasNext()){
+      ExtendedCAServiceInfo serviceinfo = (ExtendedCAServiceInfo) iter.next();
+      if(serviceinfo instanceof OCSPCAServiceInfo){
+        ocspcainfo = (OCSPCAServiceInfo) serviceinfo;
+        if(ocspcainfo.getOCSPSignerCertificatePath() != null)
+          ocspcert = (java.security.cert.X509Certificate) ocspcainfo.getOCSPSignerCertificatePath().get(0);
+      }
+     }
+   }
+  
+  XKMSCAServiceInfo xkmscainfo = null; 
+  java.security.cert.X509Certificate xkmscert = null; 
+  if(editca && !isexternal){
+    Iterator iter = cainfo.getExtendedCAServiceInfos().iterator();       
+    while(iter.hasNext()){
+      ExtendedCAServiceInfo serviceinfo = (ExtendedCAServiceInfo) iter.next();
+      if(serviceinfo instanceof XKMSCAServiceInfo){
+        xkmscainfo = (XKMSCAServiceInfo) serviceinfo;
+        if(xkmscainfo.getXKMSSignerCertificatePath() != null)
+          xkmscert = (java.security.cert.X509Certificate) xkmscainfo.getXKMSSignerCertificatePath().get(0);
+      }
+     }
+   }
+  
+  CmsCAServiceInfo cmscainfo = null; 
+  java.security.cert.X509Certificate cmscert = null; 
+  if(editca && !isexternal){
+    Iterator iter = cainfo.getExtendedCAServiceInfos().iterator();       
+    while(iter.hasNext()){
+      ExtendedCAServiceInfo serviceinfo = (ExtendedCAServiceInfo) iter.next();
+      if(serviceinfo instanceof CmsCAServiceInfo){
+        cmscainfo = (CmsCAServiceInfo) serviceinfo;
+        if(cmscainfo.getCertificatePath() != null)
+          cmscert = (java.security.cert.X509Certificate) cmscainfo.getCertificatePath().get(0);
+      }
+     }
+   }
+
+%>
+<SCRIPT language="JavaScript">
+<!--  
+<% if(!editca){ %>
+  var rootcaprofiles = new Array(<%= rootcaprofiles.keySet().size()%>);
+  var subcaprofiles = new Array(<%= subcaprofiles.keySet().size()%>);
+  var NAME       = 0;
+  var ID         = 1;
+<%
+      Iterator iter = rootcaprofiles.keySet().iterator();
+      int i = 0;
+      while(iter.hasNext()){
+        String next = (String) iter.next();  %> 
+    rootcaprofiles[<%=i%>] = new Array(2);
+    rootcaprofiles[<%=i%>][NAME] = "<%= next %>";      
+    rootcaprofiles[<%=i%>][ID] = <%= rootcaprofiles.get(next) %>;
+   <%   i++; 
+      }
+ 
+      iter = subcaprofiles.keySet().iterator();
+      i = 0;
+      while(iter.hasNext()){
+        String next = (String) iter.next();  %> 
+    subcaprofiles[<%=i%>] = new Array(2);
+    subcaprofiles[<%=i%>][NAME] = "<%= next %>";      
+    subcaprofiles[<%=i%>][ID] = <%= subcaprofiles.get(next) %>;
+   <%   i++; 
+      }
+%>
+      
+function fillCertProfileField(){
+   var certprofselect   =  document.ca.<%=SELECT_CERTIFICATEPROFILE%>; 
+
+   var num = certprofselect.length;
+   for( i=num-1; i >= 0; i-- ){
+       certprofselect.options[i]=null;
+    }   
+ 
+   var profiles = subcaprofiles;
+   if(document.ca.<%= SELECT_SIGNEDBY %>.options[document.ca.<%= SELECT_SIGNEDBY %>.options.selectedIndex].value == <%= CAInfo.SELFSIGNED %>)
+      profiles = rootcaprofiles;
+
+   for( i=0; i < profiles.length; i ++){
+     certprofselect.options[i]=new Option(profiles[i][NAME],
+                                     profiles[i][ID]);    
+     
+   }
+}
+
+  <% if(!processrequest){ %>
+function isExternalX509(){
+   var subjectaltname  =  document.ca.<%=TEXTFIELD_SUBJECTALTNAME%>;
+   var policyidfield   =  document.ca.<%=TEXTFIELD_POLICYID%>;
+   var activateocsp    =  document.ca.<%=CHECKBOX_ACTIVATEOCSPSERVICE%>;
+   var activatexkms    =  document.ca.<%=CHECKBOX_ACTIVATEXKMSSERVICE%>;
+   var activatecms     =  document.ca.<%=CHECKBOX_ACTIVATECMSSERVICE%>;
+   
+   if (subjectaltname != null) {	
+	   subjectaltname.disabled = false; 
+	   policyidfield.disabled = false; 
+	   activateocsp.disabled = false;
+	   activatexkms.disabled = false;
+	   activatecms.disabled = false;
+	   activateocsp.checked = true;   
+	   activatexkms.checked = false;   
+	   activatecms.checked = false;   
+	
+	   if(document.ca.<%= SELECT_SIGNEDBY %>.options[document.ca.<%= SELECT_SIGNEDBY %>.options.selectedIndex].value == <%= CAInfo.SIGNEDBYEXTERNALCA %>){
+	      subjectaltname.disabled = true; 
+	      policyidfield.disabled = true;   
+	      activateocsp.disabled = true;
+	      activateocsp.checked = false;
+	      activatexkms.disabled = true;
+	      activatexkms.checked = false;    
+	      activatecms.disabled = true;
+	      activatecms.checked = false;    
+	   } 
+   }
+}
+
+function isExternalGeneric(){
+   var makebutton      =  document.ca.<%= BUTTON_MAKEREQUEST %>; 
+   var createbutton    =  document.ca.<%= BUTTON_CREATE %>; 
+   var validityfield   =  document.ca.<%=TEXTFIELD_VALIDITY%>;
+   var certproffield   =  document.ca.<%=SELECT_CERTIFICATEPROFILE %>;
+
+   makebutton.disabled = true;
+   createbutton.disabled = false; 
+   validityfield.disabled = false; 
+   certproffield.disabled = false; 
+
+   if(document.ca.<%= SELECT_SIGNEDBY %>.options[document.ca.<%= SELECT_SIGNEDBY %>.options.selectedIndex].value == <%= CAInfo.SIGNEDBYEXTERNALCA %>){
+      makebutton.disabled = false;   
+      createbutton.disabled = true;
+      validityfield.disabled = true; 
+      certproffield.disabled = true; 
+   } 
+}
+
+    <% } %>
+<% }
+   if(!processrequest){ %>
+function gendefaultcrldistpoint(){
+ <% if(!editca){ %>
+    document.ca.<%=TEXTFIELD_DEFAULTCRLDISTPOINT%>.value = "<%=globalconfiguration.getStandardCRLDistributionPointURINoDN() %>" + document.ca.<%=TEXTFIELD_SUBJECTDN%>.value;
+ <% }else{ %>
+    document.ca.<%=TEXTFIELD_DEFAULTCRLDISTPOINT%>.value = "<%=globalconfiguration.getStandardCRLDistributionPointURINoDN() + cainfo.getSubjectDN()%>";
+ <% } %>
+}
+
+function gendefaultcrlissuer() {
+ <% if(!editca){ %>
+    document.ca.<%=TEXTFIELD_DEFAULTCRLISSUER%>.value = document.ca.<%=TEXTFIELD_SUBJECTDN%>.value;
+ <% }else{ %>
+    document.ca.<%=TEXTFIELD_DEFAULTCRLISSUER%>.value = "<%= cainfo.getSubjectDN()%>";
+ <% } %>
+}
+
+function gencadefinedfresherstcrl() {
+ <% if(!editca){ %>
+    document.ca.<%=TEXTFIELD_CADEFINEDFRESHESTCRL%>.value = "<%=globalconfiguration.getStandardDeltaCRLDistributionPointURINoDN() %>" + document.ca.<%=TEXTFIELD_SUBJECTDN%>.value;
+ <% }else{ %>
+    document.ca.<%=TEXTFIELD_CADEFINEDFRESHESTCRL%>.value = "<%=globalconfiguration.getStandardDeltaCRLDistributionPointURINoDN() + cainfo.getSubjectDN()%>";
+ <% } %>
+}
+
+function gendefaultocsplocator(){
+    document.ca.<%=TEXTFIELD_DEFAULTOCSPLOCATOR%>.value = "<%=globalconfiguration.getStandardOCSPServiceLocatorURI() %>";
+}
+<% } 
+   if(revokable){ %>
+function confirmrevokation(){
+  var returnval = false;
+  if(document.ca.<%= SELECT_REVOKEREASONS %>.options.selectedIndex == -1){
+     alert("<%= ejbcawebbean.getText("AREVOKEATIONREASON", true) %>"); 
+     returnval = false;
+  }else{
+    returnval = confirm("<%= ejbcawebbean.getText("AREYOUSUREREVOKECA",true) %>");
+  } 
+  return returnval;
+}
+
+<%  }  
+
+  if(editca && !waitingresponse){%>
+function viewcacert(){
+    win_popup = window.open('<%=VIEWCERT_LINK%>?caid=<%=caid%>', 'view_cert','height=600,width=600,scrollbars=yes,toolbar=no,resizable=1');
+    win_popup.focus();
+}
+  
+  <% } if(editca && !isexternal){ %>
+function confirmrenewal(){
+    
+  return confirm("<%= ejbcawebbean.getText("AREYOUSURERENEWCA",true) %>") && checkallfields();     
+}
+
+
+    
+  <% if(ocspcert != null){ %>
+function viewocspcert(){        
+    var link = "<%= VIEWCERT_LINK %>?<%= CERTSERNO_PARAMETER %>=<%= java.net.URLEncoder.encode(ocspcert.getSerialNumber().toString(16) + "," + CertTools.getIssuerDN(ocspcert),"UTF-8")%>";
+    link = encodeURI(link);
+    win_popup = window.open(link, 'view_cert','height=600,width=500,scrollbars=yes,toolbar=no,resizable=1');
+    win_popup.focus();
+}
+ 
+function checkactivateocsp(){ 
+  if(document.ca.<%=CHECKBOX_ACTIVATEOCSPSERVICE%>.checked){
+    document.ca.<%=BUTTON_REVOKERENEWOCSPCERTIFICATE%>.disabled = false;
+  }
+  else{    
+    document.ca.<%=BUTTON_REVOKERENEWOCSPCERTIFICATE%>.disabled = true;
+  }
+}
+
+<% } 
+  if(xkmscert != null){ %>
+  function viewxkmscert(){        
+      var link = "<%= VIEWCERT_LINK %>?<%= CERTSERNO_PARAMETER %>=<%= java.net.URLEncoder.encode(xkmscert.getSerialNumber().toString(16) + "," + CertTools.getIssuerDN(xkmscert),"UTF-8")%>";
+      link = encodeURI(link);
+      win_popup = window.open(link, 'view_cert','height=600,width=500,scrollbars=yes,toolbar=no,resizable=1');
+      win_popup.focus();
+  }
+   
+  function checkactivatexkms(){ 
+    if(document.ca.<%=CHECKBOX_ACTIVATEXKMSSERVICE%>.checked){
+      document.ca.<%=BUTTON_REVOKERENEWXKMSCERTIFICATE%>.disabled = false;
+    }
+    else{    
+      document.ca.<%=BUTTON_REVOKERENEWXKMSCERTIFICATE%>.disabled = true;
+    }
+  }
+
+<% } 
+  if(cmscert != null){ %>
+  function viewcmscert(){        
+      var link = "<%= VIEWCERT_LINK %>?<%= CERTSERNO_PARAMETER %>=<%= java.net.URLEncoder.encode(cmscert.getSerialNumber().toString(16) + "," + CertTools.getIssuerDN(cmscert),"UTF-8")%>";
+      link = encodeURI(link);
+      win_popup = window.open(link, 'view_cert','height=600,width=500,scrollbars=yes,toolbar=no,resizable=1');
+      win_popup.focus();
+  }
+   
+  function checkactivatecms(){ 
+    if(document.ca.<%=CHECKBOX_ACTIVATECMSSERVICE%>.checked){
+      document.ca.<%=BUTTON_REVOKERENEWCMSCERTIFICATE%>.disabled = false;
+    }
+    else{    
+      document.ca.<%=BUTTON_REVOKERENEWCMSCERTIFICATE%>.disabled = true;
+    }
+  }
+
+  <% } 
+}  %>  
+
+function checkusefield(usefield, criticalfield){
+  var usebox = eval("document.ca." + usefield);
+  var cribox = eval("document.ca." + criticalfield);
+  if(usebox.checked){
+    cribox.disabled = false;
+  }
+  else{
+    cribox.checked=false;
+    cribox.disabled = true;
+  }
+}
+
+
+function checkallfields(){
+    var illegalfields = 0;
+
+    <% if(!editca){ %>
+    if(!checkfieldforcompletednchars("document.ca.<%=TEXTFIELD_SUBJECTDN%>","<%= ejbcawebbean.getText("ONLYCHARACTERS") + " " + ejbcawebbean.getText("SUBJECTDN") %>"))
+      illegalfields++;
+    if((document.ca.<%= TEXTFIELD_SUBJECTDN %>.value == "")){
+      alert("<%= ejbcawebbean.getText("YOUAREREQUIRED", true) + " " + ejbcawebbean.getText("SUBJECTDN", true)%>");
+      illegalfields++;
+    }
+    if((document.ca.<%= TEXTFIELD_SUBJECTDN %>.value.indexOf("=")==-1)){
+		alert("<%= ejbcawebbean.getText("SUBJECTDNINVALID")%>")
+		illegalfields++;
+    }
+    
+    if((document.ca.<%= SELECT_SIGNATUREALGORITHM %>.value.indexOf("ECDSA")!=-1)) {
+        if(document.ca.<%= TEXTFIELD_KEYSPEC %>.value == "") {
+        	alert("<%= ejbcawebbean.getText("YOUAREREQUIRED", true) + " " + ejbcawebbean.getText("KEYSPEC", true)%>");
+        	illegalfields++;
+        }
+    } else {
+    	if(document.ca.<%= TEXTFIELD_KEYSPEC %>.value != "") {
+    		alert("<%= ejbcawebbean.getText("YOUAREREQUIREDTONOT", true) + " " + ejbcawebbean.getText("KEYSPEC", true)%>");
+    		illegalfields++;
+        }
+    }
+    	    
+   <% } %> 
+
+    <% if(!editca || (editca && cainfo.getSignedBy() != CAInfo.SIGNEDBYEXTERNALCA)){ %>
+    if((document.ca.<%= TEXTFIELD_VALIDITY %>.value == "") && document.ca.<%= SELECT_SIGNEDBY %>.options[document.ca.<%= SELECT_SIGNEDBY %>.options.selectedIndex].value != <%= CAInfo.SIGNEDBYEXTERNALCA %>){
+      alert("<%= ejbcawebbean.getText("YOUAREREQUIRED", true) + " " + ejbcawebbean.getText("VALIDITY", true)%>");
+      illegalfields++;
+    }   
+    <% }
+
+       if(catype == CAInfo.CATYPE_X509){ 
+         if(!editca){%>        
+    if(!checkfieldforcompletednchars("document.ca.<%=TEXTFIELD_SUBJECTALTNAME%>","<%= ejbcawebbean.getText("ONLYCHARACTERS") + " " + ejbcawebbean.getText("SUBJECTALTNAME")%>"))
+      illegalfields++;
+   if(!checkfieldforipaddess("document.ca.<%=TEXTFIELD_POLICYID%>","<%= ejbcawebbean.getText("ONLYNUMBERALSANDDOTS") + ejbcawebbean.getText("POLICYID")%>"))
+      illegalfields++;
+      <% } 
+      } %>
+      <% if(!processrequest){ %>
+    if(!checkFieldForSimpleTimeMinutes("document.ca.<%=TEXTFIELD_CRLPERIOD%>","<%= ejbcawebbean.getText("INVALIDTIMEFORMAT") %>"))
+      illegalfields++;
+    if((document.ca.<%= TEXTFIELD_CRLPERIOD %>.value == "")){
+      alert("<%= ejbcawebbean.getText("YOUAREREQUIRED") + " " + ejbcawebbean.getText("CRLPERIOD")%>");
+      illegalfields++;
+    }
+    if(!checkFieldForSimpleTimeMinutes("document.ca.<%=TEXTFIELD_CRLISSUEINTERVAL%>","<%= ejbcawebbean.getText("INVALIDTIMEFORMAT") %>"))
+        illegalfields++;
+    if(!checkFieldForSimpleTimeMinutes("document.ca.<%=TEXTFIELD_CRLOVERLAPTIME%>","<%= ejbcawebbean.getText("INVALIDTIMEFORMAT") %>"))
+        illegalfields++;
+    if(!checkFieldForSimpleTimeMinutes("document.ca.<%=TEXTFIELD_DELTACRLPERIOD%>","<%= ejbcawebbean.getText("INVALIDTIMEFORMAT") %>"))
+      illegalfields++;
+    if((document.ca.<%= TEXTFIELD_DELTACRLPERIOD %>.value == "")){
+      alert("<%= ejbcawebbean.getText("YOUAREREQUIRED") + " " + ejbcawebbean.getText("DELTACRLPERIOD")%>");
+      illegalfields++;
+    }
+    <%  } %> 
+     return illegalfields == 0;  
+   } 
+-->
+
+</SCRIPT>
+<body <% if(!editca) out.write(" onload='fillCertProfileField()' "); %>> 
+<div align="center"> 
+  <% if(processrequest){ %>
+  <h2><%= ejbcawebbean.getText("PROCESSREQUEST") %><br></h2>
+  <h3><%= ejbcawebbean.getText("CANAME")+ " : " + caname %><br>
+      <%= ejbcawebbean.getText("ONLYTHEPUBLICKEY") %></h3>
+  <% }else{
+       if(editca){ %>
+  <h2><%= ejbcawebbean.getText("EDITCA") %><br></h2>
+  <h3><%= ejbcawebbean.getText("CANAME")+ " : " + cainfo.getName() %> </h3>
+  <%   }else{ %>
+   <h2><%= ejbcawebbean.getText("CREATECA") %><br></h2>
+   <h3><%= ejbcawebbean.getText("CANAME")+ " : " + caname %> </h3>
+  <%   }
+     }%>
+</div>
+  <table width="100%" border="0" cellspacing="3" cellpadding="3">
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%" valign="top"> 
+        <div align="left"> 
+          <h3>&nbsp;</h3>
+        </div>
+      </td>
+      <td width="50%" valign="top"> 
+        <div align="right">
+        <A href="<%=THIS_FILENAME %>"><u><%= ejbcawebbean.getText("BACKTOCAS") %></u></A>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+   <!--     <A  onclick='displayHelpWindow("<%= ejbcawebbean.getHelpfileInfix("ca_help.html") + "#cas"%>")'>
+        <u><%= ejbcawebbean.getText("HELP") %></u> </A></div> -->
+      </td>
+    </tr>
+    <form name="changecatype" action="<%= THIS_FILENAME %>" method="post">
+      <input type="hidden" name='<%= ACTION %>' value='<%=ACTION_CHOOSE_CATYPE %>'>
+      <input type="hidden" name='<%= HIDDEN_CANAME %>' value='<%=caname %>'>
+      <input type="hidden" name='<%= HIDDEN_PROCESSREQUEST %>' value='<%= processrequest%>'>
+      <input type="hidden" name='<%= HIDDEN_PROCESSREQUESTDN %>' value='<%= processedsubjectdn%>'>
+      <% if(editca) { %>
+      <tr id="Row<%=row++%2%>"> 
+        <td width="50%"  align="right"> 
+          <%= ejbcawebbean.getText("CAID") %>
+        </td>
+        <td width="50%" valign="top">
+            <%=cainfo.getCAId() %>
+        </td>
+      </tr>
+      <% } %>
+      <tr id="Row<%=row++%2%>"> 
+        <td width="50%"  align="right"> 
+          <%= ejbcawebbean.getText("TYPEOFCA") %> <%= ejbcawebbean.getHelpReference("/manual.html#Type%20of%20CA") %>
+        </td>
+        <td width="50%" valign="top">
+            <% if (!editca) { %> 
+            <select name="<%=SELECT_CATYPE %>" size="1" onchange="document.changecatype.submit()"'>                
+                 <option value="<%=CAInfo.CATYPE_X509%>" <%if(catype == CAInfo.CATYPE_X509) out.write("selected");%>>X509</option>
+                 <option value="<%=CAInfo.CATYPE_CVC%>" <%if(catype == CAInfo.CATYPE_CVC) out.write("selected");%>>CVC</option>  
+	        </select> 
+	        <% } else { 
+	             if(catype == CAInfo.CATYPE_X509) out.write("X509");
+	             else if(catype == CAInfo.CATYPE_CVC) out.write("CVC");
+	             else out.write("UNKNOWN");
+	           }
+	        %>
+        </td>
+      </tr>
+    </form>
+
+   <% if(!processrequest){ %>
+    <% if(editca){ %>
+        <tr id="Row<%=row++%2%>">
+          <td width="50%"  align="right">          
+            <%= ejbcawebbean.getText("CATOKENTYPE") %>
+         </td>	 
+	 <td><%= catokentext %>
+         </td>	
+      </tr>
+
+    <%   }else{ %>
+    <form name="changecatokentype" action="<%= THIS_FILENAME %>" method="post">
+       <input type="hidden" name='<%= ACTION %>' value='<%=ACTION_CHOOSE_CATOKENTYPE %>'>
+       <input type="hidden" name='<%= HIDDEN_CANAME %>' value='<%=caname %>'>
+       <input type="hidden" name='<%= HIDDEN_CATYPE %>' value='<%=catype %>'>
+       <tr id="Row<%=row++%2%>">
+          <td width="50%"  align="right">          
+            <%= ejbcawebbean.getText("CATOKENTYPE") %>
+         </td>	 
+	 <td><select name="<%=SELECT_CATOKEN %>" size="1" onchange="document.changecatokentype.submit()"'>
+                <% for(int i=0; i < numberofavailabletokens; i++){%>
+	 	<option value="<%=availablecatokentypes[i] %>" <% if(catokenpath.equals(availablecatokentypes[i]))
+                                             out.write("selected"); %>><%= availablecatokentypetexts[i] %></option>
+                <% } %>
+	     </select>
+         </td>	
+      </tr>
+    </form>
+    <%   }
+     } // if(!processrequest){ %>
+  <form name="ca" method="post" action="<%=THIS_FILENAME %>" ENCTYPE="post">
+    <input type="hidden" name='<%= HIDDEN_CATOKENTYPE %>' value='<%=catokentype %>'>
+    <input type="hidden" name='<%= HIDDEN_CATYPE %>' value='<%=catype %>'>
+  <% if(processrequest){ %>  
+    <input type="hidden" name='<%= ACTION %>' value='<%=ACTION_PROCESSREQUEST2 %>'>
+    <input type="hidden" name='<%= HIDDEN_CANAME %>' value='<%=caname %>'>
+  <% } else { %>
+  <%   if(editca){ %>  
+    <input type="hidden" name='<%= ACTION %>' value='<%=ACTION_EDIT_CA %>'>
+    <input type="hidden" name='<%= HIDDEN_CAID %>' value='<%=caid %>'>
+    <input type="hidden" name='<%= HIDDEN_CANAME %>' value='<%=cainfo.getName() %>'>
+  <%   } else { %>
+    <input type="hidden" name='<%= ACTION %>' value='<%=ACTION_CREATE_CA %>'>
+    <input type="hidden" name='<%= HIDDEN_CANAME %>' value='<%=caname %>'>
+  <%   }
+     }
+   if( catokentype == CATokenInfo.CATOKENTYPE_P12 && !processrequest && !isexternal){ %>
+   <%@ include file="softcatokenpage.jspf" %> 
+<%}  
+   if( catokentype == CATokenInfo.CATOKENTYPE_HSM && !processrequest && !isexternal){ %>
+   <%@ include file="hardcatokenpage.jspf" %> 
+<%}  %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("KEYSEQUENCE") %> <%= ejbcawebbean.getHelpReference("/manual.html#Key%20sequence") %>
+      </td>
+      <td width="50%"> 
+        <% String sequence = CATokenConstants.DEFAULT_KEYSEQUENCE;
+           if (catokeninfo != null) {
+        	   sequence = catokeninfo.getKeySequence();
+           }%>
+        <input type="text" name="<%=TEXTFIELD_KEYSEQUENCE%>" size="10" <% out.write(" value='"+sequence+"'"); %> maxlength="10">
+      </td>
+    </tr>
+    
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("SUBJECTDN") %>
+      </td>
+      <td width="50%"> 
+        <% if(editca){
+              out.write(cainfo.getSubjectDN() + "<br>"); 
+           }else{ %>
+        <% /* Maxlength for the CA subject DN is based on 250 chars MySQL String mapping minus the "CN=OCSPSignerCertificate," string that is added for OCSP. */ %>
+        <input type="text" name="<%=TEXTFIELD_SUBJECTDN%>" size="40" <% if(processrequest) out.write(" value='" + processedsubjectdn + "'"); %> maxlength="225">
+        <% } %>
+      </td>
+    </tr>
+    <% if(editca){ 
+        String issuerDN = "unknown";
+        try {
+            Collection cachain = cainfo.getCertificateChain();
+            if (cachain != null) {
+    	        Iterator iter = cachain.iterator();
+    	        Certificate cacert = (Certificate)iter.next();
+        	    issuerDN = CertTools.getIssuerDN(cacert);
+            }
+        } catch (Exception e) {
+        	// En error happended
+        	issuerDN = e.getMessage();
+        }
+    %>
+        <tr id="Row<%=row++%2%>"> 
+          <td width="50%"  align="right"> 
+            <%= ejbcawebbean.getText("ISSUERDN") %>
+          </td>
+          <td width="50%"> 
+              <% out.write(issuerDN + "<br>"); %> 
+          </td>
+        </tr>
+    <% } %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("SIGNEDBY") %>
+      </td>
+      <td width="50%">
+           <% if(processrequest){ %>
+                <select name="<%=SELECT_SIGNEDBY %>" size="1" onchange="fillCertProfileField();">                
+                <% Iterator iter = casigners.keySet().iterator();
+                   while(iter.hasNext()){
+                     String nameofca = (String) iter.next();  %>              
+                     <option value="<%= casigners.get(nameofca)%>"><%= nameofca %></option>  
+                <% } %> 
+	        </select> 
+           <% }else{
+                if(editca){
+                if(cainfo.getSignedBy() >= 0 && cainfo.getSignedBy() <= CAInfo.SPECIALCAIDBORDER){
+                  if(cainfo.getSignedBy() == CAInfo.SELFSIGNED)
+                    out.write(ejbcawebbean.getText("SELFSIGNED"));
+                  if(cainfo.getSignedBy() == CAInfo.SIGNEDBYEXTERNALCA)
+                    out.write(ejbcawebbean.getText("SIGNEDBYEXTERNALCA"));
+                }else
+                  out.write((String) caidtonamemap.get(new Integer(cainfo.getSignedBy())));
+              }else{%>
+        <select name="<%=SELECT_SIGNEDBY %>" size="1" onchange="fillCertProfileField(); isExternalX509(); isExternalGeneric()">
+                <option value="<%= CAInfo.SELFSIGNED%>" selected><%= ejbcawebbean.getText("SELFSIGNED") %></option>  
+                <option value="<%= CAInfo.SIGNEDBYEXTERNALCA%>"><%= ejbcawebbean.getText("EXTERNALCA") %></option>  
+                <% Iterator iter = casigners.keySet().iterator();
+                   while(iter.hasNext()){
+                     String nameofca = (String) iter.next();  %>              
+                     <option value="<%= casigners.get(nameofca)%>"><%= nameofca %></option>  
+                <% } %> 
+	 </select>
+           <%   }
+              }%> 
+      </td>
+    </tr>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("CERTIFICATEPROFILE") %>
+      </td>
+      <td width="50%"> 
+           <% if(editca){
+                if(cainfo.getCertificateProfileId() != 0)
+                  out.write((String) certprofileidtonamemap.get(new Integer(cainfo.getCertificateProfileId())));
+                else
+                  out.write(ejbcawebbean.getText("NOTUSED"));
+              }else{%>
+        <select name="<%=SELECT_CERTIFICATEPROFILE %>" size="1" >                
+	</select>
+           <% } %> 
+      </td>
+    </tr>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("VALIDITY") %> <%= ejbcawebbean.getText("YEARMONTHDAYTIME") %> <%= ejbcawebbean.getText("ORENDDATE") %>
+        <%= ejbcawebbean.getHelpReference("/manual.html#Validity") %> <br>
+      </td>
+      <td width="50%"> 
+        <% if(isexternal || (editca && cainfo.getSignedBy() == CAInfo.SIGNEDBYEXTERNALCA)){
+              if(cainfo.getValidity() != 0)
+                out.write("" + cainfo.getValidity() + YearMonthDayTime.TYPE_DAYS);
+              else
+                out.write(ejbcawebbean.getText("NOTUSED"));
+           }else{ %>
+        <input type="text" name="<%=TEXTFIELD_VALIDITY%>" size="20" maxlength="255" 
+           <% if(editca) out.write(" value='" +ValidityDate.getString(cainfo.getValidity()) + "'> <i>" + 
+                                    ejbcawebbean.getText("USEDINCARENEWAL") + "</i>");
+              else out.write(">");
+           }%>
+           <br/><%= ejbcawebbean.getText("ENDDATEINFO") %> <%= ValidityDate.getDateExample()  %>
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("DESCRIPTION") %>
+      </td>
+      <td width="50%"> 
+        <% if(isexternal){
+              out.write(cainfo.getDescription());
+           }else{ %>
+        <textarea name="<%=TEXTFIELD_DESCRIPTION%>" cols=40 rows=6><% if(editca) out.write(cainfo.getDescription());%></textarea>
+       <% } %>
+      </td>
+    </tr>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        &nbsp;
+      </td>
+      <td width="50%"> 
+        &nbsp;
+      </td>
+    </tr>
+    
+   <% if(catype == CAInfo.CATYPE_X509){ 
+	     X509CAInfo x509cainfo = (X509CAInfo) cainfo;
+        %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("SUBJECTALTNAME") %>
+      </td>
+      <td width="50%">
+         <% if(editca)
+              if(x509cainfo.getSubjectAltName() == null || x509cainfo.getSubjectAltName().trim().equals(""))
+                out.write(ejbcawebbean.getText("NONE")); 
+              else
+                out.write(x509cainfo.getSubjectAltName());                
+            else{  %>  
+         <input type="text" name="<%=TEXTFIELD_SUBJECTALTNAME%>" size="40" maxlength="255">
+         <% } %>   
+      </td>
+    </tr> 
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("POLICYID") %>
+        <% if(!editca) out.write("<br><i>" + ejbcawebbean.getText("LEAVEBLANKTOUSEDEFAULT") + "</i>");%>
+      </td>
+      <td width="50%">
+         <% if(editca) {
+              if(x509cainfo.getPolicies() == null || (x509cainfo.getPolicies().size() == 0) || (((CertificatePolicy) x509cainfo.getPolicies().get(0)).getPolicyID() == null)) {
+                 out.write(ejbcawebbean.getText("NONE")); 
+              } else {
+                out.write(((CertificatePolicy) x509cainfo.getPolicies().get(0)).getPolicyID());
+              }
+            } else {  %>  
+         <input type="text" name="<%=TEXTFIELD_POLICYID%>" size="40" maxlength="255">
+         <% } %>   
+      </td>
+    </tr> 
+    <!--  external CAs does not have any settings at all basically, we just import the certificate -->
+    <% if(!isexternal){ %>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("USEUTF8POLICYTEXT") %>
+      </td>
+      <td width="50%"> 
+        <input type="checkbox" name="<%=CHECKBOX_USEUTF8POLICYTEXT %>" value="<%=CHECKBOX_VALUE %>" 
+            <% if((editca && x509cainfo.getUseUTF8PolicyText()))
+                 out.write("CHECKED");%>>         
+      </td>
+    </tr>
+    <% } %>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("USEPRINTABLESTRINGSUBJECTDN") %>
+      </td>
+      <td width="50%"> 
+        <input type="checkbox" name="<%=CHECKBOX_USEPRINTABLESTRINGSUBJECTDN %>" value="<%=CHECKBOX_VALUE %>" 
+            <% if((editca && x509cainfo.getUsePrintableStringSubjectDN()))
+                 out.write("CHECKED");%>>         
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("USELDAPDNORDER") %>
+      </td>
+      <td width="50%"> 
+        <input type="checkbox" name="<%=CHECKBOX_USELDAPDNORDER %>" value="<%=CHECKBOX_VALUE %>" 
+            <% if ( (editca && x509cainfo.getUseLdapDnOrder()) || (!editca && !DnComponents.isReverseOrder()) )
+                 out.write("CHECKED");%>>         
+      </td>
+    </tr>
+    <!--  external CAs does not have any settings at all basically, we just import the certificate -->
+    <!--  if we are processing a request we are issuing certificate to an external CA and we can not set CRL stuff for that CA -->
+   <% if(!processrequest && !isexternal){ %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("CRLSPECIFICDATA") %>
+      </td>
+      <td width="50%"> 
+        &nbsp;
+      </td>
+    </tr>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+         <%= ejbcawebbean.getText("AUTHORITYKEYID") %> <br> <%= ejbcawebbean.getText("AUTHORITYKEYIDCRITICAL") %> 
+      </td>
+      <td width="50%">
+           <input type="checkbox" name="<%=CHECKBOX_AUTHORITYKEYIDENTIFIER %>" onClick="checkusefield('<%=CHECKBOX_AUTHORITYKEYIDENTIFIER %>', '<%=CHECKBOX_AUTHORITYKEYIDENTIFIERCRITICAL %>')" value="<%=CHECKBOX_VALUE %>" 
+           <% if((editca && x509cainfo.getUseAuthorityKeyIdentifier()) || !editca)
+                 out.write("CHECKED");
+              if(isexternal) out.write(" disabled ");
+           %>> <br> 
+          <input type="checkbox" name="<%=CHECKBOX_AUTHORITYKEYIDENTIFIERCRITICAL %>" value="<%=CHECKBOX_VALUE %>" 
+           <%
+             if(editca){
+               if(!x509cainfo.getUseAuthorityKeyIdentifier() || isexternal)
+                 out.write(" disabled ");  
+               else
+               if(x509cainfo.getAuthorityKeyIdentifierCritical())
+                 out.write("CHECKED");
+             }%>> 
+      </td>
+    </tr>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+         <%= ejbcawebbean.getText("CRLNUMBER") %> <br> <%= ejbcawebbean.getText("CRLNUMBERCRITICAL") %> 
+      </td>
+      <td width="50%">
+           <input type="checkbox" name="<%=CHECKBOX_USECRLNUMBER %>" onClick="checkusefield('<%=CHECKBOX_USECRLNUMBER %>', '<%=CHECKBOX_CRLNUMBERCRITICAL %>')" value="<%=CHECKBOX_VALUE %>" 
+           <% if((editca && x509cainfo.getUseCRLNumber()) || !editca)
+                 out.write("CHECKED");
+              if(isexternal) out.write(" disabled "); 
+           %>> <br> 
+          <input type="checkbox" name="<%=CHECKBOX_CRLNUMBERCRITICAL %>" value="<%=CHECKBOX_VALUE %>" 
+           <%
+             if(editca){
+               if(!x509cainfo.getUseCRLNumber() || isexternal)
+                 out.write(" disabled ");  
+               else
+               if(x509cainfo.getCRLNumberCritical())
+                 out.write("CHECKED");
+             }%>> 
+      </td>
+    </tr>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+         <%= ejbcawebbean.getText("CRLDISTPOINTONCRL") %> <br> <%= ejbcawebbean.getText("CRLDISTPOINTONCRLCRITICAL") %> 
+      </td>
+      <td width="50%">
+           <input type="checkbox" name="<%=CHECKBOX_USECRLDISTRIBUTIONPOINTONCRL %>" onClick="checkusefield('<%=CHECKBOX_USECRLDISTRIBUTIONPOINTONCRL %>', '<%=CHECKBOX_CRLDISTRIBUTIONPOINTONCRLCRITICAL %>')" value="<%=CHECKBOX_VALUE %>" 
+           <% if (editca && x509cainfo.getUseCrlDistributionPointOnCrl()) {
+                 out.write("CHECKED");
+              }
+              if(isexternal) out.write(" disabled "); 
+           %>> <br> 
+          <input type="checkbox" name="<%=CHECKBOX_CRLDISTRIBUTIONPOINTONCRLCRITICAL %>" value="<%=CHECKBOX_VALUE %>" 
+           <%
+             if(editca){
+               if(!x509cainfo.getUseCrlDistributionPointOnCrl() || isexternal)
+                 out.write(" disabled ");  
+               else
+               if(x509cainfo.getCrlDistributionPointOnCrlCritical())
+                 out.write("CHECKED");
+             }%>> 
+      </td>
+    </tr>
+
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("DEFAULTCRLDISTPOINT") %>
+        <%= ejbcawebbean.getHelpReference("/manual.html#CRL%20Distribution%20Points") %>
+        <br> (<%= ejbcawebbean.getText("USEDTOOVERIDECERTPROFILE") %>)
+      </td>
+      <td width="50%">
+           <% if(isexternal){
+                out.write("" + x509cainfo.getDefaultCRLDistPoint());
+              }else{ %>
+         <input type="text" name="<%=TEXTFIELD_DEFAULTCRLDISTPOINT%>" size="60" maxlength="4096"
+            <% if(editca) out.write(" value='" + x509cainfo.getDefaultCRLDistPoint()+ "'");%>>
+           <% } %> 
+           <input type="button" name="<%=BUTTON_GENDEFAULTCRLDISTPOINT%>" onClick="gendefaultcrldistpoint()" value="<%= ejbcawebbean.getText("GENERATE") %>" >
+      </td>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("DEFAULTCRLISSUER") %>
+        <%= ejbcawebbean.getHelpReference("/manual.html#CRL%20Issuer") %>
+      </td>
+      <td width="50%">
+           <% if(isexternal){
+                out.write("" + x509cainfo.getDefaultCRLIssuer());
+              }else{ %>
+         <input type="text" name="<%=TEXTFIELD_DEFAULTCRLISSUER%>" size="60" maxlength="255"
+            <% if(editca) out.write(" value='" + x509cainfo.getDefaultCRLIssuer()+ "'");%>>
+           <% } %> 
+           <input type="button" name="<%=BUTTON_GENDEFAULTCRLISSUER%>" onClick="gendefaultcrlissuer()" value="<%= ejbcawebbean.getText("GENERATE") %>" >
+      </td>
+    </tr>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("CADEFINEDFRESHESTCRL") %>
+        <%= ejbcawebbean.getHelpReference("/manual.html#Delta%20CRLs") %>
+        <br> (<%= ejbcawebbean.getText("USEDTOOVERIDECERTPROFILE") %>)
+      </td>
+      <td width="50%">
+           <% if(isexternal){
+                out.write("" + x509cainfo.getCADefinedFreshestCRL());
+              }else{ %>
+         <input type="text" name="<%=TEXTFIELD_CADEFINEDFRESHESTCRL%>" size="60" maxlength="255"
+            <% if(editca && (x509cainfo.getCADefinedFreshestCRL() != null)) out.write(" value='" + x509cainfo.getCADefinedFreshestCRL()+ "'");%>>
+           <% } %>
+           <input type="button" name="<%=BUTTON_GENCADEFINEDFRESHESTCRL%>" onClick="gencadefinedfresherstcrl()" value="<%= ejbcawebbean.getText("GENERATE") %>" >
+      </td>
+     </tr>
+     <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("DEFAULTOCSPLOCATOR") %>
+        <%= ejbcawebbean.getHelpReference("/manual.html#Ocsp") %>
+        <br> (<%= ejbcawebbean.getText("USEDTOOVERIDECERTPROFILE") %>)
+      </td>
+      <td width="50%">
+           <% if(isexternal){
+                out.write("" + x509cainfo.getDefaultOCSPServiceLocator());
+              }else{ %>
+         <input type="text" name="<%=TEXTFIELD_DEFAULTOCSPLOCATOR%>" size="60" maxlength="255"
+            <% if(editca) out.write(" value='" + x509cainfo.getDefaultOCSPServiceLocator()+ "'");%>>
+           <% } %> <input type="button" name="<%=BUTTON_GENDEFAULTOCSPLOCATOR%>" onClick="gendefaultocsplocator()" value="<%= ejbcawebbean.getText("GENERATE") %>" >
+      </td>
+    </tr>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("OTHERDATA") %>
+      </td>
+      <td width="50%"> 
+        &nbsp;
+      </td>
+    </tr>
+    <% if(!editca || (editca && ocspcainfo != null)){ %>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("OCSPSERVICE") %>
+      </td>
+      <td width="50%"> <%= ejbcawebbean.getText("ACTIVE") %> 
+        <input type="checkbox"          <% if(editca && ocspcert != null){ %> onclick="checkactivateocsp()" <% } %> name="<%=CHECKBOX_ACTIVATEOCSPSERVICE %>" value="<%=CHECKBOX_VALUE %>" 
+           <% if(waitingresponse) out.write(" disabled ");%>
+            <% if((editca && (ocspcainfo.getStatus() == ExtendedCAServiceInfo.STATUS_ACTIVE)) || !editca)
+                 out.write("CHECKED");%>>
+         <% if(editca && ocspcert != null){ %> &nbsp;&nbsp;         
+         <input type="submit" name="<%= BUTTON_REVOKERENEWOCSPCERTIFICATE %>" <% if(ocspcainfo.getStatus() != ExtendedCAServiceInfo.STATUS_ACTIVE || waitingresponse) out.write(" disabled ");%> value="<%= ejbcawebbean.getText("REVOKERENEWOCSPCERT") %>" >
+         <br>         
+         <a style="cursor:pointer;" onClick="viewocspcert()"><u><%= ejbcawebbean.getText("VIEWOCSPCERTIFICATE")%></u></a>
+         <% } %>
+      </td>
+    </tr>    
+    <% } %>    
+    <% if(!editca || (editca && xkmscainfo != null)){ %>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("XKMSSERVICE") %>
+      </td>
+      <td width="50%"> <%= ejbcawebbean.getText("ACTIVE") %> 
+        <input type="checkbox"          <% if(editca && xkmscert != null){ %> onclick="checkactivatexkms()" <% } %> name="<%=CHECKBOX_ACTIVATEXKMSSERVICE %>" value="<%=CHECKBOX_VALUE %>" 
+           <% if(waitingresponse) out.write(" disabled ");%>
+            <% if((editca && (xkmscainfo.getStatus() == ExtendedCAServiceInfo.STATUS_ACTIVE)))
+                 out.write("CHECKED");%>>
+         <% if(editca && xkmscert != null){ %> &nbsp;&nbsp;         
+         <input type="submit" name="<%= BUTTON_REVOKERENEWXKMSCERTIFICATE %>" <% if(xkmscainfo.getStatus() != ExtendedCAServiceInfo.STATUS_ACTIVE || waitingresponse) out.write(" disabled ");%> value="<%= ejbcawebbean.getText("REVOKERENEWXKMSCERT") %>" >
+         <br>         
+         <a style="cursor:pointer;" onClick="viewxkmscert()"><u><%= ejbcawebbean.getText("VIEWXKMSCERTIFICATE")%></u></a>
+         <% } %>
+      </td>
+    </tr>    
+    <% } %>    
+    <% if(!editca || (editca && cmscainfo != null)){ %>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("CMSSERVICE") %>
+      </td>
+      <td width="50%"> <%= ejbcawebbean.getText("ACTIVE") %> 
+        <input type="checkbox"          <% if(editca && cmscert != null){ %> onclick="checkactivatecms()" <% } %> name="<%=CHECKBOX_ACTIVATECMSSERVICE %>" value="<%=CHECKBOX_VALUE %>" 
+           <% if(waitingresponse) out.write(" disabled ");%>
+            <% if((editca && (cmscainfo.getStatus() == ExtendedCAServiceInfo.STATUS_ACTIVE)))
+                 out.write("CHECKED");%>>
+         <% if(editca && cmscert != null){ %> &nbsp;&nbsp;         
+         <input type="submit" name="<%= BUTTON_REVOKERENEWCMSCERTIFICATE %>" <% if(cmscainfo.getStatus() != ExtendedCAServiceInfo.STATUS_ACTIVE || waitingresponse) out.write(" disabled ");%> value="<%= ejbcawebbean.getText("REVOKERENEWCMSCERT") %>" >
+         <br>         
+         <a style="cursor:pointer;" onClick="viewcmscert()"><u><%= ejbcawebbean.getText("VIEWCMSCERTIFICATE")%></u></a>
+         <% } %>
+      </td>
+    </tr>    
+    <% } %>
+   <tr  id="Row<%=row++%2%>"> 
+     <td width="50%" align="right"> 
+       <%= ejbcawebbean.getText("CRLPUBLISHERS") %> <br>&nbsp;
+     </td>
+     <td width="50%"> 
+       <select name="<%=SELECT_AVAILABLECRLPUBLISHERS%>" size="5" multiple >
+          <%   Collection usedpublishers = null;
+               if(editca) usedpublishers = cainfo.getCRLPublishers(); 
+               Iterator iter = publisheridtonamemap.keySet().iterator(); 
+               while(iter.hasNext()){
+                 Integer next = (Integer) iter.next(); %>
+          <option  value="<%= next %>" 
+             <%    if(editca && usedpublishers.contains(next))
+                     out.write(" selected ");
+                 %>>
+             <%= publisheridtonamemap.get(next) %>         
+          </option>  
+             <% } %>
+       </select>
+     </td>
+   </tr>
+   <tr id="Row<%=row++%2%>"> 
+     <td width="50%"  align="right"> 
+       <%= ejbcawebbean.getText("CRLPERIOD") + " " + ejbcawebbean.getText("SIMPLETIMEFORMATMINUTES") %>
+     </td>
+     <td width="50%">
+          <% if (isexternal) {
+               out.write(SimpleTime.getInstance(cainfo.getCRLPeriod()).toString(SimpleTime.TYPE_MINUTES));
+             } else { %>
+        <input type="text" name="<%=TEXTFIELD_CRLPERIOD%>" size="40" maxlength="255"
+          <%   if (editca) { out.write(" value='" + SimpleTime.getInstance(cainfo.getCRLPeriod()).toString(SimpleTime.TYPE_MINUTES) + "'"); }
+               else { out.write(" value='1"+SimpleTime.TYPE_DAYS+"'"); } %>>
+          <% } %>
+     </td>
+   </tr>
+   
+   <tr id="Row<%=row++%2%>"> 
+     <td width="50%"  align="right"> 
+       <%= ejbcawebbean.getText("CRLISSUEINTERVAL") + " " + ejbcawebbean.getText("SIMPLETIMEFORMATMINUTES") %>
+     </td>
+     <td width="50%">
+          <% if (isexternal) {
+               out.write(SimpleTime.getInstance(cainfo.getCRLIssueInterval()).toString(SimpleTime.TYPE_MINUTES));
+             } else { %>
+        <input type="text" name="<%=TEXTFIELD_CRLISSUEINTERVAL%>" size="40" maxlength="255"
+          <%   if (editca) { out.write(" value='" + SimpleTime.getInstance(cainfo.getCRLIssueInterval()).toString(SimpleTime.TYPE_MINUTES) + "'"); }
+               else { out.write(" value='0"+SimpleTime.TYPE_MINUTES+"'"); } %>>
+          <% } %> 
+     </td>
+   </tr>
+
+   <tr id="Row<%=row++%2%>"> 
+     <td width="50%"  align="right"> 
+       <%= ejbcawebbean.getText("CRLOVERLAPTIME") + " " + ejbcawebbean.getText("SIMPLETIMEFORMATMINUTES") %>
+     </td>
+     <td width="50%">
+          <% if (isexternal) {
+               out.write(SimpleTime.getInstance(cainfo.getCRLOverlapTime()).toString(SimpleTime.TYPE_MINUTES));
+             } else { %>
+        <input type="text" name="<%=TEXTFIELD_CRLOVERLAPTIME%>" size="40" maxlength="255"
+          <%   if (editca) { out.write(" value='" + SimpleTime.getInstance(cainfo.getCRLOverlapTime()).toString(SimpleTime.TYPE_MINUTES) + "'"); }
+               else {out.write(" value='10"+SimpleTime.TYPE_MINUTES+"'"); } %>>
+          <% } %> 
+     </td>
+   </tr>
+
+   <tr id="Row<%=row++%2%>"> 
+     <td width="50%"  align="right"> 
+       <%= ejbcawebbean.getText("DELTACRLPERIOD") + " " + ejbcawebbean.getText("SIMPLETIMEFORMATMINUTES") %>
+       <%= ejbcawebbean.getHelpReference("/manual.html#Delta%20CRLs") %><br/>
+       <%= ejbcawebbean.getText("NODELTACRLTIP") %>
+     </td>
+     <td width="50%">
+          <% if (isexternal) {
+               out.write("" + SimpleTime.getInstance(cainfo.getDeltaCRLPeriod()).toString(SimpleTime.TYPE_MINUTES));
+             } else { %>
+        <input type="text" name="<%=TEXTFIELD_DELTACRLPERIOD%>" size="40" maxlength="255"
+          <%   if (editca) { out.write(" value='" + SimpleTime.getInstance(cainfo.getDeltaCRLPeriod()).toString(SimpleTime.TYPE_MINUTES) + "'"); }
+               else { out.write(" value='0"+SimpleTime.TYPE_MINUTES+"'");} %>>
+          <% } %> 
+     </td>
+   </tr>
+   <%
+     } // if(!processrequest && !isexternal)
+   } // if(catype == CAInfo.CATYPE_X509){ %>
+   
+   <% if(!processrequest && !isexternal) { %>
+   <!-- this last part with approvals and finishuser is not user for external CAs -->
+
+    <tr id="Row<%=row%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("APPROVALSETTINGS") %> 
+      </td>
+      <td width="50%"> 
+        <select name="<%=SELECT_APPROVALSETTINGS%>" size="5" multiple >
+           <%                   
+                for(int i=0;i< CAInfo.AVAILABLE_APPROVALSETTINGS.length;i++){
+                   %>
+           <option  value="<%= CAInfo.AVAILABLE_APPROVALSETTINGS[i] %>" 
+              <%    if(editca && cainfo.isApprovalRequired(CAInfo.AVAILABLE_APPROVALSETTINGS[i]))
+                      out.write(" selected ");
+                  %>>
+              <%= ejbcawebbean.getText(CAInfo.AVAILABLE_APPROVALSETTINGS_TEXTS[i]) %>         
+           </option>  
+              <% } %>
+        </select>        
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("NUMOFREQUIREDAPPROVALS") %>
+      </td>
+      <td width="50%"> 
+        <select name="<%=SELECT_NUMOFREQUIREDAPPROVALS%>" >
+           <%  for(int i=1;i<= 4;i++){
+                   %>
+           <option  value="<%= i %>" 
+              <%    if(editca && cainfo.getNumOfReqApprovals() == i)
+                      out.write(" selected ");
+                  %>>
+              <%= i %>         
+           </option>  
+              <% } %>
+        </select>        
+      </td>
+    </tr>
+    <tr id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        <%= ejbcawebbean.getText("FINISHUSER") %>
+      </td>
+      <td width="50%"> 
+        <input type="checkbox" name="<%=CHECKBOX_FINISHUSER %>" value="<%=CHECKBOX_VALUE %>" 
+            <% if((editca && cainfo.getFinishUser()) || !editca)
+                 out.write("CHECKED");%>>         
+      </td>
+    </tr>
+    
+    <% } // if(!processrequest && !isexternal)
+    
+    if(editca && !waitingresponse){%>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="50%"  align="right"> 
+        &nbsp;
+      </td>
+      <td width="50%"> 
+        <a style="cursor:pointer;" onClick="viewcacert()"><u><%= ejbcawebbean.getText("VIEWCACERTIFICATE")%></u></a>
+      </td>
+    </tr>
+    <% } %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="49%" valign="top">&nbsp;</td>
+      <td width="51%" valign="top"> 
+      <% if(!isexternal){ 
+           if(processrequest){ %>
+          <input type="submit" name="<%= BUTTON_PROCESSREQUEST %>" onClick='return checkallfields()' value="<%= ejbcawebbean.getText("PROCESSREQUEST") %>">
+      <% }else{
+            if(editca){ %>
+          <input type="submit" name="<%= BUTTON_SAVE %>" onClick='return checkallfields()' value="<%= ejbcawebbean.getText("SAVE") %>">
+        <%  }else{ %>
+          <input type="submit" name="<%= BUTTON_CREATE %>" onClick='return checkallfields()' value="<%= ejbcawebbean.getText("CREATE") %>">
+        <%  }
+         } %>   
+        <input type="submit" name="<%= BUTTON_CANCEL %>" value="<%= ejbcawebbean.getText("CANCEL") %>">
+        <% }else{ %>
+        <input type="submit" name="<%= BUTTON_CANCEL %>" value="<%= ejbcawebbean.getText("BACK") %>">
+        <% } %>
+      </td>
+    </tr>
+       <% if(editca && revokable){ %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="49%" valign="top">&nbsp;</td>
+      <td width="51%" valign="top">         
+        <select name="<%=SELECT_REVOKEREASONS %>" >
+          <% for(int i=0; i < RevokedInfoView.reasontexts.length; i++){ 
+               if(i!= 7){%>
+               <option value='<%= i%>'><%= ejbcawebbean.getText(RevokedInfoView.reasontexts[i]) %></option>
+          <%   } 
+             } %>
+        </select>
+        <input type="submit" name="<%= BUTTON_REVOKECA %>" value="<%= ejbcawebbean.getText("REVOKE") %>" onClick='return confirmrevokation()'>     
+      </td>
+    </tr>
+        <% } %>   
+       <% if(!processrequest){ 
+            String disabledStr = "disabled";
+            if (editca && !isexternal) {
+              disabledStr = "";
+            } %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="49%" valign="top" align="right"></td>
+      <td width="51%" valign="top">             
+        <input type="submit" <%=disabledStr%> name="<%= BUTTON_MAKEREQUEST %>" onClick='return checkallfields()' value="<%= ejbcawebbean.getText("MAKEREQUEST") %>" >
+      </td>
+    </tr>
+        <% } %>   
+       <% if(editca && !isexternal && !waitingresponse){ %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="49%" valign="top" align="right"></td>
+      <td width="51%" valign="top">             
+        <input type="submit" name="<%= BUTTON_RENEWCA %>" onClick='return confirmrenewal()' value="<%= ejbcawebbean.getText("RENEWCA") %>" > 
+           &nbsp; <%= ejbcawebbean.getText("RENEWKEYS") %><input type="checkbox" name="<%=CHECKBOX_RENEWKEYS %>" value="<%=CHECKBOX_VALUE %>" >
+        <br/>
+        <%= ejbcawebbean.getText("AUTHENTICATIONCODERENEW") %>
+        <input type="password" name="<%=TEXTFIELD_AUTHENTICATIONCODERENEW%>" size="20" maxlength="64">
+      </td>
+    </tr>
+        <% } %>   
+       <% if(editca && waitingresponse){ %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="49%" valign="top" align="right"></td>
+      <td width="51%" valign="top">             
+        <input type="submit" name="<%= BUTTON_RECEIVEREQUEST %>" onClick='return checkallfields()' value="<%= ejbcawebbean.getText("RECIEVEREQUEST") %>" >
+      </td>
+    </tr>
+        <% } %>   
+       <% if(editca && !isexternal && !waitingresponse){ %>
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="49%" valign="top" align="right"></td>
+      <td width="51%" valign="top">             
+        <input type="submit" name="<%= BUTTON_PUBLISHCA %>"  value="<%= ejbcawebbean.getText("REPUBLISHCA") %>" >
+      </td>
+    </tr>
+	</form>
+	<%
+	if ( caname == null ) {
+		caname = cainfo.getName();
+	} 
+	if ( catokentype != CATokenInfo.CATOKENTYPE_HSM ) {
+	%>
+	<form name="exportca" action="<%= globalconfiguration.getCaPath() + "/exportca" %>" method="post">
+    <tr  id="Row<%=row++%2%>"> 
+      <td width="49%" valign="top"  align="right"><%= ejbcawebbean.getText("EXPORTCAHELP") %></td>
+      <td width="51%" valign="top">             
+		<input type="hidden" name='<%= org.ejbca.ui.web.admin.cainterface.CAExportServlet.HIDDEN_CANAME %>' value='<%=caname %>' />
+        <input type="password" name="<%= org.ejbca.ui.web.admin.cainterface.CAExportServlet.TEXTFIELD_EXPORTCA_PASSWORD %>"  value="" />
+        <input type="submit" name="<%= BUTTON_EXPORTCA %>"  value="<%= ejbcawebbean.getText("EXPORTCA")+".." %>" />
+      </td>
+    </tr>
+	</form>
+	<% } %>
+        <% } %>   
+  </table>
+  

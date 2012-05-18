@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<jboss-app>
+	  
+	  <!-- Configure class loading isolation for ejbca, for JBoss 4.2.x and later
+	<loader-repository>ejbca:archive=ejbca.ear</loader-repository>
+	  -->
+
+   <!-- String indicating where cmptcpservice should be replaced -->
+   <!--@cmptcpservice.jar@-->
+
+</jboss-app>

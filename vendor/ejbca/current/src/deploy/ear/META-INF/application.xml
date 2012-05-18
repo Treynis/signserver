@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE application PUBLIC
+	"-//Sun Microsystems, Inc.//DTD J2EE Application 1.3//EN"
+	"http://java.sun.com/dtd/application_1_3.dtd">
+
+<application>
+    <display-name>EJBCA</display-name>
+    <description>The EJBCA module consists of the CA beans and the web
+applications for enrollment, distribution and administration.
+    </description>
+    <module>
+        <ejb>ejbca-ejb.jar</ejb>
+    </module>
+    <module>
+        <web>
+            <web-uri>publicweb.war</web-uri>
+            <context-root>/@ejbca@</context-root>
+        </web>
+    </module>
+    <module>
+        <web>
+            <web-uri>scep.war</web-uri>
+            <context-root>/@ejbca@/publicweb/apply</context-root>
+        </web>
+    </module>
+    <module>
+        <web>
+            <web-uri>status.war</web-uri>
+            <context-root>/@ejbca@/publicweb/status</context-root>
+        </web>
+    </module>
+    <module>
+        <web>
+            <web-uri>cmp.war</web-uri>
+            <context-root>/@ejbca@/publicweb</context-root>
+        </web>
+    </module>
+    <module>
+        <web>
+            <web-uri>healthcheck.war</web-uri>
+            <context-root>/@ejbca@/publicweb/healthcheck</context-root>
+        </web>
+    </module>
+    <module>
+        <web>
+            <web-uri>webdist.war</web-uri>
+            <context-root>/@ejbca@/publicweb/webdist</context-root>
+        </web>
+    </module>
+    <module>
+        <web>
+            <web-uri>adminweb.war</web-uri>
+            <context-root>/@ejbca@/adminweb</context-root>
+        </web>
+    </module> 
+       <!--@ejbcaws.war@-->
+       <!--@xkms.war@-->
+       <!--@doc.war@-->
+       <!--@renew.war@-->
+</application>
+

@@ -1,0 +1,129 @@
+<?xml version="1.0"?>
+<document>
+
+  <properties>
+    <title>Home</title>
+  </properties>
+
+<body>
+  <section name="News">
+  <note>
+  <p><strong>EJBCA 3.9.1 and cert-cvc 1.2.8 with EAC ePassport support is now out!</strong>
+  <br/>Visit the <a href="download.html">download</a> section. There is also a LiveCD!
+  </p>
+  </note>
+  <note>
+  The cert-cvc library handles CVC certificates for EU EAC ePassport PKIs and the current release is 
+  feature complete for EU EAC ePassports using all algorithms.
+  <br/>
+  The library is freely usable under the LGPL 2.1 (or later) license for all parties interesting 
+  in handling CVC certificates, in particular for EU EAC ePassports, and can be downloaded below. 
+  The cert-cvc library was donated to the open source by the Swedish National Police Board. 
+  </note>
+  <note>
+  Did you know that EJBCA includes a stand-alone OCSP responder? The responder is scalable with high-performance and can be used
+  also with any other CA than EJBCA. 
+  </note>
+  </section>
+
+<section name="About EJBCA">
+<p>
+EJBCA is an enterprise class PKI Certificate Authority built on J2EE technology. 
+It is a robust, high performance, platform independent, flexible, and component based CA to be used 
+stand-alone or integrated in other J2EE applications.
+</p>
+<p>
+EJBCA is an enterprise class PKI, meaning that you can use EJBCA to build a complete PKI infrastructure for your organization.
+If you only want to issue a few single certificates for testing, there are probably options that will get you started quicker, 
+but if you want a serious PKI we recommend EJBCA.
+</p>
+<p><strong>EJBCA has everything for your trust center. Contact us for more info.</strong>
+</p>
+<p>
+You can use EJBCA to issue certificates for different purposes such as:
+<ul>
+<li>Strong authentication for users accessing your intranet/extranet/internet resources.</li>
+<li>Secure communication with SSL servers and SSL clients.</li>
+<li><a href="howto.html#Microsoft smart card logon">Smart card logon</a> to Windows and/or Linux.</li>
+<li>Signing and enrypting email.</li>
+<li>VPN connections by issuing certificates to your VPN routers such as OpenVPN, Cisco, Juniper etc.</li>
+<li>Client VPN access with certificates in users VPN clients.</li>
+<li>Single sign-on by using a single certificate to secure logon to web applications.</li>
+<li>Creating signed documents.</li>
+<li>Issue citizen certificates for access to government resources, used in passports etc.</li>
+<li>Create CVCAs and DVs and issue CV certificates (CVC) to Document Verifiers and Inspection Systems for <a href="cvccas.html">EU EAC ePassports</a>.</li>
+<li>... and many many more ...</li>
+</ul>
+</p>
+<p>Together with sister projects (see <i><a href="complimentary.html">Complimentary software</a></i>) of EJBCA you can also:
+<ul>
+<li>Get central trusted Time Stamps for you electronically signed documents.</li>
+<li>Perform central signing of document.</li>
+<li>Sign electronic passport data (MRTD).</li>
+<li>Issue hard tokens (smart cards) and manage the complete life cycle of cards and certificates.</li>
+<li>... and many many more ...</li>
+</ul>
+</p>
+</section>
+<section name="Open Source">
+<p>
+This software is OSI Certified Open Source Software.
+OSI Certified is a certification mark of the Open Source Initiative.
+</p>
+<p>
+The source code of EJBCA is hosted on <a href="http://www.sf.net/">Sourceforge.net</a> and all downloads include the complete source code can be downloaded from there.
+<br></br>
+If you want to contribute to EJBCA, please see <i><a href="donations.html">Contribute to EJBCA</a></i>
+</p>
+</section>
+
+<section name="Support and development">
+<p>Commercial support, development and integration for EJBCA is available through <a href="http://www.primekey.se/">PrimeKey Solutions</a>. 
+</p>
+</section>
+
+<section name="Sponsors">
+<p>Here is a list of some of the good organizations that have sponsored development of certain features in EJBCA.
+</p>
+    <p>
+    EJBCA 3.1 and later contains support for nCipher HSM. The development of this functionality was sponsored by 
+    Linagora, <a href="http://www.linagora.com/">www.linagora.com</a>.
+    </p>
+    <p>
+    New features in EJBCA 3.2 such as QC statement and external OCSP responders was sponsored by 
+    CTec Security Solutions, <a href="http://www.commguard.com/">http://www.commguard.com/</a>.
+    </p>
+    <p>
+    EJBCA 3.3 and later contains support for LunaHSM (SafeNet). The development of this functionality was sponsored 
+    by Atos Worldline <a href="http://www.atosworldline.com/index_FR.htm">http://www.atosworldline.com/index_FR.htm</a> and done with 
+    the support of Linagora <a href="http://www.linagora.com">http://www.linagora.com</a>.
+    </p>
+    <p>
+    New features in EJBCA 3.3 such as Internal RA Approval and Subject Directory Attributes was sponsored by 
+    Simetri Yazilim A.S., <a href="http://www.simetri.com/">http://www.simetri.com/</a>.
+    </p>
+    <p>
+    New features in EJBCA 3.4 such as CMP, XKMS, services framework and much more was sponsored by 
+    GIE Cartes Bancaires and Linagora.
+    </p>
+    <p>
+    The Marlin Trust Management Organization (MTMO) will be using EJBCA to provide key management services for the commercial 
+    adoption of Marlin DRM. EJBCA 3.4.0 supports RSA and ECC implementations of the Marlin PKI infrastructure.
+    <br/>
+    ECC implementation and other improvements were implemented with the support of the MTMO.
+    </p>
+    <p>
+    EJBCA 3.5 contains generic PKCS#11 interface to HSMs, supporting among others the Utimaco CryptoServer. 
+    This development was sponsored by <a href="http://www.utimaco.com/">Utimaco</a>.
+    </p>
+    <p>
+    New in the HSM support is the <a href="http://www.aepnetworks.com/">AEP</a> Keyper HSM. 
+    </p>
+    <p>
+    EJBCA 3.7 contains support for CVC CAs used for EU EAC ePassports. 
+    This development was sponsored and contributed by the <a href="http://www.polisen.se/">Swedish National Police Board</a>.
+    </p>
+</section>
+</body>
+</document>
+

@@ -1,0 +1,412 @@
+
+	<!-- This XML file is for inclusion in build.xml, and not for usage in itself -->
+
+	<property name="app.name" value="ejbca" />
+    <property name="app.name.cap" value="EJBCA" />
+    <property name="app.version.number" value="3.9.3" />
+    <property name="svn.revision" value="r8451" />
+	<property name="app.version" value="${app.name.cap} ${app.version.number} (${svn.revision})" />
+	
+    <property name="ejbca.home" location="." />
+    <property environment="env" />
+
+	<!--
+		Merge custom modifications from customejbca.home to
+		ejbca.home before reading the other configuration files.
+	-->
+    <property file="conf/custom.properties" />
+    <property name="customejbca.home" location="${ejbca.home}/../ejbca-custom" />
+    <available file="${customejbca.home}" type="dir" property="customejbca.present" />
+    <condition property="customejbca.message" else="No custom changes to merge."
+    	value="Merging available external modifications from ${customejbca.home}.">
+    	<isset property="customejbca.present" />
+    </condition>
+	<echo message="${customejbca.message}" />
+    <condition property="customejbca.extensions" value="*" else="none-at-all">
+    	<isset property="customejbca.present" />
+    </condition>
+    <condition property="customejbca.dir" value="${customejbca.home}" else="conf">
+    	<isset property="customejbca.present" />
+    </condition>
+	<copy todir="${ejbca.home}" overwrite="true" failonerror="false">
+		<fileset dir="${customejbca.dir}" >
+			<include name="**/*.${customejbca.extensions}"/>
+   		</fileset>
+	</copy>
+
+    <!-- 
+       Give user a chance to override without editing this file
+       (and without typing -D each time it compiles it).
+       First it checks your home directory for ejbca.properties
+       next it checks the properties file here. 
+    -->
+    <property file="${user.home}/${app.name}.properties" />
+	<!-- Keep reading the old file to be simply backwards compatible, the new one (conf/x overrides -->
+    <property file="${app.name}.properties" />
+    <property file="conf/${app.name}.properties" />
+    <property file="conf/protection.properties" />
+    <property file="conf/database.properties" />
+    <property file="conf/mail.properties" />
+    <property file="conf/ocsp.properties" />
+    <property file="conf/web.properties" />
+    <property file="conf/cmp.properties" />
+    <property file="conf/jaxws.properties" />
+    <property file="conf/xkms.properties" />
+    <property file="conf/externalra.properties" />
+
+    <!--
+        Start setting default values and classpaths etc here
+    -->
+
+    <!-- A little special something to handle backward compatibility with 
+         people using JBOSS_HOME. They can switch to APPSRV_HOME now, and both will work. 
+    -->        
+    <condition property="jboss.home" value="${env.JBOSS_HOME}" >
+        <equals arg1="${appserver.home}" arg2="${appserver.home}"/>
+    </condition>
+    <condition property="appserver.home" value="${env.APPSRV_HOME}" else="${jboss.home}">
+        <contains string="${jboss.home}" substring="JBOSS_HOME"/>
+    </condition>
+
+	
+    <!-- Default to 15 -->    
+    <property name="java.ver" value="15" />
+		
+    <!-- set global properties for this build -->
+    <property name="tmp" value="./tmp" />
+    <property name="bin" value="./${tmp}/bin" />
+    <property name="build" value="${bin}/classes" />
+    <property name="ocsp-build" location="${bin}/ocsp-classes"/>
+    <property name="clientToolBox.build" location="${bin}/clientToolBox-classes" />
+    <property name="lib" value="lib" />
+    <property name="preprocessed" value="${tmp}/preprocessed"/>
+    <property name="mainsrc" value="src"/>
+    <property name="mainbin" value="bin"/>
+    <property name="appserver.src" value="${mainsrc}/appserver" />
+    
+    <property name="jsf.dir" value="${tmp}/jsf" />
+    <property name="jsf.libdir" value="${jsf.dir}/lib" />
+
+    <property name="jaxws.dir" value="${tmp}/jaxws" />
+    <property name="jaxws.libdir" value="${jaxws.dir}/lib" />
+
+    <property name="src" value="${preprocessed}" />
+    <property name="src.java" value="${src}/java" />
+    <property name="src.gen" value="${bin}/gensrc" />
+    <property name="src.dd" value="${bin}/dd" />
+    <property name="ocsp-src.gen" value="${bin}/ocsp-gensrc" />
+    <property name="ocsp-src.dd" value="${bin}/ocsp-dd" />
+    
+    <property name="test.dir" value="${bin}/junit" />
+    <property name="test.src.dir" location="${src}/test" />
+    <property name="dist.dir" location="dist" />
+    <property name="ocsp-dist.dir" location="ocsp-dist" />
+    <property name="clientToolBox-dist.dir" location="clientToolBox-dist" />
+	
+    <property name="hwtoken_classes" value="hwtoken"/>
+    <property name="hwtoken.class.dir" location="${hwtoken_classes}" />
+    <property name="apidoc" value="./doc/api" />
+
+    <property name="scep.src" value="${src}/publicweb/scep" />
+    <property name="scepwar" value="${dist.dir}/scep.war" />
+
+    <property name="webdist.src" value="${src}/publicweb/webdist" />
+    <property name="webdistwar" value="${dist.dir}/webdist.war" />
+
+    <property name="sampleauth.src" value="${src}/ca/sampleauth" />
+    <property name="sampleauthwar" value="${dist.dir}/sampleauth.war" />
+
+    <property name="status.src" value="${src}/publicweb/status" />
+    <property name="statuswar" value="${dist.dir}/status.war" />
+	
+    <property name="doc.src" value="tmp/htdocs" />
+    <property name="docwar" value="${dist.dir}/doc.war" />
+	
+    <property name="cmp.src" value="${src}/publicweb/cmp" />
+    <property name="cmpwar" value="${dist.dir}/cmp.war" />
+	
+    <property name="healthcheck.src" value="${src}/publicweb/healthcheck" />
+    <property name="healthcheckwar" value="${dist.dir}/healthcheck.war" />
+	
+	<property name="ejbcaws.enabled" value="true" />
+    <property name="ejbcaws.src" value="${src}/wsee" />
+	<property name="ejbcaws.build" value="${tmp}/ejbcaws.war" />  
+    <property name="ejbcawswar" value="${dist.dir}/ejbcaws.war" />
+
+    <property name="ocsphealthcheck.src" value="${src}/publicweb/ocsphealthcheck" />
+    <property name="ocsphealthcheckwar" value="${ocsp-dist.dir}/ocsphealthcheck.war" />
+	
+    <property name="ocspwar" value="${ocsp-dist.dir}/status.war" />
+
+    <property name="adminweb.src" value="${src}/adminweb" />
+    <property name="adminweb.build" value="${tmp}/adminweb.war" />    
+    <property name="adminwebwar" value="${dist.dir}/adminweb.war" />
+
+    <property name="publicweb.src" value="${src}/publicweb/publicweb" />
+    <property name="publicweb.build" value="${tmp}/publicweb.war" />    
+    <property name="publicwebwar" value="${dist.dir}/publicweb.war" />
+
+	<property name="renew.src" value="${src}/publicweb/renew" />
+    <property name="renew.build" value="${tmp}/renew.war" />    
+    <property name="renewwar" value="${dist.dir}/renew.war" />
+
+    <property name="deploy.src" value="${src}/deploy" />
+    <property name="ejbdd.src" value="${deploy.src}/ejb" />
+    <property name="webdd.src" value="${deploy.src}/web" />
+    <property name="eardd.src" value="${deploy.src}/ear" />
+    <property name="ocsp-eardd.src" value="${deploy.src}/ocsp-ear" />
+    <property name="caear" value="${dist.dir}/${app.name}.ear" />
+    <property name="ocspear" value="${ocsp-dist.dir}/${app.name}.ear" />
+
+	<property name="cmptcpservice.name" value="cmptcpservice.jar" />
+    <property name="cmptcpservice.build" value="${tmp}/${cmptcpservice.name}" />	
+    <property name="cmptcpservicejar" value="${dist.dir}/${cmptcpservice.name}" />
+
+    <property name="logsigning.name" value="ejbcalogsigning.jar" />
+    <property name="logsigning.build" value="${tmp}/${logsigning.name}" />  
+    <property name="logsigningjar" value="${dist.dir}/${logsigning.name}" />
+    
+    <property name="jbosslog4jsafer.name" value="jbosslog4jsafer.jar" />
+    <property name="jbosslog4jsafer.build" value="${tmp}/${jbosslog4jsafer.name}" />  
+    <property name="jbosslog4jsaferjar" value="${dist.dir}/${jbosslog4jsafer.name}" />
+
+    <property name="jar.extclasspath" value="lib/bcmail-jdk${java.ver}.jar lib/bcprov-jdk${java.ver}.jar lib/cert-cvc.jar lib/log4j.jar lib/ldap.jar lib/commons-lang-2.4.jar lib/commons-collections-3.2.jar lib/commons-fileupload-1.2.1.jar lib/commons-configuration-1.5.jar lib/batik/batik-anim.jar lib/batik/batik-awt-util.jar lib/batik/batik-bridge.jar lib/batik/batik-codec.jar lib/batik/batik-css.jar lib/batik/batik-dom.jar lib/batik/batik-ext.jar lib/batik/batik-gvt.jar lib/batik/batik-parser.jar lib/batik/batik-script.jar lib/batik/batik-svg-dom.jar lib/batik/batik-svggen.jar lib/batik/batik-transcoder.jar lib/batik/batik-util.jar lib/batik/batik-xml.jar lib/batik/xerces.jar lib/xmlsign/xmlsec-1.3.0.jar lib/reports/jasperreports-1.3.3.jar lib/reports/jfreechart-1.0.0.jar lib/reports/jcommon-1.0.8.jar"/>	
+
+    <path id="ext.classpath">
+        <fileset dir="lib/ext" includes="*.jar" />
+    </path>
+
+    <path id="nonj2ee-compile.classpath">
+        <path refid="ext.classpath" />
+        <fileset dir="lib" includes="*.jar" excludes="bc*.jar"/>
+        <fileset dir="lib/quickserver" includes="*.jar"/>
+        <fileset dir="lib/myfaces" includes="*.jar"/>
+        <fileset dir="lib/batik" includes="*.jar"/>
+        <fileset dir="lib" includes="bcmail-jdk${java.ver}.jar"/>
+    	<fileset dir="lib" includes="bcprov-jdk${java.ver}.jar"/>
+    	<fileset dir="lib" includes="cert-cvc.jar"/>
+        <fileset dir="lib/jaxws">
+    	  <include name="**/*.jar"/>
+    	</fileset> 
+        <fileset dir="lib/reports">
+    	  <include name="**/*.jar"/>
+    	</fileset> 
+        <fileset dir="lib/batik">
+    	  <include name="**/*.jar"/>
+    	</fileset> 
+    	<fileset dir="lib/xmlsign" includes="xmlsec-1.3.0.jar"/>
+        <pathelement location="tmp/xkms/gen-classes"/>
+    </path>
+
+    <path id="compile.classpath">
+        <path refid="nonj2ee-compile.classpath" />
+        <path refid="j2ee.classpath" />
+    </path>
+
+    <path id="jpa.classpath">
+        <fileset dir="${lib}/xdoclet/lib" includes="dom4j-1.6.1.jar.jar"/>
+        <fileset dir="${lib}/hibernate">
+            <include name="antlr-2.7.6.jar"/>
+            <include name="hibernate3.jar"/>
+            <include name="hibernate-core.jar"/>
+            <include name="hibernate-annotations.jar"/>
+            <include name="hibernate-commons-annotations.jar"/>
+            <include name="hibernate-entitymanager.jar"/>
+            <include name="hibernate-validator.jar"/>
+            <include name="javassist-3.4.GA.jar"/>
+            <include name="ejb3-persistence.jar"/>
+            <include name="slf4j-api-1.5.2.jar"/>
+            <include name="slf4j-log4j12.jar"/>
+            <include name="jta-1.1.jar"/>
+        </fileset>
+    </path>
+
+    <path id="j2ee.classpath">
+        <fileset dir="${appserver.home}">
+        	<!-- jboss -->
+            <include name="client/jbossall-client.jar" />
+            <include name="client/jboss-j2ee.jar" />
+        	<!-- glassfish -->
+            <include name="lib/javaee.jar"/>
+            <include name="lib/appserv-rt.jar"/>
+        	<!-- weblogic -->
+            <include name="server/lib/weblogic.jar"/>	<!-- For 9.2 -->
+            <include name="server/lib/wlclient.jar"/>	<!-- For 10.3 -->
+        	<!-- oracle -->
+            <include name="j2ee/home/oc4jclient.jar"/>
+        	<!-- websphere -->
+            <include name="runtimes/com.ibm.*.jar"/>
+        </fileset>
+    </path>
+
+    <path id="jbossservices.classpath">
+        <pathelement location="${appserver.home}/lib/jboss-system.jar" />
+        <pathelement location="${appserver.home}/lib/jboss-common.jar" />
+        <pathelement location="${appserver.home}/lib/jboss-jmx.jar" />
+        <!-- The two below needed for JBoss 5 -->
+        <pathelement location="${appserver.home}/lib/jboss-system-jmx.jar" />
+        <pathelement location="${appserver.home}/lib/jboss-kernel.jar" />
+    </path>
+        
+    <path id="xdoclet.classpath">
+        <fileset dir="lib" includes="*.jar" />
+        <fileset dir="lib/ext" includes="*.jar" />
+        <fileset dir="lib/xdoclet/lib" includes="*.jar" />    
+        <path refid="j2ee.classpath" />
+    </path>
+
+    <path id="test.base.classpath">
+        <path refid="nonj2ee-compile.classpath" />
+        <path location="${build}" />
+    </path>
+
+    <path id="test.compile.classpath">
+        <path refid="test.base.classpath" />
+        <path refid="j2ee.classpath" />
+        <!-- We need the ./conf directory to be accessible to be able to read dynamic properties -->
+        <path location="${ejbca.home}" />
+    </path>
+
+    <!-- those are the default values used within JBoss for easy startup -->
+    <property name="appserver.type" value="jboss"/>
+    <property name="ca.tokentype" value="soft"/>
+    <property name="ca.tokenpassword" value="null"/>
+    <property name="ca.tokenproperties" value=""/>
+    <property name="ca.keystorepass" value="foo123"/>
+    <property name="ca.ocspkeystorepass" value="foo123"/>
+    <property name="ca.xkmskeystorepass" value="foo123"/>
+    <property name="ca.cmskeystorepass" value="foo123"/>
+    <property name="ca.serialnumberoctetsize" value="8"/>
+    <property name="ca.toolateexpiredate" value=""/>
+    <property name="ocspHardTokenClasses" value="ocspHardTokenClasses"/>
+    <property name="ocsp.hardToken.classes" location="${ocspHardTokenClasses}"/>
+    <property name="datasource.jndi-name" value="EjbcaDS" />
+    <property name="datasource.jndi-name-prefix" value="java:/" />
+    <property name="database.name" value="hsqldb" />
+    <property name="datasource.mapping" value="Hypersonic SQL" />
+    <property name="database.url" value="jdbc:hsqldb:$${jboss.server.data.dir}$${/}hypersonic$${/}localDB" />
+    <property name="database.driver" value="org.hsqldb.jdbcDriver" />
+    <property name="database.username" value="sa" />
+    <property name="database.password" value="" />
+    <property name="weblogic-oracle-columntype" value="" />
+    <property name="healthcheck.amountfreemem" value="1" />
+    <property name="healthcheck.dbquery" value="Select 1 From CertificateData where fingerprint='XX'" />
+    <property name="healthcheck.authorizedips" value="127.0.0.1" />
+    <property name="healthcheck.catokensigntest" value="false" />
+    <property name="healthcheck.maintenancefile" value="" />
+    <property name="healthcheck.maintenancepropertyname" value="DOWN_FOR_MAINTENANCE" />    
+    <property name="ocsphealthcheck.amountfreemem" value="1" />
+    <property name="ocsphealthcheck.dbquery" value="Select 1 From CertificateData where fingerprint='XX'" />
+    <property name="ocsphealthcheck.authorizedips" value="127.0.0.1"/>
+    <property name="ocsphealthcheck.maintenancefile" value="" />
+    <property name="ocsphealthcheck.maintenancepropertyname" value="DOWN_FOR_MAINTENANCE" />    
+    <property name="ocsphealthcheck.signtest" value="true" />  
+    <property name="mail.jndi-name" value="java:/EjbcaMail" />
+    <property name="mail.from" value="ejbca-donotreply@domain.com" />
+    <property name="mail.user" value="ejbca_user" />
+    <property name="mail.password" value="primekey" />
+    <property name="mail.pop3.host" value="localhost" />
+    <property name="mail.smtp.host" value="localhost" />
+    <property name="mail.smtp.auth" value="false" />
+    <property name="mail.smtp.starttls.enable" value="false" />
+    <property name="mail.subject" value="Retrieve your certificate" />
+    <property name="mail.message" value="Hello ${CN}${NL}${NL} This is a notification. ${NL}${NL} Your username: ${USERNAME}${NL} password: ${PASSWORD}${NL}${NL} Your are NOT supposed to go and fetch your certificate, this is only a test." />
+    <property name="mail.debug" value="false" />
+    <property name="httpserver.pubhttp" value="8080" />
+    <property name="httpserver.pubhttps" value="8442" />
+    <property name="httpserver.privhttps" value="8443" />
+    <condition property="httpsserver.password" value="serverpwd" >
+        <isfalse value="${web.promptForPassword}"/>
+    </condition>
+    <condition property="java.trustpassword" value="changeit" >
+        <isfalse value="${web.promptForPassword}"/>
+    </condition>
+    <property name="httpsserver.bindaddress.pubhttp" value="0.0.0.0" />
+    <property name="httpsserver.bindaddress.pubhttps" value="0.0.0.0" />
+    <property name="httpsserver.bindaddress.privhttps" value="0.0.0.0" />
+    <property name="web.availablelanguages" value="EN,FR,IT,ES,SE,ZH,DE,PT,PT_BR" />
+    <property name="web.contentencoding" value="UTF-8" />
+    <property name="web.docbaseuri" value="internal" />
+    <property name="web.renewalenabled" value="false" />
+    <property name="intresources.preferredlanguage" value="EN" />
+    <property name="intresources.secondarylanguage" value="SE" />
+    <property name="hardtoken.diplaysensitiveinfo" value="true" />
+    <property name="log.maxqueryrowcount" value="1000" />
+	<property name="approval.defaultrequestvalidity" value="28800" />
+	<property name="approval.defaultapprovalvalidity" value="28800" />
+    <property name="approval.excludedClasses" value="" />
+    <condition property="database.comment.column" value="comment_" else="comment" >
+        <equals arg1="${database.name}" arg2="oracle"/>
+    </condition>
+    <condition property="doc.war.enabled">
+    	<equals arg1="internal" arg2="${web.docbaseuri}" casesensitive="false" trim="true" />
+    </condition>
+    <condition property="renew.war.enabled">
+    	<equals arg1="true" arg2="${web.renewalenabled}" casesensitive="false" trim="true" />
+    </condition>
+
+	<!-- Log4j configuration for glassfish -->
+    <property name="logging.log4j.config" value="false" />    
+
+    <!-- Extra Protection settings for internal log signing etc -->
+    <property name="protection.enabled" value="false" />
+    <property name="protection.logprotect" value="false" />
+    <property name="protection.certprotect" value="false" />
+    <property name="protection.keyref" value="key1" />
+    <property name="protection.key" value="foo123" />
+    <property name="protection.keytype" value="SOFT_HMAC" />
+    <property name="protection.warnonmissingrow" value="true" />
+    
+	
+	<!-- CMP settings -->
+	<property name="cmp.allowraverifypopo" value="false" />
+	<property name="cmp.defaultca" value="" />
+	<property name="cmp.extractusernamecomponent" value="" />
+	<property name="cmp.operationmode" value="normal" />
+	<property name="cmp.responseprotection" value="signature" />
+	<property name="cmp.ra.authenticationsecret" value="" />
+	<property name="cmp.ra.namegenerationscheme" value="DN" />
+	<property name="cmp.ra.namegenerationparameters" value="CN" />
+	<property name="cmp.ra.namegenerationprefix" value="" />
+	<property name="cmp.ra.namegenerationpostfix" value="" />
+	<property name="cmp.ra.endentityprofile" value="EMPTY" />
+	<property name="cmp.ra.certificateprofile" value="ENDUSER" />
+	<property name="cmp.ra.caname" value="AdminCA1" />
+	<!-- If the CMP TCP service MBean should be deployed -->
+	<property name="cmp.tcp.enabled" value="false" />
+	<property name="cmp.tcp.portno" value="829" />
+	<property name="cmp.tcp.logdir" value="./log" />
+	<property name="cmp.tcp.conffile" value="" />
+	
+	<!-- JAXWS settings -->
+	<property name="jaxws.approval.gethardtoken" value="true" />				
+	<property name="jaxws.approval.gentokencerts" value="true" />
+	<property name="jaxws.numberofrequiredapprovals" value="1" />
+	<property name="jaxws.noauthonfetchuserdata" value="false" />
+    <property name="jaxws.gentokens.setmslogononhold" value="false" />
+	
+	<!-- XKMS settings -->
+	<property name="xkms.enabled" value="true" />				
+	<property name="xkms.request.requiresignature" value="false" />		
+	<property name="xkms.request.acceptedcas" value="AdminCA1" />
+	<property name="xkms.response.acceptsignrequest" value="true" />		
+	<property name="xkms.response.alwayssign" value="false" />
+	<property name="xkms.response.causedforsigning" value="AdminCA1" />		
+	<property name="xkms.keyusage.signatureisnonrep" value="true" />		
+	<property name="xkms.serviceport" value="8080" />
+	<property name="xkms.krss.poprequired" value="true" />
+	<property name="xkms.krss.servergenkeylength" value="1024" />
+	<property name="xkms.krss.allowrevokation" value="true" />
+	<property name="xkms.krss.allowautomaticreissue" value="false" />
+
+	<!-- ECDSA implicitlyCA settings -->
+	<property name="ecdsa.implicitlyca.q" value="883423532389192164791648750360308885314476597252960362792450860609699839" />
+	<property name="ecdsa.implicitlyca.a" value="7fffffffffffffffffffffff7fffffffffff8000000000007ffffffffffc" />
+	<property name="ecdsa.implicitlyca.b" value="6b016c3bdcf18941d0d654921475ca71a9db2fb27d1d37796185c2942c0a" />
+	<property name="ecdsa.implicitlyca.g" value="020ffa963cdca8816ccc33b8642bedf905c3d358573d3f27fbbd3b3cb9aaaf" />
+	<property name="ecdsa.implicitlyca.n" value="883423532389192164791648750360308884807550341691627752275345424702807307" />
+
+	<!-- Development and debug setting -->
+	<property name="certtools.dnorderreverse" value="false" />
+	
+	

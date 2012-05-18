@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<document>
+
+  <properties>
+    <title>Download</title>
+  </properties>
+
+<body>
+  <section name="Latest Release">
+    <note>
+    If you have problems with any of the download links below, try to download through the Sourceforge <a href="https://sourceforge.net/project/platformdownload.php?group_id=39716">download page</a>.
+    <br/><br/>
+    EJBCA 3.9.1 is now available for <a
+    href="http://downloads.sourceforge.net/ejbca/ejbca_3_9.1.zip">download</a>.
+    <br/>
+    SHA1 checksum:
+    <br/><br/>
+    External RA API 3.9.1 is now available for <a
+    href="http://downloads.sourceforge.net/ejbca/extra_3_9.1.zip">download</a>.
+    <br/>
+    SHA1 checksum:
+    <br/><br/>
+    Cert-cvc library 1.2.8 with full RSA and ECC support is now available for <a
+    href="http://downloads.sourceforge.net/ejbca/cert-cvc-1.2.8.zip">download</a>.
+    <br/>
+    SHA1 checksum: 3f2ea917f426609d4d8e8cb00a7d3251163b926b
+    </note>
+  </section>
+  <section name="Main source packages">
+    <p>
+    Download any of the source packages from <a href="https://sourceforge.net/project/platformdownload.php?group_id=39716">Sourceforge</a>.
+    </p>
+  </section>
+
+  <section name="Live CD">
+    <p>
+    Get a feeling for EJBCA easily by downloading and running our 
+    <a href="http://download.primekey.se/public/ejbca-live.iso">LiveCD</a>. Requires 1024M of memory to run.
+    Technical details can be found <a href="http://wiki.ejbca.org/ejbcalivecd">here</a>. 
+    </p>
+  </section>
+
+<!--
+  <section name="Debian packages">
+    <p>
+    For Debian stable(etch) and unstable EJBCA 3.5.x Packages see:<br/>
+    <a href="http://han.pp.se/gl/article.php?story=20080115235612100">http://han.pp.se/gl/article.php?story=20080115235612100</a>.
+    </p>
+  </section>
+-->
+
+</body>
+</document>
+

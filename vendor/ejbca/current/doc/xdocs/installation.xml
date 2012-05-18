@@ -1,0 +1,899 @@
+<?xml version="1.0"?>
+<document>
+  <properties>
+    <title>Installation</title>
+  </properties>
+<body>
+
+<section name="About">
+<p>
+EJBCA is a fully functional Certificate Authority built in Java.
+Based on J2EE technology it constitutes a robust, high
+performance and component based CA. Both flexible and platform independent,
+EJBCA can be used standalone or integrated in any J2EE application.
+</p><p>
+The EJBCA Homepage can be found at http://ejbca.org/.
+Information about contacting the EJBCA team, contributing to
+EJBCA, etc can be found through the Homepage.
+</p><p>
+More documentation can also be found on the homepage and on the wiki site http://wiki.ejbca.org/.
+</p><p>
+EJBCA is completely written in Java and should as such run on any
+platform where a J2EE server runs. Development and testing is
+performed on Linux and Windows platforms.
+</p></section>
+
+<section name="Security">
+<p>
+Security is discussed below in the chapter about configuration in the User Guide
+and in <a href="security.html">Security</a>.
+</p><p>
+Please take a minute to thoroughly consider the security
+implications and make sure you know what you are doing when you are setting
+up a CA.
+</p><p>
+If running on Linux, you should consider using the sample
+firewall script provided in 'ejbcafirewall.sh'. If running on Windows, a
+similar approach should be taken with firewall software/hardware.
+</p>
+<p>
+Don't forget to configure your application server for security! See
+<a href="security.html">security</a>.
+Security is CRITICAL for a CA.
+</p>
+</section>
+
+<section name="Upgrade">
+<p>
+See doc/RELEASE_NOTES and UPGRADE for information about upgrading from an 
+earlier version of EJBCA.
+</p></section>
+
+<section name="Quick start guide">
+
+<subsection name="Prerequisites">
+<note>
+EJBCA makes use of strong crypto and keystore passwords longer than 7 characters.
+For this to work you must install the 'Unlimited Strength Jurisdiction Policy Files' for JDK.
+The policy files can be found at the same place as the JDK download at java.sun.com. The text
+"Using exportable cryptography" is shown on the first page in the Admin GUI if you fail to
+install this package. Further information on this can be found in the Sun documentation on
+the JCE.
+</note>
+<note>
+The default, and easiest, installation is done on JBoss. EJBCA can however also run on Glassfish, Weblogic, OC4J and Websphere. 
+If you want to deploy on these application servers, read the section for your application server below.
+</note>
+<p>
+Needed to build and run are:
+<ul>
+<li>JDK 1.5.x or 1.6.x (support for 1.4.x was dropped in EJBCA 3.5).</li>
+<li><i>Unlimited Strength Jurisdiction Policy Files</i> for your JDK</li>
+<li>JBOSS >=4.2.x (support for JBoss 4.0.x was dropped in EJBCA 3.8).</li>
+<li>Ant >= 1.6.5 to build (http://jakarta.apache.org/ant/)</li>
+</ul>
+</p><p>
+Set the environment variable APPSRV_HOME (or JBOSS_HOME) to the directory where
+JBoss's root is
+ (/jboss-version). This is done so the deploy script will
+ know where files are to be copied, they are copied to the
+ directory $APPSRV_HOME/server/default/deploy.
+ </p><p>
+ Windows/Unix: 
+ When we describe command line commands below we use
+ unix notation, e.g. 'ejbca.sh' for the executable command files.
+ The same command files are available for windows as cmd-files,
+ e.g. 'ejbca.cmd.'
+</p>
+        <p>
+        Java 1.6.0<br/>
+        Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files 6.0
+        <br/><a href="http://java.sun.com/javase/downloads/index.jsp">http://java.sun.com/javase/downloads/index.jsp</a>
+        </p>
+        <p>
+        Java 1.5.0<br/>
+        Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files 5.0
+        <br/><a href="http://java.sun.com/j2se/1.5.0/download.jsp">http://java.sun.com/j2se/1.5.0/download.jsp</a>
+        </p>
+<p>NOTE: If you are unsure what version of EJBCA you are running, type 'ant ejbcaversion' in the EJBCA_HOME directory. (EJBCA 3.5 and newer.)</p>
+</subsection>
+
+<subsection name="Configure">
+<p>
+If you are only testing EJBCA at this stage and is not setting up a production environment, you can skip this step.
+</p><p>
+Now when everything is prepared, there are a few things to
+configure before starting JBOSS and running everything in a production environment.
+
+</p><p>
+In a production environment you should use something like the following structure:
+<ol>
+<li>Go through the install process creating an AdminCA. Use a simple DN. 
+This CA should only used to issue the administrator certificates. Not published in LDAP. 
+If you want to use an HSM for this CA, see the documentation in the configuration file conf/ejbca.properties.sample.</li>
+<li>Once installed, create all your REAL CAs using the admin-GUI. Now you can use the certificate 
+profiles etc that you like. These certificates can be published in LDAP.
+See doc/howto/HOWTO-multiplecas.txt for example of a detailed configuration guide.</li>
+</ol>
+</p><p>
+In a production environment you should use something else than the default Hypersonic database that comes 
+with JBoss for the reasons:
+<ol>
+<li>Hypersonic database is in-memory, which means that over time it will consume more memory. If a large
+number of certificates is issued, it will become an issue after a while.</li>
+<li>Hypersonic does not support full SQL, in particular ALTER statements. When a new version of EJBCA is 
+released we can not create scripts that updates the database if some tables changed. This will make 
+upgrades much much harder.</li>
+</ol>
+</p><p>
+For information about installing JDBC drivers for other databases, see the document <i>'doc/howto/HOWTO-database.txt'</i>
+in the distribution.
+</p>
+
+<subsubsection name="Memory configuration">
+<p>
+The memory parameters for Java is by default configured very low, for JBoss it is set by default to allow
+a maximum memory usage of 512mb, which is sufficient for most configurations. We still recommend that you check your 
+configuration of java memory arguments to set them to
+at least '-Xms128m -Xmx512m'. 
+For JBoss this is done in APPSRV_HOME/bin/run.conf where the line:
+</p>
+<source>
+JAVA_OPTS="-server -Xms128m -Xmx512m"
+</source>
+<p>
+can be changed.
+</p>
+</subsubsection>
+
+</subsection>
+
+<subsection name="Install">
+<p>
+Note that the installation must be done with a user with privileges to write to APPSRV_HOME and subdirs. 
+</p><p>
+1) Set the environment variable APPSRV_HOME to where your JBoss is installed,
+example:
+</p> 
+<source>
+APPSRV_HOME=/opt/jboss-4.2.3
+</source>
+<p>Also make sure the right java tools (javac/keytool) are available in your system PATH, ie. /usr/local/jdk1.5.0_11/bin.
+<br/>Due to Javas memory handling you mey need to assign more memory to ant in order to build the system without OutOfMemory errors. 
+You can do that by setting an environment variable:
+</p>
+<source>
+ANT_OPTS=-Xmx512m
+</source>
+<note>
+JBoss 5.x have a bug causing issues with the BC JCE provider. To work around this you can copy the files EJBCA_HOME/lib/bc*.jar to JBOSS_HOME/server/default/lib/.
+Remember this when it's time for upgrades!
+</note>
+
+<p>
+2) Copy conf/ejbca.properties.sample to conf/ejbca.properties and customize if needed.
+The default values works fine for a test installation. 
+</p><p>
+<ul>
+<li>Customize the CA properties if you need to do so.
+For production use you need to do this, don't forget to edit
+passwords to be secure and secret. Keep conf/ejbca.properties as secret as possible.
+DO NOT forget the passwords, if you need to re-install the software sometime.</li>
+<li>To use a hard ca token from start change ca.tokentype, ca.tokenpassword and ca.tokenproperties. You also need to add the appropriate values to the ca.tokenproperties file for the HSM. Read the HSM documentation for the right values.</li>
+<li>
+To put the initial superadmin certificate on a smartcard, set superadmin.batch=false in
+web.properties. Enroll from public web after the installation is complete, as you would
+with any other smartcard user. Username is &quot;superadmin&quot; and password is superadmin.password
+from web.properties.
+</li>
+<li>If you are deploying on JBoss EAP you probably want to look at the property 'jboss.config' as well, since 'production' is the default server to start on JBoss EAP.</li>
+<li>Small note, in the ca.dn you can not use DC components for the initial CA, 
+you can create CAs using DC components later on once the admin GUI is up and running.</li>
+</ul>
+Do the same with other configuration files that you might want to customize. The default values often works fine and is a safe bet if you are unsure.
+Most options are well documented in the sample files.
+<ul>
+<li>Customize the database in conf/database.properties if needed. 
+But easiest thing is to keep the default as it is,
+it will use the JBoss embedded HSQLDB and everything will be easier for you.
+For production use you should use a real database instead of the embedded one.</li>
+</ul>
+</p><p>
+3) Open a console and type:
+</p>
+<source>
+ant bootstrap
+</source>
+<p>it will compile, jar, war, ear everything and deploy it to JBoss.
+</p><p>
+4) Open a console (terminal) and start JBoss.
+You can start JBoss with 'ant j2ee:run' from EJBCA_HOME
+or the normal command 'run.sh/cmd' from APPSRV_HOME/bin. You should see JBoss
+picking up everything and deploying the ear without errors.
+</p><p>
+5) Type:
+</p>
+<source>
+ant install
+</source>
+<p>it will generate all certificates, keys, etc needed to run with an initial CA.
+You will find admin keys in ${ejbca.home}/p12. (do not delete those files!)
+<br/>The command 'ant install' is only run once, when the CA is first installed. It creates lots of things in the database, 
+and can not be run again (it will give an error if you try).
+<ul>
+<li>tomcat.jks is for the servlet container (don't bother with it)</li>
+<li>truststore.jks is for the servlet container (don't bother with it)</li>
+<li>superadmin.p12 should be imported in your browser, that's your administration certificate.</li>
+</ul>
+</p><p>
+6) Stop JBoss (ctrl+c or whatever)
+</p><p>
+7) Type:
+</p>
+<source>
+ant deploy
+</source>
+<p>this will deploy everything again and configure the servlet
+container with the keystore file (this is why we needed to stop the container).
+If you want to use jboss specific service for automatic creation of the CRL:s you should enable this option in ejbca.properties,
+ see the chapter about 'CRL generation'.
+</p><p>
+8) Import the certificate from EJBCA_HOME/p12/superadmin.p12 in your web browser. 
+This is the super administrators certificate used to access the admin GUI. 
+Other administrators with specific privileges can be created later on.
+The default password for superadmin.p12 is ejbca, and is configured in ejbca.properties.
+</p><p>
+9) Start JBoss again and go to https://localhost:8443/ejbca/ to access the admin-GUI, 
+or http://localhost:8080/ejbca for the public pages.
+</p><p>
+If you create other CAs that you want to add as acceptable CAs in the SSL server configuration, 
+or if you renew the CA certificate, you can install any CA certificate in the SSL server configuration afterwards 
+with the following command:
+</p>
+<source>
+ant -Dca.name="My CA Name" javatruststore
+</source>
+<p>
+What this does in the background is that it adds the CA certificate to p12/truststore.jks and copies this file
+to JBOSS_HOME/server/default/conf/keystore, where the SSL keystores are located.
+</p>
+<p>
+You must stop and start JBoss after doing this.
+</p>
+</subsection>
+
+<subsection name="Using JBoss/Tomcat native SSL connector">
+<p>Instead of the regular Tomcat SSL connector you can configure to use the native connector, which is supposed to 
+improve performance.
+</p><p>
+See documentation in src/appserver/jboss/tomcat60 (if using JBoss 4.2.3) or src/appserver/tomcat60jboss5 (if using JBoss 5).
+</p> 
+</subsection>
+
+<subsection name="Additional howtos">
+<p>
+In the directory doc/howto in the distribution there are additional howtos for some specific platforms and configurations.
+</p>
+</subsection>
+
+<subsection name="Running optional tests">
+<p>
+If you want to run a thorough test of your new CA, run the automated tests with 'ant test:run'.
+To run the tests you must copy the file lib/ext/junit-1.5.8 to ANT_HOME/lib.
+</p><p>
+NOTE: After running tests with 'ant test:run', you might
+consider deleting the database since some leftovers are left in the database.
+The tests will create and revoke some test certificates, so afterwards your CRLs will be populated with a few entries.
+'ant test:run' should not be run on a production system, only
+to test the installation.
+</p></subsection>
+</section>
+
+<section name="Application servers">
+<p>EJBCA can currently be run on JBoss (covered above), Glassfish (Sun AS), Weblogic, OC4J (Oracle AS) and Websphere.
+</p>
+
+<subsection name="Weblogic">
+<p>
+EJBCA should work fine with Weblogic 9.x on Oracle 9 or 10 databases.
+<br/>
+Running on weblogic has some limited functionality compared to JBoss though:
+<ul>
+<li>The CMP tcp listener, which runs as a JBoss MBean and does not work</li>
+<li>Web service interface (includes xkms), which uses JaxWS and does not work (yet)</li>
+</ul>
+Note: After installing Weblogic, don't forget to install the "Unlimited Strenth Crypto" jce files
+in Weblogics jre and jrockit. It's the same way as for a regular installation, see User's Guide.
+</p>
+
+<subsubsection name="Configure EJBCA">
+<p>
+<ol>
+<li>Set the environment variable APPSRV_HOME pointing to for example /bea/weblogic92
+(weblogic.jar is located under APPSRV_HOME/server/lib).</li>
+
+<li>Edit conf/ejbca.properties and change/set some values:<br/>
+appserver.type=weblogic<br/>
+logging.log4j.config=basic</li>
+
+<li>Edit conf/database.properties and edit/set some values that are specific for Weblogic:<br/>
+datasource.jndi-name-prefix= <br/>
+weblogic-oracle-columntype=@weblogic.dbms-column-type Blob</li>
+
+<li>Edit conf/web.properties and change/set some values:<br/>
+httpserver.pubhttp=7001<br/>
+httpserver.privhttps=7002</li>
+
+<li>Edit conf/mail.properties and set:<br/> 
+mail.jndi-name=mail/EjbcaMail<br/> 
+(it can be anything of your choice, but this is our suggestion).</li>
+
+<li>Edit conf/jaxws.properties and change/set some values:<br/>
+ejbcaws.enabled=false</li>
+
+<li>Edit conf/web.properties and set at least default ports:<br/>
+Default http port of Weblogic is 7001.<br/>
+Default SSL port of Weblogic is 7002.</li>
+
+<li>Edit conf/jaxws.properties. Disabling ejbcaws must be done until we have fixed JaxWS configuration for weblogic.<br/> 
+ejbcaws.enabled=false<br/>
+See https://jira.primekey.se/browse/ECA-687, tips are welcome.</li>
+
+<li>Edit conf/xkms.properties and change/set some values:<br/>
+xkms.enabled=false<br/>
+Disabling xkms must be done until we have fixed JaxWS configuration for weblogic.</li>
+
+<li>Edit 'jndi.properties.weblogic' in the directory 'ejbca/conf'and modify the principal and credentials 
+   according to you weblogic domain's setting (same as the user name/password to login weblogic console).
+   The default in the EJBCA installation is system/weblogic.<br/> 
+   Every time you issue a 'ant clean' command, you must re-do this step.</li>
+</ol>
+
+If you had issued an 'ant' command before, it is now important to do 'ant clean' before building again.
+
+Build ejbca.ear (ejbca/dist/ejbca.ear) with 'ant'.
+</p>
+</subsubsection>
+
+<subsubsection name="Configure Weblogic">
+<p>
+<ol>
+<li>Create EJBCA domain with weblogic configuration wizard, select Basic weblogic server domain, Express,
+   Development mode, sun's JDK at bea's home directory, and remember the admin username/password.
+   <ul>
+   <li>Wls 9.2 will create a default 'mydomain' for you the first time it is started.</li>
+   <li>Access the Weblogic management console at: http://127.0.0.1:7001/console/</li>
+   <li>You can set WLS_USER and WLS_PW environment variables so you don't have to enter username/pwd when starting Weblogic.</li>
+   </ul></li>
+   
+<li>Create EjbcaPool and EjbcaDS in Weblogic, the JNDI name should be the one specified in ejbca.properties.<br/>
+In Weblogic9, you only create a 'Data Source', no Pools exists any longer.<br/>
+Don't forget to apply a Target for your DataSource.<br/>
+Example EjbcaDS in Weblogic 9.2:<br/>
+<pre>
+URL: jdbc:bea:oracle://127.0.0.1:1521
+Driver: weblogic.jdbcx.oracle.OracleDataSource
+Properties: user=weblogic
+               portNumber=1521
+               SID=XE
+               serverName=127.0.0.1
+</pre>
+</li>
+<li>Create tables in the database configured for EjbcaPool and EjbcaDS in Weblogic.<br/>
+You can do an 'ant bootstrap' to JBoss if you want JBoss to create the tables for you.<br/>
+On oracle XE you can run for example: sqlplus weblogic@XE @create-tables-ejbca3-oracle.sql<br/>
+  select table_name from user_tables; -- to list tables<br/>
+See the file create-tables-ejbca3-oracle.sql for table definitions, or just run /doc/howto/create-tables-ejbca3-oracle.sql for Oracle.
+</li>
+
+<li>Create a new java mail session for user notification in UserAdminSessionBean. In Weblogic, the JNDI name should be "mail/EjbcaMail" (same as you configured in mail.properties).<br/>
+  key in the properties:
+  <pre>
+  mail.store.protocol=pop3
+  mail.transport.protocol=smtp
+  mail.user=foouser
+  mail.pop3.host=pop.foo.com
+  mail.smtp.host=smtp.foo.com
+  mail.smtp.auth=false
+  mail.smtp.starttls.enable=false
+  mail.from=foouser@foo.com
+  mail.debug=false
+  </pre>
+  Do not forget to activate the mail session in you target server.
+  </li>
+</ol>
+</p>
+<p>
+If installing with Oracle, perhaps you need to replace jdbc driver at weblogic_home\server\lib, weblogic_home\server\ext\jdbc\oracle\920, 10g 
+all to 10.1.0.2, in my case which is Weblogic 9.2.0.
+I have used Beas Oracle driver in Weblogic 9.2 with Oracle XE 10, and that works fine. 
+Your mileage may vary, some JDBC drivers were known to be buggy earlier, but it seems to have improved.
+</p>
+</subsubsection>
+
+<subsubsection name="Deploy and setup">
+<p>
+<ol>
+<li>Deploy the ejbca.ear file in weblogic, it should deploy straight away without errors. Activate the deployment.</li>
+
+<li>Run 'ant install' to do the installation. Everything should work here with no errors. 
+   If you get errors these must be resolved before we can move on.<br/>
+   The command 'ant install' is only run once, when the CA is first installed. It creates lots of things in the database, and can not be run again 
+   (it will give an error if you try).</li>
+
+<li>Configure SSL in Weblogic:<br/>
+<ol>
+<li>(Optional for Weblogic 10.3:) Copy $EJBCA_HOME/p12/truststore.jks to $BEA_HOME/jre/lib/security/cacerts, so that Weblogic can trust the initial CA installed 
+when doing 'ant install'.<br/>
+You can create a new 'cacerts' file with 'rm $EJBCA_HOME/p12/truststore.jks' and then 'ant javatruststore'.
+Type 'ant -p' to get a description how you can run 'ant javatruststore' with arguments to point to a specific keystore etc.
+You can get the CA certificate with 'bin/ejbca.sh ca getrootcert cert.pem'.</li>
+<li>Configure weblogic server for SSL.<br/>
+   For Weblogic 9.2.0: 
+   Servers->Myserver->Configuration->Keystores (or SSL), click "Change", select "Custom Identity and Java Standard Trust"<br/>
+     - Custom Identity Keystore: path to tomcat.jks generated while "ant install" (ejbca/p12/tomcat.jks),<br/>
+     - Private Key Alias: localhost (httpsserver.hostname in conf/web.properties).<br/>
+       The alias is what you configured as httpsserver.hostname in conf/web.properties<br/>
+     - Passphrase: serverpwd (httpsserver.password in conf/web.properties).<br/>
+       The password is what you configures as httpsserver.password in conf/web.properties.<br/><br/>
+   For Weblogic 10.3.0: 
+   Servers->examplesServer->Keystores (or SSL), select "Custom Identity and Custom Trust"<br/>
+   Same as for Weblogic 9.2.0, but you can also configure custom trust:<br/>
+     - Custom Trust Keystore: path to truststore.jks generated while "ant install" (ejbca/p12/truststore.jks),<br/>
+     - Passphrase: changeit (java.trustpassword in conf/web.properties).<br/><br/>
+   Servers->Myserver->Configuration->SSL->Advanced->Server Attributes->Two Way Client Cert Behavior:<br/>
+     - Client Certs Requested But Not Enforced<br/><br/>
+   Servers->Myserver->configuration->general, check "SSL Listen Port Enabled", note that the port should be same as httpserver.privhttps in ejbca.properties.
+   </li>
+   </ol>
+</li>
+</ol>
+This should make the Admin GUI work, note to install the  Unlimited Strength Jurisdiction Policy Files from java.sun.com 
+for both sun's JDK and BEA's JDK first before installation. For Weblogic 10.3 it wa possible to skip the installation of the
+bundled JDK's and use a pre-installed Sun JDK.
+</p>
+</subsubsection>
+
+<subsubsection name="TransactionTimeoutException in Weblogic">
+<p>
+If you are running on a not-so-fast machine, you may experience TransationTimeoutException during 'ant install'.
+This is due to that it takes a long time for RSA key generation.
+
+To configure the transaction timeout to a larger value in weblogic:
+<ol>
+<li>logon to Weblogic Console with IE, for example, http://localhost:7001/console.</li>
+<li>click "Services" at the left "Domain Structure" navigation frame to expand the service list.</li>
+<li>click "JTA" to display the JTA property setting page at right content frame.</li>
+<li>update the first property "Timeout Seconds" to a rational value that is enough to execute EJBCA installation
+   (about 100s to finish the whole installation, but I recommend at least 5 minutes, i.e. 300s).</li>
+</ol>
+</p>
+</subsubsection>
+
+</subsection>
+
+<subsection name="Glassfish">
+<p>
+Currently EJBCA works both with Glassfish v1 and v2 with the Derby/JavaDB database.
+</p>
+<p>Don't forget to install 'Unlimited Strength Jurisdiction Policy Files' for Java.</p>
+<subsubsection name="Configure EJBCA">
+<p>
+<ol>
+<li>Set the environment variable APPSRV_HOME to the directory where Glassfish is installed. For example APPSRV_HOME=/home/sun/glassfish.
+  The variable must be available when working with EJBCA.</li> 
+<li>Edit conf/ejbca.properties, you should at least set appserver.type, appserver.home and logging.log4j.config.</li>
+<li>Edit conf/database.properties, you should at least set datasource.jndi-name-prefix, and the database settings for your chosen database. Derby is supported for Glassfish, and default options for Derby should work.</li>
+<li>Edit conf/web.properties, you should set desired values and also the http/s ports (default 8080 and 8181) for your installation.</li>
+<li>Configuration of ejbcaws and xkms only have to be done in Glassfish v1.<br/>
+     On Glassfish v2 it deploys nicely, even though the functionality does not work completely.<br/>
+     See https://jira.primekey.se/browse/ECA-607 for details.<br/>
+     (Tips how to solve these probles are welcome.)
+     <ul>
+     <li>Edit conf/jaxws.properties and set 'ejbcaws.enabled=false'.</li>
+     <li>Edit conf/xkms.properties and set 'xkms.enabled=false'.</li>
+     </ul>
+     </li>
+</ol>
+    
+Build ejbca with 'ant'.<br/>
+Do 'ant clean' first if you have tried with different appservers, or database settings.
+</p>
+</subsubsection>    
+
+<subsubsection name="Configure Glassfish">
+<p>
+<ol>
+<li>Do yourself a favor and configure this in the JVM settings of Glassfish v1 (default in v2):<br/>
+    <pre>-XX:MaxPermSize=192m</pre>
+    Restart Glassfish</li>
+<li>Derby:
+<ol>
+<li>Start the database: asadmin start-database.</li>
+<li>Create a database and a database user with privileges.
+<pre>
+  > cd /home/sun/glassfish/bin
+  > export DERBY_HOME=/home/sun/glassfish/javadb; ../javadb/bin/ij   
+   (For glassfish v1 use this command instead: 
+    > export DERBY_HOME=/home/sun/glassfish/javadb; ../javadb/frameworks/NetworkServer/bin/ij.ksh)
+
+  ij> connect 'jdbc:derby://localhost:1527/ejbca;create=true';
+  ij> run '/home/sun/ejbca/doc/howto/create-tables-ejbca3-derby.sql';
+  ij> quit;
+</pre></li></ol></li>
+<li>Start the application server: asadmin start-domain<br/>
+  The default user/password for the web console is admin/adminadmin.<br/>
+  Access the Glassfish admin console at http://127.0.0.1:4848/.</li>
+<li>Create a connection pool for your database. In the admin console this is done in Resources->JDBC->Connection Pools.<br/>
+    When adding a Derby Pool use values: Name=EjbcaPool, Type=javax.sql.DataSource, Vendor=JavaDB.<br/>
+    Properties: user=APP, password=APP, DatabaseName=ejbca</li>    
+<li>Create a datasource called jdbc/EjbcaDS, in the admin console this is done in Resources->JDBC->JDBC Resources.<br/>
+    Use the connection pool you just created.</li>
+</ol>
+</p>
+</subsubsection>
+
+<subsubsection name="Deploy and setup">
+<p>
+<ol>
+<li>Deploy ejbca.ear using:<br/> 
+    ./asadmin deploy ../../ejbca/dist/ejbca.ear<br/>
+    The relative path to ejbca.ear depends on where you installed ejbca and glassfish.
+    You can check that everything was ok in domains/domain1/logs/server.log.</li>
+    
+<li>Install ejbca:<br/>
+    ant install</li>
+    
+<li>Configure SSL in Glassfish<br/>
+    Configuration->HTTP Service->HTTP Listeners->http-listener-2, SSL tab
+    <ul>
+       <li>Client Authentication: Enabled</li>
+       <li>Certificate Nickname: s1as (get alias name by running 'keytool -list -v -keystore $APPSRV_HOME/domains/domain1/config/keystore.jks', password changeit)</li>
+       <li>SSL3: Enabled</li>
+       <li>Ciphers Suite: All</li>
+    </ul>
+    Add CA certificate to cacerts file:
+    <ul>
+       <li>cd $EJBCA_HOME</li>
+       <li>bin/ejbca.sh ca getrootcert AdminCA1 ca.der -der</li>
+    </ul>
+    Install the CA certificate in the application servers truststore.<br/>
+    On Glassfish open source:
+    <ul>
+    <li>keytool -import -keystore $APPSRV_HOME/domains/domain1/config/cacerts.jks -file $EJBCA_HOME/ca.der</li>
+    <li>password is 'changeit'</li>
+    </ul>
+    On Glassfish Enterprise:
+    <ul>
+    <li>cd $APPSRV_HOME/domains/domain1/config</li>
+    <li>/usr/sfw/bin/certutil -A -n adminca1 -t "p,p,p" -i $EJBCA_HOME/ca.der -d .</li>
+    <li>verify that adminca1 has been added to the store with '/usr/sfw/bin/certutil -L -d .'.</li>
+    </ul>
+    Restart server<br/>
+    (you would probably want to install your own server certificate from $EJBCA_HOME/p12/tomcat.jks instead of the 
+     default Glassfish cert, to do this you must edit both the http-listener and the IIOP-listeners.
+     You can also generate a new $APPSRV_HOME/domains/domain1/config/keystore.jks with key alias s1as.)</li>
+    
+<li>Access protected EJBCA pages<br/>
+    Import $EJBCA_HOME/p12/superadmin.p12 in your browser and go to url:<br/>
+      https://127.0.0.1:8181/ejbca/<br/>
+    You can now click "Administration" to get to the admin-GUI.</li>
+</ol>
+</p>    
+</subsubsection>
+
+<subsubsection name="Glassfish Ubuntu package">
+<p>
+The above instructions are tested on the official release from Glassfish's homepage. 
+We had this report from a user of the glassfish package on ubuntu.
+</p>
+<p> 
+I had to modify the following to make it work with the Ubuntu 9.04
+glassfish package.
+<pre>
+1. Modify /usr/bin/asadmin
+   #GF_DOMAIN_DIR=$HOME/glassfishv2
+   GF_DOMAIN_DIR=/var/lib/glassfishv2/domains
+2. Set APPSRV_HOME to /usr/share/glassfishv2
+</pre>
+The Ubuntu package has the domains and binaries separated.  When
+following the install instructions, when you do anything with the
+domain you have to point to /var/lib/glassfishv2/[directory] instead
+of $APPSRV_HOME/[directory].
+</p>
+</subsubsection>
+</subsection>
+
+<subsection name="OC4J (EJBCA >=3.6)">
+<p>
+EJBCA has been tested on Oc4j 10g (10.1.3.3.0) using Oracle 10g database.
+</p>
+<p>Don't forget to install 'Unlimited Strength Jurisdiction Policy Files' for Java.</p>
+
+<subsubsection name="Configure EJBCA">
+<p>
+<ol>
+<li>Set environment variable APPSRV_HOME=$OC4J_HOME</li>
+<li>Edit conf/ejbca.properties, you should at least set appserver.type, appserver.home and logging.log4j.config.</li>
+<li>Edit conf/database.properties, you must configure the database settings for your chosen database, including username and password.<br/>
+    use 'datasource.jndi-name-prefix=jdbc/'</li>
+<li>Edit conf/web.properties, you should set desired values and also http/s ports.</li>
+<li>Edit conf/mail.properties set and 'mail.jndi-name=mail/DefaultMail'</li>
+<li>Edit conf/jndi.properties.oracle</li>
+<li>You may have to remove line 186 in build.xml to make everything compile:<br/>
+  &lt;jsp-compile uriroot="${adminweb.build}" /&gt;</li>
+</ol>
+
+Build EJBCA with 'ant'.<br/> 
+(toplink-ejbca-jar.xml will be populated with your configured database settings)<br/>
+Do 'ant clean' first if you have tried with different appservers, or database settings.
+</p>
+</subsubsection>
+
+<subsubsection name="Configure OC4J">
+<p>
+<ol>
+<li>Create tables in your Oracle database using the script supplied in doc/howto/create-tables-ejbca3-oracle.sql.</li>
+<li>Configure $OC4J_HOME/j2ee/home/config/application.xml to not create tables: autocreate-tables=”false”</li>
+<li>Configure a mail session in $OC4J_HOME/j2ee/home/config/application.xml.<br/>
+<pre>
+ &lt;mail-session location="mail/DefaultMail" smtp-host="localhost"&gt;
+  &lt;property name="mail.transport.protocol" value="smtp"/&gt;
+  &lt;property name="mail.smtp.from" value="localhost"/&gt;
+&lt;/mail-session&gt;
+</pre></li>
+<li>Configure transaction timeout in OC4J to a bit longer (in order to be able to generate 4096 bit keys for example).<br/>
+  In $OC4J_HOME/j2ee/home/config/transaction-manager.xml, change:<br/>
+  transaction-timeout="30"<br/>
+  to<br/>
+  transaction-timeout="300"<br/></li>
+<li>Configure a connection pool (EjbcaPool) and a datasource in Oracle AS (EjbcaDS, jdbc/EjbcaDS).</li>
+<li>There is an orion-application.xml under src/deploy/ear/META-INF that you can edit if you really know what you are doing with OC4J.<br/>
+    Normally you don't edit this file.</li>
+<li>Give the server some more PermGen space, otherwise re-deploying and re-starting will not work very often. Do this by adding '-XX:MaxPermSize=192m' 
+    as a new parameter under server->Administration->Server Properties->Start-parameters</li>
+</ol>
+</p>
+</subsubsection>
+
+<subsubsection name="Deploy and setup">
+<p>
+To be able to use the WS-API you must select 'search local classes first' for 'ejbcaws' under 'Configure classloading' (step 3) when deploying the ejbca application.
+  Otherwise you have to set 'xkms.enabled=false' in conf/xkms.properties, 
+  and 'ejbcaws.enabled=false' in conf/jaxws.properties, 
+  and also edit src/deploy/ear/META-INF/orion-application.xml
+<ol>
+<li>Start OC4J (bin/oc4j -start) and log into the admin console of Oracle AS and deploy EJBCA.<br/>
+  'Automatically create a new deployment plan' = checked in step 1.<br/>
+  'Application Name' = ejbca in step 2.<br/>
+  'Configure Class Loading' -> 'Search Local Classes First' = true for 'ejbcaws' and 'xkms' in step 3.<br/></li>
+<li>Now you can run 'ant install' to install EJBCA. You should configure OC4J to use a single RMI port for EJB access, and configure this port in conf/jndi.properties.oracle.</li>
+<li>Configure SSL in OC4J and make sure the SSL information is passed on to Java, not terminated in Apache.<br/>
+<ul>
+<li>If you have SSL directly in OC4J:<br/>
+Copy file $OC4J_HOME/j2ee/home/config/default-web-site.xml to $OC4J_HOME/j2ee/home/config/secure-web-site.xml 
+and edit to reflect these changes:
+<pre>
+ &lt;?xml version="1.0"?&gt;
+    &lt;web-site xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://xmlns.oracle.com/oracleas/schema/web-site-10_0.xsd"  
+        port="8889" display-name="OC4J 10g (10.1.3) Secure Web Site" schema-major-version="10" schema-minor-version="0" secure="true"&gt;
+        &lt;default-web-app application="default" name="defaultWebApp" /&gt;
+        &lt;access-log path="../log/secure-web-access.log" /&gt;
+        &lt;ssl-config keystore="path-to-ejbca/p12/tomcat.jks" keystore-password="serverpwd" needs-client-auth="true" /&gt;
+    &lt;/web-site>
+</pre>    
+Add the following to $OC4J_HOME/j2ee/home/config/server.xml
+<pre>
+&lt;web-site path="./secure-web-site.xml" /&gt;
+</pre>
+Also figure out a way to bind ejbca to the secure site, or it may disappear from time to time...
+If you know how this works, please let us know... 
+</li>
+<li>
+If you have an Apache front-end:<br/>
+<ul>
+<li>Enable SSL in Apache:<br/>
+  These options must be enabled in ssl.conf:<br/>
+  SSLVerifyClient require<br/>
+  SSLOptions +StdEnvVars +ExportCertData</li>
+<li>Add EJBCA CA-certificate to wallet with owm (oracle wallet manager)</li>
+<li>Enable SSL in opmn<br/>
+  Open opmn.xml in a text editor.<br/>
+  In the &lt;ias-component id="HTTP_Server"&gt; entry, change the start mode from "ssl-disabled" to "ssl-enabled".<br/> 
+  After modification is made, the entry should look like the following:<br/>
+  &lt;data id="start-mode" value="ssl-enabled"/&gt;</li>
+<li>Update mod_oc4j.conf<br/>
+  Add this line<br/>
+  Oc4jExtractSSL On<br/></li>
+<li>opmnctl shutdown; opmnctl startall</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+After this you should be able to access the admin-GUI in EJBCA.
+</p>
+</subsubsection>
+</subsection>
+
+<subsection name="Websphere (EJBCA 3.6)">
+<p>
+EJBCA 3.6 has been tested with Websphere ND 6.1 and Oracle 10g or PostgreSQL 8.2 database.
+<br/>(Websphere Express seems broken and Websphere Community Edition is a completely different appserver).
+<br/><br/>Note! Due to the massive work involved to support Websphere not all versions will be deployable. Currently only EJBCA 3.6 is possible to install on Websphere.
+</p>
+<p>Install the Unlimited strength crypto policy files for the IBM java shipped with Websphere. 
+You need to download these files from IBM. The IBM policy files version 1.4.2 works with IBM JDK 5.</p>
+<p>Websphere runs with IBMs java 5 and EJBCA should be compiled with this compiler as well.</p>
+<p>
+Installing Websphere on Ubuntu linux requires you to change /bin/sh to /bin/bash in all shell scripts, because Ubuntu uses /bin/dash as /bin/sh but Websphere requires bash.<br/>
+</p><source>
+sudo perl -p -i -e "s/\/sh$/\/bash/"  /opt/IBM/WebSphere/AppServer/bin/*.sh
+</source>
+<p>
+(point the IBM directory to where you install Websphere)
+</p>
+<subsubsection name="Configure EJBCA">
+<p>
+<ol>
+<li>Edit conf/ejbca.properties, you should at least set appserver.type, appserver.home and logging.log4j.config.</li>
+<li>Edit conf/database.properties, you must configure the database settings for your chosen database.<br/>
+      use 'datasource.jndi-name=EjbcaDS' (default)<br/>
+      use 'datasource.jndi-name-prefix=jdbc/'</li>
+<li>Edit conf/web.properties, you should set desired values and also http/s ports (i.e. 9080 etc).</li>
+<li>Edit conf/mail.properties, set 'mail.jndi-name=EjbcaMail'</li>
+<li>Edit conf/jaxws.properties, set 'ejbcaws.enabled=false'<br/>
+      You can use the WS-API, i.e set the property to true, in WebSphere. But if you do not plan to use it, we recommend that you keep it as false. See below for more WS-API info.</li>
+<li>Edit conf/xkms.properties, set 'xkms.enabled=false'</li>
+<li>Edit conf/log.properties, enable the ProtectedLogDevice, 'usedLogDevices=Log4jLogDevice;ProtectedLogDevice'</li>
+<li>Edit conf/jndi.properties.websphere and set the currect port from Servers->Application servers->server1 (your server)->Ports->BOOTSTRAP_ADDRESS.</li>
+</ol>
+
+Build EJBCA with 'ant'.<br/>
+(files in src/deploy/websphere will be populated with your configured database settings)<br/>
+Do 'ant clean' first if you have tried with different appservers, or database settings.
+</p>
+</subsubsection>
+
+<subsubsection name="WebService API">
+<p>If is possible to use the WebService API in WebSphere. Most API functions are working, while a 
+few seems to be hit by incompatibility issues. When EJBCA with WS-API is deployed in WebSphere you
+can use the regular WS CLI (command line interface) to make WS calls from another machine.
+<br/>
+The wsdl is accessible using the url: http://localhost:9080/ejbca/ejbcaws/ejbcaws?wsdl
+</p>
+<p>
+It is also possible to deploy EJBCA WebService API in Websphere as a separate war file.<br/>
+AFTER you have deployed and installed EJBCA below you can perform these steps:
+<ol>
+<li>Generate the stand alone ejbcaws.war file for Websphere with 'ant ejbcaws.war.standalone'.</li>
+<li>Deploy the file dist/ejbcaws.war in Websphere.</li>
+<li>Get the generated WSDL with url: http://127.0.0.1:9080/ejbcaws/ejbcaws?wsdl</li>
+<li>Configure the ejbcaws CLI in dist/ejbcawscli/ejbcawsracli.properties.</li> 
+</ol>
+</p>  
+</subsubsection>
+
+<subsubsection name="Configure Websphere">
+<p>
+Configure Websphere in the admin console.
+<ol>
+<li>Create tables in your database using the script supplied in doc/howto/create-tables-ejbca3-oracle.sql or doc/howto/create-tables-ejbca3-postgres.sql.</li>
+<li>Navigate to 'Resources->Mail->Mail sessions' and create a new MailSession called 'MailSession' with jndiName 
+  same as mail.jndi-name configured in conf/mail.properties (EjbcaMail).</li> 
+<li>Create a new DataSource:<br/>
+  Creating a datasource for Oracle:
+  <ul>
+  <li>Install the oracle jdbc jar (ex ojdbc4.jar) in $WAS_HOME/lib.</li>
+  <li>Navigate to Resources->JDBC->JDBC Providers</li>
+  <li>Select for example Cell scope, and click New</li>
+  <li>Select 'Oracle' from 'Database type' dropdown</li>
+  <li>Select 'Connection pool data source' from 'Implementation type' dropdown</li>
+  <li>Insert the path to the jar file, i.e. $WAS_HOME/lib</li>
+  <li>Finish and save</li>
+  <li>Navigate to Resources->JDBC->Data sources</li>
+  <li>Select for example Cell scope, and click new</li>
+  <li>Provide a data source and Jndi name, jndi name must match the jndi-name-prefix and jndi-name configured in database.properties, e.g. jdbc/EjbcaDS</li>
+  <li>Click next</li> 
+  <li>Select your created JDBC Provider, and click Next</li>
+  <li>Enter the database URL, e.g. jdbc:oracle:thin:@127.0.0.1:1521:ejbca</li>
+  <li>Select 'Oracle10g data store helper', and click Next. The checkbox 'Use this data source in container managed persistence (CMP)' must be checked.</li>
+  <li>Finish</li>
+  <li>Navigate to Resources->JDBC->Data sources</li>
+  <li>Select the created data source</li>
+  <li>Click on the 'JAAS - J2C authentication data' link</li>
+  <li>Add new record:<br/>
+      Alias: ejbca<br/>
+      User ID: ejbca<br/>
+      Password: ejbca</li>
+  <li>Save all changes</li>
+  <li>Go back to the datasource and select the create authentication provider as 'Component-managed authentication alias'</li>
+  <li>Click OK and save all changes</li>
+  <li>You can now go in and 'Test Connection' for your new DataSource. Make sure it is successful</li>
+  </ul>
+  Creating a datasource for PostgreSQL:<br/>
+  <ul>
+  <li>DataSourceProvider: For postgres I used 'User-defined' type and implementation class name 'org.postgresql.jdbc3.Jdbc3ConnectionPool', or 'org.postgresql.xa.PGXADataSource'. I used the jdbc driver postgresql-8.2-507.jdbc3.jar.</li>
+  <li>DataSource: You have to add Custom Properties to the datasource with databaseName, serverName and port (port is optional).</li>
+  </ul>     
+  </li>
+</ol>
+</p>
+</subsubsection>
+
+<subsubsection name="Deploy and setup">
+<p>
+Log into the admin console of Websphere to deploy EJBCA.
+<ol>
+<li>Install new application.</li>
+<li>Select ejbca.ear and 'Show me all installation options and parameters' and click next.</li>
+<li>Click next. Click next all the time unless anything else is noted here.</li>
+<li>When you get the option to select database type at Step 3 (Deploy EJB option - Database type) select 'ORACLE_V10G' for Oracle, or empty for PostgreSQL.</li>
+<li>At the next step, Step 4, select Current Backend Id, ORACLE_V10_1 for Oracle or CLOUDSCAPE_V51_1 for PostgreSQL (if using Oracle you may not get this choice).</li>
+<li>Click next until you reach the end, or jump directly to the last step by clicking in the left meny.</li>
+<li>Click finish</li>
+<li>In order to use the cli in EJBCA you must copy the generated ejbca-ejb.jar to local lib, so we have it in the classpath for command line operations.
+example: cp /opt/IBM/WebSphere/AppServer/profiles/AppSrv04/installedApps/computerNode01Cell/EJBCA.ear/ejbca-ejb.jar $EJBCA_HOME/lib/.
+</li>
+<li>Now you can run 'ant install' to install EJBCA.</li>
+</ol>
+</p>
+<p>
+Efter deployment and installation you want to configure SSL in Websphere so you can access the Admin-GUI in EJBCA. 
+The admin-GUI in EJBCA requires client certificate authentication.  
+<br/>Configure the SSL port to require client certificate in order to access the admin-GUI:
+<ol>
+  <li>Navigate to Servers->Application servers->server1->Web Container Settings->Web container transport chains</li>
+  <li>Change the WCInboundDefaultSecure to require client certificate. The trick is to create a new node SSL 
+    configuration that manages this connection. You don't want to require SSL in the NodeDefaultSSLSettings, since
+    that will apply to your Websphere admin as well. You set 'require client cert' in the Quality of protection settings.</li>
+  <li>Add the CA certificate from EJBCA to the default trust store and use that. In Websphere ND you add certificates to the truststore under
+      Security->SSL Certificateas and key mgmt->Key stores and certificates->CellDefaultTrustStore->Signer certificates.<br/>
+      You can download the certificate for AdminCA1 for example with the CLI command:<br/> 
+      bin/ejbca.sh ca getrootcert AdminCA1 adminca1.der -der<br/>
+      Then you add the certificate in CellDefaultTrustStore as 'Binary DER data'.</li>
+  <li>You have to restart the server after configuring this (complete restart with server, node and mgr).</li>
+  <li>(You can also add a new server SSL keystore by creating a PKCS12 file in EJBCA and adding that in 'Key stores and certificates' and using 
+it in the SSLSettings for WCInboundDefaultSecure).</li>
+</ol>
+After this you should be able to access the admin-GUI in EJBCA after installing $EJBCA_HOME/p12/superadmin.p12 in your browser.
+</p>
+<p>
+Public web will be at: http://127.0.0.1:9080/ejbca/index.jsp<br/>
+Admin web will be at: https://127.0.0.1:9443/ejbca/adminweb/index.jsp
+</p>
+<p>
+The default password for SSL keystore (key.p12) in Websphere is WebAS.
+</p>
+</subsubsection>
+
+</subsection>
+
+</section>
+
+<section name="Files deployed">
+<p>
+Here we describe shortly which files are copied during ant bootstrap and ant deploy. These targets only modified files automatically on the JBoss platforms,
+but it will give an indication as well for other platforms what configuration steps are needed.
+</p>
+<p>
+<strong>ant bootstrap</strong>
+<ul>
+<li>deploy/ejbca-ds.xml</li>
+<li>deploy/ejbca-mail-service.xml</li>
+<li>deploy/ejbca.ear</li>
+</ul>
+</p>
+<p>
+<strong>ant deploy</strong>
+<ul>
+<li>Files from ant bootstrap</li>
+<li>conf/keystore/keystore.jk</li>
+<li>conf/keystore/truststore.jks</li>
+<li>deploy/jboss-web.deployer/server.xml</li>
+</ul>
+</p>
+</section>
+
+</body>
+</document>

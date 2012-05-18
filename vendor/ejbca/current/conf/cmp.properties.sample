@@ -1,0 +1,149 @@
+#
+# $Id: cmp.properties.sample 8125 2009-10-20 12:32:10Z anatom $
+#
+# This is a sample file to override properties used
+# during deployment of EJBCA
+# 
+# You should copy and rename this file to cmp.properties
+# and customize at will.
+#
+# Developers: If you add fields in this file, make arrangements in CmpServlet, CmpTcpService, cmptcp-service.xml and cmptcp.xml
+
+#------------------- CMP (RFC4210) settings -------------
+# 
+# Enforce a particual CA instead of taking it from the request.
+# This should be the DN of the CA, i.e.:
+# CN=AdminCA1,O=EJBCA Sample,C=SE 
+#
+# Default: empty
+#cmp.defaultca=
+
+# Defines which component from the DN should be used to look up username in EJBCA. 
+# Can be CN, UID or nothing. 
+# Nothing means that the DN will be used to look up the user (EJBCA will search for a user with the specified DN). 
+#
+# Default: empty
+#cmp.extractusernamecomponent=
+
+# If the CMP service should work in 'normal' or 'ra' mode (see docs). 
+# Normal mode means that the user must be pre-registered in EJBCA (as normal), and the EJBCA user is looked up from data in the request
+# (the DN or a part of the DN).
+# RA mode means that the CMP client will act as an RA to EJBCA and users will be created in EJBCA when a request comes in. 
+# The username that is created will be generated according to the parameters set here, it can be random or also a part of the DN, 
+# optionally with pre- and postfix appended.
+#
+# Default normal (empty value means the same)
+#cmp.operationmode=normal
+
+# Allow the client/RA to specify that the CA should not verify POP, 
+# set to true to allow no POP (raVerify in the rfc). 
+# Note: only set to true if cmp.operationmode=ra.
+#
+# Default: false
+#cmp.allowraverifypopo=false
+
+# Which sort of protection the response messages will have, the certificate response messages can be signed by the CA
+# or they can use password based mac (PBE) using the ra authenticationsecret and the same keyId and PBE algorithm that was sent in the 
+# request. PBE is currently only used in RA mode.
+# Possible values: signature, pbe
+# Default: signature
+#cmp.responseprotection=signature
+
+# Shared secret between the CA and the RA used to authenticate valid RA messages.
+#
+# Default: empty
+#cmp.ra.authenticationsecret=
+
+# Which generation scheme should be used, RANDOM or DN for base username.
+# Random will generate a 12 character long random username.
+# DN will take a part of the request DN, which part is defined by cmp.ra.namegenerationparameters, and use as the username.
+# If the same username is constructed (for exmaple UID) as an already existing user, the existing user will be modified with
+# new values for profile etc, and a new certificate will be issued for that user.
+#
+# Default: DN
+#cmp.ra.namegenerationscheme=DN
+
+# Parameters for name generation, for DN it can be for example CN, UID or SN. 
+# Either the CN or the UID from the request can be used. 
+# You can add several in order to have fall-back in case the first does not exist in the DN, for example UID;SN;CN. First try UID, if it does not exist try SN (SerialNumber) etc. 
+#
+# Default: CN
+#cmp.ra.namegenerationparameters=CN
+
+# Prefix to generated name, a string that can contain the markup ${RANDOM} to insert 10 random chars.
+# Example: 'MyPrefix - ${RANDOM}-' using RANDOM password generation will create a username like 'MyPrefix - DGR89NN54QW-GDHR473NH87Q
+#
+# Default: empty
+#cmp.ra.namegenerationprefix=
+
+# Postfix to generated name, a string that can contain the markup ${RANDOM} to insert 10 random chars.
+# Example: MyPostfix - ${RANDOM}
+#
+# Default: empty
+#cmp.ra.namegenerationpostfix=
+
+# Working in RA mode an internal random password is temporarily used during certificate generation. 
+# By setting this parameter you can use a fixed password instead of a random.
+# Example: foo123
+#
+# Default: random
+#cmp.ra.passwordgenparams
+
+# The endEntityProfile to be used when adding users in RA mode. 
+# Possible values are:
+# The name of a End Entity Profile
+# KeyId - use a End Entity Profile with the same name as the KeyId sent in the CMP request (UTF-8 encoding is used)
+#
+# Default: EMPTY
+#cmp.ra.endentityprofile=EMPTY
+
+# The certificateProfile to be used when adding users in RA mode. 
+# Possible values are:
+# The name of a Certificate Profile
+# KeyId - use a Certificate Profile with the same name as the KeyId sent in the CMP request (UTF-8 encoding is used)
+#
+# Default: ENDUSER
+#cmp.ra.certificateprofile=ENDUSER
+
+# The CA to be used when adding users in RA mode. 
+# Possible values are:
+# The name of a CA
+# ProfileDefault - use the default CA of the end entity profile used
+# KeyId - use a CA with the same name as the KeyId sent in the CMP request (UTF-8 encoding is used)
+#
+# Default: AdminCA1
+#cmp.ra.caname=AdminCA1
+
+# ---------- Settings for the CMP TCP listener ----------
+#
+# The TCP listener is not enabled by default, because it is an MBean, which 
+# requires special things. If possible you should stick to the HTTP transport
+# protocol for CMP, it is much better.
+
+# Enabled or disabled
+#
+# Default: false
+#cmp.tcp.enabled=false
+
+# The port number to listen to for TCP connections, if TCP transport is enabled.
+# Please not that the default port number, below 1024, requires JBoss to be run with root privileges.
+# It may be more convenient to use a high port number (like 5587) and forward port 829 from the os/firewall level instead.
+#
+# Default: 829
+#cmp.tcp.portno=829
+
+# The directory where TCP log files are stores, if TCP transport is enabled
+#
+# Default: ./log
+#cmp.tcp.logdir=./log
+
+# An optional TCP configuration file, if TCP transport is enabled. 
+# This is a configuration file for QuickServer.
+#
+# Default: 
+#cmp.tcp.conffile=
+
+# The TCP bind adress, if TCP transport is enabled. 
+#
+# Default: 0.0.0.0
+#cmp.tcp.bindadress=0.0.0.0
