@@ -1,0 +1,14 @@
+# use glob syntax.
+syntax: glob
+private
+dist
+build
+user.properties
+*~
+target
+ws
+.project
+.classpath
+.settings
+.DS_Store
+._.DS_Store
