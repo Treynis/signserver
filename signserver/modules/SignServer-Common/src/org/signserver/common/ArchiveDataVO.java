@@ -27,12 +27,10 @@ public class ArchiveDataVO implements Serializable {
     private static final long serialVersionUID = 1L;
     
     /**
-     * Archive type is response.
+     * Default type, currently the only one supported
      */
     public static final int TYPE_RESPONSE = 0;
-    
     private ArchiveData archiveData = null;
-    private byte[] archivedBytes;
     private int type = 0;
     private Date time = null;
     private String archiveId = null;
@@ -60,36 +58,12 @@ public class ArchiveDataVO implements Serializable {
         this.requestSerialnumber = requestSerialnumber;
         this.requestIP = requestIP;
     }
-    
-    public ArchiveDataVO(int type, int signerId, String archiveId, Date time, String requestIssuerDN, String requestSerialnumber, String requestIP, byte[] archivedBytes) {
-        super();
-        this.type = type;
-        this.signerId = signerId;
-        this.time = time;
-        this.archiveId = archiveId;
-        this.requestIssuerDN = requestIssuerDN;
-        this.requestSerialnumber = requestSerialnumber;
-        this.requestIP = requestIP;
-        this.archivedBytes = archivedBytes;
-    }
 
     /**
-     * @return Returns the archiveData or null if not available.
-     * @see #getArchivedBytes()
+     * @return Returns the archiveData.
      */
     public ArchiveData getArchiveData() {
         return archiveData;
-    }
-    
-    /**
-     * @return The archived bytes independent on how they were stored.
-     */
-    public byte[] getArchivedBytes() {
-        if (archiveData != null) {
-            return archiveData.getData();
-        } else {
-            return archivedBytes;
-        }
     }
 
     /**

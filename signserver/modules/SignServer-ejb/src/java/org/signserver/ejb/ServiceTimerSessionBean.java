@@ -18,15 +18,19 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.ejb.Timer;
 import javax.ejb.*;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.transaction.*;
 import org.apache.log4j.Logger;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ServiceConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IServiceTimerSession;
-import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
 import org.signserver.server.IWorker;
 import org.signserver.server.ServiceExecutionFailedException;
+import org.signserver.server.SignServerContext;
+import org.signserver.server.WorkerFactory;
+import org.signserver.server.nodb.FileBasedDatabaseManager;
 import org.signserver.server.timedservices.ITimedService;
 
 /**
@@ -38,6 +42,8 @@ public class ServiceTimerSessionBean implements IServiceTimerSession.ILocal, ISe
 
     /** Logger for this class. */
     private static final Logger log = Logger.getLogger(ServiceTimerSessionBean.class);
+
+    EntityManager em;
     
     @Resource
     private SessionContext sessionCtx;
@@ -45,8 +51,8 @@ public class ServiceTimerSessionBean implements IServiceTimerSession.ILocal, ISe
     @EJB
     private IGlobalConfigurationSession.ILocal globalConfigurationSession;
     
-    @EJB
-    private IWorkerManagerSessionLocal workerManagerSession;
+    private IWorkerConfigDataService workerConfigService = null;
+    private SignServerContext workerContext;
     
     /**
      * Constant indicating the Id of the "service loader" service.
@@ -61,6 +67,21 @@ public class ServiceTimerSessionBean implements IServiceTimerSession.ILocal, ISe
      */
     @PostConstruct
     public void create() {
+        final IKeyUsageCounterDataService keyUsageCounterDataService;
+        if (em == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("No EntityManager injected. Running without database.");
+            }
+            workerConfigService = new FileBasedWorkerConfigDataService(FileBasedDatabaseManager.getInstance());
+            keyUsageCounterDataService = new FileBasedKeyUsageCounterDataService(FileBasedDatabaseManager.getInstance());
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("EntityManager injected. Running with database.");
+            }
+            workerConfigService = new WorkerConfigDataService(em);
+            keyUsageCounterDataService = new KeyUsageCounterDataService(em);
+        }
+        workerContext = new SignServerContext(em, keyUsageCounterDataService);
     }
     
     /**
@@ -85,11 +106,11 @@ public class ServiceTimerSessionBean implements IServiceTimerSession.ILocal, ISe
             UserTransaction ut = sessionCtx.getUserTransaction();
             try {
                 ut.begin();
-                IWorker worker = workerManagerSession.getWorker(timerInfo.intValue(), globalConfigurationSession);
+                IWorker worker = WorkerFactory.getInstance().getWorker(timerInfo.intValue(), workerConfigService, globalConfigurationSession, workerContext);
                 if (worker != null) {
-                    serviceConfig = new ServiceConfig(worker.getConfig());
+                    serviceConfig = new ServiceConfig(WorkerFactory.getInstance().getWorker(timerInfo.intValue(), workerConfigService, globalConfigurationSession, workerContext).getStatus().getActiveSignerConfig());
                     if (serviceConfig != null) {
-                        timedService = (ITimedService) worker;
+                        timedService = (ITimedService) WorkerFactory.getInstance().getWorker(timerInfo.intValue(), workerConfigService, globalConfigurationSession, workerContext);
                         sessionCtx.getTimerService().createTimer(timedService.getNextInterval(), timerInfo);
                         isSingleton = timedService.isSingleton();
                         if (!isSingleton) {
@@ -182,7 +203,7 @@ public class ServiceTimerSessionBean implements IServiceTimerSession.ILocal, ISe
 
         Collection<Integer> serviceIds = null;
         if (serviceId == 0) {
-            serviceIds = workerManagerSession.getWorkers(GlobalConfiguration.WORKERTYPE_SERVICES, globalConfigurationSession);
+            serviceIds = globalConfigurationSession.getWorkers(GlobalConfiguration.WORKERTYPE_SERVICES);
         } else {
             serviceIds = new ArrayList<Integer>();
             serviceIds.add(new Integer(serviceId));
@@ -191,7 +212,7 @@ public class ServiceTimerSessionBean implements IServiceTimerSession.ILocal, ISe
         while (iter.hasNext()) {
             Integer nextId = (Integer) iter.next();
             if (!existingTimers.contains(nextId)) {
-                ITimedService timedService = (ITimedService) workerManagerSession.getWorker(nextId.intValue(), globalConfigurationSession);
+                ITimedService timedService = (ITimedService) WorkerFactory.getInstance().getWorker(nextId.intValue(), workerConfigService, globalConfigurationSession, workerContext);
                 if (timedService != null && timedService.isActive() && timedService.getNextInterval() != ITimedService.DONT_EXECUTE) {
                     sessionCtx.getTimerService().createTimer((timedService.getNextInterval()), nextId);
                 }

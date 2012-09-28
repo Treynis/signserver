@@ -20,9 +20,11 @@ import org.signserver.common.GenericSignRequest;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
+import org.signserver.common.ProcessableConfig;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.SignerStatus;
+import org.signserver.common.WorkerStatus;
 
 /**
  * Dummy Signer used for test and demonstration purposes.
@@ -58,7 +60,6 @@ public class DummySigner extends BaseSigner {
      * 
      * @see org.signserver.server.IProcessable#processData(org.signserver.common.ProcessRequest, org.signserver.common.RequestContext)
      */
-    @Override
     public ProcessResponse processData(ProcessRequest signRequest,
             RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
@@ -110,8 +111,15 @@ public class DummySigner extends BaseSigner {
         return true;
     }
 
+    /**
+     * @see org.signserver.server.signers.BaseSigner#getStatus()
+     */
     @Override
-    public int getCryptoTokenStatus() {
-        return active ? SignerStatus.STATUS_ACTIVE : SignerStatus.STATUS_OFFLINE;
-    }    
+    public WorkerStatus getStatus() {
+        if (active) {
+            return new SignerStatus(workerId, SignerStatus.STATUS_ACTIVE, new ProcessableConfig(config), null);
+        } else {
+            return new SignerStatus(workerId, SignerStatus.STATUS_OFFLINE, new ProcessableConfig(config), null);
+        }
+    }
 }

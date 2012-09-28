@@ -22,14 +22,11 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import org.apache.log4j.Logger;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIStatus;
-import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
-import org.bouncycastle.asn1.x509.X509Extension;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.tsp.*;
 import org.ejbca.util.Base64;
@@ -39,6 +36,7 @@ import org.signserver.statusrepo.common.StatusName;
 import org.signserver.test.utils.builders.CertBuilder;
 import org.signserver.test.utils.builders.CertExt;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
 import org.signserver.testutils.TestingSecurityManager;
 
 /**
@@ -70,8 +68,6 @@ public class TimeStampSignerTest extends ModulesTestCase {
     /** BASE64-encoded cert for WORKER1 */
     private static String CERTSTRING = "MIIEkTCCAnmgAwIBAgIIeCvAS5OwAJswDQYJKoZIhvcNAQELBQAwTTEXMBUGA1UEAwwORFNTIFJvb3QgQ0EgMTAxEDAOBgNVBAsMB1Rlc3RpbmcxEzARBgNVBAoMClNpZ25TZXJ2ZXIxCzAJBgNVBAYTAlNFMB4XDTExMDUyNzEyMTU1NVoXDTIxMDUyNDEyMTU1NVowSjEUMBIGA1UEAwwLVFMgU2lnbmVyIDExEDAOBgNVBAsMB1Rlc3RpbmcxEzARBgNVBAoMClNpZ25TZXJ2ZXIxCzAJBgNVBAYTAlNFMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnT38GG8i/bGnuFMwnOdg+caHMkdPBacRdBaIggwMPfE50SOZ2TLrDEHJotxYda7HS0+tX5dIcalmEYCls/ptHzO5TQpqdRTuTqxp5cMA379yhD0OqTVNAmHrvPj9IytktoAtB/xcjwkRTHagaCmg5SWNcLKyVUct7nbeRA5yDSJQsCAEGHNZbJ50vATg1DQEyKT87GKfSBsclA0WIIIHMt8/SRhpsUZxESayU6YA4KCxVtexF5x+COLB6CzzlRG9JA8WpX9yKgIMsMDAscsJLiLPjhET5hwAFm5ZRfQQG9LI06QNTGqukuTlDbYrQGAUR5ZXW00WNHfgS00CjUCu0QIDAQABo3gwdjAdBgNVHQ4EFgQUOF0FflO2G+IN6c92pCNlPoorGVwwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBQgeiHe6K27Aqj7cVikCWK52FgFojAOBgNVHQ8BAf8EBAMCB4AwFgYDVR0lAQH/BAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQELBQADggIBADELkeIO9aiKjS/GaBUUhMr+k5UbVeK69WapU+7gTsWwa9D2vAOhAkfQ1OcUJoZaminv8pcNfo1Ey5qLtxBCmUy1fVomVWOPl6u1w8B6uYgE608hi2bfx28uIeksqpdqUX0Qf6ReUyl+FOh4xNrsyaF81TrIKt8ekq0iD+YAtT/jqgv4bUvs5fgIms4QOXgMUzNAP7cPU44KxcmR5I5Uy/Ag82hGIz64hZmeIDT0X59kbQvlZqFaiZvYOikoZSFvdM5kSVfItMgp7qmyLxuM/WaXqJWp6Mm+8ZZmcECugd4AEpE7xIiB7M/KEe+X4ItBNTKdAoaxWa+yeuYS7ol9rHt+Nogelj/06ZRQ0x03UqC7uKpgYAICjQEXIjcZofWSTh9KzKNfS1sQyIQ6yNTT2VMdYW9JC2OLKPV4AEJuBw30X8HOciJRRXOq9KRrIA2RSiaC5/3oAYscWuo31Fmj8CWQknXAIb39gPuZRwGOJbi1tUu2zmRsUNJfAe3hnvk+uxhnyp2vKB2KN5/VQgisx+8doEK/+Nbj/PPG/zASKimWG++5m0JNY4chIfR43gDDcF+4INof/8V84wbvUF+TpvP/mYM8wC9OkUyRvzqv9vjWOncCdbdjCuqPxDItwm9hhr+PbxsMaBes9rAiV9YT1FnpA++YpCufveFCQPDbCTgJ";
 
-    /** Dummy OID used for testing an invalid hashing algorithm */
-    private static String DUMMY_OID = "42.42.42.42";
     
     /**
      * Base64 encoded request with policy 1.2.3.5.
@@ -103,6 +99,10 @@ public class TimeStampSignerTest extends ModulesTestCase {
 
         repository = ServiceLocator.getInstance().lookupRemote(
                 IStatusRepositorySession.IRemote.class);
+
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     /* (non-Javadoc)
@@ -228,24 +228,20 @@ public class TimeStampSignerTest extends ModulesTestCase {
      * @param hashType
      * @return
      */
-    private int getHashLength(ASN1ObjectIdentifier hashType) {
-    	if (TSPAlgorithms.SHA1.equals(hashType)) {
-    		return 20;
-    	} else if (TSPAlgorithms.SHA256.equals(hashType)) {
+    private int getHashLength(String hashType) {
+    	if (TSPAlgorithms.SHA256.equals(hashType)) {
     		return 32;
     	} else if (TSPAlgorithms.SHA512.equals(hashType)) {
     		return 64;
     	} else if (TSPAlgorithms.RIPEMD160.equals(hashType)) {
     		return 20;
     	} else {
-    		LOG.info("Trying to use an unknow hash algorithm, using dummy length");
-    		// return the length of a SHA1 hash as a dummy value to allow passing
-    		// invalid hash algo names for testing
-    		return 20;
+    		LOG.error("Trying to use an unknow hash algorithm, bailing out...");
+    		return -1;
     	}
     }
     
-    private int testWithHash(final ASN1ObjectIdentifier hashAlgo) throws Exception {
+    private void testWithHash(final String hashAlgo) throws Exception {
     	int reqid = random.nextInt();
         TimeStampRequestGenerator timeStampRequestGenerator =
                 new TimeStampRequestGenerator();
@@ -266,18 +262,12 @@ public class TimeStampSignerTest extends ModulesTestCase {
         	// check response
         	timeStampResponse = new TimeStampResponse((byte[]) res.getProcessedData());
         	timeStampResponse.validate(timeStampRequest);
-        	
         	LOG.info("Response: " + timeStampResponse.getStatusString());
-        	
-        	if (timeStampResponse.getStatus() != PKIStatus.GRANTED) {
-        		// return early and don't attempt to get a token
-        		return timeStampResponse.getStatus();
-        	}
-        	
+
         	// check the hash value from the response
         	TimeStampToken token = timeStampResponse.getTimeStampToken();
-        	AlgorithmIdentifier algo = token.getTimeStampInfo().getHashAlgorithm();
-        	assertEquals("Timestamp response is using incorrect hash algorithm", hashAlgo, algo.getAlgorithm()); 	
+        	String algo = token.getTimeStampInfo().getMessageImprintAlgOID();
+        	assertEquals("Timestamp response is using incorrect hash algorithm", hashAlgo, algo);
         	
         	Collection signerInfos = token.toCMSSignedData().getSignerInfos().getSigners();
         	
@@ -288,9 +278,10 @@ public class TimeStampSignerTest extends ModulesTestCase {
         		SignerInformation si = (SignerInformation) o;
         		
         		// test the response signature algorithm
-        		assertEquals("Timestamp used unexpected signature algorithm", TSPAlgorithms.SHA1.toString(), si.getDigestAlgOID());
+        		assertEquals("Timestamp used unexpected signature algorithm", TSPAlgorithms.SHA1, si.getDigestAlgOID());
         		assertEquals("Timestamp is signed with unexpected signature encryption algorithm", "1.2.840.113549.1.1.1", si.getEncryptionAlgOID());
         	}
+
 
         	
         } catch (TSPException e) {
@@ -307,12 +298,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
         	final X509Certificate cert =
         		(X509Certificate) factory.generateCertificate(new ByteArrayInputStream(Base64.decode(CERTSTRING.getBytes())));
         	token.validate(cert, "BC");
-        	
         } catch (TSPException e) {
         	fail("Failed to validate response token");
         }
-       
-        return timeStampResponse.getStatus();
     }
     
     /**
@@ -344,61 +332,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
     public void test08HashRIPE160() throws Exception {
     	testWithHash(TSPAlgorithms.RIPEMD160);
     }
-    
-    
-    /**
-     * Test requesting a timestamp with a hash algorithm not included in the accepted
-     * algorithms list
-     * 
-     * @param worker
-     * @throws Exception
-     */
-    public void test09HashWithNotAllowedAlgorithm() throws Exception {
-    	// set accepted algorithms to SHA1
-    	workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ACCEPTEDALGORITHMS, "SHA1");
-    	workerSession.reloadConfiguration(WORKER1);
-    	
-    	int status = testWithHash(TSPAlgorithms.SHA256);
-    	assertEquals("Should return status REJECTION", PKIStatus.REJECTION, status);
-    }    
-    
-    /**
-     * Test request a timestamp using a made-up dummy hash algorithm name
-     * 
-     * @param worker
-     * @throws Exception
-     */
-    public void test10HashWithIllegalAlgorithm() throws Exception {
-    	// reset accepted algorithms
-    	workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.ACCEPTEDALGORITHMS);
-    	workerSession.reloadConfiguration(WORKER1);
-    	
-    	try {
-    		testWithHash(new ASN1ObjectIdentifier(DUMMY_OID));
-    	} catch (IllegalArgumentException e) {
-    		// specifying an invalid algorithm should yield an IllegalArgumentException
-    		return;
-    	}
-    	
-    	fail("Should not accept an invalid hash algorithm");
-    }
-
-    /**
-     * Test setting ACCEPTEDALGORITHMS and sign using that hash algorithm
-     * 
-     * @param worker
-     * @throws Exception
-     */
-    public void test11HashWithAllowedAlgorithm() throws Exception {
-    	// set accepted algorithms to SHA1
-    	workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ACCEPTEDALGORITHMS, "SHA1");
-    	workerSession.reloadConfiguration(WORKER1);
-    	
-    	int status = testWithHash(TSPAlgorithms.SHA1);
-    	assertEquals("Should return status GRANTED", PKIStatus.GRANTED, status);
-    }    
-    
-    
+        
     private void assertTimeNotAvailable(int worker) throws Exception {
         final int reqid = random.nextInt();
 
@@ -433,7 +367,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
         assertNull("No timestamp token",
                 timeStampResponse.getTimeStampToken());
     }
-
+    
     /**
      * Check that we either include the signer certificate if it is missing or
      * otherwise fails the request.
@@ -496,7 +430,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
             workerSession.reloadConfiguration(WORKER2);
         }
     }
-    
+
     /**
      * Tests that status is not OK and that an failure is generated when trying
      * to sign when the right signer certificate is not configured.
@@ -505,10 +439,10 @@ public class TimeStampSignerTest extends ModulesTestCase {
     public void test10WrongSignerCertificate() throws Exception {
         final List<Certificate> chain = workerSession.getSignerCertificateChain(WORKER2);
         final X509Certificate subject = (X509Certificate) workerSession.getSignerCertificate(WORKER2);
-        
+
         // Any other certificate that will no match the key-pair
-        final X509Certificate other = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=Other").addExtension(new CertExt(org.bouncycastle.asn1.x509.X509Extension.extendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build());
-        
+        final X509Certificate other = new CertBuilder().setSubject("CN=Other").addExtension(new CertExt(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build();
+
         try {
             // Use the other certificate which will not match the key + the right cert in chain        
             workerSession.uploadSignerCertificate(WORKER2, other.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
@@ -540,7 +474,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
                     fail("Should have failed as the signer is miss-configured");
                 }
             } catch (CryptoTokenOfflineException ex) {
-                assertTrue("message should talk about incorrect signer certificate", ex.getMessage().contains("igner certificate"));
+                    assertTrue("message should talk about incorrect signer certificate", ex.getMessage().contains("igner certificate"));
             }
         } finally {
             // Restore
@@ -561,7 +495,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
         final X509Certificate subject = (X509Certificate) workerSession.getSignerCertificate(WORKER2);
         
         // Any other certificate that will no match the key-pair
-        final X509Certificate other = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=Other").build());
+        final X509Certificate other = new CertBuilder().setSubject("CN=Other").build();
         
         try {
             // Use the right certificate but the other in the certificate chain
@@ -592,7 +526,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
 
                 if (PKIStatus.GRANTED == timeStampResponse.getStatus()) {
                     fail("Should have failed as the signer is miss-configured");
-                }
+            }
             } catch (CryptoTokenOfflineException ex) {
                 assertTrue("message should talk about incorrect signer certificate", ex.getMessage().contains("igner certificate"));
             }
@@ -611,7 +545,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
         }
         return results;
     }
-
+    
     /**
      * Tests that if REQUIREVALIDCHAIN=true is specified only the signer certificate
      * and its issuer (and its issuer and so on...) is allowed in the chain.
@@ -627,7 +561,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
         final X509Certificate subject = (X509Certificate) workerSession.getSignerCertificate(WORKER1);
         
         // Any other certificate that will no match the key-pair
-        final X509Certificate other = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=Other cert").build());
+        final X509Certificate other = new CertBuilder().setSubject("CN=Other cert").build();
         
         try {
             // An not strictly valid chain as it contains an additional certificate at the end
@@ -676,15 +610,15 @@ public class TimeStampSignerTest extends ModulesTestCase {
         final X509Certificate subject = (X509Certificate) workerSession.getSignerCertificate(WORKER2);
         
         // Certifiate without id_kp_timeStamping
-        final X509Certificate certNoEku = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=Without EKU").setSubjectPublicKey(subject.getPublicKey()).build());
+        final X509Certificate certNoEku = new CertBuilder().setSubject("CN=Without EKU").setSubjectPublicKey(subject.getPublicKey()).build();
         
         // Certificate with non-critical id_kp_timeStamping
         boolean critical = false;
-        final X509Certificate certEku = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=With non-critical EKU").setSubjectPublicKey(subject.getPublicKey()).addExtension(new CertExt(X509Extension.extendedKeyUsage, critical, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build());
+        final X509Certificate certEku = new CertBuilder().setSubject("CN=With non-critical EKU").setSubjectPublicKey(subject.getPublicKey()).addExtension(new CertExt(X509Extensions.ExtendedKeyUsage, critical, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build();
         
         // OK: Certificate with critical id_kp_timeStamping
         critical = true;
-        final X509Certificate certCritEku = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=With critical EKU").setSubjectPublicKey(subject.getPublicKey()).addExtension(new CertExt(X509Extension.extendedKeyUsage, critical, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build());
+        final X509Certificate certCritEku = new CertBuilder().setSubject("CN=With critical EKU").setSubjectPublicKey(subject.getPublicKey()).addExtension(new CertExt(X509Extensions.ExtendedKeyUsage, critical, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build();
         
         try {
             // Fail: No id_kp_timeStamping
@@ -768,12 +702,20 @@ public class TimeStampSignerTest extends ModulesTestCase {
             // OK
         }
     }
-
+    
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(WORKER1);
-        removeWorker(WORKER2);
-        removeWorker(WORKER3);
-        removeWorker(WORKER4);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    String.valueOf(WORKER1)});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    String.valueOf(WORKER2)});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    String.valueOf(WORKER3)});
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    String.valueOf(WORKER4)});
+        workerSession.reloadConfiguration(WORKER1);
+        workerSession.reloadConfiguration(WORKER2);
+        workerSession.reloadConfiguration(WORKER3);
+        workerSession.reloadConfiguration(WORKER4);
     }
 
 }

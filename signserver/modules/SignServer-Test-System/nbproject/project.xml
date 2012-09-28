@@ -29,14 +29,6 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>SignServer-CLI-Common</foreign-project>
-                <artifact-type>jar</artifact-type>
-                <script>build.xml</script>
-                <target>jar</target>
-                <clean-target>clean</clean-target>
-                <id>jar</id>
-            </reference>
-            <reference>
                 <foreign-project>SignServer-Client-CLI</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
@@ -77,39 +69,7 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>SignServer-Entities</foreign-project>
-                <artifact-type>jar</artifact-type>
-                <script>build.xml</script>
-                <target>jar</target>
-                <clean-target>clean</clean-target>
-                <id>jar</id>
-            </reference>
-            <reference>
-                <foreign-project>SignServer-Lib-EJBCA-util</foreign-project>
-                <artifact-type>jar</artifact-type>
-                <script>build.xml</script>
-                <target>jar</target>
-                <clean-target>clean</clean-target>
-                <id>jar</id>
-            </reference>
-            <reference>
-                <foreign-project>SignServer-Lib-iText</foreign-project>
-                <artifact-type>jar</artifact-type>
-                <script>build.xml</script>
-                <target>jar</target>
-                <clean-target>clean</clean-target>
-                <id>jar</id>
-            </reference>
-            <reference>
                 <foreign-project>SignServer-Module-CMSSigner</foreign-project>
-                <artifact-type>jar</artifact-type>
-                <script>build.xml</script>
-                <target>jar</target>
-                <clean-target>clean</clean-target>
-                <id>jar</id>
-            </reference>
-            <reference>
-                <foreign-project>SignServer-Module-Groupkeyservice</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>
@@ -165,7 +125,7 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>SignServer-Module-XMLValidator</foreign-project>
+                <foreign-project>SignServer-Module-WSRA</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>
@@ -173,7 +133,7 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>SignServer-Server</foreign-project>
+                <foreign-project>SignServer-Module-XMLValidator</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>
@@ -211,14 +171,6 @@
                 <target>dist</target>
                 <clean-target>clean</clean-target>
                 <id>dist</id>
-            </reference>
-            <reference>
-                <foreign-project>SignServer-ejb-interfaces</foreign-project>
-                <artifact-type>jar</artifact-type>
-                <script>build.xml</script>
-                <target>jar</target>
-                <clean-target>clean</clean-target>
-                <id>jar</id>
             </reference>
         </references>
     </configuration>

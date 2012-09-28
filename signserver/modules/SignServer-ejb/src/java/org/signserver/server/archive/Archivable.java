@@ -40,11 +40,4 @@ public interface Archivable {
      * @return The binary serialization of the content.
      */
     byte[] getContentEncoded();
-
-    /**
-     * @return An identifier for the transaction such as time-stamp serial 
-     * number for the TimeStampSigner or any other per transaction unique id
-     * for the other signers.
-     */
-    String getArchiveId();
 }

@@ -17,13 +17,15 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.cert.CertificateException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.Iterator;
+import java.util.Locale;
+import java.util.Properties;
 import javax.naming.NamingException;
 import junit.framework.TestCase;
 import org.apache.log4j.Logger;
 import org.ejbca.util.Base64;
-import org.signserver.admin.cli.AdminCLI;
-import org.signserver.client.cli.ClientCLI;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.ServiceLocator;
@@ -46,9 +48,6 @@ public class ModulesTestCase extends TestCase {
     private static final int DUMMY1_SIGNER_ID = 5676;
     private static final String DUMMY1_SIGNER_NAME = "TestXMLSigner";
     
-    private static final int CMSSIGNER1_ID = 5677;
-    private static final String CMSSIGNER1_NAME = "TestCMSSigner";
-    
     private static final int PDFSIGNER1_ID = 5678;
     private static final String PDFSIGNER1_NAME = "TestPDFSigner";
 
@@ -65,10 +64,6 @@ public class ModulesTestCase extends TestCase {
     private static File signServerHome;
 
     private Properties config;
-    
-    private CLITestHelper adminCLI;
-    private CLITestHelper clientCLI;
-    private TestUtils testUtils = new TestUtils();
 
     public ModulesTestCase() {
         try {
@@ -108,22 +103,6 @@ public class ModulesTestCase extends TestCase {
         }
     }
 
-    public CLITestHelper getAdminCLI() {
-        if (adminCLI == null) {
-            adminCLI = new CLITestHelper(AdminCLI.class);
-        }
-        return adminCLI;
-    }
-
-    public CLITestHelper getClientCLI() {
-        if (clientCLI == null) {
-            clientCLI = new CLITestHelper(ClientCLI.class);
-        }
-        return clientCLI;
-    }
-    
-    
-
     protected IWorkerSession getWorkerSession() {
         return workerSession;
     }
@@ -156,22 +135,9 @@ public class ModulesTestCase extends TestCase {
         return DUMMY1_SIGNER_NAME;
     }
     
-    protected void addCMSSigner1() throws CertificateException {
-        addSoftDummySigner("org.signserver.module.cmssigner.CMSSigner",
-                getSignerIdCMSSigner1(), getSignerNameCMSSigner1(), KEYDATA1, CERTCHAIN1);
-    }
-    
     protected void addPDFSigner1() throws CertificateException {
     	addSoftDummySigner("org.signserver.module.pdfsigner.PDFSigner",
                 getSignerIdPDFSigner1(), getSignerNamePDFSigner1(), KEYDATA1, CERTCHAIN1);
-    }
-    
-    protected int getSignerIdCMSSigner1() {
-        return CMSSIGNER1_ID;
-    }
-    
-    protected String getSignerNameCMSSigner1() {
-        return CMSSIGNER1_NAME;
     }
     
     protected int getSignerIdPDFSigner1() {
@@ -362,10 +328,6 @@ public class ModulesTestCase extends TestCase {
 
     /** Setup keystores for SSL. **/
     protected void setupSSLKeystores() {
-        testUtils.setupSSLTruststore();
-    }
-    
-    protected TestUtils getTestUtils() {
-        return testUtils;
+        TestUtils.setupSSLTruststore();
     }
 }

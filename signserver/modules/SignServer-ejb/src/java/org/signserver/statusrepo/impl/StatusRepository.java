@@ -26,7 +26,7 @@ import org.signserver.statusrepo.common.StatusName;
  * All properties should be initialized in the constructor.
  *
  * @author Markus Kilås
- * @version $Id$
+ * @version $Id: StatusRepository.java 1624 2011-02-27 10:37:16Z netmackan $
  */
 final class StatusRepository {
 

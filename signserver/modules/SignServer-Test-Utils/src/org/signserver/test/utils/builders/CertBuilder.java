@@ -14,19 +14,16 @@ package org.signserver.test.utils.builders;
 
 import java.math.BigInteger;
 import java.security.*;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.X509Certificate;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.cert.CertIOException;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaX509v1CertificateBuilder;
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.OperatorCreationException;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.asn1.x509.X509Name;
+import org.bouncycastle.x509.X509V1CertificateGenerator;
+import org.bouncycastle.x509.X509V3CertificateGenerator;
 
 /**
  * Builds a certificate based on the specified information and using default 
@@ -47,8 +44,8 @@ public class CertBuilder implements Cloneable {
     private BigInteger serialNumber;
     private PrivateKey issuerPrivateKey;
     private PublicKey subjectPublicKey;
-    private X500Name subject;
-    private X500Name issuer;
+    private X509Name subject;
+    private X509Name issuer;
     private String signatureAlgorithm;
     
     private KeyPair _subjectKeyPair;
@@ -123,37 +120,37 @@ public class CertBuilder implements Cloneable {
         return this;
     }
 
-    public X500Name getIssuer() {
+    public X509Name getIssuer() {
         if (issuer == null) {
             issuer = getSubject();
         }
         return issuer;
     }
 
-    public CertBuilder setIssuer(X500Name issuer) {
+    public CertBuilder setIssuer(X509Name issuer) {
         this.issuer = issuer;
         return this;
     }
     
     public CertBuilder setIssuer(String issuer) {
-        this.issuer = new X500Name(issuer);
+        this.issuer = new X509Name(issuer);
         return this;
     }
 
-    public X500Name getSubject() {
+    public X509Name getSubject() {
         if (subject == null) {
-            subject = new X500Name("CN=Anyone");
+            subject = new X509Name("CN=Anyone");
         }
         return subject;
     }
 
-    public CertBuilder setSubject(X500Name subject) {
+    public CertBuilder setSubject(X509Name subject) {
         this.subject = subject;
         return this;
     }
     
     public CertBuilder setSubject(String subject) {
-        this.subject = new X500Name(subject);
+        this.subject = new X509Name(subject);
         return this;
     }
 
@@ -175,10 +172,17 @@ public class CertBuilder implements Cloneable {
      * @return a new certificate
      * @throws CertBuilderException in case anything failed
      */
-    public X509CertificateHolder build() throws CertBuilderException {
+    public X509Certificate build() throws CertBuilderException, CertificateEncodingException, IllegalStateException, SignatureException, InvalidKeyException {
         try {
             if (isVersion3()) {
-                JcaX509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(getIssuer(), getSerialNumber(), getNotBefore(), getNotAfter(), getSubject(), getSubjectPublicKey());
+                X509V3CertificateGenerator builder = new X509V3CertificateGenerator();
+                builder.setIssuerDN(getIssuer());
+                builder.setSerialNumber(getSerialNumber());
+                builder.setNotAfter(getNotAfter());
+                builder.setNotBefore(getNotBefore());
+                builder.setSubjectDN(getSubject());
+                builder.setPublicKey(getSubjectPublicKey());
+                builder.setSignatureAlgorithm(getSignatureAlgorithm());
                 
                 for (CertExt ext : extensions) {
                     builder.addExtension(ext.getOid(), ext.isIsCritical(), ext.getValue());
@@ -190,20 +194,21 @@ public class CertBuilder implements Cloneable {
                     builder.setSubjectUniqueID(getSubjectUniqueId());
                 }
                 
-                ContentSigner contentSigner = new JcaContentSignerBuilder(getSignatureAlgorithm()).setProvider("BC").build(getIssuerPrivateKey());
-                return builder.build(contentSigner);
+                return builder.generate(getIssuerPrivateKey(), "BC");
             } else {
-                JcaX509v1CertificateBuilder builder = new JcaX509v1CertificateBuilder(getIssuer(), getSerialNumber(), getNotBefore(), getNotAfter(), getSubject(), getSubjectPublicKey());
-                ContentSigner contentSigner = new JcaContentSignerBuilder(getSignatureAlgorithm()).setProvider("BC").build(getIssuerPrivateKey());
-                return builder.build(contentSigner);
+                X509V1CertificateGenerator builder = new X509V1CertificateGenerator();
+                builder.setIssuerDN(getIssuer());
+                builder.setSerialNumber(getSerialNumber());
+                builder.setNotAfter(getNotAfter());
+                builder.setNotBefore(getNotBefore());
+                builder.setSubjectDN(getSubject());
+                builder.setPublicKey(getSubjectPublicKey());
+
+                return builder.generate(getIssuerPrivateKey(), getSignatureAlgorithm());
             }
-        } catch (OperatorCreationException ex) {
-            throw new CertBuilderException(ex);
         } catch (NoSuchAlgorithmException ex) {
             throw new CertBuilderException(ex);
         } catch (NoSuchProviderException ex) {
-            throw new CertBuilderException(ex);
-        } catch (CertIOException ex) {
             throw new CertBuilderException(ex);
         }
     }

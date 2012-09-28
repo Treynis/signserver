@@ -16,11 +16,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import org.apache.log4j.Logger;
 import org.bouncycastle.tsp.TimeStampResponse;
-import org.signserver.client.cli.defaultimpl.TimeStampCommand;
-import org.signserver.testutils.CLITestHelper;
-import static org.signserver.testutils.CLITestHelper.assertNotPrinted;
-import static org.signserver.testutils.CLITestHelper.assertPrinted;
+import org.signserver.client.TimeStampClient;
+import org.signserver.testutils.ExitException;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
+import org.signserver.testutils.TestingSecurityManager;
 
 /** 
  * Class used to test the basic aspects of the SignServer CLI related to 
@@ -38,8 +38,6 @@ public class ArchivingCLITest extends ModulesTestCase {
     
     private static final String TESTTSID = "1000";
 
-    private CLITestHelper cli = getAdminCLI();
-    
     @Override
     protected void setUp() throws Exception {
         super.setUp();
@@ -51,62 +49,76 @@ public class ArchivingCLITest extends ModulesTestCase {
     public void testSetupTimeStamp() throws Exception {
         LOG.debug(">testSetupTimeStamp");
 
-        assertTrue(new File(getSignServerHome() + "/res/test/test_add_timestamp_archive_configuration.properties").exists());
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-                cli.execute("setproperties", getSignServerHome() + "/res/test/test_add_timestamp_archive_configuration.properties"));
-        assertPrinted("", cli.getOut(), "Setting the property NAME to timestampSigner1000 for worker 1000");
+        assertTrue(new File(getSignServerHome() + "/src/test/test_add_timestamp_archive_configuration.properties").exists());
+        TestUtils.assertSuccessfulExecution(new String[]{"setproperties",
+                    getSignServerHome() + "/src/test/test_add_timestamp_archive_configuration.properties"});
+        assertTrue(TestUtils.grepTempOut("Setting the property NAME to timestampSigner1000 for worker 1000"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-                cli.execute("reload", "1000"));
+
+        TestUtils.assertSuccessfulExecution(new String[]{"reload",
+                    "1000"});
         
         // Test the timestamp client
-        TimeStampCommand cmd = new TimeStampCommand();
-        assertEquals(CommandLineInterface.RETURN_SUCCESS, 
-                cmd.execute("http://localhost:8080/signserver/process?workerId=" + TESTTSID,
-                    "-instr",
-                    "TEST",
-                    "-outrep",
-                    getSignServerHome() + "/tmp/timestamptest.data"));
+        try {
+            TestUtils.flushTempOut();
+            TimeStampClient.main(new String[]{
+                        "http://localhost:8080/signserver/process?workerId=" + TESTTSID,
+                        "-instr",
+                        "TEST",
+                        "-outrep",
+                        getSignServerHome() + "/tmp/timestamptest.data"});
 
-        FileInputStream fis = new FileInputStream(getSignServerHome() + "/tmp/timestamptest.data");
-        TimeStampResponse tsr = new TimeStampResponse(fis);
-        assertTrue(tsr != null);
-        String archiveId = tsr.getTimeStampToken().getTimeStampInfo().getSerialNumber().toString(16);
-        assertNotNull(archiveId);
+            FileInputStream fis = new FileInputStream(getSignServerHome() + "/tmp/timestamptest.data");
+            TimeStampResponse tsr = new TimeStampResponse(fis);
+            assertTrue(tsr != null);
+            String archiveId = tsr.getTimeStampToken().getTimeStampInfo().getSerialNumber().toString(16);
+            assertNotNull(archiveId);
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, cli.execute("archive",
-                    "findfromarchiveid",
-                    TESTTSID,
-                    archiveId,
-                    getSignServerHome() + "/tmp"));
-        File datafile = new File(getSignServerHome() + "/tmp/" + archiveId);
-        assertTrue(datafile.exists());
-        datafile.delete();
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, cli.execute("archive",
-                    "findfromrequestip",
-                    TESTTSID,
-                    "127.0.0.1",
-                    getSignServerHome() + "/tmp"));
-        datafile = new File(getSignServerHome() + "/tmp/" + archiveId);
-        assertTrue(datafile.exists());
+            TestUtils.assertSuccessfulExecution(new String[]{"archive",
+                        "findfromarchiveid",
+                        TESTTSID,
+                        archiveId,
+                        getSignServerHome() + "/tmp"});
+            File datafile = new File(getSignServerHome() + "/tmp/" + archiveId);
+            assertTrue(datafile.exists());
+            datafile.delete();
+            TestUtils.assertSuccessfulExecution(new String[]{"archive",
+                        "findfromrequestip",
+                        TESTTSID,
+                        "127.0.0.1",
+                        getSignServerHome() + "/tmp"});
+            datafile = new File(getSignServerHome() + "/tmp/" + archiveId);
+            assertTrue(datafile.exists());
+
+
+        } catch (ExitException e) {
+            TestUtils.printTempErr();
+            TestUtils.printTempOut();
+            assertTrue(false);
+        }
+
+        TestingSecurityManager.remove();
     }
     
     public void testRemoveTimeStamp() throws Exception {
         LOG.debug(">testRemoveTimeStamp");
         // Remove and restore
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-                cli.execute("setproperties", getSignServerHome() + "/res/test/test_rem_timestamp_configuration.properties"));
-        assertPrinted("", cli.getOut(), "Removing the property NAME  for worker 1000");
+        TestUtils.assertSuccessfulExecution(new String[]{"setproperties",
+                    getSignServerHome() + "/src/test/test_rem_timestamp_configuration.properties"});
+        assertTrue(TestUtils.grepTempOut("Removing the property NAME  for worker 1000"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-                cli.execute("getconfig", TESTTSID));
-        assertNotPrinted("", cli.getOut(), "NAME=timestampSigner1000");
+        TestUtils.assertSuccessfulExecution(new String[]{"getconfig",
+                    TESTTSID});
+        assertFalse(TestUtils.grepTempOut("NAME=timestampSigner1000"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-                cli.execute("removeproperty", TESTTSID, "TESTKEY"));
+        TestUtils.assertSuccessfulExecution(new String[]{"removeproperty",
+                    TESTTSID,
+                    "TESTKEY"});
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-                cli.execute("reload", TESTTSID));
-        assertPrinted("", cli.getOut(), "SignServer reloaded successfully");
+        TestUtils.assertSuccessfulExecution(new String[]{"reload",
+                    TESTTSID});
+        assertTrue(TestUtils.grepTempOut("SignServer reloaded successfully"));
+
+        TestingSecurityManager.remove();
     }
 }

@@ -36,24 +36,20 @@ public class HealthCheckTest extends WebTestCase {
     private static final int TSA_WORKER = 8904;
     
     /** The status repository session. */
-    private static IStatusRepositorySession.IRemote repository;
-  
+    private static IStatusRepositorySession.IRemote repository; 
+
     @Override
     protected String getServletURL() {
         return "http://localhost:8080/signserver/healthcheck/signserverhealth";
     }
-    
-    
 
     @Override
-	protected void setUp() throws Exception {
-        repository = ServiceLocator.getInstance().lookupRemote(
-                IStatusRepositorySession.IRemote.class);
-	}
-
-
-
-	/**
+ 	protected void setUp() throws Exception {
+         repository = ServiceLocator.getInstance().lookupRemote(
+                 IStatusRepositorySession.IRemote.class);
+ 	}
+    
+    /**
      * Sets up a dummy signer.
      * @throws Exception in case of error
      */
@@ -89,14 +85,14 @@ public class HealthCheckTest extends WebTestCase {
         // remove offline worker so it won't interfere with the next tests
         removeWorker(getSignerIdDummy1());
     }
-    
+
     /**
      * Tests that a time stamp signer with a timesource not insync results in a healthcheck error
      */
     public void test03TimeSourceNotInsync() throws Exception {
-    	setProperties(new File(getSignServerHome(), "res/test/test_healthcheck_timestamp_configuration.properties"));
+    	setProperties(new File(getSignServerHome(), "src/test/test_healthcheck_timestamp_configuration.properties"));
         workerSession.reloadConfiguration(TSA_WORKER);
-    	
+
     	// Test without insync
         repository.update(StatusName.TIMESOURCE0_INSYNC.name(), "");
         

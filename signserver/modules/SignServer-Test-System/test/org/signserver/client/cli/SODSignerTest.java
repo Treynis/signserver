@@ -12,15 +12,18 @@
  *************************************************************************/
 package org.signserver.client.cli;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+
 import junit.framework.TestCase;
+
 import org.apache.log4j.Logger;
-import org.signserver.admin.cli.AdminCLI;
-import org.signserver.cli.CommandLineInterface;
-import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerUtil;
 import org.signserver.ejb.interfaces.IWorkerSession;
-import org.signserver.testutils.CLITestHelper;
+import org.signserver.common.ServiceLocator;
+import org.signserver.testutils.TestUtils;
 import org.signserver.testutils.TestingSecurityManager;
 
 /**
@@ -39,9 +42,6 @@ public class SODSignerTest extends TestCase {
 
     private static IWorkerSession.IRemote workerSession;
     private static File signServerHome;
-    
-    private CLITestHelper adminCLI = new CLITestHelper(AdminCLI.class);
-    private CLITestHelper clientCLI = new CLITestHelper(ClientCLI.class);
 	
     @Override
     protected void setUp() throws Exception {
@@ -69,13 +69,14 @@ public class SODSignerTest extends TestCase {
 	
     public void test00SetupDatabase() throws Exception {
 
-        assertEquals(CommandLineInterface.RETURN_SUCCESS, 
-                adminCLI.execute("setproperties", getSignServerHome().getAbsolutePath() + "/modules/SignServer-Module-MRTDSODSigner/src/conf/junittest-part-config.properties"));
+        TestUtils.assertSuccessfulExecution(new String[] { "setproperties",
+            getSignServerHome().getAbsolutePath()
+            + "/modules/SignServer-Module-MRTDSODSigner/src/conf/junittest-part-config.properties"});
 
         // WORKER1 uses a P12 keystore
         workerSession.setWorkerProperty(WORKERID, "KEYSTOREPATH",
                 getSignServerHome().getAbsolutePath()
-                + File.separator + "res" + File.separator + "test"
+                + File.separator + "src" + File.separator + "test"
                 + File.separator + "demods1.p12");
         workerSession.setWorkerProperty(WORKERID, "KEYSTOREPASSWORD", "foo123");
 
@@ -83,8 +84,10 @@ public class SODSignerTest extends TestCase {
     }
 
     public void test01missingArguments() throws Exception {
-        assertEquals("missing arguments", CommandLineInterface.RETURN_INVALID_ARGUMENTS, 
-                clientCLI.execute("signdatagroups"));
+        try {
+            execute("signdatagroups");
+            fail("Should have thrown exception about missing arguments");
+        } catch (IllegalArgumentException expected) {}
     }
 
     /**
@@ -95,18 +98,38 @@ public class SODSignerTest extends TestCase {
      * @throws Exception
      */
     public void test02signDataFromParameter() throws Exception {
-        assertEquals(CommandLineInterface.RETURN_SUCCESS, 
-                clientCLI.execute("signdatagroups", "-workername", "TestMRTDSODSigner1", "-data", "1=value1&2=value2&3=value3"));
-        String res = clientCLI.getOut().toString();
-        assertNotNull("non null result", res);
-        assertTrue("non empty result: " + res.length(), res.length() > 50);
+        try {
+            String res =
+                    new String(execute("signdatagroups", "-workername", "TestMRTDSODSigner1",
+                    "-data", "1=value1&2=value2&3=value3"));
+            assertNotNull("non null result", res);
+            assertTrue("non empty result: " + res.length(), res.length() > 50);
+        } catch (IllegalArgumentException ex) {
+            LOG.error("Execution failed", ex);
+            fail(ex.getMessage());
+        }
     }
 
     public void test99TearDownDatabase() throws Exception {
-        assertEquals(CommandLineInterface.RETURN_SUCCESS, adminCLI.execute(
+        TestUtils.assertSuccessfulExecution(new String[] {
             "removeworker",
             String.valueOf(WORKERID)
-        ));
+        });
         workerSession.reloadConfiguration(WORKERID);
+    }
+
+    private byte[] execute(String... args) throws IllegalArgumentException, IOException {
+        byte[] output = null;
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        System.setOut(new PrintStream(out));
+        try {
+            final SODSignerCLI cli = new SODSignerCLI(args);
+            cli.run();
+        } finally {
+            output = out.toByteArray();
+            System.setOut(System.out);
+            System.out.write(output);
+        }
+        return output;
     }
 }

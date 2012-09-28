@@ -32,7 +32,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.bouncycastle.asn1.ASN1EncodableVector;
-import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERIA5String;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x509.BasicConstraints;
@@ -173,14 +172,18 @@ public class ValidationTestUtils {
 
     public static CRLDistPoint generateDistPointWithUrl(URL cdpUrl) {
         GeneralName gn = new GeneralName(GeneralName.uniformResourceIdentifier, new DERIA5String(cdpUrl.toExternalForm()));
-        GeneralNames gns = new GeneralNames(gn);
+        ASN1EncodableVector vec = new ASN1EncodableVector();
+        vec.add(gn);
+        GeneralNames gns = new GeneralNames(new DERSequence(vec));
         DistributionPointName dpn = new DistributionPointName(0, gns);
         return new CRLDistPoint(new DistributionPoint[]{new DistributionPoint(dpn, null, null)});
     }
 
     public static CRLDistPoint generateDistPointWithIssuer(String issuer) {
         GeneralName gn = new GeneralName(new X509Name(issuer));
-        GeneralNames gns = new GeneralNames(gn);
+        ASN1EncodableVector vec = new ASN1EncodableVector();
+        vec.add(gn);
+        GeneralNames gns = new GeneralNames(new DERSequence(vec));
         DistributionPointName dpn = new DistributionPointName(0, gns);
         return new CRLDistPoint(new DistributionPoint[]{new DistributionPoint(dpn, null, null)});
     }

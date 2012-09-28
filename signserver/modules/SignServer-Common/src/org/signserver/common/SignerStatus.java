@@ -41,7 +41,7 @@ public class SignerStatus extends CryptoTokenStatus {
 
     private long keyUsageCounterValue;
     private boolean keyUsageCounterDisabled;
-    
+	
 	/** 
 	 * @deprecated Use a constructor that takes an list of errors instead.
 	 */
@@ -77,7 +77,10 @@ public class SignerStatus extends CryptoTokenStatus {
         this(workerId, status, errors, config, signerCertificate);
         this.keyUsageCounterValue = counter;
     }
-    
+
+
+
+	 
     /**
      * Method used to retrieve the currently used signercertficate.
      * Use this method when checking status and not from config, since the cert isn't always in db.
@@ -99,21 +102,21 @@ public class SignerStatus extends CryptoTokenStatus {
 		out.println("Status of Signer with Id " + workerId + " is :\n"  
                 + "  Worker status : " + signTokenStatuses[getTokenStatus() == CryptoTokenStatus.STATUS_ACTIVE && (errors.isEmpty()) ? 1 : 2] + "\n"
                 + "  Token status  : " + signTokenStatuses[getTokenStatus()]);
-        
-        out.print("  Signings: " + keyUsageCounterValue);
-        long keyUsageLimit = -1;
-        try {
-            keyUsageLimit = Long.valueOf(getActiveSignerConfig()
-                .getProperty(SignServerConstants.KEYUSAGELIMIT));
-        } catch(NumberFormatException ignored) {}
-        if (keyUsageLimit >= 0) {
-            out.print(" of " + keyUsageLimit);
-        }
+
+                out.print("  Signings: " + keyUsageCounterValue);
+                long keyUsageLimit = -1;
+                try {
+                    keyUsageLimit = Long.valueOf(getActiveSignerConfig()
+                        .getProperty(SignServerConstants.KEYUSAGELIMIT));
+                } catch(NumberFormatException ignored) {}
+                if (keyUsageLimit >= 0) {
+                    out.print(" of " + keyUsageLimit);
+                }
         if (isKeyUsageCounterDisabled()) {
             out.print(" (counter disabled)");
         }
         out.println();
-        
+
         if (errors != null && !errors.isEmpty()) {
             out.println("  Errors: ");
             
@@ -158,11 +161,11 @@ public class SignerStatus extends CryptoTokenStatus {
 			}
 		}		
 	}
-
+		
     public boolean isKeyUsageCounterDisabled() {
         return keyUsageCounterDisabled;
     }
-
+	
     public void setKeyUsageCounterDisabled(boolean keyUsageCounterDisabled) {
         this.keyUsageCounterDisabled = keyUsageCounterDisabled;
     }

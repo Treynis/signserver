@@ -36,15 +36,19 @@
             <pathelement location="dist-server/tsa.mar"/>
             <pathelement location="dist-server/validationws.war"/>
             <pathelement location="dist-server/web.war"/>
+            <pathelement location="dist-server/wsra-module.jar"/>
+            <pathelement location="dist-server/wsra.mar"/>
             <pathelement location="dist-server/xmlsigner-module.jar"/>
             <pathelement location="dist-server/xmlsigner.mar"/>
             <pathelement location="dist-server/xmlvalidator-module.jar"/>
             <pathelement location="dist-server/xmlvalidator.mar"/>
             <pathelement location="dist-client/signserver-cli.jar"/>
+            <pathelement location="dist-client/wsraclient-lib.jar"/>
             <pathelement location="dist-client/signingandvalidationapi/signingandvalidationapi.jar"/>
             <pathelement location="dist-client/signserverwscli/signserverwscli.jar"/>
             <pathelement location="dist-client/timestampclient/timeStampClient.jar"/>
             <pathelement location="dist-client/validationclient/validate.jar"/>
+            <pathelement location="dist-client/wsraadminclient/wsraadmin.jar"/>
             <pathelement location="tmp/bin/classes"/>
         </path>
         <nbjpdastart addressproperty="jpda.address" name="SignServer" transport="dt_socket">
@@ -84,15 +88,19 @@
             <pathelement location="dist-server/tsa.mar"/>
             <pathelement location="dist-server/validationws.war"/>
             <pathelement location="dist-server/web.war"/>
+            <pathelement location="dist-server/wsra-module.jar"/>
+            <pathelement location="dist-server/wsra.mar"/>
             <pathelement location="dist-server/xmlsigner-module.jar"/>
             <pathelement location="dist-server/xmlsigner.mar"/>
             <pathelement location="dist-server/xmlvalidator-module.jar"/>
             <pathelement location="dist-server/xmlvalidator.mar"/>
             <pathelement location="dist-client/signserver-cli.jar"/>
+            <pathelement location="dist-client/wsraclient-lib.jar"/>
             <pathelement location="dist-client/signingandvalidationapi/signingandvalidationapi.jar"/>
             <pathelement location="dist-client/signserverwscli/signserverwscli.jar"/>
             <pathelement location="dist-client/timestampclient/timeStampClient.jar"/>
             <pathelement location="dist-client/validationclient/validate.jar"/>
+            <pathelement location="dist-client/wsraadminclient/wsraadmin.jar"/>
             <pathelement location="tmp/bin/classes"/>
             <pathelement location="lib/ext/junit-3.8.1.jar"/>
             <pathelement location="libs"/>
@@ -121,3 +129,4 @@
 
     </target>
 </project>
+

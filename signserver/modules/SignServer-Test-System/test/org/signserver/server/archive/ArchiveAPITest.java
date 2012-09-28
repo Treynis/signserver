@@ -117,7 +117,7 @@ public class ArchiveAPITest extends ModulesTestCase {
         // Test right class
         assertEquals("class for 0", Test1Archiver.class.getName(), 
                 archive0.getProperty(CLASSNAME));
-
+        
         LOG.debug("<test01OneArchiverCalled");
     }
     

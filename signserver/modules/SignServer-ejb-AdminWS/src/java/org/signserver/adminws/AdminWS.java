@@ -654,9 +654,10 @@ public class AdminWS {
             result.setConfig(props);
             result.setState(config.getState());
             result.setAppVersion(config.getAppVersion());
-            result.setClusterClassLoaderEnabled(false);
-            result.setRequireSigning(false);
-            result.setUseClassVersions(false);
+            result.setClusterClassLoaderEnabled(
+                    GlobalConfiguration.isClusterClassLoaderEnabled());
+            result.setRequireSigning(GlobalConfiguration.isRequireSigning());
+            result.setUseClassVersions(GlobalConfiguration.isUseClassVersions());
         }
         return result;
     }
@@ -674,7 +675,7 @@ public class AdminWS {
                 throws AdminNotAuthorizedException {
         requireAdminAuthorization("getWorkers", String.valueOf(workerType));
         
-        return worker.getWorkers(workerType);
+        return global.getWorkers(workerType);
     }
 
     /**

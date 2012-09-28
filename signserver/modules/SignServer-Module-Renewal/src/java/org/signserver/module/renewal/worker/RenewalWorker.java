@@ -252,7 +252,7 @@ public class RenewalWorker extends BaseSigner {
                 }
                 reneweeId = getWorkerSession().getWorkerId(workerName);
             }
-            
+
             // Get the worker config
             final WorkerConfig workerConfig
                     = getWorkerSession().getCurrentWorkerConfig(reneweeId);
@@ -464,7 +464,7 @@ public class RenewalWorker extends BaseSigner {
         }
 
         final String truststorePass = config.getProperty("TRUSTSTOREPASSWORD");
-        if (truststorePass == null && !TRUSTSTORE_TYPE_PEM.equals(truststoreType)) {
+        if (truststorePass == null) {
             throw new IllegalArgumentException(
                     "Missing TRUSTSTOREPASSWORD property");
         }

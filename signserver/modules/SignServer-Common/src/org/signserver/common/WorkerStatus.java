@@ -17,7 +17,7 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.cert.X509Certificate;
-import java.text.SimpleDateFormat;
+import java.text.DateFormat;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -33,15 +33,10 @@ public abstract class WorkerStatus implements Serializable {
 
     private static final long serialVersionUID = 1L;
     
-    public static final String INDENT1 = "          ";
-    public static final String INDENT2 = "   ";
-    
     protected static final String[] signTokenStatuses = {"", "Active", "Offline"};
     protected String hostname = null;
     protected WorkerConfig activeconfig = null;
     protected int workerId;
-    
-    private static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
     
     private List<String> fatalErrors = new LinkedList<String>();
 
@@ -122,14 +117,17 @@ public abstract class WorkerStatus implements Serializable {
     public abstract void displayStatus(int workerId, PrintStream out, boolean complete);
 
     public static void printCert(X509Certificate cert, PrintStream out) {
-        out.println(INDENT1 + INDENT2 + "Subject DN:     " + cert.getSubjectDN().toString());
-        out.println(INDENT1 + INDENT2 + "Serial number:  " + cert.getSerialNumber().toString(16));
-        out.println(INDENT1 + INDENT2 + "Issuer DN:      " + cert.getIssuerDN().toString());
-        out.println(INDENT1 + INDENT2 + "Valid from:     " + SDF.format(cert.getNotBefore()));
-        out.println(INDENT1 + INDENT2 + "Valid until:    " + SDF.format(cert.getNotAfter()));
+        DateFormat df = DateFormat.getDateInstance();
+
+        out.println("DN : " + cert.getSubjectDN().toString());
+        out.println("SerialNumber : " + cert.getSerialNumber().toString(16));
+        out.println("Issuer DN : " + cert.getIssuerDN().toString());
+        out.println("Valid from :" + df.format(cert.getNotBefore()));
+        out.println("Valid to : " + df.format(cert.getNotAfter()));
+        out.println("\n\n");
     }
     
-    /**
+     /**
      * Checks if the worker is disabled. 
      * A disabled worker can not perform any processing and might not be included 
      * in the Health check.

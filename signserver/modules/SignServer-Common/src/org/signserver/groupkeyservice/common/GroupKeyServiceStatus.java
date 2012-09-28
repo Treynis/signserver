@@ -58,7 +58,7 @@ public class GroupKeyServiceStatus extends CryptoTokenStatus {
         this.currentEncKeyNumEncryptions = currentEncKeyNumEncryptions;
         this.currentEncKeyStartDate = currentEncKeyStartDate;
     }
-    
+
     @Override
     public void displayStatus(int workerId, PrintStream out, boolean complete) {
         final List<String> errors = getFatalErrors();

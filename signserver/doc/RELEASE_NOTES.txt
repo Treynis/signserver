@@ -1,41 +1,27 @@
-SignServer 3.3.0
-----------------
-
-Major changes:
- - Drop support for JBoss 4.2.x.
-
-TODO
-
-
-Notice:
- - Apache Ant 1.8.0 or later is now required to build SignServer.
- - The property "custom.commandfactory" is no longer supported. See the manual 
-   for how to add custom Admin or Client CLI commands.
- - The Admin CLI now ignores the "-host" argument if present.
- - The default archiver called OldDatabaseArchiver has changed the format of
-   the data part of the XML serialized ArchiveData from an byte array to a 
-   base64 encoded String. The change is transparent for Java clients using
-   SignServer-Common.jar for parsing the ArchiveData but other clients might 
-   need to be updated.
- - As an alternative to the OldDatabaseArchiver a new archiver called 
-   Base64DatabaseArchiver can also be used.
-
-
 SignServer 3.2.3
 ----------------
 
 Major new features and improvements:
- - 
+ - Support for SignServer without database
+ - Configurable to disable the key usage counter
+ - Signer certificate check in Health check for all Signers
+ - Check that the timestamp signer certificate is included in the certificate chain
+ - Health check response of TimeStampSigner now considers status of time source
+ - Down-for-maintenance support in Health check
+ - Support for supplying filename as request metadata
 
 Bug fixes:
- - 
+ - Client CLI only supported 10 arguments on Windows
+ - Null value was inserted when removing last wsadmin on Oracle
+ - PDF Signature could not be larger than 15000 bytes
+ - Sample configuration for renewal worker not functional
+ - Various documentation updates
 
 Notice:
  - Same internal API changes has been done as part of DSS-528. If you have 
    custom code some changes might be required.
 
 Read the full changelog for details (https://jira.primekey.se/browse/DSS?report=com.atlassian.jira.plugin.system.project:changelog-panel).
-
 
 SignServer 3.2.2
 ----------------
@@ -74,7 +60,6 @@ SignServer 3.2.1
 ----------------
 
 Major new features and improvements:
-
  - Improve servlet error handling
  - Deploy documentation with application
  - Improved API for archiving
@@ -97,9 +82,6 @@ Bug fixes:
  - Ant target for testing individual tests did not work
  - Switching application server type did not update jndi.properties    
  - JavaDoc failed to build
-
-
-
 
 Notice:
  - In signserver_build.properties the property "useclusterclassloader" now 

@@ -12,6 +12,7 @@
  *************************************************************************/
 package org.signserver.module.pdfsigner;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -243,7 +244,7 @@ public class PDFSigner extends BaseSigner {
             throw new IllegalRequestException(
                     "Recieved request data wasn't a expected byte[].");
         }
-
+        
         // Log values
         final Map<String, String> logMap =
                 (Map<String, String>) requestContext.get(RequestContext.LOGMAP);
@@ -313,7 +314,7 @@ public class PDFSigner extends BaseSigner {
     /**
      * Calculates an estimate of the PKCS#7 structure size given the provided  
      * input parameters.
-     *
+     * 
      * Questions that we need to answer to construct an formula for calculating 
      * a good enough estimate:
      *
@@ -404,7 +405,7 @@ public class PDFSigner extends BaseSigner {
 		if (tsc != null) {
 			// add guess for timestamp response (which we can't really know)
 			// TODO: we might be able to store the size of the last TSA response and re-use next time...
-			final int tscSize = 4096;
+			final int tscSize = 7168;
 			
 			estimatedSize += tscSize;
 			
@@ -486,10 +487,10 @@ public class PDFSigner extends BaseSigner {
         Certificate[] certChain = (Certificate[]) certs.toArray(new Certificate[0]);
         PrivateKey privKey = this.getCryptoToken().getPrivateKey(
                 ICryptoToken.PURPOSE_SIGN);
-
+        
         PdfReader reader = new PdfReader(pdfbytes, password);
         boolean appendMode = true; // TODO: This could be good to have as a property in the future
-
+        
         // Don't certify already certified documents
         if (reader.getCertificationLevel() != PdfSignatureAppearance.NOT_CERTIFIED 
                 && params.getCertification_level() != PdfSignatureAppearance.NOT_CERTIFIED) {
@@ -945,7 +946,7 @@ public class PDFSigner extends BaseSigner {
                 result = null;
             } else {
                 result = password.getBytes("ISO-8859-1");
-}
+            }
         } else {
             result = null;
         }

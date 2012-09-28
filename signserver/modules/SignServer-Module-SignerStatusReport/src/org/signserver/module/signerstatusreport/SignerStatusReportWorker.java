@@ -108,7 +108,7 @@ public class SignerStatusReportWorker extends BaseSigner {
         }
         return workerSession;
     }
-    
+
     @Override
     protected List<String> getSignerCertificateFatalErrors() {
         // This worker does not require any signer certificate so don't

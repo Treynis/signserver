@@ -14,25 +14,23 @@ package org.signserver.ejb;
 
 import java.util.*;
 import javax.annotation.PostConstruct;
-import javax.ejb.EJB;
 import javax.ejb.EJBException;
 import javax.ejb.Stateless;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.PersistenceException;
 import org.apache.log4j.Logger;
-import org.signserver.common.*;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.ResyncException;
+import org.signserver.common.SignServerUtil;
+import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
-import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
-import org.signserver.server.GlobalConfigurationCache;
-import org.signserver.server.config.entities.FileBasedGlobalConfigurationDataService;
-import org.signserver.server.config.entities.GlobalConfigurationDataBean;
-import org.signserver.server.config.entities.GlobalConfigurationDataService;
-import org.signserver.server.config.entities.IGlobalConfigurationDataService;
+import org.signserver.server.*;
 import org.signserver.server.log.ISystemLogger;
 import org.signserver.server.log.SystemLoggerException;
 import org.signserver.server.log.SystemLoggerFactory;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
+import org.signserver.server.timedservices.ITimedService;
 
 /**
  * The implementation of the GlobalConfiguration Session Bean.
@@ -50,19 +48,16 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     private static final ISystemLogger AUDITLOG = SystemLoggerFactory
             .getInstance().getLogger(GlobalConfigurationSessionBean.class);
 
-    @EJB
-    private IWorkerManagerSessionLocal workerManagerSession;
-    
-
     EntityManager em;
-
     private static final long serialVersionUID = 1L;
-
+    
     static {
         SignServerUtil.installBCProvider();
     }
-
+    
     private IGlobalConfigurationDataService globalConfigurationDataService;
+    private IWorkerConfigDataService workerConfigDataService;
+    private SignServerContext workerContext;
     
     @PostConstruct
     public void create() {
@@ -71,14 +66,18 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
                 LOG.debug("No EntityManager injected. Running without database.");
             }
             globalConfigurationDataService = new FileBasedGlobalConfigurationDataService(FileBasedDatabaseManager.getInstance());
+            workerConfigDataService = new FileBasedWorkerConfigDataService(FileBasedDatabaseManager.getInstance());
+            workerContext = new SignServerContext(em, new FileBasedKeyUsageCounterDataService(FileBasedDatabaseManager.getInstance()));
         } else {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("EntityManager injected. Running with database.");
             }
             globalConfigurationDataService = new GlobalConfigurationDataService(em);
+            workerConfigDataService = new WorkerConfigDataService(em);
+            workerContext = new SignServerContext(em, new KeyUsageCounterDataService(em));
         }
     }
-    
+
     private IGlobalConfigurationDataService getGlobalConfigurationDataService() {
         return globalConfigurationDataService;
     }
@@ -144,10 +143,11 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
      */
     @Override
     public GlobalConfiguration getGlobalConfiguration() {
-        GlobalConfiguration retval = null;
+        GlobalConfiguration retval;
 
         if (GlobalConfigurationCache.getCachedGlobalConfig() == null) {
-            Properties properties = new Properties();
+            GlobalConfigurationFileParser staticConfig = GlobalConfigurationFileParser.getInstance();
+            Properties properties = staticConfig.getStaticGlobalConfiguration();
 
             Iterator<GlobalConfigurationDataBean> iter = getGlobalConfigurationDataService().findAll().iterator();
             while (iter.hasNext()) {
@@ -170,10 +170,76 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
 
             GlobalConfigurationCache.setCachedGlobalConfig(properties);
         }
-        retval = new GlobalConfiguration(GlobalConfigurationCache.getCachedGlobalConfig(), 
-                GlobalConfigurationCache.getCurrentState(), 
-                CompileTimeSettings.getInstance().getProperty(CompileTimeSettings.SIGNSERVER_VERSION));
+        retval = new GlobalConfiguration(GlobalConfigurationCache.getCachedGlobalConfig(), GlobalConfigurationCache.getCurrentState());
 
+        return retval;
+    }
+
+    /**
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#getWorkers(int)
+     */
+    @Override
+    public List<Integer> getWorkers(int workerType) {
+        ArrayList<Integer> retval = new ArrayList<Integer>();
+        GlobalConfiguration gc = getGlobalConfiguration();
+
+        Enumeration<String> en = gc.getKeyEnumeration();
+        while (en.hasMoreElements()) {
+            String key = en.nextElement();
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("getWorkers, processing key : " + key);
+            }
+            if (key.startsWith("GLOB.WORKER")) {
+                retval = (ArrayList<Integer>) getWorkerHelper(retval, key, workerType, false);
+            }
+            if (key.startsWith("GLOB.SIGNER")) {
+                retval = (ArrayList<Integer>) getWorkerHelper(retval, key, workerType, true);
+            }
+        }
+        return retval;
+    }
+
+    private List<Integer> getWorkerHelper(List<Integer> retval, String key, int workerType, boolean signersOnly) {
+
+        String unScopedKey = key.substring("GLOB.".length());
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("unScopedKey : " + unScopedKey);
+        }
+        String strippedKey = key.substring("GLOB.WORKER".length());
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("strippedKey : " + strippedKey);
+        }
+        String[] splittedKey = strippedKey.split("\\.");
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("splittedKey : " + splittedKey.length + ", " + splittedKey[0]);
+        }
+        if (splittedKey.length > 1) {
+            if (splittedKey[1].equals("CLASSPATH")) {
+                int id = Integer.parseInt(splittedKey[0]);
+                if (workerType == GlobalConfiguration.WORKERTYPE_ALL) {
+                    retval.add(new Integer(id));
+                } else {
+                    IWorker obj = WorkerFactory.getInstance().getWorker(id, workerConfigDataService, this, workerContext);
+                    if (workerType == GlobalConfiguration.WORKERTYPE_PROCESSABLE) {
+                        if (obj instanceof IProcessable) {
+                            if (LOG.isDebugEnabled()) {
+                                LOG.debug("Adding Signer " + id);
+                            }
+                            retval.add(new Integer(id));
+                        }
+                    } else {
+                        if (workerType == GlobalConfiguration.WORKERTYPE_SERVICES && !signersOnly) {
+                            if (obj instanceof ITimedService) {
+                                if (LOG.isDebugEnabled()) {
+                                    LOG.debug("Adding Service " + id);
+                                }
+                                retval.add(new Integer(id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
         return retval;
     }
 
@@ -248,14 +314,14 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     public void reload() {
         auditLog("reload", null, null);
 
-        workerManagerSession.flush();
+        GlobalConfigurationFileParser.getInstance().reloadConfiguration();
         GlobalConfigurationCache.setCachedGlobalConfig(null);
         getGlobalConfiguration();
 
         // Set the state to insync.
         GlobalConfigurationCache.setCurrentState(GlobalConfiguration.STATE_INSYNC);
     }
-    
+
     /**
      * Helper method used to set properties in a table.
      * @param tempKey

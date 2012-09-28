@@ -176,80 +176,14 @@
                     <location>../../SignServer-Module-OOXMLSigner/test</location>
                     <encoding>ISO-8859-1</encoding>
                 </source-folder>
-                <build-folder>
-                    <location>../../bin/classes</location>
-                </build-folder>
-                <build-folder>
-                    <location>../../bin/classes</location>
-                </build-folder>
-                <build-folder>
-                    <location>../../bin/classes</location>
-                </build-folder>
                 <build-file>
-                    <location>../../dist-server/healthcheck.war</location>
+                    <location>../../dist-server/dummyws-module.jar</location>
                 </build-file>
                 <build-file>
-                    <location>../../dist-server/mrtdsigner-module.jar</location>
+                    <location>../../dist-server/dummyws.mar</location>
                 </build-file>
                 <build-file>
-                    <location>../../dist-server/mrtdsigner.mar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/pdfsigner-module.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/pdfsigner.mar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/signserver-ejb.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/signserver.ear</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/signserverws.war</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/tsa-module.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/tsa.mar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/validationws.war</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/web.war</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/xmlsigner-module.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/xmlsigner.mar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/xmlvalidator-module.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-server/xmlvalidator.mar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-client/signserver-cli.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-client/signingandvalidationapi/signingandvalidationapi.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-client/signserverwscli/signserverwscli.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-client/timestampclient/timeStampClient.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../dist-client/validationclient/validate.jar</location>
-                </build-file>
-                <build-file>
-                    <location>../../tmp/bin/classes</location>
+                    <location>../../dist-server/genericws-module-common.jar</location>
                 </build-file>
                 <build-file>
                     <location>../../dist-server/healthcheck.war</location>
@@ -288,6 +222,12 @@
                     <location>../../dist-server/web.war</location>
                 </build-file>
                 <build-file>
+                    <location>../../dist-server/wsra-module.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/wsra.mar</location>
+                </build-file>
+                <build-file>
                     <location>../../dist-server/xmlsigner-module.jar</location>
                 </build-file>
                 <build-file>
@@ -303,6 +243,9 @@
                     <location>../../dist-client/signserver-cli.jar</location>
                 </build-file>
                 <build-file>
+                    <location>../../dist-client/wsraclient-lib.jar</location>
+                </build-file>
+                <build-file>
                     <location>../../dist-client/signingandvalidationapi/signingandvalidationapi.jar</location>
                 </build-file>
                 <build-file>
@@ -315,7 +258,106 @@
                     <location>../../dist-client/validationclient/validate.jar</location>
                 </build-file>
                 <build-file>
+                    <location>../../dist-client/wsraadminclient/wsraadmin.jar</location>
+                </build-file>
+                <build-file>
                     <location>../../tmp/bin/classes</location>
+                </build-file>
+                <build-file>
+                    <location>../../bin/classes</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/dummyws-module.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/dummyws.mar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/genericws-module-common.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/healthcheck.war</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/mrtdsigner-module.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/mrtdsigner.mar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/pdfsigner-module.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/pdfsigner.mar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/signserver-ejb.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/signserver.ear</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/signserverws.war</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/tsa-module.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/tsa.mar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/validationws.war</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/web.war</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/wsra-module.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/wsra.mar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/xmlsigner-module.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/xmlsigner.mar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/xmlvalidator-module.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-server/xmlvalidator.mar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-client/signserver-cli.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-client/wsraclient-lib.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-client/signingandvalidationapi/signingandvalidationapi.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-client/signserverwscli/signserverwscli.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-client/timestampclient/timeStampClient.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-client/validationclient/validate.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../dist-client/wsraadminclient/wsraadmin.jar</location>
+                </build-file>
+                <build-file>
+                    <location>../../tmp/bin/classes</location>
+                </build-file>
+                <build-file>
+                    <location>../../bin/classes</location>
+                </build-file>
+                <build-file>
+                    <location>../../bin/classes</location>
                 </build-file>
                 <build-file>
                     <location>../../dist-client/signserver-cli.jar</location>
@@ -404,6 +446,18 @@
             </ide-actions>
             <export>
                 <type>jar</type>
+                <location>../../dist-server/dummyws-module.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
+                <location>../../dist-server/genericws-module-common.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
                 <location>../../dist-server/mrtdsigner-module.jar</location>
                 <script>nbproject/nbjdk.xml</script>
                 <build-target>build</build-target>
@@ -428,6 +482,12 @@
             </export>
             <export>
                 <type>jar</type>
+                <location>../../dist-server/wsra-module.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
                 <location>../../dist-server/xmlsigner-module.jar</location>
                 <script>nbproject/nbjdk.xml</script>
                 <build-target>build</build-target>
@@ -441,6 +501,12 @@
             <export>
                 <type>jar</type>
                 <location>../../dist-client/signserver-cli.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
+                <location>../../dist-client/wsraclient-lib.jar</location>
                 <script>nbproject/nbjdk.xml</script>
                 <build-target>build</build-target>
             </export>
@@ -465,6 +531,12 @@
             <export>
                 <type>jar</type>
                 <location>../../dist-client/validationclient/validate.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
+                <location>../../dist-client/wsraadminclient/wsraadmin.jar</location>
                 <script>nbproject/nbjdk.xml</script>
                 <build-target>build</build-target>
             </export>
@@ -482,6 +554,18 @@
             </export>
             <export>
                 <type>jar</type>
+                <location>../../dist-server/dummyws-module.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
+                <location>../../dist-server/genericws-module-common.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
                 <location>../../dist-server/mrtdsigner-module.jar</location>
                 <script>nbproject/nbjdk.xml</script>
                 <build-target>build</build-target>
@@ -506,6 +590,12 @@
             </export>
             <export>
                 <type>jar</type>
+                <location>../../dist-server/wsra-module.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
                 <location>../../dist-server/xmlsigner-module.jar</location>
                 <script>nbproject/nbjdk.xml</script>
                 <build-target>build</build-target>
@@ -519,6 +609,12 @@
             <export>
                 <type>jar</type>
                 <location>../../dist-client/signserver-cli.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
+                <location>../../dist-client/wsraclient-lib.jar</location>
                 <script>nbproject/nbjdk.xml</script>
                 <build-target>build</build-target>
             </export>
@@ -543,6 +639,12 @@
             <export>
                 <type>jar</type>
                 <location>../../dist-client/validationclient/validate.jar</location>
+                <script>nbproject/nbjdk.xml</script>
+                <build-target>build</build-target>
+            </export>
+            <export>
+                <type>jar</type>
+                <location>../../dist-client/wsraadminclient/wsraadmin.jar</location>
                 <script>nbproject/nbjdk.xml</script>
                 <build-target>build</build-target>
             </export>
@@ -709,15 +811,19 @@
                 <built-to>../../dist-server/tsa.mar</built-to>
                 <built-to>../../dist-server/validationws.war</built-to>
                 <built-to>../../dist-server/web.war</built-to>
+                <built-to>../../dist-server/wsra-module.jar</built-to>
+                <built-to>../../dist-server/wsra.mar</built-to>
                 <built-to>../../dist-server/xmlsigner-module.jar</built-to>
                 <built-to>../../dist-server/xmlsigner.mar</built-to>
                 <built-to>../../dist-server/xmlvalidator-module.jar</built-to>
                 <built-to>../../dist-server/xmlvalidator.mar</built-to>
                 <built-to>../../dist-client/signserver-cli.jar</built-to>
+                <built-to>../../dist-client/wsraclient-lib.jar</built-to>
                 <built-to>../../dist-client/signingandvalidationapi/signingandvalidationapi.jar</built-to>
                 <built-to>../../dist-client/signserverwscli/signserverwscli.jar</built-to>
                 <built-to>../../dist-client/timestampclient/timeStampClient.jar</built-to>
                 <built-to>../../dist-client/validationclient/validate.jar</built-to>
+                <built-to>../../dist-client/wsraadminclient/wsraadmin.jar</built-to>
                 <built-to>../../tmp/bin/classes</built-to>
                 <built-to>../../bin/classes</built-to>
                 <source-level>1.6</source-level>
@@ -737,15 +843,19 @@
                 <built-to>../../dist-server/tsa.mar</built-to>
                 <built-to>../../dist-server/validationws.war</built-to>
                 <built-to>../../dist-server/web.war</built-to>
+                <built-to>../../dist-server/wsra-module.jar</built-to>
+                <built-to>../../dist-server/wsra.mar</built-to>
                 <built-to>../../dist-server/xmlsigner-module.jar</built-to>
                 <built-to>../../dist-server/xmlsigner.mar</built-to>
                 <built-to>../../dist-server/xmlvalidator-module.jar</built-to>
                 <built-to>../../dist-server/xmlvalidator.mar</built-to>
                 <built-to>../../dist-client/signserver-cli.jar</built-to>
+                <built-to>../../dist-client/wsraclient-lib.jar</built-to>
                 <built-to>../../dist-client/signingandvalidationapi/signingandvalidationapi.jar</built-to>
                 <built-to>../../dist-client/signserverwscli/signserverwscli.jar</built-to>
                 <built-to>../../dist-client/timestampclient/timeStampClient.jar</built-to>
                 <built-to>../../dist-client/validationclient/validate.jar</built-to>
+                <built-to>../../dist-client/wsraadminclient/wsraadmin.jar</built-to>
                 <built-to>../../tmp/bin/classes</built-to>
                 <source-level>1.6</source-level>
             </compilation-unit>

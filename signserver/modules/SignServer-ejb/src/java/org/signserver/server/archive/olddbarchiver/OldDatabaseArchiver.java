@@ -13,7 +13,6 @@
 package org.signserver.server.archive.olddbarchiver;
 
 import java.security.cert.X509Certificate;
-import java.util.Map;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.ArchiveDataVO;
@@ -23,31 +22,34 @@ import org.signserver.server.SignServerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.ArchiveException;
 import org.signserver.server.archive.Archiver;
-import org.signserver.server.archive.ArchiverInitException;
-import org.signserver.server.archive.olddbarchiver.entities.ArchiveDataService;
-import org.signserver.server.log.IWorkerLogger;
 
 /**
  * Archiver only accepting responses and currently only supports Archivables of
  * class ArchiveDataArchivable. 
  * 
+ * Developers:
+ * This class could be improved to support any Archivable if the
+ * OldDatabaseArchiver should be able to be used with workers not returning
+ * ArchiveData object any more.
+ *
  * @author Markus Kilås
  * @version $Id$
  */
 public class OldDatabaseArchiver implements Archiver {
-    
+
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(OldDatabaseArchiver.class);
 
     private ArchiveDataService dataService;
 
     @Override
-    public void init(int listIndex, WorkerConfig config, SignServerContext context) throws ArchiverInitException {
+    public void init(int listIndex, WorkerConfig config, SignServerContext context) {
         final EntityManager em = context.getEntityManager();
         if (em == null) {
-            throw new ArchiverInitException("OldDatabaseArchiver requires a database connection");
+            LOG.error("OldDatabaseArchiver requires a database connection");
+        } else {
+            dataService = new ArchiveDataService(em);
         }
-        dataService = new ArchiveDataService(em);
     }
 
     @Override
@@ -64,25 +66,12 @@ public class OldDatabaseArchiver implements Archiver {
             final X509Certificate certificate = (X509Certificate) requestContext.get(RequestContext.CLIENT_CERTIFICATE);
             final String remoteIp = (String) requestContext.get(RequestContext.REMOTE_IP);
 
-            final String uniqueId;
-            uniqueId = dataService.create(ArchiveDataVO.TYPE_RESPONSE,
-                        workerId,
-                        ada.getArchiveId(),
-                        certificate,
-                        remoteIp,
+            dataService.create(ArchiveDataVO.TYPE_RESPONSE,
+                            workerId,
+                            ada.getArchiveId(),
+                            certificate,
+                            remoteIp,
                             ada.getArchiveData());
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Archived with uniqueId: " + uniqueId);
-            }
-            Map<String, String> logMap = (Map<String, String>) requestContext.get(RequestContext.LOGMAP);
-            String ids = logMap.get(IWorkerLogger.LOG_ARCHIVE_IDS);
-            if (ids == null) {
-                ids = uniqueId;
-            } else {
-                ids = ids + ", " + uniqueId;
-            }
-            logMap.put(IWorkerLogger.LOG_ARCHIVE_IDS, ids);
-            
             archived = true;
         } else {
             archived = false;

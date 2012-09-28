@@ -152,9 +152,6 @@ is divided into following sections:
         <condition property="is.server.weblogic" value="true">
             <equals arg1="${j2ee.server.type}" arg2="WebLogic9"/>
         </condition>
-        <condition property="is.jars.in.ejbjar" value="true">
-            <equals arg1="${jars.in.ejbjar}" arg2="true"/>
-        </condition>
         <condition else="false" property="jdkBug6558476">
             <and>
                 <matches pattern="1\.[56]" string="${java.specification.version}"/>
@@ -493,43 +490,17 @@ exists or setup the property manually. For example like this:
                 COMPILATION SECTION
             -->
     <target depends="init" if="no.dist.ear.dir" name="-deps-module-jar" unless="no.deps">
-        <ant antfile="${project.SignServer-BuildTools}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
-        </ant>
         <ant antfile="${project.SignServer-Common}/build.xml" inheritall="false" target="jar">
             <property name="deploy.on.save" value="false"/>
         </ant>
-        <ant antfile="${project.SignServer-Entities}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
-        </ant>
-        <ant antfile="${project.SignServer-Lib-EJBCA-util}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
-        </ant>
-        <ant antfile="${project.SignServer-Server}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
-        </ant>
-        <ant antfile="${project.SignServer-ejb-interfaces}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
-        </ant>
+        <ant antfile="${project.SignServer-ejb}/build.xml" inheritall="false" target="dist"/>
     </target>
     <target depends="init" if="dist.ear.dir" name="-deps-ear-jar" unless="no.deps">
-        <ant antfile="${project.SignServer-BuildTools}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
-        </ant>
         <ant antfile="${project.SignServer-Common}/build.xml" inheritall="false" target="jar">
             <property name="deploy.on.save" value="false"/>
         </ant>
-        <ant antfile="${project.SignServer-Entities}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
-        </ant>
-        <ant antfile="${project.SignServer-Lib-EJBCA-util}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
-        </ant>
-        <ant antfile="${project.SignServer-Server}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
-        </ant>
-        <ant antfile="${project.SignServer-ejb-interfaces}/build.xml" inheritall="false" target="jar">
-            <property name="deploy.on.save" value="false"/>
+        <ant antfile="${project.SignServer-ejb}/build.xml" inheritall="false" target="dist-ear">
+            <property location="${build.dir}" name="dist.ear.dir"/>
         </ant>
     </target>
     <target depends="init, -deps-module-jar, -deps-ear-jar" name="deps-jar"/>
@@ -541,9 +512,7 @@ exists or setup the property manually. For example like this:
         <!-- Empty placeholder for easier customization. -->
         <!-- You can override this target in the ../build.xml file. -->
     </target>
-    <target depends="compile,-library-inclusion-in-archive-weblogic,-library-inclusion-in-archive-by-user" name="library-inclusion-in-archive"/>
-    <target if="is.jars.in.ejbjar" name="-library-inclusion-in-archive-by-user"/>
-    <target if="is.server.weblogic" name="-library-inclusion-in-archive-weblogic">
+    <target depends="compile" if="is.server.weblogic" name="library-inclusion-in-archive">
         <manifest file="${build.ear.classes.dir}/META-INF/MANIFEST.MF" mode="update"/>
     </target>
     <target depends="compile" name="library-inclusion-in-manifest">
@@ -897,12 +866,8 @@ exists or setup the property manually. For example like this:
                 CLEANUP SECTION
             -->
     <target depends="init" name="deps-clean" unless="no.deps">
-        <ant antfile="${project.SignServer-BuildTools}/build.xml" inheritall="false" target="clean"/>
         <ant antfile="${project.SignServer-Common}/build.xml" inheritall="false" target="clean"/>
-        <ant antfile="${project.SignServer-Entities}/build.xml" inheritall="false" target="clean"/>
-        <ant antfile="${project.SignServer-Lib-EJBCA-util}/build.xml" inheritall="false" target="clean"/>
-        <ant antfile="${project.SignServer-Server}/build.xml" inheritall="false" target="clean"/>
-        <ant antfile="${project.SignServer-ejb-interfaces}/build.xml" inheritall="false" target="clean"/>
+        <ant antfile="${project.SignServer-ejb}/build.xml" inheritall="false" target="clean"/>
     </target>
     <target depends="init" name="-do-clean">
         <delete dir="${build.dir}"/>

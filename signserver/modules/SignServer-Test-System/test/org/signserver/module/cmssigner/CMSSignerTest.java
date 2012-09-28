@@ -14,16 +14,13 @@ package org.signserver.module.cmssigner;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.security.cert.CertSelector;
 import java.security.cert.CertStore;
 import java.security.cert.Certificate;
 import java.util.Collection;
 
 import org.apache.log4j.Logger;
-import org.bouncycastle.x509.AttributeCertificateHolder;
 import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.SignerInformation;
-import org.bouncycastle.jce.X509Principal;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GenericSignResponse;
 import org.signserver.common.RequestContext;
@@ -47,6 +44,9 @@ public class CMSSignerTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     @Override
@@ -112,10 +112,8 @@ public class CMSSignerTest extends ModulesTestCase {
 
         // Check that the signer's certificate is included
         CertStore certs = signedData.getCertificatesAndCRLs("Collection", "BC");
-        X509Principal issuer = new X509Principal(signer.getSID().getIssuer());
-        CertSelector cs = new AttributeCertificateHolder(issuer, signer.getSID().getSerialNumber());
         Collection<? extends Certificate> signerCerts
-                = certs.getCertificates(cs);
+                = certs.getCertificates(signer.getSID());
         assertEquals("One certificate included", 1, signerCerts.size());
         assertEquals(signercert, signerCerts.iterator().next());
 

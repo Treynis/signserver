@@ -14,6 +14,7 @@ package org.signserver.common.genericws;
 
 import java.io.PrintStream;
 import java.util.Enumeration;
+
 import org.signserver.common.CryptoTokenStatus;
 import org.signserver.common.WorkerConfig;
 

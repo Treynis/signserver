@@ -17,9 +17,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Properties;
+
 import javax.crypto.Cipher;
+
 import org.signserver.common.*;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
+import org.signserver.testutils.TestingSecurityManager;
 
 /**
  * TODO: Document me!
@@ -35,6 +39,9 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
     /* (non-Javadoc)
      * @see junit.framework.TestCase#tearDown()
@@ -43,6 +50,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
+        TestingSecurityManager.remove();
     }
 
     public void test00SetupDatabase() throws Exception {
@@ -56,7 +64,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
         workerSession.setWorkerProperty(3, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(3, "NAME", "testWorker");
         workerSession.reloadConfiguration(3);
-                
+        
         addDummySigner1();
     }
 
@@ -105,7 +113,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
         assertTrue(((SignerStatus) workerSession.getStatus(3)).getTokenStatus() == SignerStatus.STATUS_ACTIVE
                 || ((SignerStatus) workerSession.getStatus(3)).getTokenStatus() == SignerStatus.STATUS_OFFLINE);
     }
-     
+    
     public void test02GetStatus_ok() throws Exception {
         final WorkerStatus actual = workerSession.getStatus(getSignerIdDummy1());
         assertEquals("getStatus: ", 0, actual.getFatalErrors().size());
@@ -253,6 +261,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
             workerSession.reloadConfiguration(getSignerIdDummy1());
         }
     }
+
 
     public void test99TearDownDatabase() throws Exception {
         removeWorker(3);

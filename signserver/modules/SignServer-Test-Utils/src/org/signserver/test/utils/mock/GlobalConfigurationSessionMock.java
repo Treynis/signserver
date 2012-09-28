@@ -33,30 +33,29 @@ public class GlobalConfigurationSessionMock implements
 
     public GlobalConfigurationSessionMock() {
          globalConfiguration = new GlobalConfiguration(config,
-                 GlobalConfiguration.STATE_INSYNC, "SignServer 4.7.11alpha0");
+                 GlobalConfiguration.STATE_INSYNC);
     }
 
-    @Override
     public void setProperty(String scope, String key, String value) {
         config.setProperty(scope + key, value);
     }
 
-    @Override
     public boolean removeProperty(String scope, String key) {
         return config.remove(scope + key) != null;
     }
 
-    @Override
     public GlobalConfiguration getGlobalConfiguration() {
         return globalConfiguration;
     }
 
-    @Override
+    public List<Integer> getWorkers(int workerType) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
     public void resync() throws ResyncException {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
     public void reload() {
         throw new UnsupportedOperationException("Not supported yet.");
     }

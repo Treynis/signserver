@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import javax.ejb.EJB;
 import javax.naming.NamingException;
 import javax.servlet.ServletConfig;
@@ -25,19 +24,18 @@ import javax.servlet.UnavailableException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
 import org.apache.log4j.Logger;
 import org.signserver.common.CompileTimeSettings;
 import org.signserver.common.FileBasedDatabaseException;
 import org.signserver.common.ServiceLocator;
-import org.signserver.statusrepo.common.StatusEntry;
-import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.ejb.interfaces.IServiceTimerSession;
-import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.server.log.ISystemLogger;
 import org.signserver.server.log.SystemLoggerException;
 import org.signserver.server.log.SystemLoggerFactory;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
+import org.signserver.statusrepo.IStatusRepositorySession;
+import org.signserver.statusrepo.common.NoSuchPropertyException;
+import org.signserver.statusrepo.common.StatusEntry;
 import org.signserver.statusrepo.common.StatusName;
 
 /**
@@ -134,7 +132,7 @@ public class StartServicesServlet extends HttpServlet {
         } catch (SystemLoggerException ex) {
             LOG.error("Audit log error", ex);
         }
-        
+
         LOG.debug(">init FileBasedDataseManager");
         final FileBasedDatabaseManager nodb = FileBasedDatabaseManager.getInstance();
         if (nodb.isUsed()) {
@@ -143,7 +141,7 @@ public class StartServicesServlet extends HttpServlet {
             } catch (FileBasedDatabaseException ex) {
                 throw new UnavailableException(ex.getMessage());
             }
-            
+
             final List<String> fatalErrors = nodb.getFatalErrors();
             if (!fatalErrors.isEmpty()) {
                 final StringBuilder buff = new StringBuilder();
@@ -171,7 +169,7 @@ public class StartServicesServlet extends HttpServlet {
         } catch (NoSuchPropertyException ex) {
             throw new RuntimeException(ex);
         }
-        
+
     } // init
 
     @Override

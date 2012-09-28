@@ -13,7 +13,7 @@
 package org.signserver.test.utils.builders;
 
 import org.bouncycastle.asn1.ASN1Encodable;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.DERObjectIdentifier;
 
 /**
  * Holder for the data to use when creating an certificate extension.
@@ -22,11 +22,11 @@ import org.bouncycastle.asn1.ASN1ObjectIdentifier;
  * @version $Id$
  */
 public class CertExt {
-    private ASN1ObjectIdentifier oid;
+    private DERObjectIdentifier oid;
     private boolean isCritical;
     private ASN1Encodable value;
 
-    public CertExt(ASN1ObjectIdentifier oid, boolean isCritical, ASN1Encodable value) {
+    public CertExt(DERObjectIdentifier oid, boolean isCritical, ASN1Encodable value) {
         this.oid = oid;
         this.isCritical = isCritical;
         this.value = value;
@@ -36,7 +36,7 @@ public class CertExt {
         return isCritical;
     }
 
-    public ASN1ObjectIdentifier getOid() {
+    public DERObjectIdentifier getOid() {
         return oid;
     }
 

@@ -17,6 +17,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.LinkedList;
 import java.util.List;
+
 import javax.annotation.Resource;
 import javax.ejb.EJB;
 import javax.ejb.Stateless;
@@ -27,10 +28,18 @@ import javax.naming.NamingException;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
+
 import org.apache.log4j.Logger;
 import org.ejbca.util.Base64;
 import org.ejbca.util.CertTools;
-import org.signserver.common.*;
+import org.signserver.common.CompileTimeSettings;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.InvalidWorkerIdException;
+import org.signserver.common.RequestContext;
+import org.signserver.common.ServiceLocator;
+import org.signserver.common.SignServerException;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.healthcheck.HealthCheckUtils;
@@ -154,15 +163,15 @@ public class ValidationWS implements IValidationWS {
         } else {
             errors.addAll(HealthCheckUtils.checkDB(getCheckDBString()));
         }
-        
+
         if (errors.isEmpty()) {
             errors.addAll(HealthCheckUtils.checkMemory(getMinimumFreeMemory()));
-            
+
             if (errors.isEmpty()) {
                 errors.addAll(checkValidationService(workerId));
             }
         }
-        
+
         // Render result
         if (errors.isEmpty()) {
             result = "ALLOK";
@@ -170,7 +179,7 @@ public class ValidationWS implements IValidationWS {
             final StringBuilder buff = new StringBuilder();
             for (final String error : errors) {
                 buff.append(error).append("\n");
-            }
+        }
             result = buff.toString();
         }
         return result;

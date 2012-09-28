@@ -14,8 +14,13 @@ package org.signserver.server;
 
 import java.security.cert.Certificate;
 import org.apache.log4j.Logger;
-import org.signserver.common.*;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerUtil;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
 
 /**
  * Tests limits for the key usages.
@@ -40,6 +45,8 @@ public class LimitKeyUsagesTest extends ModulesTestCase {
     @Override
     protected void setUp() throws Exception {
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
     }
 
     @Override
@@ -107,7 +114,7 @@ public class LimitKeyUsagesTest extends ModulesTestCase {
         workerSession.activateSigner(WORKERID_1, "foo123");
         doSign();
     }
-    
+
     /**
      * Tests that when the key usage counter is not disabled it will increase 
      * after a signing.
@@ -151,7 +158,7 @@ public class LimitKeyUsagesTest extends ModulesTestCase {
         
         // Counter should not have increased
         final long actual = workerSession.getKeyUsageCounterValue(WORKERID_1);
-        assertEquals("counter should not have increased", oldValue, actual);
+        assertEquals("counter should have increased", oldValue, actual);
     }
     
     /**

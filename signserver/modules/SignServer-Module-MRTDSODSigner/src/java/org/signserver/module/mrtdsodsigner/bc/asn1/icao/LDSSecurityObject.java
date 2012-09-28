@@ -4,10 +4,9 @@ import java.util.Enumeration;
 
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1EncodableVector;
-import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERInteger;
-import org.bouncycastle.asn1.ASN1Object;
+import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.icao.DataGroupHash;
 import org.bouncycastle.asn1.icao.ICAOObjectIdentifiers;
@@ -32,7 +31,7 @@ import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
  */
 
 public class LDSSecurityObject
-    extends ASN1Object
+    extends ASN1Encodable
     implements ICAOObjectIdentifiers
 {
 
@@ -141,7 +140,7 @@ public class LDSSecurityObject
         return ldsVersionInfo;
     }
 
-    public ASN1Primitive toASN1Primitive()
+    public DERObject toASN1Object()
     {
         ASN1EncodableVector seq = new ASN1EncodableVector();
 

@@ -26,13 +26,16 @@ public class ArchiveDataArchivable extends AbstractArchivable {
 
     /** Content type for this Archivable. */
     public static final String ARCHIVEDATA = "ARCHIVEDATA";
+    
+    private String archiveId;
 
     private ArchiveData archiveData;
 
     public ArchiveDataArchivable(final String archiveId, 
             final ArchiveData archiveData, final String type,
             final String contentType) {
-        super(type, archiveId, contentType);
+        super(type, contentType);
+        this.archiveId = archiveId;
         this.archiveData = archiveData;
     }
 
@@ -44,6 +47,10 @@ public class ArchiveDataArchivable extends AbstractArchivable {
     @Override
     public byte[] getContentEncoded() {
         return archiveData.getData();
+    }
+
+    public String getArchiveId() {
+        return archiveId;
     }
 
     public ArchiveData getArchiveData() {
