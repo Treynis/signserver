@@ -23,7 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
+
 import org.apache.log4j.Logger;
 import org.ejbca.util.CertTools;
 
@@ -40,8 +40,8 @@ public class ProcessableConfig {
     private static final Logger LOG = Logger.getLogger(ProcessableConfig.class);
     
     private static final String AUTHORIZED_CLIENTS = "AUTHORIZED_CLIENTS";
-    public static final String SIGNERCERT = "SIGNERCERT";
-    public static final String SIGNERCERTCHAIN = "SIGNERCERTCHAIN";
+    private static final String SIGNERCERT = "SIGNERCERT";
+    private static final String SIGNERCERTCHAIN = "SIGNERCERTCHAIN";
     public static final String NAME = "NAME";
     private WorkerConfig workerConfig;
 
@@ -69,16 +69,10 @@ public class ProcessableConfig {
     }
 
     private Serializable get(String key) {
-        final String value = workerConfig.getProperty(key);
-        if (value == null) {
-            final Object o = workerConfig.getData().get(key);
-            if (o instanceof Serializable) {
-                return (Serializable) o;
-            } else {
-                return null;
-            }
+        if (workerConfig.getProperty(key) == null) {
+            return workerConfig.getData().get(key);
         }
-        return value;
+        return workerConfig.getProperty(key);
     }
 
     /**
@@ -214,8 +208,8 @@ public class ProcessableConfig {
      * 
      */
     @SuppressWarnings("unchecked")
-    public List<Certificate> getSignerCertificateChain() {
-        List<Certificate> result = null;
+    public Collection<Certificate> getSignerCertificateChain() {
+        Collection<Certificate> result = null;
         String stringcert = (String) get(SIGNERCERTCHAIN);
         if (stringcert == null || stringcert.equals("")) {
             stringcert = (String) get(WorkerConfig.getNodeId() + "." + SIGNERCERTCHAIN);

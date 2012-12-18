@@ -12,13 +12,16 @@
  *************************************************************************/
 package org.signserver.module.signerstatusreport;
 
-import java.io.*;
+import java.io.File;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.log4j.Logger;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
+import org.signserver.testutils.TestUtils;
+import org.signserver.testutils.TestingSecurityManager;
 import org.signserver.web.WebTestCase;
 
 /**
@@ -58,8 +61,6 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
      */
     private static final int WORKERID_SIGNER3 = 5676;
     private static final String WORKER_SIGNER3 = "TestXMLSigner";
-    
-    private static final int[] WORKERS = new int[] {5676, 5679, 5681, 5682, 5683, 5802, 5803};
 
     private SignerStatusReportParser parser = new SignerStatusReportParser();
 
@@ -67,16 +68,21 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
     protected String getServletURL() {
         return "http://localhost:8080/signserver/process";
     }
-    
+	
     @Override
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
+        TestingSecurityManager.remove();
     }	
 
     /**
@@ -94,7 +100,7 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
         globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL,
             "WORKER" + WORKERID_WORKER + ".CLASSPATH",
             "org.signserver.module.signerstatusreport.SignerStatusReportWorker");
-        
+
         workerSession.setWorkerProperty(WORKERID_WORKER, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(WORKERID_WORKER, "WORKERS",
                 WORKER_SIGNER1+","+WORKER_SIGNER2+","+WORKER_SIGNER3);
@@ -108,7 +114,7 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
         fields.put("workerId", String.valueOf(WORKERID_WORKER));
         fields.put("data", "");
         HttpURLConnection conn = sendGet(getServletURL(), fields);
-        
+
 
         Map<String, Map<String, String>> status;
 
@@ -140,7 +146,7 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
 //        workerSession.reloadConfiguration(WORKERID_SIGNER1);
         workerSession.deactivateSigner(WORKERID_SIGNER1);
         
-        
+
         // Now WORKER1 should be OFFLINE and the other as before
         conn = sendGet(getServletURL(), fields);
         try {
@@ -170,10 +176,30 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
      * @throws Exception
      */
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(WORKERID_WORKER);
-        for (int workerId : WORKERS) {
-            removeWorker(workerId);
-        }
+
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_WORKER)
+        });
+        workerSession.reloadConfiguration(WORKERID_WORKER);
+
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_SIGNER1)
+        });
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_SIGNER2)
+        });
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_SIGNER3)
+        });
+
+        workerSession.reloadConfiguration(WORKERID_WORKER);
+        workerSession.reloadConfiguration(WORKERID_SIGNER1);
+        workerSession.reloadConfiguration(WORKERID_SIGNER2);
+        workerSession.reloadConfiguration(WORKERID_SIGNER3);
     }
 
 }

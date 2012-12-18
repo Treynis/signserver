@@ -18,19 +18,31 @@ import java.io.IOException;
 import java.security.PrivateKey;
 import java.security.Security;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
-import java.util.Collection;
+
 import javax.persistence.EntityManager;
+
+import org.bouncycastle.util.encoders.Hex;
+import org.ejbca.util.CertTools;
 import org.openxml4j.exceptions.InvalidFormatException;
 import org.openxml4j.exceptions.OpenXML4JException;
 import org.openxml4j.opc.Package;
 import org.openxml4j.opc.PackageAccess;
 import org.openxml4j.opc.signature.PackageDigitalSignatureManager;
 import org.openxml4j.opc.signature.RelationshipTransformProvider;
-import org.signserver.common.*;
+import org.signserver.common.ArchiveData;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericServletRequest;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.ISignRequest;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerException;
+import org.signserver.common.WorkerConfig;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.archive.Archivable;
-import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
@@ -39,9 +51,6 @@ import org.signserver.server.signers.BaseSigner;
  * (signature patched version. Patch applied to revision 534 to
  * https://openxml4j.svn.sourceforge.net. Patched version is available at :
  * TODO: fill in temporary address in signserver svn.).
- * 
- * Latest known version is revision 538 in the SVN repository at
- * https://openxml4j.svn.sourceforge.net/svnroot/openxml4j
  * 
  * Adds invisible singature to docx, xlsx, pptx files (created using MS Office
  * 2007, or other ECMA 376 comformant application)
@@ -56,8 +65,6 @@ import org.signserver.server.signers.BaseSigner;
  * @version $Id$
  */
 public class OOXMLSigner extends BaseSigner {
-
-    private static final String CONTENT_TYPE = "application/octet-stream";
 
     @Override
     public void init(int workerId, WorkerConfig config,
@@ -89,7 +96,9 @@ public class OOXMLSigner extends BaseSigner {
         }
 
         byte[] data = (byte[]) sReq.getRequestData();
-        final String archiveId = createArchiveId(data, (String) requestContext.get(RequestContext.TRANSACTION_ID));
+
+        byte[] fpbytes = CertTools.generateSHA1Fingerprint(data);
+        String fp = new String(Hex.encode(fpbytes));
 
         Package docxPackage;
         try {
@@ -130,14 +139,15 @@ public class OOXMLSigner extends BaseSigner {
         }
 
         byte[] signedbytes = boutFinal.toByteArray();
-        final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
 
         if (signRequest instanceof GenericServletRequest) {
             signResponse = new GenericServletResponse(sReq.getRequestID(),
-                    signedbytes, getSigningCertificate(), archiveId, archivables, CONTENT_TYPE);
+                    signedbytes, getSigningCertificate(), fp, new ArchiveData(
+                    signedbytes), "application/octet-stream");
         } else {
             signResponse = new GenericSignResponse(sReq.getRequestID(),
-                    signedbytes, getSigningCertificate(), archiveId, archivables);
+                    signedbytes, getSigningCertificate(), fp, new ArchiveData(
+                    signedbytes));
         }
         return signResponse;
 

@@ -12,19 +12,28 @@
  *************************************************************************/
 package org.signserver.client.api;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.security.cert.Certificate;
 import java.util.List;
+
 import javax.naming.NamingException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.apache.log4j.Logger;
-import org.ejbca.util.CertTools;
 import org.signserver.common.GenericSignResponse;
 import org.signserver.common.GenericValidationResponse;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.server.cryptotokens.P12CryptoToken;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
+import org.signserver.testutils.TestingSecurityManager;
+import org.signserver.validationservice.common.ICertificate;
 import org.signserver.validationservice.common.Validation;
 import org.w3c.dom.Document;
 
@@ -42,7 +51,6 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
     private static final int SIGNER1_WORKERID = 5676;
     private static final int CERTVALIDATION_WORKERID = 105;
     private static final int XMLVALIDATOR_WORKERID = 5677;
-    private static final int[] WORKERS = new int[] {5676, 5679, 5681, 5682, 5683, 5802, 5803};
     
     private static final String SIGNER1_WORKER = "TestXMLSigner";
     private static final String CERTVALIDATION_WORKER = "CRLValidationWorker2";
@@ -62,17 +70,21 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
 
-        keystoreFileEndentity8 = new File(getSignServerHome() + File.separator + "res/test/org/signserver/client/api/endentity8.p12");
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
+
+        keystoreFileEndentity8 = new File(getSignServerHome() + File.separator + "src/test/org/signserver/client/api/endentity8.p12");
         if (!keystoreFileEndentity8.exists()) {
             throw new FileNotFoundException("Keystore file: " + keystoreFileEndentity8.getAbsolutePath());
         }
 
         crlWithCertOk = new File(getSignServerHome() + File.separator
-                + "res/test/org/signserver/client/api/EightCA-ok.crl");
+                + "src/test/org/signserver/client/api/EightCA-ok.crl");
         crlWithCertRevoked = new File(getSignServerHome() + File.separator
-                + "res/test/org/signserver/client/api/EightCA-revoked.crl");
+                + "src/test/org/signserver/client/api/EightCA-revoked.crl");
         crlToUse = new File(getSignServerHome() + File.separator
-                + "res/test/org/signserver/client/api/EightCA-use.crl");
+                + "src/test/org/signserver/client/api/EightCA-use.crl");
 
         if (!crlWithCertOk.exists()) {
             throw new FileNotFoundException("Missing CRL: "
@@ -96,6 +108,7 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
+        TestingSecurityManager.remove();
     }
 
     /**
@@ -305,10 +318,10 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
         assertTrue("valid document", res.isValid());
 
         // Check certificate and path
-        Certificate signercert = res.getCertificateValidation().getCertificate();
-        assertEquals("Signer certificate", "CN=endentity8", CertTools.getSubjectDN(signercert));
-        List<Certificate> caChain = res.getCertificateValidation().getCAChain();
-        assertEquals("ca certificate 0", "CN=EightCA,O=EJBCA Testing,C=SE", CertTools.getSubjectDN(caChain.get(0)));
+        ICertificate signercert = res.getCertificateValidation().getCertificate();
+        assertEquals("Signer certificate", "CN=endentity8", signercert.getSubject());
+        List<ICertificate> caChain = res.getCertificateValidation().getCAChain();
+        assertEquals("ca certificate 0", "CN=EightCA,O=EJBCA Testing,C=SE", caChain.get(0).getSubject());
         assertEquals("caChain length", 1, caChain.size());
         LOG.info("Status message: " + res.getCertificateValidation().getStatusMessage());
         assertEquals(Validation.Status.VALID, res.getCertificateValidation().getStatus());
@@ -369,13 +382,14 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
         LOG.info("Revoked cert status: "
                 + res.getCertificateValidation().getStatusMessage());
 
-        final Certificate cert = res.getSignerCertificate();
+        final ICertificate cert = res.getSignerCertificate();
         assertNotNull(cert);
     }
 
     public void test99TearDownDatabase() throws Exception {
         // XMLVALIDATOR
-        removeWorker(XMLVALIDATOR_WORKERID);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + XMLVALIDATOR_WORKERID});
+        workerSession.reloadConfiguration(XMLVALIDATOR_WORKERID);
 
         // VALIDATION SERVICE
         globalSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + CERTVALIDATION_WORKERID + ".CLASSPATH");
@@ -388,9 +402,8 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
         workerSession.reloadConfiguration(CERTVALIDATION_WORKERID);
 
         // XMLSIGNER
-        for (int workerId : WORKERS) {
-            removeWorker(workerId);
-        }
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + SIGNER1_WORKERID});
+        workerSession.reloadConfiguration(SIGNER1_WORKERID);
     }
 
     private static String getStatus(GenericValidationResponse res) {

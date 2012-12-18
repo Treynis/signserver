@@ -40,7 +40,7 @@ if [ ! -n "$APPSRV_HOME" ]; then
 fi
 
 if [ ! -n "${SIGNSERVER_HOME}" ]; then
-  if [ -f $DIR/signclient ]; then
+  if [ -f $DIR/signserver.sh ]; then
     SIGNSRV_HOME=$DIR/..
   fi
   if [ -f /etc/signserver/signservermgmt.env ]; then
@@ -49,19 +49,19 @@ if [ ! -n "${SIGNSERVER_HOME}" ]; then
   if [ -f /etc/mailsigner/mailsignermgmt.env ]; then
      . /etc/mailsigner/mailsignermgmt.env
   fi
-  if [ -f /usr/share/signserver/bin/signclient ]; then
+  if [ -f /usr/share/signserver/bin/signserver.sh ]; then
      SIGNSRV_HOME=/usr/share/signserver
   fi
-  if [ -f /opt/signserver/bin/signclient ]; then
+  if [ -f /opt/signserver/bin/signserver.sh ]; then
      SIGNSRV_HOME=/opt/signserver
   fi
-  if [ -f /usr/local/signserver/bin/signclient ]; then
+  if [ -f /usr/local/signserver/bin/signserver.sh ]; then
      SIGNSRV_HOME=/usr/local/signserver
   fi
-  if [ -f ./signclient ]; then
+  if [ -f ./signserver.sh ]; then
      SIGNSRV_HOME=..
   fi
-  if [ -f bin/signclient ]; then
+  if [ -f bin/signserver.sh ]; then
      SIGNSRV_HOME=.
   fi
 else
@@ -69,7 +69,7 @@ else
 fi 
 
 # Check that classes exist
-if [ ! -f ${SIGNSRV_HOME}/lib/${MAIN_JAR} ]
+if [ ! -f ${SIGNSRV_HOME}/dist-client/${MAIN_JAR} ]
 then
 	echo "You must build SignServer Random Test CLI first."
         exit 1
@@ -79,8 +79,8 @@ fi
 OPTIONAL_CLASSPATH=
 
 # Construct the classpath
-CP="${SIGNSRV_HOME}/lib/${MAIN_JAR}"
-CP="${SIGNSRV_HOME}/conf":"$CP"
+CP="${SIGNSRV_HOME}/dist-client/${MAIN_JAR}"
+CP="${SIGNSRV_HOME}/bin":"$CP"
 CP="$CP":${OPTIONAL_CLASSPATH}
 
 # Application server dependencies

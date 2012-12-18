@@ -314,7 +314,7 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
                         List<Certificate> signerChain;
 
                         try {
-                            signerChain = (List<Certificate>) CertTools.getCertsFromPEM(
+                            signerChain = (List) CertTools.getCertsFromPEM(
                                     signerChainFile.getAbsolutePath());
                             if (signerChain.isEmpty()) {
                                 final String error =

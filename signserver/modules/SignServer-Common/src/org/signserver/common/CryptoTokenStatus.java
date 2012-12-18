@@ -29,7 +29,7 @@ public abstract class CryptoTokenStatus extends WorkerStatus {
     public static final int STATUS_ACTIVE = 1;
     public static final int STATUS_OFFLINE = 2;
     private int tokenStatus = 0;
-    
+
     /** 
      * @deprecated Use the constructor taking an list of errors
      */
@@ -42,10 +42,10 @@ public abstract class CryptoTokenStatus extends WorkerStatus {
         super(workerId, addCryptoTokenError(tokenStatus, workerId, errors), config);
         this.tokenStatus = tokenStatus;
     }
-    
+
     private static List<String> addCryptoTokenError(int tokenStatus, int workerId, List<String> errors) {
         if (tokenStatus == SignerStatus.STATUS_OFFLINE) {
-            List<String> moreErrors = new LinkedList<String>(errors);
+            List<String> moreErrors = new LinkedList(errors);
             moreErrors.add("Error Crypto Token is disconnected, worker Id : " + workerId);
             return moreErrors;
         }
@@ -59,4 +59,4 @@ public abstract class CryptoTokenStatus extends WorkerStatus {
         return tokenStatus;
     }
 
-}
+            }

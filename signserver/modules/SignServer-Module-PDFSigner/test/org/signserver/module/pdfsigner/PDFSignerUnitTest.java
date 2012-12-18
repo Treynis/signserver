@@ -24,15 +24,11 @@ import java.security.cert.*;
 import java.util.*;
 import junit.framework.TestCase;
 import org.apache.log4j.Logger;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.DERBitString;
-import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.x509.CRLReason;
-import org.bouncycastle.cert.X509CRLHolder;
-import org.bouncycastle.cert.X509v2CRLBuilder;
-import org.bouncycastle.cert.jcajce.JcaX509CRLConverter;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.asn1.x509.X509Name;
+import org.bouncycastle.x509.X509V2CRLGenerator;
 import org.signserver.common.*;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
@@ -85,25 +81,23 @@ public class PDFSignerUnitTest extends TestCase {
     private File sampleCertifiedFormFillingAllowed;
     private File sampleSigned;
 //    private File sampleLowprintingOwner123;
-    
-    private JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
 
     public PDFSignerUnitTest() {
         SignServerUtil.installBCProvider();
         File home = new File(System.getenv("SIGNSERVER_HOME"));
         assertTrue("Environment variable SIGNSERVER_HOME", home.exists());
-        sampleOk = new File(home, "res/test/ok.pdf");
-        sampleRestricted = new File(home, "res/test/sample-restricted.pdf");
-        sample = new File(home, "res/test/pdf/sample.pdf");
-        sampleOpen123 = new File(home, "res/test/pdf/sample-open123.pdf");
-        sampleOpen123Owner123 = new File(home, "res/test/pdf/sample-open123-owner123.pdf");
-        sampleOwner123 = new File(home, "res/test/pdf/sample-owner123.pdf");
-        sampleUseraao = new File(home, "res/test/pdf/sample-useraao.pdf");
-        sampleCertifiedSigningAllowed = new File(home, "res/test/pdf/sample-certified-signingallowed.pdf");
-        sampleCertifiedNoChangesAllowed = new File(home, "res/test/pdf/sample-certified-nochangesallowed.pdf");
-        sampleCertifiedFormFillingAllowed = new File(home, "res/test/pdf/sample-certified-formfillingallowed.pdf");
-        sampleSigned = new File(home, "res/test/pdf/sample-signed.pdf");
-//        sampleLowprintingOwner123 = new File(home, "res/test/pdf/sample-lowprinting-owner123.pdf");
+        sampleOk = new File(home, "src/test/ok.pdf");
+        sampleRestricted = new File(home, "src/test/sample-restricted.pdf");
+        sample = new File(home, "src/test/pdf/sample.pdf");
+        sampleOpen123 = new File(home, "src/test/pdf/sample-open123.pdf");
+        sampleOpen123Owner123 = new File(home, "src/test/pdf/sample-open123-owner123.pdf");
+        sampleOwner123 = new File(home, "src/test/pdf/sample-owner123.pdf");
+        sampleUseraao = new File(home, "src/test/pdf/sample-useraao.pdf");
+        sampleCertifiedSigningAllowed = new File(home, "src/test/pdf/sample-certified-signingallowed.pdf");
+        sampleCertifiedNoChangesAllowed = new File(home, "src/test/pdf/sample-certified-nochangesallowed.pdf");
+        sampleCertifiedFormFillingAllowed = new File(home, "src/test/pdf/sample-certified-formfillingallowed.pdf");
+        sampleSigned = new File(home, "src/test/pdf/sample-signed.pdf");
+//        sampleLowprintingOwner123 = new File(home, "src/test/pdf/sample-lowprinting-owner123.pdf");
     }
 
     @Override
@@ -607,9 +601,9 @@ public class PDFSignerUnitTest extends TestCase {
         
         
         // Create initial certificates
-        Certificate issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        Certificate issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         referenceIssuerCertSize = issuerCert.getEncoded().length;
-        Certificate signerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(signerKeyPair.getPublic()).setSubject("CN=Signer").setIssuer("CN=Issuer1").build());
+        Certificate signerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(signerKeyPair.getPublic()).setSubject("CN=Signer").setIssuer("CN=Issuer1").build();
         
         // We will only variate the issuer certificate size
         // so the other parameters are not important for this test
@@ -627,7 +621,7 @@ public class PDFSignerUnitTest extends TestCase {
         // Test 2: Increase the size of the certificate with 1 byte and test
         // that the final P7 does not increases with more than 1 byte
         extensionBytes = new byte[1];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         certChain = new Certificate[] {signerCert, issuerCert};
         if (issuerCert.getEncoded().length != referenceIssuerCertSize + 1) {
             throw new Exception("The test should have increased the certificate size by 1 byte");
@@ -638,7 +632,7 @@ public class PDFSignerUnitTest extends TestCase {
         // Test 2: Increase the size of the certificate with 37 bytes and test
         // that the final P7 does not increases with more than 37 bytes
         extensionBytes = new byte[37];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         certChain = new Certificate[] {signerCert, issuerCert};
         if (issuerCert.getEncoded().length != referenceIssuerCertSize + 37) {
             throw new Exception("The test should have increased the certificate size by 37 bytes but was: " + issuerCert.getEncoded().length);
@@ -652,7 +646,7 @@ public class PDFSignerUnitTest extends TestCase {
         // (it turned out that increasing the certificate with 10000 bytes actually made it even larger, 
         //  however that is not important in this case)
         extensionBytes = new byte[10000];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         certChain = new Certificate[] {signerCert, issuerCert};
         int certIncrease = issuerCert.getEncoded().length - referenceIssuerCertSize;
         LOG.debug("increased certificate size with: " + certIncrease);
@@ -666,7 +660,7 @@ public class PDFSignerUnitTest extends TestCase {
         // Test 3: Increase the size of the certificate with at least 30123 bytes and test
         // that the final P7 does not increases more than the certificate
         extensionBytes = new byte[30123];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         certChain = new Certificate[] {signerCert, issuerCert};
         certIncrease = issuerCert.getEncoded().length - referenceIssuerCertSize;
         LOG.debug("increased certificate size with: " + certIncrease);
@@ -696,7 +690,7 @@ public class PDFSignerUnitTest extends TestCase {
         
         // We will only variate the Time-stamp response size
         // so the other parameters are not important for this test
-        Certificate[] certChain = new Certificate[] {converter.getCertificate(new CertBuilder().build())};
+        Certificate[] certChain = new Certificate[] {new CertBuilder().build()};
         CRL[] crlList = new CRL[0];
         byte[] ocsp = "OOOOOOOO".getBytes();
         
@@ -765,7 +759,7 @@ public class PDFSignerUnitTest extends TestCase {
         
         
         // Create initial certificates
-        Certificate[] certChain = new Certificate[] {converter.getCertificate(new CertBuilder().build())};
+        Certificate[] certChain = new Certificate[] {new CertBuilder().build()};
         
         // We will only variate the issuer certificate size
         // so the other parameters are not important for this test
@@ -826,11 +820,14 @@ public class PDFSignerUnitTest extends TestCase {
     }
     
     private X509CRL createCRL(PrivateKey caCrlPrivKey, byte[] data) throws Exception {
-        X509v2CRLBuilder crlGen = new X509v2CRLBuilder(new X500Name("CN=CRL Issuer"), new Date());
+        X509V2CRLGenerator crlGen = new X509V2CRLGenerator();
+        crlGen.setIssuerDN(new X509Name("CN=CRL Issuer"));
+        crlGen.setThisUpdate(new Date());
         crlGen.addCRLEntry(BigInteger.ONE, new Date(), CRLReason.privilegeWithdrawn);
-        crlGen.addExtension(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(data));
-        X509CRLHolder crl = crlGen.build(new JcaContentSignerBuilder("SHA1withRSA").build(caCrlPrivKey));
-        return new JcaX509CRLConverter().getCRL(crl);
+        crlGen.addExtension(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(data));
+        crlGen.setSignatureAlgorithm("SHA1withRSA");
+        X509CRL crl = crlGen.generate(caCrlPrivKey, "BC");
+        return crl;
     }
     
     private int sumCertSizes(Certificate[] certs) throws CertificateEncodingException {
@@ -876,11 +873,11 @@ public class PDFSignerUnitTest extends TestCase {
         
         
         // Create initial certificates
-        Certificate signerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(signerKeyPair.getPublic()).setSubject("CN=Signer").setIssuer("CN=Issuer1").build());
+        Certificate signerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(signerKeyPair.getPublic()).setSubject("CN=Signer").setIssuer("CN=Issuer1").build();
         Certificate[] allCerts = new Certificate[50];
         allCerts[0] = signerCert;
         for (int i = 1; i < 50; i++) {
-            allCerts[i] = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer" + i).setIssuer("CN=Issuer" + i).addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+            allCerts[i] = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer" + i).setIssuer("CN=Issuer" + i).addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         }
         
         // We will only variate the number of issuer certificates
@@ -946,7 +943,7 @@ public class PDFSignerUnitTest extends TestCase {
         CRL[] crlList;
         
         // Create initial certificates
-        Certificate[] certChain = new Certificate[] {converter.getCertificate(new CertBuilder().build())};
+        Certificate[] certChain = new Certificate[] {new CertBuilder().build()};
         CRL[] allCRLs = new CRL[10];
         
         for (int i = 0; i < 10; i++) {
@@ -1021,7 +1018,7 @@ public class PDFSignerUnitTest extends TestCase {
         KeyPair signerKeyPair = CryptoUtils.generateRSA(1024);
         byte[] extensionBytes;
         
-        Certificate signerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(signerKeyPair.getPublic()).setSubject("CN=Signer").setIssuer("CN=Issuer1").build());
+        Certificate signerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(signerKeyPair.getPublic()).setSubject("CN=Signer").setIssuer("CN=Issuer1").build();
         Certificate issuerCert;
         Certificate[] certChain;
         CRL[] crlList;
@@ -1037,7 +1034,7 @@ public class PDFSignerUnitTest extends TestCase {
         
         // Subject, Issuer(4123 extra bytes), 0 extra bytes TS, 0 bytes OCSP, 0 CRLs (0 extra bytes)
         extensionBytes = new byte[4123];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         certChain = new Certificate[] {signerCert, issuerCert};
         crlList = new CRL[0];
         tsc = new MockedTSAClient(0);
@@ -1046,8 +1043,8 @@ public class PDFSignerUnitTest extends TestCase {
         
         // Subject, Issuer(17173 extra bytes), Issuer2 (123 extra bytes), 0 extra bytes TS, 0 bytes OCSP, 0 CRLs (0 extra bytes)
         extensionBytes = new byte[17173];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
-        X509Certificate issuerCert2 = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(new byte[123]))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
+        X509Certificate issuerCert2 = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(new byte[123]))).build();
         certChain = new Certificate[] {signerCert, issuerCert, issuerCert2};
         crlList = new CRL[0];
         tsc = new MockedTSAClient(0);
@@ -1056,7 +1053,7 @@ public class PDFSignerUnitTest extends TestCase {
         
         // Subject, Issuer(4123 extra bytes), 3178 extra bytes TS, 0 bytes OCSP, 0 CRLs (0 extra bytes)
         extensionBytes = new byte[4123];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         certChain = new Certificate[] {signerCert, issuerCert};
         crlList = new CRL[0];
         tsc = new MockedTSAClient(3178);
@@ -1065,8 +1062,8 @@ public class PDFSignerUnitTest extends TestCase {
         
         // Subject, Issuer(17173 extra bytes), Issuer2 (123 extra bytes), 3178 extra bytes TS, 0 bytes OCSP, 0 CRLs (0 extra bytes)
         extensionBytes = new byte[17173];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
-        issuerCert2 = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(new byte[123]))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
+        issuerCert2 = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(new byte[123]))).build();
         certChain = new Certificate[] {signerCert, issuerCert, issuerCert2};
         crlList = new CRL[0];
         tsc = new MockedTSAClient(3178);
@@ -1105,7 +1102,7 @@ public class PDFSignerUnitTest extends TestCase {
         
         // Subject, Issuer(0 extra bytes), 0 extra bytes TS, 0 bytes OCSP, 1 CRLs (0 extra bytes)
         extensionBytes = new byte[0];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         certChain = new Certificate[] {signerCert, issuerCert};
         crlList = new CRL[] {createCRL(signerKeyPair.getPrivate(), new byte[0])};
         tsc = new MockedTSAClient(0);
@@ -1114,7 +1111,7 @@ public class PDFSignerUnitTest extends TestCase {
         
         // Subject, Issuer(17000 extra bytes), 0 extra bytes TS, 0 bytes OCSP, 1 CRLs (5432 extra bytes)
         extensionBytes = new byte[17000];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         certChain = new Certificate[] {signerCert, issuerCert};
         crlList = new CRL[] {createCRL(signerKeyPair.getPrivate(), new byte[5432])};
         tsc = new MockedTSAClient(0);
@@ -1123,7 +1120,7 @@ public class PDFSignerUnitTest extends TestCase {
         
         // Subject, Issuer(17000 extra bytes), 0 extra bytes TS, 0 bytes OCSP, 2 CRLs (5432 extra bytes, 5076 extra bytes)
         extensionBytes = new byte[17000];
-        issuerCert = converter.getCertificate(new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new ASN1ObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build());
+        issuerCert = new CertBuilder().setIssuerPrivateKey(issuerKeyPair.getPrivate()).setSubjectPublicKey(issuerKeyPair.getPublic()).setSubject("CN=Issuer1").setIssuer("CN=Issuer1").addExtension(new CertExt(new DERObjectIdentifier("1.2.3.4"), false, new DERBitString(extensionBytes))).build();
         certChain = new Certificate[] {signerCert, issuerCert};
         crlList = new CRL[] {createCRL(signerKeyPair.getPrivate(), new byte[5432]), createCRL(signerKeyPair.getPrivate(), new byte[5076])};
         tsc = new MockedTSAClient(0);
@@ -1161,7 +1158,7 @@ public class PDFSignerUnitTest extends TestCase {
         
         byte[] pdfbytes = readFile(sample);
         final KeyPair signerKeyPair = CryptoUtils.generateRSA(1024);
-        final Certificate[] certChain = new Certificate[] {converter.getCertificate(new CertBuilder().build())};
+        final Certificate[] certChain = new Certificate[] {new CertBuilder().build()};
         final Certificate signerCertificate = certChain[0];
         
         // any small value
@@ -1210,7 +1207,7 @@ public class PDFSignerUnitTest extends TestCase {
             }
 
             @Override
-            public List<Certificate> getSigningCertificateChain() throws CryptoTokenOfflineException {
+            public Collection<Certificate> getSigningCertificateChain() throws CryptoTokenOfflineException {
                 return Arrays.asList(certChain);
             }
 
@@ -1273,7 +1270,9 @@ public class PDFSignerUnitTest extends TestCase {
         }
         
         RequestContext context = new RequestContext();
-        RequestMetadata.getInstance(context).put(RequestContext.METADATA_PDFPASSWORD, password);
+        Map<String, String> metadata = new HashMap<String, String>();
+        metadata.put(RequestContext.METADATA_PDFPASSWORD, password);
+        context.put(RequestContext.REQUEST_METADATA, metadata);
         
         final GenericSignResponse response = 
                 (GenericSignResponse) workerSession.process(WORKER1, 

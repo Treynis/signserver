@@ -12,30 +12,48 @@
  *************************************************************************/
 package org.signserver.validationservice.server;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import java.security.cert.*;
-import java.util.*;
+import java.security.cert.CertPathValidatorException;
+import java.security.cert.CertStore;
+import java.security.cert.CertStoreException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateExpiredException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.CertificateNotYetValidException;
+import java.security.cert.CertificateParsingException;
+import java.security.cert.PKIXCertPathChecker;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
+
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ocsp.OCSPObjectIdentifiers;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaCertStore;
-import org.bouncycastle.cert.ocsp.*;
-import org.bouncycastle.cert.ocsp.jcajce.JcaCertificateID;
+import org.bouncycastle.ocsp.BasicOCSPResp;
+import org.bouncycastle.ocsp.CertificateID;
+import org.bouncycastle.ocsp.OCSPException;
+import org.bouncycastle.ocsp.OCSPReq;
+import org.bouncycastle.ocsp.OCSPReqGenerator;
+import org.bouncycastle.ocsp.OCSPResp;
 import org.bouncycastle.ocsp.OCSPRespStatus;
-import org.bouncycastle.operator.OperatorCreationException;
-import org.bouncycastle.operator.jcajce.JcaContentVerifierProviderBuilder;
-import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
-import org.bouncycastle.util.Store;
+import org.bouncycastle.ocsp.SingleResp;
 import org.ejbca.util.CertTools;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
 import org.signserver.validationservice.common.Validation;
-//import org.signserver.validationservice.common.X509Certificate;
+import org.signserver.validationservice.common.X509Certificate;
 
 /**
  * Stateful OCSP PKIX certificate path checker.
@@ -85,7 +103,7 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
         }
         X509Certificate x509Cert = (X509Certificate) cert;
 
-        log.debug("check method called with certificate " + CertTools.getSubjectDN(x509Cert));
+        log.debug("check method called with certificate " + x509Cert.getSubject());
 
         try {
 
@@ -93,11 +111,11 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
             //throw exception (for now, later maybe change to look for predefined ocsp url for each issuer ?)
             String oCSPURLString = CertTools.getAuthorityInformationAccessOcspUrl(x509Cert);
             if (oCSPURLString == null || oCSPURLString.length() == 0) {
-                throw new SignServerException("OCSP service locator url missing for certificate " + CertTools.getSubjectDN(x509Cert));
+                throw new SignServerException("OCSP service locator url missing for certificate " + x509Cert.getSubject());
             }
 
             if (cACert == null) {
-                throw new SignServerException("Issuer of certificate : " + CertTools.getSubjectDN(x509Cert) + " not passed to OCSPPathChecker");
+                throw new SignServerException("Issuer of certificate : " + x509Cert.getSubject() + " not passed to OCSPPathChecker");
             }
             //generate ocsp request for current certificate and send to ocsp responder
             OCSPReq req = generateOCSPRequest(cACert, x509Cert);
@@ -128,11 +146,11 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
      * @return basic ocsp request for single certificate
      * @throws OCSPException
      */
-    protected OCSPReq generateOCSPRequest(X509Certificate issuerCert, X509Certificate cert) throws OCSPException, CertificateEncodingException, OperatorCreationException {
-        CertificateID idToCheck = new JcaCertificateID(new JcaDigestCalculatorProviderBuilder().build().get(CertificateID.HASH_SHA1), issuerCert, cert.getSerialNumber());
-        OCSPReqBuilder reqgen = new OCSPReqBuilder();
+    protected OCSPReq generateOCSPRequest(X509Certificate issuerCert, X509Certificate cert) throws OCSPException {
+        CertificateID idToCheck = new CertificateID(CertificateID.HASH_SHA1, issuerCert, cert.getSerialNumber());
+        OCSPReqGenerator reqgen = new OCSPReqGenerator();
         reqgen.addRequest(idToCheck);
-        return reqgen.build();
+        return reqgen.generate();
     }
 
     /**
@@ -232,7 +250,7 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
      * @throws CryptoTokenOfflineException 
      * @throws IllegalRequestException 
      */
-    protected void parseAndVerifyOCSPResponse(X509Certificate x509Cert, byte[] derocspresponse) throws NoSuchProviderException, OCSPException, NoSuchAlgorithmException, CertStoreException, IOException, SignServerException, CertificateParsingException, IllegalRequestException, CryptoTokenOfflineException, OperatorCreationException, CertificateEncodingException {
+    protected void parseAndVerifyOCSPResponse(X509Certificate x509Cert, byte[] derocspresponse) throws NoSuchProviderException, OCSPException, NoSuchAlgorithmException, CertStoreException, IOException, SignServerException, CertificateParsingException, IllegalRequestException, CryptoTokenOfflineException {
         //parse received ocsp response
         OCSPResp ocspresp = new OCSPResp(derocspresponse);
         if (ocspresp.getStatus() != OCSPRespStatus.SUCCESSFUL) {
@@ -253,13 +271,13 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
 
         //first check if CA issuing certificate signed the response
         //since it is expected to be the most common case
-        if (basicOCSPResponse.isSignatureValid(new JcaContentVerifierProviderBuilder().setProvider("BC").build(cACert.getPublicKey()))) {
+        if (basicOCSPResponse.verify(cACert.getPublicKey(), "BC")) {
             ocspRespSignerCertificate = cACert;
         }
         //if CA did not sign the ocsp response, look for authorized ocsp responses from properties or from certificate chain received with response
         if (ocspRespSignerCertificate == null) {
             log.debug("OCSP Response is not signed by issuing CA. Looking for authorized responders");
-            if (basicOCSPResponse.getCerts() == null) {
+            if (basicOCSPResponse.getCerts("BC") == null) {
                 log.debug("OCSP Response does not contain certificate chain, trying to verify response using one of configured authorized ocsp responders");
 
                 //certificate chain is not present in response received 
@@ -280,7 +298,7 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
             }
         }
 
-        log.debug("OCSP response signed by :  " + CertTools.getSubjectDN(ocspRespSignerCertificate));
+        log.debug("OCSP response signed by :  " + ocspRespSignerCertificate.getSubject());
         // validating ocsp signers certificate
         // Check if responders certificate has id-pkix-ocsp-nocheck extension, in which case we do not validate (perform revocation check on ) ocsp certs for lifetime of certificate
         // using CRL RFC 2560 sect 4.2.2.2.1
@@ -290,9 +308,9 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
             try {
                 ocspRespSignerCertificate.checkValidity();
             } catch (CertificateExpiredException e) {
-                throw new SignServerException("Certificate signing the ocsp response has expired. OCSP Responder Certificate Subject DN : " + CertTools.getSubjectDN(ocspRespSignerCertificate));
+                throw new SignServerException("Certificate signing the ocsp response has expired. OCSP Responder Certificate Subject DN : " + ocspRespSignerCertificate.getSubject());
             } catch (CertificateNotYetValidException e) {
-                throw new SignServerException("Certificate signing the ocsp response is not yet valid. OCSP Responder Certificate Subject DN : " + CertTools.getSubjectDN(ocspRespSignerCertificate));
+                throw new SignServerException("Certificate signing the ocsp response is not yet valid. OCSP Responder Certificate Subject DN : " + ocspRespSignerCertificate.getSubject());
             }
         } else {
             // check if CDP exists in ocsp signers certificate
@@ -347,28 +365,26 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
      * @throws NoSuchAlgorithmException 
      * @throws CertStoreException 
      */
-    protected X509Certificate getAuthorizedOCSPRespondersCertificateFromOCSPResponse(BasicOCSPResp basicOCSPResponse) throws NoSuchAlgorithmException, NoSuchProviderException, OCSPException, CertStoreException, CertificateEncodingException, OperatorCreationException {
+    protected X509Certificate getAuthorizedOCSPRespondersCertificateFromOCSPResponse(BasicOCSPResp basicOCSPResponse) throws NoSuchAlgorithmException, NoSuchProviderException, OCSPException, CertStoreException {
         X509Certificate retCert = null;
         X509Certificate tempCert = null;
-        X509CertificateHolder[] certs = basicOCSPResponse.getCerts();
-        Store ocspRespCertStore = new JcaCertStore(Arrays.asList(certs));
-        
+        CertStore ocspRespCertStore = basicOCSPResponse.getCertificates("Collection", "BC");
 
         //search for certificate having OCSPSigner extension		
         X509ExtendedKeyUsageExistsCertSelector certSel = new X509ExtendedKeyUsageExistsCertSelector("1.3.6.1.5.5.7.3.9");
-        Iterator<?> certsIter = ocspRespCertStore.getMatches(certSel).iterator();
+        Iterator<?> certsIter = ocspRespCertStore.getCertificates(certSel).iterator();
 
         while (certsIter.hasNext()) {
             try {
                 // direct cast to org.signserver.validationservice.common.X509Certificate fails
-                tempCert = (java.security.cert.X509Certificate) certsIter.next();
+                tempCert = X509Certificate.getInstance((java.security.cert.X509Certificate) certsIter.next());
             } catch (Exception e) {
                 //eat up exception 
                 continue;
             }
             //it might be the case that certchain contains more than one certificate with OCSPSigner extension
             //check if certificate verifies the signature on the response 
-            if (tempCert != null && basicOCSPResponse.isSignatureValid(new JcaContentVerifierProviderBuilder().setProvider("BC").build(tempCert.getPublicKey()))) {
+            if (tempCert != null && basicOCSPResponse.verify(tempCert.getPublicKey(), "BC")) {
                 retCert = tempCert;
                 break;
             }
@@ -385,14 +401,14 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
      * @throws NoSuchProviderException
      * @throws OCSPException
      */
-    protected X509Certificate getAuthorizedOCSPRespondersCertificateFromProperties(BasicOCSPResp basicOCSPResponse) throws NoSuchProviderException, OCSPException, OperatorCreationException {
+    protected X509Certificate getAuthorizedOCSPRespondersCertificateFromProperties(BasicOCSPResp basicOCSPResponse) throws NoSuchProviderException, OCSPException {
         log.debug("Searching for Authorized OCSP Responder certificate from PROPERTIES");
         if (this.authorizedOCSPResponderCerts == null || this.authorizedOCSPResponderCerts.isEmpty()) {
             return null;
         }
         for (X509Certificate ocspCert : this.authorizedOCSPResponderCerts) {
-            if (basicOCSPResponse.isSignatureValid(new JcaContentVerifierProviderBuilder().setProvider("BC").build(ocspCert.getPublicKey()))) {
-                log.debug("Found Authorized OCSP Responder's certificate, signing ocsp response. found cert : " + CertTools.getSubjectDN(ocspCert));
+            if (basicOCSPResponse.verify(ocspCert.getPublicKey(), "BC")) {
+                log.debug("Found Authorized OCSP Responder's certificate, signing ocsp response. found cert : " + ocspCert.getSubject());
                 return ocspCert;
             }
         }

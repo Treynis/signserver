@@ -14,27 +14,23 @@ package org.signserver.ejb;
 
 import java.util.*;
 import javax.annotation.PostConstruct;
-import javax.ejb.EJB;
 import javax.ejb.EJBException;
 import javax.ejb.Stateless;
 import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.persistence.PersistenceException;
 import org.apache.log4j.Logger;
-import org.signserver.common.*;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.ResyncException;
+import org.signserver.common.SignServerUtil;
+import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
-import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
-import org.signserver.server.GlobalConfigurationCache;
-import org.signserver.server.config.entities.FileBasedGlobalConfigurationDataService;
-import org.signserver.server.config.entities.GlobalConfigurationDataBean;
-import org.signserver.server.config.entities.GlobalConfigurationDataService;
-import org.signserver.server.config.entities.IGlobalConfigurationDataService;
-import org.signserver.server.log.EventType;
+import org.signserver.server.*;
 import org.signserver.server.log.ISystemLogger;
-import org.signserver.server.log.LogMap;
-import org.signserver.server.log.ModuleType;
 import org.signserver.server.log.SystemLoggerException;
 import org.signserver.server.log.SystemLoggerFactory;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
+import org.signserver.server.timedservices.ITimedService;
 
 /**
  * The implementation of the GlobalConfiguration Session Bean.
@@ -52,20 +48,16 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     private static final ISystemLogger AUDITLOG = SystemLoggerFactory
             .getInstance().getLogger(GlobalConfigurationSessionBean.class);
 
-    @EJB
-    private IWorkerManagerSessionLocal workerManagerSession;
-    
-
     EntityManager em;
-
     private static final long serialVersionUID = 1L;
-
+    
     static {
         SignServerUtil.installBCProvider();
     }
-
+    
     private IGlobalConfigurationDataService globalConfigurationDataService;
-    private final GlobalConfigurationCache cache = GlobalConfigurationCache.getInstance();
+    private IWorkerConfigDataService workerConfigDataService;
+    private SignServerContext workerContext;
     
     @PostConstruct
     public void create() {
@@ -74,14 +66,18 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
                 LOG.debug("No EntityManager injected. Running without database.");
             }
             globalConfigurationDataService = new FileBasedGlobalConfigurationDataService(FileBasedDatabaseManager.getInstance());
+            workerConfigDataService = new FileBasedWorkerConfigDataService(FileBasedDatabaseManager.getInstance());
+            workerContext = new SignServerContext(em, new FileBasedKeyUsageCounterDataService(FileBasedDatabaseManager.getInstance()));
         } else {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("EntityManager injected. Running with database.");
             }
             globalConfigurationDataService = new GlobalConfigurationDataService(em);
+            workerConfigDataService = new WorkerConfigDataService(em);
+            workerContext = new SignServerContext(em, new KeyUsageCounterDataService(em));
         }
     }
-    
+
     private IGlobalConfigurationDataService getGlobalConfigurationDataService() {
         return globalConfigurationDataService;
     }
@@ -92,10 +88,10 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     @Override
     public void setProperty(String scope, String key, String value) {
 
-        auditLog(EventType.SET_GLOBAL_PROPERTY, scope + key, value);
+        auditLog("setProperty", scope + key, value);
 
-        if (cache.getCurrentState().equals(GlobalConfiguration.STATE_OUTOFSYNC)) {
-            cache.getCachedGlobalConfig().setProperty(propertyKeyHelper(scope, key), value);
+        if (GlobalConfigurationCache.getCurrentState().equals(GlobalConfiguration.STATE_OUTOFSYNC)) {
+            GlobalConfigurationCache.getCachedGlobalConfig().setProperty(propertyKeyHelper(scope, key), value);
         } else {
             setPropertyHelper(propertyKeyHelper(scope, key), value);
         }
@@ -125,18 +121,18 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     public boolean removeProperty(String scope, String key) {
         boolean retval = false;
 
-        auditLog(EventType.REMOVE_GLOBAL_PROPERTY, scope + key, null);
+        auditLog("removeProperty", scope + key, null);
 
-        if (cache.getCurrentState().equals(GlobalConfiguration.STATE_OUTOFSYNC)) {
-            cache.getCachedGlobalConfig().remove(propertyKeyHelper(scope, key));
+        if (GlobalConfigurationCache.getCurrentState().equals(GlobalConfiguration.STATE_OUTOFSYNC)) {
+            GlobalConfigurationCache.getCachedGlobalConfig().remove(propertyKeyHelper(scope, key));
         } else {
             try {
                 retval = getGlobalConfigurationDataService().removeGlobalProperty(propertyKeyHelper(scope, key));
-                cache.setCachedGlobalConfig(null);
+                GlobalConfigurationCache.setCachedGlobalConfig(null);
             } catch (Throwable e) {
                 LOG.error("Error connecting to database, configuration is un-syncronized", e);
-                cache.setCurrentState(GlobalConfiguration.STATE_OUTOFSYNC);
-                cache.getCachedGlobalConfig().remove(propertyKeyHelper(scope, key));
+                GlobalConfigurationCache.setCurrentState(GlobalConfiguration.STATE_OUTOFSYNC);
+                GlobalConfigurationCache.getCachedGlobalConfig().remove(propertyKeyHelper(scope, key));
             }
         }
         return retval;
@@ -149,8 +145,9 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     public GlobalConfiguration getGlobalConfiguration() {
         GlobalConfiguration retval;
 
-        if (cache.getCachedGlobalConfig() == null) {
-            Properties properties = new Properties();
+        if (GlobalConfigurationCache.getCachedGlobalConfig() == null) {
+            GlobalConfigurationFileParser staticConfig = GlobalConfigurationFileParser.getInstance();
+            Properties properties = staticConfig.getStaticGlobalConfiguration();
 
             Iterator<GlobalConfigurationDataBean> iter = getGlobalConfigurationDataService().findAll().iterator();
             while (iter.hasNext()) {
@@ -171,12 +168,78 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
                 }
             }
 
-            cache.setCachedGlobalConfig(properties);
+            GlobalConfigurationCache.setCachedGlobalConfig(properties);
         }
-        retval = new GlobalConfiguration(cache.getCachedGlobalConfig(), 
-                cache.getCurrentState(), 
-                CompileTimeSettings.getInstance().getProperty(CompileTimeSettings.SIGNSERVER_VERSION));
+        retval = new GlobalConfiguration(GlobalConfigurationCache.getCachedGlobalConfig(), GlobalConfigurationCache.getCurrentState());
 
+        return retval;
+    }
+
+    /**
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#getWorkers(int)
+     */
+    @Override
+    public List<Integer> getWorkers(int workerType) {
+        ArrayList<Integer> retval = new ArrayList<Integer>();
+        GlobalConfiguration gc = getGlobalConfiguration();
+
+        Enumeration<String> en = gc.getKeyEnumeration();
+        while (en.hasMoreElements()) {
+            String key = en.nextElement();
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("getWorkers, processing key : " + key);
+            }
+            if (key.startsWith("GLOB.WORKER")) {
+                retval = (ArrayList<Integer>) getWorkerHelper(retval, key, workerType, false);
+            }
+            if (key.startsWith("GLOB.SIGNER")) {
+                retval = (ArrayList<Integer>) getWorkerHelper(retval, key, workerType, true);
+            }
+        }
+        return retval;
+    }
+
+    private List<Integer> getWorkerHelper(List<Integer> retval, String key, int workerType, boolean signersOnly) {
+
+        String unScopedKey = key.substring("GLOB.".length());
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("unScopedKey : " + unScopedKey);
+        }
+        String strippedKey = key.substring("GLOB.WORKER".length());
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("strippedKey : " + strippedKey);
+        }
+        String[] splittedKey = strippedKey.split("\\.");
+        if (LOG.isTraceEnabled()) {
+            LOG.trace("splittedKey : " + splittedKey.length + ", " + splittedKey[0]);
+        }
+        if (splittedKey.length > 1) {
+            if (splittedKey[1].equals("CLASSPATH")) {
+                int id = Integer.parseInt(splittedKey[0]);
+                if (workerType == GlobalConfiguration.WORKERTYPE_ALL) {
+                    retval.add(new Integer(id));
+                } else {
+                    IWorker obj = WorkerFactory.getInstance().getWorker(id, workerConfigDataService, this, workerContext);
+                    if (workerType == GlobalConfiguration.WORKERTYPE_PROCESSABLE) {
+                        if (obj instanceof IProcessable) {
+                            if (LOG.isDebugEnabled()) {
+                                LOG.debug("Adding Signer " + id);
+                            }
+                            retval.add(new Integer(id));
+                        }
+                    } else {
+                        if (workerType == GlobalConfiguration.WORKERTYPE_SERVICES && !signersOnly) {
+                            if (obj instanceof ITimedService) {
+                                if (LOG.isDebugEnabled()) {
+                                    LOG.debug("Adding Service " + id);
+                                }
+                                retval.add(new Integer(id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
         return retval;
     }
 
@@ -186,14 +249,14 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     @Override
     public void resync() throws ResyncException {
 
-        auditLog(EventType.GLOBAL_CONFIG_RESYNC, null, null); // TODO Should handle errors
+        auditLog("resync", null, null); // TODO Should handle errors
 
-        if (!cache.getCurrentState().equals(GlobalConfiguration.STATE_OUTOFSYNC)) {
+        if (!GlobalConfigurationCache.getCurrentState().equals(GlobalConfiguration.STATE_OUTOFSYNC)) {
             String message = "Error it is only possible to resync a database that have the state " + GlobalConfiguration.STATE_OUTOFSYNC;
             LOG.error(message);
             throw new ResyncException(message);
         }
-        if (cache.getCachedGlobalConfig() == null) {
+        if (GlobalConfigurationCache.getCachedGlobalConfig() == null) {
             String message = "Error resyncing database, cached global configuration doesn't exist.";
             LOG.error(message);
             throw new ResyncException(message);
@@ -222,7 +285,7 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
         }
 
         // add all properties
-        Iterator<?> keySet = cache.getCachedGlobalConfig().keySet().iterator();
+        Iterator<?> keySet = GlobalConfigurationCache.getCachedGlobalConfig().keySet().iterator();
         while (keySet.hasNext()) {
             String fullKey = (String) keySet.next();
 
@@ -230,18 +293,18 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
                 String scope = GlobalConfiguration.SCOPE_GLOBAL;
                 String key = fullKey.substring(GlobalConfiguration.SCOPE_GLOBAL.length());
 
-                setProperty(scope, key, cache.getCachedGlobalConfig().getProperty(fullKey));
+                setProperty(scope, key, GlobalConfigurationCache.getCachedGlobalConfig().getProperty(fullKey));
             } else {
                 if (fullKey.startsWith(GlobalConfiguration.SCOPE_NODE)) {
                     String scope = GlobalConfiguration.SCOPE_NODE;
                     String key = fullKey.substring(thisNodeConfig.length());
-                    setProperty(scope, key, cache.getCachedGlobalConfig().getProperty(fullKey));
+                    setProperty(scope, key, GlobalConfigurationCache.getCachedGlobalConfig().getProperty(fullKey));
                 }
             }
         }
 
         // Set the state to insync.
-        cache.setCurrentState(GlobalConfiguration.STATE_INSYNC);
+        GlobalConfigurationCache.setCurrentState(GlobalConfiguration.STATE_INSYNC);
     }
 
     /**
@@ -249,16 +312,16 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
      */
     @Override
     public void reload() {
-        auditLog(EventType.GLOBAL_CONFIG_RELOAD, null, null);
+        auditLog("reload", null, null);
 
-        workerManagerSession.flush();
-        cache.setCachedGlobalConfig(null);
+        GlobalConfigurationFileParser.getInstance().reloadConfiguration();
+        GlobalConfigurationCache.setCachedGlobalConfig(null);
         getGlobalConfiguration();
 
         // Set the state to insync.
-        cache.setCurrentState(GlobalConfiguration.STATE_INSYNC);
+        GlobalConfigurationCache.setCurrentState(GlobalConfiguration.STATE_INSYNC);
     }
-    
+
     /**
      * Helper method used to set properties in a table.
      * @param tempKey
@@ -267,30 +330,32 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     private void setPropertyHelper(String key, String value) {
         try {
             getGlobalConfigurationDataService().setGlobalProperty(key, value);
-            cache.setCachedGlobalConfig(null);
+            GlobalConfigurationCache.setCachedGlobalConfig(null);
         } catch (Throwable e) {
             String message = "Error connecting to database, configuration is un-syncronized :";
             LOG.error(message, e);
-            cache.setCurrentState(GlobalConfiguration.STATE_OUTOFSYNC);
-            cache.getCachedGlobalConfig().setProperty(key, value);
+            GlobalConfigurationCache.setCurrentState(GlobalConfiguration.STATE_OUTOFSYNC);
+            GlobalConfigurationCache.getCachedGlobalConfig().setProperty(key, value);
         }
 
     }
 
-    private static void auditLog(final EventType eventType, final String property,
+    private static void auditLog(final String operation, final String property,
             final String value) {
         try {
-            final LogMap logMap = new LogMap();
+            final Map<String, String> logMap = new HashMap<String, String>();
 
-            if (property != null) {
-                logMap.put(IGlobalConfigurationSession.LOG_PROPERTY,
+            logMap.put(ISystemLogger.LOG_CLASS_NAME,
+                    GlobalConfigurationSessionBean.class.getSimpleName());
+            logMap.put(IGlobalConfigurationSession.LOG_OPERATION,
+                    operation);
+            logMap.put(IGlobalConfigurationSession.LOG_PROPERTY,
                     property);
-            }
             if (value != null) {
                 logMap.put(IGlobalConfigurationSession.LOG_VALUE,
                         value);
             }
-            AUDITLOG.log(eventType, ModuleType.GLOBAL_CONFIG, "", logMap);
+            AUDITLOG.log(logMap);
         } catch (SystemLoggerException ex) {
             LOG.error("Audit log failure", ex);
             throw new EJBException("Audit log failure", ex);

@@ -16,7 +16,6 @@ import java.io.PrintStream;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 
 import org.signserver.common.CryptoTokenStatus;
 import org.signserver.common.WorkerConfig;
@@ -37,9 +36,9 @@ public class ValidationStatus extends CryptoTokenStatus {
     
     private HashMap<Integer, String> validatorStatuses;
 
-    public ValidationStatus(int workerId, int tokenStatus, List<String> errors, WorkerConfig config,
+    public ValidationStatus(int workerId, int tokenStatus, WorkerConfig config,
             HashMap<Integer, String> validatorStatuses) {
-        super(workerId, tokenStatus, errors, config);
+        super(workerId, tokenStatus, config);
         this.validatorStatuses = validatorStatuses;
     }
 

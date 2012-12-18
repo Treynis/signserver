@@ -15,17 +15,23 @@ package org.signserver.module.xmlsigner;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.security.*;
+import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PublicKey;
 import java.util.Collection;
+
 import org.bouncycastle.jce.ECKeyUtil;
 import org.bouncycastle.jce.PKCS10CertificationRequest;
 import org.bouncycastle.util.encoders.Hex;
 import org.ejbca.util.Base64;
 import org.signserver.common.Base64SignerCertReqData;
-import org.signserver.common.KeyTestResult;
 import org.signserver.common.PKCS10CertReqInfo;
 import org.signserver.common.SignServerUtil;
+import org.signserver.common.KeyTestResult;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
 import org.signserver.testutils.TestingSecurityManager;
 
 /**
@@ -41,8 +47,6 @@ public class AnySignerTest extends ModulesTestCase {
     /** WORKERID used in this test case as defined in 
      * junittest-part-config.properties for XMLSigner. */
     private static final int WORKERID = 5803;
-    
-    private static final int[] WORKERS = new int[] {5676, 5679, 5681, 5682, 5683, 5802, 5803};
 
     private static String signserverhome;
 
@@ -52,6 +56,9 @@ public class AnySignerTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
         signserverhome = System.getenv("SIGNSERVER_HOME");
         assertNotNull("Please set SIGNSERVER_HOME environment variable", signserverhome);
     }
@@ -120,7 +127,7 @@ public class AnySignerTest extends ModulesTestCase {
         
         // Generate CSR
         final PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA",
-                "CN=test01GenerateKey,C=SE", null);
+                "CN=test01GenerateKey", null);
         Base64SignerCertReqData data = (Base64SignerCertReqData) workerSession
                 .getCertificateRequest(WORKERID, certReqInfo, false, false);
         byte[] reqBytes = data.getBase64CertReq();
@@ -130,10 +137,6 @@ public class AnySignerTest extends ModulesTestCase {
         final PublicKey actualPubKey = req.getPublicKey();
 
         assertEquals("key in request", pubKey, actualPubKey);
-        
-        // Test that the DN is in the correct order
-        String actualDN = req.getCertificationRequestInfo().getSubject().toString();
-        assertTrue("dn: " + actualDN, actualDN.startsWith("CN=test01GenerateKey") && actualDN.endsWith("C=SE"));
     }
 
     /**
@@ -244,9 +247,11 @@ public class AnySignerTest extends ModulesTestCase {
     }
 
     public void test99TearDownDatabase() throws Exception {
-        for (int workerId : WORKERS) {
-            removeWorker(workerId);
-        }
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID)
+        });
+        workerSession.reloadConfiguration(WORKERID);
     }
 
     public static String createKeyHash(byte[] key) {

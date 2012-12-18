@@ -12,11 +12,16 @@
  *************************************************************************/
 package org.signserver.common;
 
-import java.io.*;
-import java.security.cert.Certificate;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+
 import org.apache.log4j.Logger;
+import org.signserver.validationservice.common.ICertificate;
 import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
 
@@ -108,7 +113,7 @@ public class GenericValidationResponse extends ProcessResponse {
     /**
      * @return The signer's certificate or null if it could not be determined.
      */
-    public Certificate getSignerCertificate() {
+    public ICertificate getSignerCertificate() {
         if (certificateValidateResponse != null) {
             return certificateValidateResponse.getValidation().getCertificate();
         }
@@ -128,7 +133,7 @@ public class GenericValidationResponse extends ProcessResponse {
     /**
      * @return The CA certificate chain included in the document.
      */
-    public List<Certificate> getCAChain() {
+    public List<ICertificate> getCAChain() {
         if (certificateValidateResponse != null) {
             return certificateValidateResponse.getValidation().getCAChain();
         }

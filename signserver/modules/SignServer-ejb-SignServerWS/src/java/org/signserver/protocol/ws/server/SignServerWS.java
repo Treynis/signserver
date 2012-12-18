@@ -24,18 +24,36 @@ import javax.naming.NamingException;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
+
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.signserver.common.*;
+import org.signserver.common.CompileTimeSettings;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.ISignResponse;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.InvalidWorkerIdException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
+import org.signserver.common.ProcessableConfig;
+import org.signserver.common.RequestAndResponseManager;
+import org.signserver.common.RequestContext;
+import org.signserver.common.ServiceLocator;
+import org.signserver.common.SignServerException;
+import org.signserver.common.SignerStatus;
+import org.signserver.common.WorkerStatus;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.healthcheck.HealthCheckUtils;
-import org.signserver.protocol.ws.*;
+import org.signserver.protocol.ws.Certificate;
+import org.signserver.protocol.ws.ISignServerWS;
+import org.signserver.protocol.ws.ProcessRequestWS;
+import org.signserver.protocol.ws.ProcessResponseWS;
+import org.signserver.protocol.ws.WorkerStatusWS;
 import org.signserver.server.CertificateClientCredential;
 import org.signserver.server.IClientCredential;
 import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.log.IWorkerLogger;
-import org.signserver.server.log.LogMap;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
 
 /**
@@ -112,7 +130,7 @@ public class SignServerWS implements ISignServerWS {
             retval.add(resp);
         } else {
             // All Workers
-            List<Integer> signers = getWorkerSession().getWorkers(GlobalConfiguration.WORKERTYPE_PROCESSABLE);
+            List<Integer> signers = getGlobalConfigurationSession().getWorkers(GlobalConfiguration.WORKERTYPE_PROCESSABLE);
             for (Iterator<Integer> iterator = signers.iterator(); iterator.hasNext();) {
                 int next = iterator.next();
                 if (errors.isEmpty()) {
@@ -188,24 +206,18 @@ public class SignServerWS implements ISignServerWS {
         }
         requestContext.put(RequestContext.CLIENT_CREDENTIAL, credential);
         
-        
-        final LogMap logMap = LogMap.getInstance(requestContext);
+        final Map<String, String> logMap = new HashMap<String, String>();
+        requestContext.put(RequestContext.LOGMAP, logMap);
 
-        final String xForwardedFor = servletRequest.getHeader(RequestContext.X_FORWARDED_FOR);
-        
         // Add HTTP specific log entries
         logMap.put(IWorkerLogger.LOG_REQUEST_FULLURL, 
                 servletRequest.getRequestURL().append("?")
                 .append(servletRequest.getQueryString()).toString());
         logMap.put(IWorkerLogger.LOG_REQUEST_LENGTH, 
                 servletRequest.getHeader("Content-Length"));
-        logMap.put(IWorkerLogger.LOG_XFORWARDEDFOR, xForwardedFor);
+        logMap.put(IWorkerLogger.LOG_XFORWARDEDFOR,
+                servletRequest.getHeader("X-Forwarded-For"));
 
-        
-        if (xForwardedFor != null) {
-            requestContext.put(RequestContext.X_FORWARDED_FOR, xForwardedFor);
-        }
-        
         int workerId = getWorkerId(workerIdOrName);
 
         ArrayList<Certificate> signerCertificateChain = getSignerCertificateChain(workerId);

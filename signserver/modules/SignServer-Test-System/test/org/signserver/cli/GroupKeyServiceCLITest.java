@@ -16,9 +16,9 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.apache.log4j.Logger;
-import org.signserver.testutils.CLITestHelper;
-import static org.signserver.testutils.CLITestHelper.assertPrinted;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
+import org.signserver.testutils.TestingSecurityManager;
 
 /** 
  * Class used to test the basic aspects of the SignServer CLI related to 
@@ -35,8 +35,6 @@ public class GroupKeyServiceCLITest extends ModulesTestCase {
     private static final Logger LOG = Logger.getLogger(SignServerCLITest.class);
     
     private static final String TESTGSID = "1023";
-
-    private CLITestHelper cli = getAdminCLI();
     
     @Override
     protected void setUp() throws Exception {
@@ -44,66 +42,69 @@ public class GroupKeyServiceCLITest extends ModulesTestCase {
     }
     
     public void testSetupGroupKeyService() throws Exception {
-        LOG.debug(">testSetupGroupKeyService");
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("reload", "all"));
+        TestUtils.assertSuccessfulExecution(new String[]{"reload",
+                    "all"});
 
-        assertTrue(new File(getSignServerHome() + "/res/test/test_add_groupkeyservice_configuration.properties").exists());
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("setproperties", getSignServerHome() + "/res/test/test_add_groupkeyservice_configuration.properties"));
-        assertPrinted("", cli.getOut(), "Setting the property NAME to Test1 for worker 1023");
+        assertTrue(new File(getSignServerHome() + "/src/test/test_add_groupkeyservice_configuration.properties").exists());
+        TestUtils.assertSuccessfulExecution(new String[]{"setproperties",
+                    getSignServerHome() + "/src/test/test_add_groupkeyservice_configuration.properties"});
+        assertTrue(TestUtils.grepTempOut("Setting the property NAME to Test1 for worker 1023"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("reload", TESTGSID));
+        TestUtils.assertSuccessfulExecution(new String[]{"reload",
+                    TESTGSID});
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("getstatus", "complete", TESTGSID));
+        TestUtils.assertSuccessfulExecution(new String[]{"getstatus",
+                    "complete",
+                    TESTGSID});
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("groupkeyservice", "switchenckey", "" + TESTGSID));
-        assertPrinted("", cli.getOut(), "key switched successfully");
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("groupkeyservice", "switchenckey", "Test1"));
-        assertPrinted("", cli.getOut(), "key switched successfully");
+        TestUtils.assertSuccessfulExecution(new String[]{"groupkeyservice",
+                    "switchenckey", "" + TESTGSID});
+        assertTrue(TestUtils.grepTempOut("key switched successfully"));
+        TestUtils.assertSuccessfulExecution(new String[]{"groupkeyservice",
+                    "switchenckey", "Test1"});
+        assertTrue(TestUtils.grepTempOut("key switched successfully"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("groupkeyservice", "pregeneratekeys", "" + TESTGSID, "1"));
-        assertPrinted("", cli.getOut(), "1 Pregenerated successfully");
+        TestUtils.assertSuccessfulExecution(new String[]{"groupkeyservice",
+                    "pregeneratekeys", "" + TESTGSID, "1"});
+        assertTrue(TestUtils.grepTempOut("1 Pregenerated successfully"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("groupkeyservice", "pregeneratekeys", "" + TESTGSID, "101"));
-        assertPrinted("", cli.getOut(), "101 Pregenerated successfully");
+        TestUtils.assertSuccessfulExecution(new String[]{"groupkeyservice",
+                    "pregeneratekeys", "" + TESTGSID, "101"});
+        assertTrue(TestUtils.grepTempOut("101 Pregenerated successfully"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("groupkeyservice", "pregeneratekeys", "" + TESTGSID, "1000"));
-        assertPrinted("", cli.getOut(), "1000 Pregenerated successfully");
+        TestUtils.assertSuccessfulExecution(new String[]{"groupkeyservice",
+                    "pregeneratekeys", "" + TESTGSID, "1000"});
+        assertTrue(TestUtils.grepTempOut("1000 Pregenerated successfully"));
 
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
         String startDate = dateFormat.format(new Date(0));
         String endDate = dateFormat.format(new Date(System.currentTimeMillis() + 120000));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("groupkeyservice", "removegroupkeys", "" + TESTGSID, "created", startDate, endDate));
-        assertPrinted("", cli.getOut(), "1102 Group keys removed");
+        TestUtils.assertSuccessfulExecution(new String[]{"groupkeyservice",
+                    "removegroupkeys", "" + TESTGSID, "created", startDate, endDate});
+        assertTrue(TestUtils.grepTempOut("1102 Group keys removed"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("groupkeyservice", "removegroupkeys", "" + TESTGSID, "FIRSTUSED", startDate, endDate));
-        assertPrinted("", cli.getOut(), "0 Group keys removed");
+        TestUtils.assertSuccessfulExecution(new String[]{"groupkeyservice",
+                    "removegroupkeys", "" + TESTGSID, "FIRSTUSED", startDate, endDate});
+        assertTrue(TestUtils.grepTempOut("0 Group keys removed"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("groupkeyservice", "removegroupkeys", "" + TESTGSID, "LASTFETCHED", startDate, endDate));
-        assertPrinted("", cli.getOut(), "0 Group keys removed");
+        TestUtils.assertSuccessfulExecution(new String[]{"groupkeyservice",
+                    "removegroupkeys", "" + TESTGSID, "LASTFETCHED", startDate, endDate});
+        assertTrue(TestUtils.grepTempOut("0 Group keys removed"));
+
+        TestingSecurityManager.remove();
     }
         
-    public void testRemoveGroupKeyService() throws Exception {
-        LOG.debug(">testRemoveGroupKeyService");
+    public void testRemoveGroupKeyService() {
         // Remove and restore
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("removeworker", "Test1"));
-        assertPrinted("", cli.getOut(), "Property 'NAME' removed");
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    "Test1"});
+        assertTrue(TestUtils.grepTempOut("Property 'NAME' removed"));
 
-        assertEquals("", CommandLineInterface.RETURN_SUCCESS, 
-            cli.execute("reload", TESTGSID));
-        assertPrinted("", cli.getOut(), "SignServer reloaded successfully");
+        TestUtils.assertSuccessfulExecution(new String[]{"reload",
+                    TESTGSID});
+        assertTrue(TestUtils.grepTempOut("SignServer reloaded successfully"));
+
+        TestingSecurityManager.remove();
     }
 }

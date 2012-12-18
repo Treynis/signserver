@@ -12,12 +12,17 @@
  *************************************************************************/
 package org.signserver.module.signerstatusreport;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Map;
+
 import org.apache.log4j.Logger;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
+import org.signserver.testutils.TestingSecurityManager;
 
 /**
  * Tests for SignerStatusReportTimedService.
@@ -56,13 +61,11 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
      */
     private static final int WORKERID_SIGNER3 = 5676;
     private static final String WORKER_SIGNER3 = "TestXMLSigner";
-    
-    private static final int[] WORKERS = new int[] {5676, 5679, 5681, 5682, 5683, 5802, 5803};
 
     private static final long serviceInterval = 10;
 
     private static File outputFile;
-    
+	
     private SignerStatusReportParser parser = new SignerStatusReportParser();
 	
     @Override
@@ -70,6 +73,9 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
         super.setUp();
         SignServerUtil.installBCProvider();
         
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
         outputFile = new File(getSignServerHome() + File.separator
                 + "~test-outputfile.dat");
         if (outputFile.exists()) {
@@ -82,6 +88,7 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
+        TestingSecurityManager.remove();
     }	
 
     /**
@@ -179,13 +186,33 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
      * @throws Exception
      */
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(WORKERID_SERVICE);
-        for (int workerId : WORKERS) {
-            removeWorker(workerId);
-        }
+
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_SERVICE)
+        });
+        workerSession.reloadConfiguration(WORKERID_SERVICE);
+
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_SIGNER1)
+        });
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_SIGNER2)
+        });
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID_SIGNER3)
+        });
+
+        workerSession.reloadConfiguration(WORKERID_SERVICE);
+        workerSession.reloadConfiguration(WORKERID_SIGNER1);
+        workerSession.reloadConfiguration(WORKERID_SIGNER2);
+        workerSession.reloadConfiguration(WORKERID_SIGNER3);
     }
 
-    
+
 
     private static void waitForServiceRun(final int maxTries) {
         try {

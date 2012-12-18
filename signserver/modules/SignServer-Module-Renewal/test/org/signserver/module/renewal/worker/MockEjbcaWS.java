@@ -93,7 +93,7 @@ public class MockEjbcaWS {
 
     private MockCA ca
             = MockCA.createMockCA("CN=MockupRootCA,O=SignServer Testing,C=SE");
-    
+
     private PKCS10RequestMessage pkcs10req;
 
     // From CertificateHelper:

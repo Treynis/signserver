@@ -511,7 +511,6 @@ public class AdminWS {
      * @throws KeyStoreException
      */
     @WebMethod(operationName = "testKey")
-    @SuppressWarnings("deprecation") // We support the old KeyTestResult class as well
     public Collection<KeyTestResult> testKey(
             @WebParam(name = "signerId") final int signerId,
             @WebParam(name = "alias") final String alias,
@@ -523,8 +522,8 @@ public class AdminWS {
 
         // Workaround for KeyTestResult first placed in wrong package
         final Collection<KeyTestResult> results;
-        Collection<?> res = worker.testKey(signerId, alias, authCode.toCharArray());
-        if (res.size() < 1) {
+	Collection<?> res = worker.testKey(signerId, alias, authCode.toCharArray());
+	if (res.size() < 1) {
             results = new LinkedList<KeyTestResult>();
         } else {
             if (res.iterator().next() instanceof org.signserver.server.KeyTestResult) {
@@ -538,12 +537,7 @@ public class AdminWS {
                     results.add(res2);
                 }
             } else {
-                results = new LinkedList<KeyTestResult>();
-                for (Object o : res) {
-                    if (o instanceof KeyTestResult) {
-                        results.add((KeyTestResult) o);
-                    }
-                }
+                results = (Collection<KeyTestResult>) res;
             }
         }
 
@@ -660,9 +654,10 @@ public class AdminWS {
             result.setConfig(props);
             result.setState(config.getState());
             result.setAppVersion(config.getAppVersion());
-            result.setClusterClassLoaderEnabled(false);
-            result.setRequireSigning(false);
-            result.setUseClassVersions(false);
+            result.setClusterClassLoaderEnabled(
+                    GlobalConfiguration.isClusterClassLoaderEnabled());
+            result.setRequireSigning(GlobalConfiguration.isRequireSigning());
+            result.setUseClassVersions(GlobalConfiguration.isUseClassVersions());
         }
         return result;
     }
@@ -680,7 +675,7 @@ public class AdminWS {
                 throws AdminNotAuthorizedException {
         requireAdminAuthorization("getWorkers", String.valueOf(workerType));
         
-        return worker.getWorkers(workerType);
+        return global.getWorkers(workerType);
     }
 
     /**

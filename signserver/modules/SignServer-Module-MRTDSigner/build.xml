@@ -7,33 +7,40 @@
 <!-- the Compile on Save feature is turned off for the project. -->
 <!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
 <!-- in the project's Project Properties dialog box.-->
-<project name="SignServer-Module-MRTDSigner" default="default" basedir=".">
+<project name="mrtdsigner" default="default" basedir=".">
     <description>Builds, tests, and runs the project SignServer-Module-MRTDSigner.</description>
     <import file="nbproject/build-impl.xml"/>
     <import file="../modules.xml"/>
     <import file="../tests.xml"/>
 
     <!-- Import property file containing version numbers and other constants -->
-    <property file="../../res/compile.properties"/>
+    <property file="../../src/compile.properties"/>
 
-    <property name="dist-module.available" value="true"/>
-    <property name="clean.available" value="true"/>
-    <property name="modulename" value="module.mrtdsigner"/>
+    <property name="modulename" value="mrtdsigner"/>
 
     <!-- Create MAR -->
-    <target name="dist-module" depends="jar,descriptor,-do-module-dist"/>
-    <target name="descriptor" depends="init,-init-macrodef-convertclasspath">
-        <!-- Create the module descriptor file for this module -->
-        <property name="distJar" value="lib/SignServer-Module-MRTDSigner.jar"/>
-        <property name="defaultExcludes" value="modules/SignServer-BuildTools/,modules/SignServer-ejb/,lib/ext/ext/ejb/jboss*,lib/ext/hibernate/,lib/ext/javaee-api*/*"/>
-        <convertclasspath classpath="${javac.classpath}" id="libsToLib" excludes="${defaultExcludes},modules/"/>
-        <convertclasspath classpath="${javac.classpath}" id="modsToLib" excludes="${defaultExcludes},lib/" mapperType="flatten" mapperTo="lib/*"/>
-        <propertyfile file="../../mods-available/40_${modulename}.properties">
-            <entry key="module.name" value="${modulename}"/>
-            <entry key="module.type" value="lib"/>
-            <entry key="to.lib" value="${libsToLib},${modsToLib},${distJar}"/>
-            <entry key="to.root" value=""/>
-        </propertyfile>
+    <target name="-post-jar" depends="mrtdsignermar"/>
+    <target name="mrtdsignermar">
+
+        <taskdef name="mar" classname="org.signserver.anttasks.MarAntTask"
+            classpath="${javac.classpath}"/>
+        <taskdef name="part" classname="org.signserver.anttasks.PartAntTask"
+            classpath="${javac.classpath}"/>
+
+        <property location="${dist.dir}" name="full.dist.dir"/>
+        <property location="${conf.dir}" name="full.conf.dir"/>
+        <property location="${dist.jar}" name="full.dist.jar"/>
+
+        <mar version="${mar.versions}" modulename="${modulename}"
+            verbose="true" destfile="${full.dist.dir}/${modulename}.mar">
+            <part>
+                <fileset file="${full.dist.jar}"/>
+                <fileset dir="${full.conf.dir}">
+                    <include name="*.properties"/>
+                </fileset>
+            </part>
+        </mar>
+
     </target>
 
     <!--

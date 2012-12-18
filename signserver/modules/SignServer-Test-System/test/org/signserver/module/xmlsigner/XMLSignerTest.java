@@ -18,11 +18,19 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.security.cert.Certificate;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.apache.log4j.Logger;
-import org.signserver.common.*;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerUtil;
+import org.signserver.common.SignerStatus;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
+import org.signserver.testutils.TestingSecurityManager;
 import org.w3c.dom.Document;
 
 /**
@@ -40,8 +48,6 @@ public class XMLSignerTest extends ModulesTestCase {
 
     /** WORKERID used in this test case as defined in junittest-part-config.properties */
     private static final int WORKERID2 = 5679;
-    
-    private static final int[] WORKERS = new int[] {5676, 5679, 5681, 5682, 5683, 5802, 5803};
 
     private static final String TESTXML1 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root><my-tag>My Data</my-tag></root>";
 
@@ -49,11 +55,15 @@ public class XMLSignerTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
+        TestingSecurityManager.remove();
     }	
 	
     public void test00SetupDatabase() throws Exception {
@@ -63,7 +73,7 @@ public class XMLSignerTest extends ModulesTestCase {
 
         // Update path to JKS file
         workerSession.setWorkerProperty(WORKERID2, "KEYSTOREPATH",
-                new File(getSignServerHome() + File.separator + "res" + File.separator + "test" + File.separator + "xmlsigner4.jks").getAbsolutePath());
+                new File(getSignServerHome() + File.separator + "src" + File.separator + "test" + File.separator + "xmlsigner4.jks").getAbsolutePath());
         workerSession.reloadConfiguration(WORKERID2);
     }
 
@@ -143,9 +153,16 @@ public class XMLSignerTest extends ModulesTestCase {
     }
 
     public void test99TearDownDatabase() throws Exception {
-        for (int workerId : WORKERS) {
-            removeWorker(workerId);
-        }
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID)
+        });
+        TestUtils.assertSuccessfulExecution(new String[] {
+            "removeworker",
+            String.valueOf(WORKERID2)
+        });
+        workerSession.reloadConfiguration(WORKERID);
+        workerSession.reloadConfiguration(WORKERID2);
     }
 
     private void checkXmlWellFormed(final InputStream input) {

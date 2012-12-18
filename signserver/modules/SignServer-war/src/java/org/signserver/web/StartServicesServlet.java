@@ -29,9 +29,7 @@ import org.signserver.common.CompileTimeSettings;
 import org.signserver.common.FileBasedDatabaseException;
 import org.signserver.common.ServiceLocator;
 import org.signserver.ejb.interfaces.IServiceTimerSession;
-import org.signserver.server.log.EventType;
 import org.signserver.server.log.ISystemLogger;
-import org.signserver.server.log.ModuleType;
 import org.signserver.server.log.SystemLoggerException;
 import org.signserver.server.log.SystemLoggerFactory;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
@@ -102,8 +100,9 @@ public class StartServicesServlet extends HttpServlet {
 
         try {
             final Map<String, String> fields = new HashMap<String, String>();
+            fields.put(ISystemLogger.LOG_EVENT, "SHUTDOWN");
             fields.put(ISystemLogger.LOG_VERSION, version);
-            AUDITLOG.log(EventType.SIGNSERVER_SHUTDOWN, ModuleType.SERVICE, "", fields);
+            AUDITLOG.log(fields);
         } catch (SystemLoggerException ex) {
             LOG.error("Audit log error", ex);
         }
@@ -131,12 +130,13 @@ public class StartServicesServlet extends HttpServlet {
 
         try {
             final Map<String, String> fields = new HashMap<String, String>();
+            fields.put(ISystemLogger.LOG_EVENT, "STARTUP");
             fields.put(ISystemLogger.LOG_VERSION, version);
-            AUDITLOG.log(EventType.SIGNSERVER_STARTUP, ModuleType.SERVICE, "", fields);
+            AUDITLOG.log(fields);
         } catch (SystemLoggerException ex) {
             LOG.error("Audit log error", ex);
         }
-        
+
         // Cancel old timers as we can not rely on them being cancelled at shutdown
         LOG.debug(">init calling ServiceSession.unload");
         getTimedServiceSession().unload(0);
@@ -149,7 +149,7 @@ public class StartServicesServlet extends HttpServlet {
             } catch (FileBasedDatabaseException ex) {
                 throw new UnavailableException(ex.getMessage());
             }
-            
+
             final List<String> fatalErrors = nodb.getFatalErrors();
             if (!fatalErrors.isEmpty()) {
                 final StringBuilder buff = new StringBuilder();
@@ -177,7 +177,7 @@ public class StartServicesServlet extends HttpServlet {
         } catch (NoSuchPropertyException ex) {
             throw new RuntimeException(ex);
         }
-        
+
     } // init
 
     @Override

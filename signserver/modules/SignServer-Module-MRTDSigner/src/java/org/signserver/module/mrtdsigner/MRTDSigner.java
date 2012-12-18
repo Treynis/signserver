@@ -16,18 +16,30 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.ejb.EJBException;
+
 import org.apache.log4j.Logger;
-import org.signserver.common.*;
-import org.signserver.server.archive.Archivable;
-import org.signserver.server.archive.DefaultArchivable;
+import org.bouncycastle.util.encoders.Hex;
+import org.ejbca.util.CertTools;
+import org.signserver.common.ArchiveData;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericServletRequest;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.ISignRequest;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.MRTDSignRequest;
+import org.signserver.common.MRTDSignResponse;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
+import org.signserver.common.RequestContext;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
@@ -40,7 +52,6 @@ import org.signserver.server.signers.BaseSigner;
 public class MRTDSigner extends BaseSigner {
 
     private static final Logger log = Logger.getLogger(MRTDSigner.class);
-    private static final String CONTENT_TYPE = "application/octet-stream";
 
     public MRTDSigner() {
     }
@@ -55,7 +66,7 @@ public class MRTDSigner extends BaseSigner {
      *
      */
     public ProcessResponse processData(ProcessRequest signRequest,
-            RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+            RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException {
 
         if (log.isTraceEnabled()) {
             log.trace(">processData");
@@ -92,15 +103,14 @@ public class MRTDSigner extends BaseSigner {
             GenericSignRequest req = (GenericSignRequest) signRequest;
 
             byte[] bytes = req.getRequestData();
-            final String archiveId = createArchiveId(bytes, (String) requestContext.get(RequestContext.TRANSACTION_ID));
+            String fp = new String(Hex.encode(CertTools.generateSHA1Fingerprint(bytes)));
 
             byte[] signedbytes = encrypt(bytes);
-            final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
 
             if (signRequest instanceof GenericServletRequest) {
-                ret = new GenericServletResponse(sReq.getRequestID(), signedbytes, getSigningCertificate(), archiveId, archivables, CONTENT_TYPE);
+                ret = new GenericServletResponse(sReq.getRequestID(), signedbytes, getSigningCertificate(), fp, new ArchiveData(signedbytes), "application/octet-stream");
             } else {
-                ret = new GenericSignResponse(sReq.getRequestID(), signedbytes, getSigningCertificate(), archiveId, archivables);
+                ret = new GenericSignResponse(sReq.getRequestID(), signedbytes, getSigningCertificate(), fp, new ArchiveData(signedbytes));
             }
         } else {
             throw new IllegalRequestException("Sign request with id: " + sReq.getRequestID() + " is of the wrong type: "
@@ -112,7 +122,7 @@ public class MRTDSigner extends BaseSigner {
         return ret;
     }
 
-    private byte[] encrypt(byte[] data) throws CryptoTokenOfflineException, SignServerException {
+    private byte[] encrypt(byte[] data) throws CryptoTokenOfflineException {
         Cipher c;
         try {
             // Using a PKCS#11 HSM plain RSA Cipher does not work, but we have to use RSA/ECB/PKCS1Padding

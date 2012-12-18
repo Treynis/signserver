@@ -111,8 +111,11 @@ public class StatusPropertiesWorker extends BaseSigner {
                 "Recieved request was not of expected type.");
         }
         
+        // Log values
+        final Map<String, String> logMap = (Map<String, String>) requestContext.get(RequestContext.LOGMAP);
+
         // Process the request
-        responseData = process(requestData);
+        responseData = process(requestData, logMap);
 
         if (request instanceof GenericSignRequest) {
             final GenericSignRequest signRequest = (GenericServletRequest) request;
@@ -140,7 +143,7 @@ public class StatusPropertiesWorker extends BaseSigner {
         return ret;
     }
 
-    private Properties process(Properties requestData) throws IllegalRequestException {
+    private Properties process(Properties requestData, Map<String, String> logMap) throws IllegalRequestException {
         try {
             Properties result = new Properties();
             
@@ -205,9 +208,9 @@ public class StatusPropertiesWorker extends BaseSigner {
         // report any error about it.
         return Collections.emptyList();
     }
-
+    
     @Override
-    protected ICryptoToken getCryptoToken() throws SignServerException {
+    protected ICryptoToken getCryptoToken() {
         ICryptoToken result = super.getCryptoToken();
 
         // Not configuring a crypto token for this worker is not a problem as
@@ -219,5 +222,4 @@ public class StatusPropertiesWorker extends BaseSigner {
 
         return result;
     }
-    
 }

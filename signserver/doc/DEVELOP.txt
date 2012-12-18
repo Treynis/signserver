@@ -18,26 +18,25 @@ Checkout SignServer either using the Subversion CLI or as a project in Eclipse.
 Simply check out SignServer as projects and you are almost set. 
 Web service stubs for test classes are generated when the tests are built. To 
 get rid of all build errors in Eclipse you need to build classes and tests: 
-$ bin/ant clean build test:compile
-Then do a Refresh and Clean and Build in the IDE.
+ ant clean
+ ant
+ ant test:signserver:compile
+Then do a Refresh in the IDE.
 
 
 NetBeans IDE
 ------------
 There are multiple NetBeans IDE projects for SignServer. The project 
 modules/SignServer-Project is a NetBeans IDE FreeForm project that uses the
-Ant-scripts for building and includes the sources from most modules. In addition 
+ANT-scripts for building and includes the sources from most modules. In addition 
 each module has its own project under the folder modules/ that can be opened 
 with NetBeans IDE.
 
 The SignServer AdminGUI uses the Swing Application Framework and requires 
-NetBeans IDE =7.0 for changing some of the GUI parts.
+NetBeans IDE =7.0 for changing those parts.
 
 For the 3.2 branch don't let a newer version than 7.0.x update the build scripts
 as we only require Ant 1.7.1.
-
-For trunk newer versions can be used as we require Ant 1.8.1 or later and 
-we target NetBeans IDE 7.2.
 
 
 Writing Documentation
@@ -64,11 +63,3 @@ This is roughly how tests are currently organized:
 
 See also the "Testing" chapter of the manual for the prerequisites and 
 instructions for how to run the tests. 
-
-Admin GUI Development
----------------------
-The SignServer AdminGUI is implemented using the Swing Application Framework 
-(JSR 296) and requires NetBeans IDE 7.0 if you want to do GUI changes. Since 
-JSR 296 didn't make it into the JDK, support for it was dropped in later 
-versions of the IDE.
-

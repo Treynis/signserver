@@ -113,7 +113,7 @@ public class SignerStatusReportWorker extends BaseSigner {
         }
         return workerSession;
     }
-    
+
     @Override
     protected List<String> getSignerCertificateFatalErrors() {
         // This worker does not require any signer certificate so don't
@@ -122,7 +122,7 @@ public class SignerStatusReportWorker extends BaseSigner {
     }
     
     @Override
-    protected ICryptoToken getCryptoToken() throws SignServerException {
+    protected ICryptoToken getCryptoToken() {
         ICryptoToken result = super.getCryptoToken();
 
         // Not configuring a crypto token for this worker is not a problem as

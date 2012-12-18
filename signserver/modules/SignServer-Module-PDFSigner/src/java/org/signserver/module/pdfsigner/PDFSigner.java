@@ -12,33 +12,88 @@
  *************************************************************************/
 package org.signserver.module.pdfsigner;
 
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.exceptions.BadPasswordException;
-import com.lowagie.text.pdf.*;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
-import java.security.*;
-import java.security.cert.*;
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.SignatureException;
+import java.security.cert.CRL;
+import java.security.cert.CRLException;
 import java.security.cert.Certificate;
-import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateParsingException;
+import java.security.cert.X509CRL;
+import java.security.cert.X509Certificate;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+
 import javax.persistence.EntityManager;
-import org.apache.commons.lang.StringUtils;
+
 import org.apache.log4j.Logger;
-import org.signserver.common.*;
-import org.signserver.common.RequestMetadata;
-import org.signserver.server.UsernamePasswordClientCredential;
+import org.bouncycastle.util.encoders.Hex;
+import org.ejbca.util.CertTools;
+import org.signserver.common.ArchiveData;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericServletRequest;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.ISignRequest;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerException;
+import org.signserver.common.WorkerConfig;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.archive.Archivable;
-import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoToken;
-import org.signserver.server.log.IWorkerLogger;
-import org.signserver.server.log.LogMap;
 import org.signserver.server.signers.BaseSigner;
 import org.signserver.server.statistics.Event;
 import org.signserver.validationservice.server.ValidationUtils;
+
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.exceptions.BadPasswordException;
+import com.lowagie.text.pdf.OcspClientBouncyCastle;
+import com.lowagie.text.pdf.PRTokeniser;
+import com.lowagie.text.pdf.PdfDate;
+import com.lowagie.text.pdf.PdfDictionary;
+import com.lowagie.text.pdf.PdfName;
+import com.lowagie.text.pdf.PdfPKCS7;
+import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.PdfSignature;
+import com.lowagie.text.pdf.PdfSignatureAppearance;
+import com.lowagie.text.pdf.PdfStamper;
+import com.lowagie.text.pdf.PdfString;
+import com.lowagie.text.pdf.PdfTemplate;
+import com.lowagie.text.pdf.PdfWriter;
+import com.lowagie.text.pdf.TSAClient;
+import com.lowagie.text.pdf.TSAClientBouncyCastle;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.security.SecureRandom;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.commons.lang.StringUtils;
+import org.signserver.server.UsernamePasswordClientCredential;
+import org.signserver.server.log.IWorkerLogger;
 
 /**
  * A Signer signing PDF files using the IText PDF library.
@@ -135,7 +190,6 @@ public class PDFSigner extends BaseSigner {
 
     private static final String ARCHIVETODISK_PATTERN_REGEX =
             "\\$\\{(.+?)\\}";
-    private static final String CONTENT_TYPE = "application/pdf";
 
     private Pattern archivetodiskPattern;
 
@@ -190,9 +244,10 @@ public class PDFSigner extends BaseSigner {
             throw new IllegalRequestException(
                     "Recieved request data wasn't a expected byte[].");
         }
-
+        
         // Log values
-        final LogMap logMap = LogMap.getInstance(requestContext);
+        final Map<String, String> logMap =
+                (Map<String, String>) requestContext.get(RequestContext.LOGMAP);
 
         // retrieve and preprocess configuration parameter values
         PDFSignerParameters params = new PDFSignerParameters(workerId, config);
@@ -200,7 +255,8 @@ public class PDFSigner extends BaseSigner {
         // Start processing the actual signature
         GenericSignResponse signResponse = null;
         byte[] pdfbytes = (byte[]) sReq.getRequestData();
-        final String archiveId = createArchiveId(pdfbytes, (String) requestContext.get(RequestContext.TRANSACTION_ID));
+        byte[] fpbytes = CertTools.generateSHA1Fingerprint(pdfbytes);
+        String fp = new String(Hex.encode(fpbytes));
         if (requestContext.get(RequestContext.STATISTICS_EVENT) != null) {
             Event event = (Event) requestContext.get(RequestContext.STATISTICS_EVENT);
             event.addCustomStatistics("PDFBYTES", pdfbytes.length);
@@ -226,16 +282,14 @@ public class PDFSigner extends BaseSigner {
             }
             
             byte[] signedbytes = addSignatureToPDFDocument(params, pdfbytes, password, 0);
-            final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
-            
             if (signRequest instanceof GenericServletRequest) {
                 signResponse = new GenericServletResponse(sReq.getRequestID(),
-                        signedbytes, getSigningCertificate(), archiveId,
-                        archivables, CONTENT_TYPE);
+                        signedbytes, getSigningCertificate(), fp,
+                        new ArchiveData(signedbytes), "application/pdf");
             } else {
                 signResponse = new GenericSignResponse(sReq.getRequestID(),
-                        signedbytes, getSigningCertificate(), archiveId,
-                        archivables);
+                        signedbytes, getSigningCertificate(), fp,
+                        new ArchiveData(signedbytes));
             }
 
             // Archive to disk
@@ -260,7 +314,7 @@ public class PDFSigner extends BaseSigner {
     /**
      * Calculates an estimate of the PKCS#7 structure size given the provided  
      * input parameters.
-     *
+     * 
      * Questions that we need to answer to construct an formula for calculating 
      * a good enough estimate:
      *
@@ -351,7 +405,7 @@ public class PDFSigner extends BaseSigner {
 		if (tsc != null) {
 			// add guess for timestamp response (which we can't really know)
 			// TODO: we might be able to store the size of the last TSA response and re-use next time...
-			final int tscSize = 4096;
+			final int tscSize = 7168;
 			
 			estimatedSize += tscSize;
 			
@@ -391,7 +445,7 @@ public class PDFSigner extends BaseSigner {
     		Calendar cal, PDFSignerParameters params, Certificate[] certChain, TSAClient tsc, byte[] ocsp,
     		PdfSignatureAppearance sap) throws IOException, DocumentException, SignServerException {
      
-        final HashMap<PdfName, Integer> exc = new HashMap<PdfName, Integer>();
+        HashMap exc = new HashMap();
         exc.put(PdfName.CONTENTS, new Integer(size * 2 + 2));
         sap.preClose(exc);
 
@@ -433,10 +487,10 @@ public class PDFSigner extends BaseSigner {
         Certificate[] certChain = (Certificate[]) certs.toArray(new Certificate[0]);
         PrivateKey privKey = this.getCryptoToken().getPrivateKey(
                 ICryptoToken.PURPOSE_SIGN);
-
+        
         PdfReader reader = new PdfReader(pdfbytes, password);
         boolean appendMode = true; // TODO: This could be good to have as a property in the future
-
+        
         // Don't certify already certified documents
         if (reader.getCertificationLevel() != PdfSignatureAppearance.NOT_CERTIFIED 
                 && params.getCertification_level() != PdfSignatureAppearance.NOT_CERTIFIED) {
@@ -884,11 +938,17 @@ public class PDFSigner extends BaseSigner {
 
     private static byte[] getPassword(final RequestContext context) throws UnsupportedEncodingException {
         final byte[] result;    
-        final String password = RequestMetadata.getInstance(context).get(RequestContext.METADATA_PDFPASSWORD);
-        if (password == null) {
-            result = null;
+        Object o = context.get(RequestContext.REQUEST_METADATA);
+        if (o instanceof Map) {
+            Map<String, String> metadata = (Map<String, String>) o;
+            String password = metadata.get(RequestContext.METADATA_PDFPASSWORD);
+            if (password == null) {
+                result = null;
+            } else {
+                result = password.getBytes("ISO-8859-1");
+            }
         } else {
-            result = password.getBytes("ISO-8859-1");
+            result = null;
         }
         return result;
     }

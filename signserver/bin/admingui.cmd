@@ -9,44 +9,30 @@ if "%SIGNSERVER_HOME%" == "" (
     set SIGNSRV_HOME=%SIGNSERVER_HOME%
 ) 
   
-if "%APPSRV_HOME%" == "" (
-    echo You must set APPSRV_HOME before running the SignServer AdminGUI.
-    goto end
-)
+set SIGNSERVER_CP=%SIGNSRV_HOME%\lib\log4j.jar;%SIGNSRV_HOME%\lib\1.6\bcprov-jdk.jar;%SIGNSRV_HOME%\lib\1.6\bcmail-jdk.jar;%SIGNSRV_HOME%\lib\ejbca-util.jar;%SIGNSRV_HOME%\lib\cert-cvc.jar;%SIGNSRV_HOME%\lib\commons-lang-2.0.jar;%SIGNSRV_HOME%\lib\ext\ejb\jboss-ejb3x.jar;%SIGNSRV_HOME%\lib\asm\asm-3.1.jar;%SIGNSRV_HOME%\lib\asm\asm-commons-3.1.jar;%SIGNSRV_HOME%\lib\commons-lang-2.4.jar;%SIGNSRV_HOME%\lib\ext\commons-cli-1.2.jar;%SIGNSRV_HOME%\dist-client\lib\SignServer-Common.jar;%SIGNSRV_HOME%\dist-client\lib\SignServer-ejb.jar;%SIGNSRV_HOME%\dist-client\SignServer-AdminGUI.jar
+set J2EE_CP=%SIGNSRV_HOME%\dist-client\lib\jbossall-client.jar
 
-rem check that we have built the classes
-if not exist %SIGNSRV_HOME%\lib\SignServer-AdminGUI.jar  (
-    echo You must build SignServer before using the cli, use 'ant'.
-    goto end
-)
+set SIGNSERVER_PKG_CP=%SIGNSRV_HOME%\lib\asm-3.1.jar;%SIGNSRV_HOME%\lib\asm-commons-3.1.jar;%SIGNSRV_HOME%\lib\bcmail-jdk.jar;%SIGNSRV_HOME%\lib\bcprov-jdk.jar;%SIGNSRV_HOME%\lib\commons-lang-2.0.jar;%SIGNSRV_HOME%\lib\ejbca-util.jar;%SIGNSRV_HOME%\lib\cert-cvc.jar;%SIGNSRV_HOME%\lib\jbossall-client.jar;%SIGNSRV_HOME%\lib\jboss-ejb3x.jar;%SIGNSRV_HOME%\lib\log4j.jar;%SIGNSRV_HOME%\lib\signserver-cli.jar
 
 set class_name=org.signserver.admin.gui.SignServerAdminGUIApplication
 
 rem check that we have built the classes
-if not exist %SIGNSRV_HOME%\lib\SignServer-AdminGUI.jar  (
-    echo SignServer AdminGUI not available. Build it by running 'ant'.
+
+if not exist %SIGNSRV_HOME%\dist-client\SignServer-AdminGUI.jar  (
+    echo SignServer AdminGUI not available. Build it by running 'ant admingui'.
     goto end
 )
 
-rem Construct the classpath
-set MAIN_CLASSPATH=%SIGNSRV_HOME%\conf;%SIGNSRV_HOME%\lib\SignServer-AdminGUI.jar
+rem Add for jndi.properties
+set BINCP=%SIGNSRV_HOME%\bin
 
-rem Application server dependencies
-if exist %APPSRV_HOME%\lib\appserv-rt.jar (
-    set JEE_CLASSPATH=%CLASSPATH%;%SIGNSRV_HOME%\conf\glassfish;%APPSRV_HOME%\lib\appserv-rt.jar
-)
-if exist %APPSRV_HOME%\client\jbossall-client.jar  (
-    set JEE_CLASSPATH=%CLASSPATH%;%SIGNSRV_HOME%\conf\jboss;%APPSRV_HOME%\client\jbossall-client.jar
-)
-
-set CLASSPATH=%MAIN_CLASSPATH%;%JEE_CLASSPATH%
+set CLASSPATH=%BINCP%;%J2EE_CP%;%SIGNSERVER_CP%;%SIGNSRV_HOME%\dist-client\SignServer-AdminCLI.jar;%SIGNSERVER_PKG_CP%
 rem echo %CLASSPATH%
 
-
 if "%JAVA_HOME%" == "" (
-  java -cp %CLASSPATH% -splash:%SIGNSRV_HOME%\res\admingui-splash.png %class_name% %* -connectfile %SIGNSRV_HOME%/conf/admingui.properties -defaultconnectfile %SIGNSRV_HOME%/conf/admingui_default.properties
+  java -cp %CLASSPATH% -splash:%SIGNSRV_HOME%/modules/SignServer-AdminGUI/src/splash.png %class_name% %* -connectfile %SIGNSRV_HOME%/modules/SignServer-AdminGUI/connect.properties -defaultconnectfile %SIGNSRV_HOME%/modules/SignServer-AdminGUI/default_connect.properties
 ) else (
-  "%JAVA_HOME%\bin\java" -cp %CLASSPATH% -splash:%SIGNSRV_HOME%\res\admingui-splash.png %class_name% %* -connectfile %SIGNSRV_HOME%/conf/admingui.properties -defaultconnectfile %SIGNSRV_HOME%/conf/admingui_default.properties
+  "%JAVA_HOME%\bin\java" -cp %CLASSPATH% -splash:%SIGNSRV_HOME%/modules/SignServer-AdminGUI/src/splash.png %class_name% %* -connectfile %SIGNSRV_HOME%/modules/SignServer-AdminGUI/connect.properties -defaultconnectfile %SIGNSRV_HOME%/modules/SignServer-AdminGUI/default_connect.properties
 
 )
 :end

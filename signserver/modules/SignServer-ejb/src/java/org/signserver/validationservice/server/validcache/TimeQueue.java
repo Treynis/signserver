@@ -12,11 +12,11 @@
  *************************************************************************/
 package org.signserver.validationservice.server.validcache;
 
-import java.security.cert.Certificate;
 import java.util.Date;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.signserver.validationservice.common.ICertificate;
 
 /**
  * TimeQueue is an internal class to the validation cache data structure.
@@ -65,7 +65,7 @@ class TimeQueue {
     /**
      * Inserts a new certificate to the beginning queue
      */
-    void pushNew(Certificate cert) {
+    void pushNew(ICertificate cert) {
         timeQueue.add(new TimeCertPair(new Date(System.currentTimeMillis() + cacheTimeMS), cert));
     }
 
@@ -77,9 +77,9 @@ class TimeQueue {
     private class TimeCertPair {
 
         private Date date;
-        private Certificate cert;
+        private ICertificate cert;
 
-        TimeCertPair(Date date, Certificate cert) {
+        TimeCertPair(Date date, ICertificate cert) {
             this.date = date;
             this.cert = cert;
         }
@@ -94,7 +94,7 @@ class TimeQueue {
         /**
          * @return the cert
          */
-        public Certificate getCert() {
+        public ICertificate getCert() {
             return cert;
         }
     }

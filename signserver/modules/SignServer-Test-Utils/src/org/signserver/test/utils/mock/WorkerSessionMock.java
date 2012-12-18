@@ -15,7 +15,11 @@ package org.signserver.test.utils.mock;
 import java.math.BigInteger;
 import java.security.KeyStoreException;
 import java.security.cert.Certificate;
-import java.util.*;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.log4j.Logger;
 import org.signserver.common.ArchiveDataVO;
 import org.signserver.common.AuthorizedClient;
@@ -35,7 +39,6 @@ import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.IProcessable;
-import org.signserver.server.log.LogMap;
 
 /**
  *
@@ -56,7 +59,6 @@ public class WorkerSessionMock implements IWorkerSession.ILocal,
         this.globalConfig = globalConfig;
     }
 
-    @Override
     public ProcessResponse process(int workerId, ProcessRequest request,
             RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
@@ -65,10 +67,11 @@ public class WorkerSessionMock implements IWorkerSession.ILocal,
             throw new CryptoTokenOfflineException("No such worker: "
                     + workerId);
         }
-        // Put in an empty log map if none exists yet
-        LogMap.getInstance(requestContext);
-        if (requestContext.get(RequestContext.TRANSACTION_ID) == null) {
-           requestContext.put(RequestContext.TRANSACTION_ID, UUID.randomUUID().toString());
+        Map<String, String> logMap = (Map)
+                requestContext.get(RequestContext.LOGMAP);
+        if (logMap == null) {
+            logMap = new HashMap<String, String>();
+            requestContext.put(RequestContext.LOGMAP, logMap);
         }
         return worker.getProcessable().processData(request, requestContext);
     }
@@ -211,19 +214,16 @@ public class WorkerSessionMock implements IWorkerSession.ILocal,
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
-    public List<ArchiveDataVO> findArchiveDataFromArchiveId(int signerId,
+    public ArchiveDataVO findArchiveDataFromArchiveId(int signerId,
             String archiveId) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
-    
-    @Override
+
     public List<ArchiveDataVO> findArchiveDatasFromRequestIP(int signerId,
             String requestIP) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
     public List<ArchiveDataVO> findArchiveDatasFromRequestCertificate(
             int signerId, BigInteger serialNumber, String issuerDN) {
         throw new UnsupportedOperationException("Not supported yet.");
@@ -245,11 +245,6 @@ public class WorkerSessionMock implements IWorkerSession.ILocal,
     }
 
     public List<byte[]> getSignerCertificateChainBytes(int signerId) throws CryptoTokenOfflineException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-    
-    @Override
-    public List<Integer> getWorkers(int workerType) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

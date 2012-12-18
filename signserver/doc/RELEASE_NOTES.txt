@@ -1,42 +1,18 @@
-SignServer 3.3.0
+SignServer 3.2.4
 ----------------
-This is a major release - in total 51 features, options, bugs and stabilizations have been fixed or added. The most noteworthy changes can be seen below.
 
-Major changes:
- - New client web services API 
- - MS Authenticode time-stamp signer
- - Support for archiving of time-stamp requests
- - Dropped support for JBoss 4.2.x.
- - Dropped support for cluster class loader
- - Dropped support for WSRA
- - Upgrade of cryptographic library
- - Many more minor changes
+New features and improvements:
+ - Installation script contributed by Antoine Louiset
+ - Add test cases for TimeStampSigner with other key algorithms than RSA
+ - Improved feature list at signserver.org
 
 Bug fixes:
- - Renewal worker requires truststore password even when truststore is not used
- - NPE trying to activate a worker of type Dispatcher
- - Can not archive the same document twice
- - Version of server printed by CLI is actually the client version
- - System tests can not be compiled after opening the project with NetBeans IDE 7.2
+ - Using worker id does not work in Client CLI
+ - JBoss 5 throws NPE on shutdown of SignServer
+ - Renewal worker does not use the requested DN in certificate request
  - StatusPropertiesWorker requires a cryptotoken to be configured
- - AddressAuthorizers should return HTTP 403 (forbidden) and not 401
 
-
-Notice:
- - A database change were introduced. See UPGRADE.txt for details.
- - A dependency where upgraded. See UPGRADE.txt for details.
- - Apache Ant 1.8.0 or later is now required to build SignServer.
- - The property "custom.commandfactory" is no longer supported. See the manual 
-   for how to add custom Admin or Client CLI commands.
- - The Admin CLI no longer supports the "-host" argument and ignores it if 
-   present.
- - The default archiver called OldDatabaseArchiver has changed the format of
-   the data part of the XML serialized ArchiveData from an byte array to a 
-   base64 encoded String. The change is transparent for Java clients using
-   SignServer-Common.jar for parsing the ArchiveData but other clients might 
-   need to be updated.
- - As an alternative to the OldDatabaseArchiver a new archiver called 
-   Base64DatabaseArchiver can also be used.
+Read the full changelog for details (https://jira.primekey.se/browse/DSS?report=com.atlassian.jira.plugin.system.project:changelog-panel#selectedTab=com.atlassian.jira.plugin.system.project%3Achangelog-panel).
 
 
 SignServer 3.2.3
@@ -102,7 +78,6 @@ SignServer 3.2.1
 ----------------
 
 Major new features and improvements:
-
  - Improve servlet error handling
  - Deploy documentation with application
  - Improved API for archiving
@@ -125,9 +100,6 @@ Bug fixes:
  - Ant target for testing individual tests did not work
  - Switching application server type did not update jndi.properties    
  - JavaDoc failed to build
-
-
-
 
 Notice:
  - In signserver_build.properties the property "useclusterclassloader" now 

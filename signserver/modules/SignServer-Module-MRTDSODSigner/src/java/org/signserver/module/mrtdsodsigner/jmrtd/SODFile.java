@@ -34,8 +34,8 @@ import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.Signature;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.PSSParameterSpec;
@@ -44,17 +44,19 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
+
 import javax.security.auth.x500.X500Principal;
+
 import net.sourceforge.scuba.tlv.BERTLVInputStream;
 import net.sourceforge.scuba.tlv.BERTLVObject;
+
 import org.bouncycastle.asn1.ASN1Encodable;
-import org.bouncycastle.asn1.ASN1Encoding;
 import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1Integer;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1Set;
+import org.bouncycastle.asn1.DEREncodable;
+import org.bouncycastle.asn1.DERInteger;
 import org.bouncycastle.asn1.DERNull;
 import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
@@ -69,15 +71,14 @@ import org.bouncycastle.asn1.cms.SignedData;
 import org.bouncycastle.asn1.cms.SignerIdentifier;
 import org.bouncycastle.asn1.cms.SignerInfo;
 import org.bouncycastle.asn1.icao.DataGroupHash;
+import org.signserver.module.mrtdsodsigner.bc.asn1.icao.LDSSecurityObject;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.asn1.pkcs.RSASSAPSSparams;
-import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.asn1.x509.X509CertificateStructure;
+import org.bouncycastle.asn1.x509.X509Name;
 import org.bouncycastle.asn1.x509.X509ObjectIdentifiers;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaX500NameUtil;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.signserver.module.mrtdsodsigner.bc.asn1.icao.LDSSecurityObject;
+import org.bouncycastle.jce.provider.X509CertificateObject;
 import org.signserver.module.mrtdsodsigner.bc.asn1.icao.LDSVersionInfo;
 
 /**
@@ -96,43 +97,41 @@ public class SODFile extends PassportFile
 	//	private static final DERObjectIdentifier SHA256_HASH_ALG_OID = new DERObjectIdentifier("2.16.840.1.101.3.4.2.1");
 	//	private static final DERObjectIdentifier E_CONTENT_TYPE_OID = new DERObjectIdentifier("1.2.528.1.1006.1.20.1");
 
-	private static final ASN1ObjectIdentifier ICAO_SOD_OID = new ASN1ObjectIdentifier("2.23.136.1.1.1");
-	private static final ASN1ObjectIdentifier SIGNED_DATA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.7.2");
-	private static final ASN1ObjectIdentifier RFC_3369_CONTENT_TYPE_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.9.3");
-	private static final ASN1ObjectIdentifier RFC_3369_MESSAGE_DIGEST_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.9.4");
+	private static final DERObjectIdentifier ICAO_SOD_OID = new DERObjectIdentifier("2.23.136.1.1.1");
+	private static final DERObjectIdentifier SIGNED_DATA_OID = new DERObjectIdentifier("1.2.840.113549.1.7.2");
+	private static final DERObjectIdentifier RFC_3369_CONTENT_TYPE_OID = new DERObjectIdentifier("1.2.840.113549.1.9.3");
+	private static final DERObjectIdentifier RFC_3369_MESSAGE_DIGEST_OID = new DERObjectIdentifier("1.2.840.113549.1.9.4");
 
-	private static final ASN1ObjectIdentifier PKCS1_RSA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.1");
-	private static final ASN1ObjectIdentifier PKCS1_MD2_WITH_RSA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.2");
-	private static final ASN1ObjectIdentifier PKCS1_MD4_WITH_RSA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.3");
-	private static final ASN1ObjectIdentifier PKCS1_MD5_WITH_RSA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.4");
-	private static final ASN1ObjectIdentifier PKCS1_SHA1_WITH_RSA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.5");
-    private static final ASN1ObjectIdentifier PKCS1_MGF1_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.8");
-    private static final ASN1ObjectIdentifier PKCS1_RSA_PSS_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.10");
-	private static final ASN1ObjectIdentifier PKCS1_SHA256_WITH_RSA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.11");
-	private static final ASN1ObjectIdentifier PKCS1_SHA384_WITH_RSA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.12");
-	private static final ASN1ObjectIdentifier PKCS1_SHA512_WITH_RSA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.13");
-	private static final ASN1ObjectIdentifier PKCS1_SHA224_WITH_RSA_OID = new ASN1ObjectIdentifier("1.2.840.113549.1.1.14");
-	private static final ASN1ObjectIdentifier X9_SHA1_WITH_ECDSA_OID = new ASN1ObjectIdentifier("1.2.840.10045.4.1");
-	private static final ASN1ObjectIdentifier X9_SHA224_WITH_ECDSA_OID = new ASN1ObjectIdentifier("1.2.840.10045.4.3.1");
-	private static final ASN1ObjectIdentifier X9_SHA256_WITH_ECDSA_OID = new ASN1ObjectIdentifier("1.2.840.10045.4.3.2");
-	private static final ASN1ObjectIdentifier IEEE_P1363_SHA1_OID = new ASN1ObjectIdentifier("1.3.14.3.2.26");
+	private static final DERObjectIdentifier PKCS1_RSA_OID = new DERObjectIdentifier("1.2.840.113549.1.1.1");
+	private static final DERObjectIdentifier PKCS1_MD2_WITH_RSA_OID = new DERObjectIdentifier("1.2.840.113549.1.1.2");
+	private static final DERObjectIdentifier PKCS1_MD4_WITH_RSA_OID = new DERObjectIdentifier("1.2.840.113549.1.1.3");
+	private static final DERObjectIdentifier PKCS1_MD5_WITH_RSA_OID = new DERObjectIdentifier("1.2.840.113549.1.1.4");
+	private static final DERObjectIdentifier PKCS1_SHA1_WITH_RSA_OID = new DERObjectIdentifier("1.2.840.113549.1.1.5");
+        private static final DERObjectIdentifier PKCS1_MGF1_OID = new DERObjectIdentifier("1.2.840.113549.1.1.8");
+        private static final DERObjectIdentifier PKCS1_RSA_PSS_OID = new DERObjectIdentifier("1.2.840.113549.1.1.10");
+	private static final DERObjectIdentifier PKCS1_SHA256_WITH_RSA_OID = new DERObjectIdentifier("1.2.840.113549.1.1.11");
+	private static final DERObjectIdentifier PKCS1_SHA384_WITH_RSA_OID = new DERObjectIdentifier("1.2.840.113549.1.1.12");
+	private static final DERObjectIdentifier PKCS1_SHA512_WITH_RSA_OID = new DERObjectIdentifier("1.2.840.113549.1.1.13");
+	private static final DERObjectIdentifier PKCS1_SHA224_WITH_RSA_OID = new DERObjectIdentifier("1.2.840.113549.1.1.14");
+	private static final DERObjectIdentifier X9_SHA1_WITH_ECDSA_OID = new DERObjectIdentifier("1.2.840.10045.4.1");
+	private static final DERObjectIdentifier X9_SHA224_WITH_ECDSA_OID = new DERObjectIdentifier("1.2.840.10045.4.3.1");
+	private static final DERObjectIdentifier X9_SHA256_WITH_ECDSA_OID = new DERObjectIdentifier("1.2.840.10045.4.3.2");
+	private static final DERObjectIdentifier IEEE_P1363_SHA1_OID = new DERObjectIdentifier("1.3.14.3.2.26");
 
-    private static final HashMap<String, ASN1Encodable> algorithmParameters =
-    		new HashMap<String, ASN1Encodable>();
+        private static final HashMap<String, DEREncodable> algorithmParameters = new HashMap<String, DEREncodable>();
 
 	private static final Provider PROVIDER = new org.bouncycastle.jce.provider.BouncyCastleProvider();
 
 	private static final Logger LOGGER = Logger.getLogger("org.jmrtd");
         
         static {
-        	
             algorithmParameters.put("SHA1withRSAandMGF1", new RSASSAPSSparams(
                     new AlgorithmIdentifier(X509ObjectIdentifiers.id_SHA1,
                         new DERNull()),
                     new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                     new AlgorithmIdentifier(X509ObjectIdentifiers.id_SHA1,
                         new DERNull())),
-                    new ASN1Integer(20), new ASN1Integer(1)));
+                    new DERInteger(20), new DERInteger(1)).toASN1Object());
             
             algorithmParameters.put("SHA224withRSAandMGF1", new RSASSAPSSparams(
                     new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha224,
@@ -140,7 +139,7 @@ public class SODFile extends PassportFile
                     new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                     new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha224,
                         new DERNull())),
-                    new ASN1Integer(28), new ASN1Integer(1)));
+                    new DERInteger(28), new DERInteger(1)).toASN1Object());
             
             algorithmParameters.put("SHA256withRSAandMGF1", new RSASSAPSSparams(
                     new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha256,
@@ -148,7 +147,7 @@ public class SODFile extends PassportFile
                     new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                     new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha256,
                         new DERNull())),
-                    new ASN1Integer(32), new ASN1Integer(1)));
+                    new DERInteger(32), new DERInteger(1)).toASN1Object());
             
             algorithmParameters.put("SHA384withRSAandMGF1", new RSASSAPSSparams(
                     new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha384,
@@ -156,7 +155,7 @@ public class SODFile extends PassportFile
                     new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                     new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha384,
                         new DERNull())),
-                    new ASN1Integer(48), new ASN1Integer(1)));
+                    new DERInteger(48), new DERInteger(1)).toASN1Object());
             
             algorithmParameters.put("SHA512withRSAandMGF1", new RSASSAPSSparams(
                     new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha512,
@@ -164,7 +163,7 @@ public class SODFile extends PassportFile
                     new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                     new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha512,
                         new DERNull())),
-                    new ASN1Integer(64), new ASN1Integer(1)));
+                    new DERInteger(64), new DERInteger(1)).toASN1Object());
         }
 
 	private SignedData signedData;
@@ -187,7 +186,7 @@ public class SODFile extends PassportFile
 			Map<Integer, byte[]> dataGroupHashes,
 			byte[] encryptedDigest,
 			X509Certificate docSigningCertificate)
-	throws NoSuchAlgorithmException, CertificateException, IOException {
+	throws NoSuchAlgorithmException, CertificateException {
 		signedData = createSignedData(digestAlgorithm,
 				digestEncryptionAlgorithm,
 				dataGroupHashes,
@@ -212,7 +211,7 @@ public class SODFile extends PassportFile
             Map<Integer, byte[]> dataGroupHashes,
             PrivateKey privateKey,
             X509Certificate docSigningCertificate, String provider)
-    throws NoSuchAlgorithmException, CertificateException, IOException {
+    throws NoSuchAlgorithmException, CertificateException {
         signedData = createSignedData(digestAlgorithm,
                 digestEncryptionAlgorithm,
                 dataGroupHashes,
@@ -240,7 +239,7 @@ public class SODFile extends PassportFile
             PrivateKey privateKey,
             X509Certificate docSigningCertificate, String provider,
             String ldsVersion, String unicodeVersion)
-    throws NoSuchAlgorithmException, CertificateException, IOException {
+    throws NoSuchAlgorithmException, CertificateException {
         signedData = createSignedData(digestAlgorithm,
                 digestEncryptionAlgorithm,
                 dataGroupHashes,
@@ -264,7 +263,7 @@ public class SODFile extends PassportFile
             Map<Integer, byte[]> dataGroupHashes,
             PrivateKey privateKey,
             X509Certificate docSigningCertificate)
-    throws NoSuchAlgorithmException, CertificateException, IOException {
+    throws NoSuchAlgorithmException, CertificateException {
         signedData = createSignedData(digestAlgorithm,
                 digestEncryptionAlgorithm,
                 dataGroupHashes,
@@ -279,18 +278,17 @@ public class SODFile extends PassportFile
 	 * @throws IOException if something goes wrong
 	 */
 	public SODFile(InputStream in) throws IOException {
-		BERTLVInputStream tlvIn = new BERTLVInputStream(in);
-		tlvIn.readTag();
-		tlvIn.readLength();
+			BERTLVInputStream tlvIn = new BERTLVInputStream(in);
+			tlvIn.readTag();
+			tlvIn.readLength();
 		ASN1InputStream asn1in = new ASN1InputStream(in);
-		ASN1Sequence seq = (ASN1Sequence) asn1in.readObject();
+			DERSequence seq = (DERSequence)asn1in.readObject();
 		/* DERObjectIdentifier objectIdentifier = (DERObjectIdentifier) seq.getObjectAt(0); */ /* FIXME: do we need this? */
 			//DERTaggedObject o = (DERTaggedObject)seq.getObjectAt(1);
 			/* TODO: where is this tagNo specified? */
 		// int tagNo =  o.getTagNo();
-		ASN1Sequence s2 = (ASN1Sequence)((DERTaggedObject)seq.getObjectAt(1)).getObject();			
-			
-		this.signedData = SignedData.getInstance(s2);
+			DERSequence s2 = (DERSequence)((DERTaggedObject)seq.getObjectAt(1)).getObject();
+			this.signedData = new SignedData(s2);
 	}
 
 	/**
@@ -302,7 +300,7 @@ public class SODFile extends PassportFile
 		return EF_SOD_TAG;
 	}
 
-	public byte[] getEncoded() throws IOException {
+	public byte[] getEncoded() {
 		if (isSourceConsistent) {
 			return sourceObject;
 		}
@@ -310,7 +308,7 @@ public class SODFile extends PassportFile
 		/* TODO: where is that DERTaggedObject specified? */
 		ASN1Encodable[] fileContents = { SIGNED_DATA_OID, new DERTaggedObject(0, signedData) };
 		ASN1Sequence fileContentsObject = new DERSequence(fileContents);
-		BERTLVObject sodFile = new BERTLVObject(EF_SOD_TAG, fileContentsObject.getEncoded(), false);
+		BERTLVObject sodFile = new BERTLVObject(EF_SOD_TAG, fileContentsObject.getDEREncoded(), false);
 		return sodFile.getEncoded();
 	}
 
@@ -347,7 +345,7 @@ public class SODFile extends PassportFile
 	 */
 	public String getDigestAlgorithm() {
 		try {
-			return lookupMnemonicByOID(getSecurityObject(signedData).getDigestAlgorithmIdentifier().getAlgorithm());      
+			return lookupMnemonicByOID(getSecurityObject(signedData).getDigestAlgorithmIdentifier().getObjectId());      
 		} catch (NoSuchAlgorithmException nsae) {
 			nsae.printStackTrace();
 			throw new IllegalStateException(nsae.toString());
@@ -361,14 +359,14 @@ public class SODFile extends PassportFile
 	 */
 	public String getDigestEncryptionAlgorithm() {
 		try {
-                    final DERObjectIdentifier algorithm = getSignerInfo(signedData).getDigestEncryptionAlgorithm().getAlgorithm();
+                    final DERObjectIdentifier algorithm = getSignerInfo(signedData).getDigestEncryptionAlgorithm().getObjectId();
                     String result = lookupMnemonicByOID(algorithm);
                     if (PKCS1_RSA_PSS_OID.toString().equals(algorithm.toString())) {
                         try {
-                            final ASN1Encodable parameters = getSignerInfo(signedData).getDigestEncryptionAlgorithm().getParameters();
+                            final DEREncodable parameters = getSignerInfo(signedData).getDigestEncryptionAlgorithm().getParameters();
                             if (parameters != null) {
                                 AlgorithmParameters params = AlgorithmParameters.getInstance("PSS");
-                                params.init(parameters.toASN1Primitive().getEncoded());
+                                params.init(parameters.getDERObject().getEncoded());
                                 final PSSParameterSpec spec = params.getParameterSpec(PSSParameterSpec.class);
                                 result = lookupMnemonicByOID(new DERObjectIdentifier(spec.getDigestAlgorithm())) + "withRSAand" + lookupMnemonicByOID(new DERObjectIdentifier(spec.getMGFAlgorithm()));
                             }
@@ -418,18 +416,40 @@ public class SODFile extends PassportFile
 	 * <i>eSignature</i> is a valid signature for
 	 * <i>eContent</i>. This certificate itself is
 	 * signed using the country signing certificate.
-     * 
+	 *
 	 * @return the document signing certificate
 	 */
 	public X509Certificate getDocSigningCertificate()
 	throws IOException, CertificateException {
+		byte[] certSpec = null;
 		ASN1Set certs = signedData.getCertificates();
 		if (certs == null || certs.size() <= 0) { return null; }
 		if (certs.size() != 1) {
 			LOGGER.warning("Found " + certs.size() + " certificates");
 		}
-        final X509CertificateHolder cert = new X509CertificateHolder(certs.getObjectAt(0).toASN1Primitive().getEncoded());
-        return new JcaX509CertificateConverter().setProvider("BC").getCertificate(cert);
+		X509CertificateObject certObject = null;
+		for (int i = 0; i < certs.size(); i++) {
+			X509CertificateStructure e =
+				new X509CertificateStructure((DERSequence)certs.getObjectAt(i));
+			certObject = new X509CertificateObject(e);
+			certSpec = certObject.getEncoded();
+		}
+
+		/*
+		 * NOTE: we could have just returned that X509CertificateObject here,
+		 * but by reconstructing it using the client's default provider we hide
+		 * the fact that we're using BC.
+		 */
+		try {
+                    CertificateFactory factory = CertificateFactory.getInstance("X.509");
+                    X509Certificate cert = (X509Certificate)factory.generateCertificate(new ByteArrayInputStream(certSpec));
+                    return cert;
+		} catch (Exception e) {
+                    /*
+                     * NOTE: Reconstructing using preferred provider didn't work?!?!
+                     */
+                    return certObject;
+                }
 	}
 
 	/**
@@ -449,23 +469,18 @@ public class SODFile extends PassportFile
 	 */
 	public boolean checkDocSignature(Certificate docSigningCert)
 	throws GeneralSecurityException {
-		byte[] eContent = null;       
+
+		byte[] eContent = getEContent(signedData);      
 		byte[] signature = getEncryptedDigest(signedData);
 
-		try {
-			eContent = getEContent(signedData);
-		} catch (IOException ioe) {
-			throw new GeneralSecurityException("Unable to get the contents of the security object", ioe);
-		}
-		
-		DERObjectIdentifier encAlgId = getSignerInfo(signedData).getDigestEncryptionAlgorithm().getAlgorithm();
+		DERObjectIdentifier encAlgId = getSignerInfo(signedData).getDigestEncryptionAlgorithm().getObjectId();
 		String encAlgJavaString = lookupMnemonicByOID(encAlgId);
 
 		// For the cases where the signature is simply a digest (haven't seen a passport like this, 
 		// thus this is guessing)
 
 		if (encAlgId.getId() == null) {
-			String digestAlg = getSignerInfo(signedData).getDigestAlgorithm().getAlgorithm().getId();
+			String digestAlg = getSignerInfo(signedData).getDigestAlgorithm().getObjectId().getId();
 			MessageDigest digest = null;
 			try {
 				digest = MessageDigest.getInstance(digestAlg);
@@ -479,7 +494,7 @@ public class SODFile extends PassportFile
 		}
 
 		if (encAlgId.equals(PKCS1_RSA_OID)) {
-			encAlgJavaString = lookupMnemonicByOID(getSignerInfo(signedData).getDigestAlgorithm().getAlgorithm())
+			encAlgJavaString = lookupMnemonicByOID(getSignerInfo(signedData).getDigestAlgorithm().getObjectId())
 			+ "withRSA";
 		}
 
@@ -492,10 +507,10 @@ public class SODFile extends PassportFile
 		}
                 if (encAlgId.equals(PKCS1_RSA_PSS_OID)) {
                     try {
-                        final ASN1Encodable parameters = getSignerInfo(signedData).getDigestEncryptionAlgorithm().getParameters();
+                        final DEREncodable parameters = getSignerInfo(signedData).getDigestEncryptionAlgorithm().getParameters();
                         if (parameters != null) {
                             AlgorithmParameters params = AlgorithmParameters.getInstance("PSS");
-                            params.init(parameters.toASN1Primitive().getEncoded());
+                            params.init(parameters.getDERObject().getEncoded());
                             sig.setParameter(params.getParameterSpec(PSSParameterSpec.class));
                         }
                     } catch (IOException ex) {
@@ -526,11 +541,10 @@ public class SODFile extends PassportFile
 		 */
 	}
 
-	public X500Principal getIssuerX500Principal() throws IOException {
+	public X500Principal getIssuerX500Principal() {
 		IssuerAndSerialNumber issuerAndSerialNumber = getIssuerAndSerialNumber();
-		X500Name name = issuerAndSerialNumber.getName();
-		
-		return new X500Principal(name.getEncoded(ASN1Encoding.DER));
+		X509Name name = issuerAndSerialNumber.getName();
+		return new X500Principal(name.getDEREncoded());
 	}
 
 	public BigInteger getSerialNumber() {
@@ -558,24 +572,11 @@ public class SODFile extends PassportFile
 		if (obj == this) { return true; }
 		if (!obj.getClass().equals(this.getClass())) { return false; }
 		SODFile other = (SODFile)obj;
-		try {
-			return Arrays.equals(getEncoded(), other.getEncoded());
-		} catch (IOException e) {
-			// shouldn't really happen...
-			return false;
-		}
+		return Arrays.equals(getEncoded(), other.getEncoded());
 	}
 
 	public int hashCode() {
-		int hash = 0;
-		
-		try {
-			hash += Arrays.hashCode(getEncoded());
-		} catch (IOException e) {
-			// NOPMD
-		}
-		
-		return 11 * hash + 111;
+		return 11 * Arrays.hashCode(getEncoded()) + 111;
 	}
 
 	/* ONLY PRIVATE METHODS BELOW */
@@ -608,7 +609,7 @@ public class SODFile extends PassportFile
 				new ASN1InputStream(new ByteArrayInputStream(content)); 
 
 			LDSSecurityObject sod =
-				new LDSSecurityObject((ASN1Sequence)in.readObject());
+				new LDSSecurityObject((DERSequence)in.readObject());
 			Object nextObject = in.readObject();
 
 			if (nextObject != null) {
@@ -636,7 +637,7 @@ public class SODFile extends PassportFile
 	 * @return the contents of the security object over which the
 	 *         signature is to be computed
 	 */
-	private static byte[] getEContent(SignedData signedData) throws IOException {
+	private static byte[] getEContent(SignedData signedData) {
 		SignerInfo signerInfo = getSignerInfo(signedData);
 		ASN1Set signedAttributesSet = signerInfo.getAuthenticatedAttributes();
 
@@ -649,14 +650,14 @@ public class SODFile extends PassportFile
 		} else {
 			/* Signed attributes present (i.e. a structure containing a hash of the content), return that structure to be signed... */
 			/* This option is taken by ICAO passports. */
-			byte[] attributesBytes = signedAttributesSet.getEncoded();
-			String digAlg = signerInfo.getDigestAlgorithm().getAlgorithm().getId();
+			byte[] attributesBytes = signedAttributesSet.getDEREncoded();
+			String digAlg = signerInfo.getDigestAlgorithm().getObjectId().getId();
 			try {
 				/* We'd better check that the content actually digests to the hash value contained! ;) */
 				Enumeration<?> attributes = signedAttributesSet.getObjects();
 				byte[] storedDigestedContent = null;
 				while (attributes.hasMoreElements()) {
-					Attribute attribute = Attribute.getInstance(attributes.nextElement());
+					Attribute attribute = new Attribute((DERSequence)attributes.nextElement());
 					DERObjectIdentifier attrType = attribute.getAttrType();
 					if (attrType.equals(RFC_3369_MESSAGE_DIGEST_OID)) {
 						ASN1Set attrValuesSet = attribute.getAttrValues();
@@ -709,15 +710,13 @@ public class SODFile extends PassportFile
 			Map<Integer, byte[]> dataGroupHashes,
 			byte[] encryptedDigest,
 			X509Certificate docSigningCertificate)
-	throws NoSuchAlgorithmException, CertificateException, IOException {
+	throws NoSuchAlgorithmException, CertificateException {
 		ASN1Set digestAlgorithmsSet = createSingletonSet(createDigestAlgorithms(digestAlgorithm));
 		ContentInfo contentInfo = createContentInfo(digestAlgorithm, dataGroupHashes);
 		byte[] content = ((DEROctetString)contentInfo.getContent()).getOctets();
 		ASN1Set certificates =  createSingletonSet(createCertificate(docSigningCertificate));
 		ASN1Set crls = null;
-		ASN1Set signerInfos = createSingletonSet(createSignerInfo(digestAlgorithm,
-												digestEncryptionAlgorithm, null,
-												content, encryptedDigest, docSigningCertificate).toASN1Primitive());
+		ASN1Set signerInfos = createSingletonSet(createSignerInfo(digestAlgorithm, digestEncryptionAlgorithm, null, content, encryptedDigest, docSigningCertificate).toASN1Object());
 		return new SignedData(digestAlgorithmsSet, contentInfo, certificates, crls, signerInfos);
 	}
 
@@ -725,7 +724,7 @@ public class SODFile extends PassportFile
             String digestEncryptionAlgorithm,
             Map<Integer, byte[]> dataGroupHashes, PrivateKey privateKey,
             X509Certificate docSigningCertificate, String provider)
-            throws NoSuchAlgorithmException, CertificateException, IOException {
+            throws NoSuchAlgorithmException, CertificateException {
         return createSignedData(digestAlgorithm, digestEncryptionAlgorithm,
                 dataGroupHashes, privateKey, docSigningCertificate, provider,
                 null, null);
@@ -736,18 +735,18 @@ public class SODFile extends PassportFile
             Map<Integer, byte[]> dataGroupHashes, PrivateKey privateKey,
             X509Certificate docSigningCertificate, String provider,
             String ldsVersion, String unicodeVersion)
-            throws NoSuchAlgorithmException, CertificateException, IOException {
+            throws NoSuchAlgorithmException, CertificateException {
         ASN1Set digestAlgorithmsSet = createSingletonSet(createDigestAlgorithms(digestAlgorithm));
         ContentInfo contentInfo = createContentInfo(digestAlgorithm,
                         dataGroupHashes, ldsVersion, unicodeVersion);
         byte[] content = ((DEROctetString) contentInfo.getContent())
                 .getOctets();
 
-        ASN1Encodable digestEncryptionAlgorithmParams;
+        DEREncodable digestEncryptionAlgorithmParams;
         byte[] encryptedDigest = null;
         try {
             byte[] dataToBeSigned = createAuthenticatedAttributes(
-                    digestAlgorithm, content).getEncoded(ASN1Encoding.DER);
+                    digestAlgorithm, content).getDEREncoded();
             Signature s;
             if (provider != null) {
                 s = Signature.getInstance(digestEncryptionAlgorithm, provider);
@@ -780,7 +779,7 @@ public class SODFile extends PassportFile
         ASN1Set crls = null;
         ASN1Set signerInfos = createSingletonSet(createSignerInfo(
                 digestAlgorithm, digestEncryptionAlgorithm, digestEncryptionAlgorithmParams, content,
-                encryptedDigest, docSigningCertificate).toASN1Primitive());
+                encryptedDigest, docSigningCertificate).toASN1Object());
         return new SignedData(digestAlgorithmsSet, contentInfo, certificates,
                 crls, signerInfos);
     }
@@ -809,7 +808,7 @@ public class SODFile extends PassportFile
         private static ContentInfo createContentInfo(
 			String digestAlgorithm,
 			Map<Integer, byte[]> dataGroupHashes)
-					throws NoSuchAlgorithmException, IOException {
+	throws NoSuchAlgorithmException {
             return createContentInfo(digestAlgorithm, dataGroupHashes, null,
                     null);
         }
@@ -818,7 +817,7 @@ public class SODFile extends PassportFile
 			String digestAlgorithm,
 			Map<Integer, byte[]> dataGroupHashes,
                         String ldsVersion, String unicodeVersion)
-	throws NoSuchAlgorithmException, IOException {
+	throws NoSuchAlgorithmException {
 		DataGroupHash[] dataGroupHashesArray = new DataGroupHash[dataGroupHashes.size()];
 		int i = 0;
 		for (int dataGroupNumber: dataGroupHashes.keySet()) {
@@ -842,15 +841,20 @@ public class SODFile extends PassportFile
 	private static SignerInfo createSignerInfo(
 			String digestAlgorithm,
 			String digestEncryptionAlgorithm,
-            ASN1Encodable digestEncryptionAlgorithmParams,
+                        DEREncodable digestEncryptionAlgorithmParams,
 			byte[] content,
 			byte[] encryptedDigest,
 			X509Certificate docSigningCertificate)
-	throws NoSuchAlgorithmException, CertificateEncodingException {
+	throws NoSuchAlgorithmException {
 		/* Get the issuer name (CN, O, OU, C) from the cert and put it in a SignerIdentifier struct. */
+		X500Principal docSignerPrincipal = ((X509Certificate)docSigningCertificate).getIssuerX500Principal();
+                // As X509Certificate.getIssuerX500Principal().getName() always prints the name in reverses order
+                // we need to call the X509Name constructor with the first parameter reverse=true to have it back in
+                // the right order.
+                X509Name docSignerName = new X509Name(true, docSignerPrincipal.getName()); // RFC 2253 format
 		BigInteger serial = ((X509Certificate)docSigningCertificate).getSerialNumber();
-		IssuerAndSerialNumber iasn = new IssuerAndSerialNumber(JcaX500NameUtil.getIssuer(docSigningCertificate), serial);
-		SignerIdentifier sid = new SignerIdentifier(iasn);
+		SignerIdentifier sid = new SignerIdentifier(new IssuerAndSerialNumber(docSignerName, serial));
+
 		AlgorithmIdentifier digestAlgorithmObject = new AlgorithmIdentifier(lookupOIDByMnemonic(digestAlgorithm)); 
 		final AlgorithmIdentifier digestEncryptionAlgorithmObject;
                 if (digestEncryptionAlgorithmParams == null) {
@@ -872,8 +876,7 @@ public class SODFile extends PassportFile
 		ASN1OctetString digestedContent = new DEROctetString(digestedContentBytes);
 		Attribute contentTypeAttribute = new Attribute(RFC_3369_CONTENT_TYPE_OID, createSingletonSet(ICAO_SOD_OID));
 		Attribute messageDigestAttribute = new Attribute(RFC_3369_MESSAGE_DIGEST_OID, createSingletonSet(digestedContent));
-		ASN1Encodable[] result = { contentTypeAttribute.toASN1Primitive(),
-									messageDigestAttribute.toASN1Primitive() };
+		ASN1Encodable[] result = { contentTypeAttribute.toASN1Object(), messageDigestAttribute.toASN1Object() };
 		return new DERSet(result);
 	}
 
@@ -919,7 +922,7 @@ public class SODFile extends PassportFile
 		throw new NoSuchAlgorithmException("Unknown OID " + oid);
 	}
 
-	private static ASN1ObjectIdentifier lookupOIDByMnemonic(String name) throws NoSuchAlgorithmException {
+	private static DERObjectIdentifier lookupOIDByMnemonic(String name) throws NoSuchAlgorithmException {
 		if (name.equals("O")) { return X509ObjectIdentifiers.organization; }
 		if (name.equals("OU")) { return X509ObjectIdentifiers.organizationalUnitName; }
 		if (name.equals("CN")) { return X509ObjectIdentifiers.commonName; }

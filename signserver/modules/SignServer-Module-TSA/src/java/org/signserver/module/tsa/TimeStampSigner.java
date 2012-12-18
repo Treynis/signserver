@@ -12,47 +12,29 @@
  *************************************************************************/
 package org.signserver.module.tsa;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.math.BigInteger;
 import java.security.*;
-import java.security.cert.*;
 import java.security.cert.Certificate;
-import java.text.SimpleDateFormat;
+import java.security.cert.*;
 import java.util.*;
+import javax.ejb.EJBException;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.cmp.PKIStatus;
-import org.bouncycastle.asn1.oiw.OIWObjectIdentifiers;
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaCertStore;
-import org.bouncycastle.cms.SignerInfoGenerator;
-import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.DigestCalculator;
-import org.bouncycastle.operator.DigestCalculatorProvider;
-import org.bouncycastle.operator.OperatorCreationException;
-import org.bouncycastle.operator.bc.BcDigestCalculatorProvider;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.asn1.x509.X509Extensions;
+import org.bouncycastle.asn1.x509.X509Name;
 import org.bouncycastle.tsp.*;
-import org.bouncycastle.util.Selector;
-import org.bouncycastle.util.Store;
 import org.ejbca.util.Base64;
 import org.signserver.common.*;
 import org.signserver.server.ITimeSource;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.archive.Archivable;
-import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.log.IWorkerLogger;
-import org.signserver.server.log.LogMap;
 import org.signserver.server.signers.BaseSigner;
+import org.signserver.server.tsa.org.bouncycastle.tsp.TimeStampResponseGenerator;
 
 /**
  * A Signer signing Time-stamp request according to RFC 3161 using the
@@ -144,7 +126,7 @@ import org.signserver.server.signers.BaseSigner;
  * </tr>
  *
  * </table>
- * 
+ *
  * Specifying a signer certificate (normally the SIGNERCERT property) is required 
  * as information from that certificate will be used to indicate which signer
  * signed the time-stamp token.
@@ -168,15 +150,14 @@ public class TimeStampSigner extends BaseSigner {
     /** Random generator. */
     private transient SecureRandom random;
 
-    /** MIME type for the request data. **/
-    private static final String REQUEST_CONTENT_TYPE = "application/timestamp-query";
-    
-    /** MIME type for the response data. **/
-    private static final String RESPONSE_CONTENT_TYPE = "application/timestamp-reply";
+    private static final BigInteger LOWEST =
+            new BigInteger("0080000000000000", 16);
 
-    // Property constants
+    private static final BigInteger HIGHEST =
+            new BigInteger("7FFFFFFFFFFFFFFF", 16);
+
+    //Private Property constants
     public static final String TIMESOURCE = "TIMESOURCE";
-    public static final String SIGNATUREALGORITHM = "SIGNATUREALGORITHM";
     public static final String ACCEPTEDALGORITHMS = "ACCEPTEDALGORITHMS";
     public static final String ACCEPTEDPOLICIES = "ACCEPTEDPOLICIES";
     public static final String ACCEPTEDEXTENSIONS = "ACCEPTEDEXTENSIONS";
@@ -188,14 +169,12 @@ public class TimeStampSigner extends BaseSigner {
     public static final String ORDERING = "ORDERING";
     public static final String TSA = "TSA";
     public static final String REQUIREVALIDCHAIN = "REQUIREVALIDCHAIN";
-    public static final String MAXSERIALNUMBERLENGTH = "MAXSERIALNUMBERLENGTH";
 
     private static final String DEFAULT_WORKERLOGGER =
             DefaultTimeStampLogger.class.getName();
 
     private static final String DEFAULT_TIMESOURCE =
             "org.signserver.server.LocalComputerTimeSource";
-    private static final int DEFAULT_MAXSERIALNUMBERLENGTH = 8;
     
     private static final String[] ACCEPTEDALGORITHMSNAMES = {
         "GOST3411",
@@ -210,7 +189,7 @@ public class TimeStampSigner extends BaseSigner {
         "RIPEMD256"
     };
     
-    private static final ASN1ObjectIdentifier[] ACCEPTEDALGORITHMSOIDS = {
+    private static final String[] ACCEPTEDALGORITHMSOIDS = {
         TSPAlgorithms.GOST3411,
         TSPAlgorithms.MD5,
         TSPAlgorithms.SHA1,
@@ -223,44 +202,28 @@ public class TimeStampSigner extends BaseSigner {
         TSPAlgorithms.RIPEMD256
     };
 
-    private static final HashMap<String, ASN1ObjectIdentifier> ACCEPTEDALGORITHMSMAP =
-            new HashMap<String, ASN1ObjectIdentifier>();
-    private static final HashMap<ASN1ObjectIdentifier, String> ACCEPTEDALGORITHMSREVERSEMAP =
-    		new HashMap<ASN1ObjectIdentifier, String>();
+    private static final HashMap<String, String> ACCEPTEDALGORITHMSMAP =
+            new HashMap<String, String>();
 
     static {
         for (int i = 0; i < ACCEPTEDALGORITHMSNAMES.length; i++) {
             ACCEPTEDALGORITHMSMAP.put(ACCEPTEDALGORITHMSNAMES[i],
                     ACCEPTEDALGORITHMSOIDS[i]);
-            ACCEPTEDALGORITHMSREVERSEMAP.put(ACCEPTEDALGORITHMSOIDS[i],
-            		ACCEPTEDALGORITHMSNAMES[i]);
         }
     }
 
-    private static final String DEFAULT_SIGNATUREALGORITHM = "SHA1withRSA";
     private static final String DEFAULT_ORDERING = "FALSE";
     //private static final String DEFAULT_DIGESTOID   = TSPAlgorithms.SHA1;
-    
-    private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
 
     private ITimeSource timeSource = null;
-    private String signatureAlgorithm;
-    private Set<ASN1ObjectIdentifier> acceptedAlgorithms = null;
+    private Set<String> acceptedAlgorithms = null;
     private Set<String> acceptedPolicies = null;
     private Set<String> acceptedExtensions = null;
 
     //private String defaultDigestOID = null;
-    private ASN1ObjectIdentifier defaultTSAPolicyOID = null;
-    
-    private boolean validChain = true;
+    private String defaultTSAPolicyOID = null;
 
-    private int maxSerialNumberLength;
-    private String serialNumberError;
-    
-    // we restrict the allowed serial number size limit to between 64 and 160 bits
-    // note: the generated serial number will always be positive
-    private static final int MAX_ALLOWED_MAXSERIALNUMBERLENGTH = 20;
-    private static final int MIN_ALLOWED_MAXSERIALNUMBERLENGTH = 8;
+    private boolean validChain = true;
     
     @Override
     public void init(final int signerId, final WorkerConfig config,
@@ -275,25 +238,18 @@ public class TimeStampSigner extends BaseSigner {
         }
 
         // Check that the timestamp server is properly configured
-        try {
-        	timeSource = getTimeSource();
-        	if (timeSource == null) {
-        		final String error = "Error: Timestamp signer :" + signerId +
-        				" has a malconfigured timesource.";
-        		LOG.error(error);
-        	} else {
-        		if (LOG.isDebugEnabled()) {
-        			LOG.debug("TimeStampSigner[" + signerId + "]: "
-        					+ "Using TimeSource: "
-        					+ timeSource.getClass().getName());
-        		}
-        	}
-        } catch (SignServerException e) {
-        	LOG.error("Could not create time source: " + e.getMessage());
+        timeSource = getTimeSource();
+        if (timeSource == null) {
+            final String error = "Error: Timestamp signer :" + signerId +
+                    " has a malconfigured timesource.";
+            LOG.error(error);
+        } else {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("TimeStampSigner[" + signerId + "]: "
+                        + "Using TimeSource: "
+                        + timeSource.getClass().getName());
+            }
         }
-        
-        // Get the signature algorithm
-        signatureAlgorithm = config.getProperty(SIGNATUREALGORITHM, DEFAULT_SIGNATUREALGORITHM);
 
         /* defaultDigestOID =
             config.getProperties().getProperty(DEFAULTDIGESTOID);
@@ -301,18 +257,12 @@ public class TimeStampSigner extends BaseSigner {
             defaultDigestOID = DEFAULT_DIGESTOID;
         }*/
 
-        final String policyId = config.getProperties().getProperty(DEFAULTTSAPOLICYOID);
-        
-        try {
-        	if (policyId != null) {
-        		defaultTSAPolicyOID = new ASN1ObjectIdentifier(policyId);
-        	} else {
-        		LOG.error("Error: No default TSA Policy OID have been configured");
-        	}
-        } catch (IllegalArgumentException iae) {
-        	LOG.error("Error: TSA Policy OID " + policyId + " is invalid");
+        defaultTSAPolicyOID =
+                config.getProperties().getProperty(DEFAULTTSAPOLICYOID);
+        if (defaultTSAPolicyOID == null) {
+            LOG.error("Error: No default TSA Policy OID have been configured");
         }
-       
+
         if (LOG.isDebugEnabled()) {
             LOG.debug("bctsp version: " + TimeStampResponseGenerator.class
                 .getPackage().getImplementationVersion() + ", "
@@ -324,27 +274,7 @@ public class TimeStampSigner extends BaseSigner {
         final String requireValidChain = config.getProperty(REQUIREVALIDCHAIN, Boolean.FALSE.toString());
         if (Boolean.parseBoolean(requireValidChain)) {
             validChain = validateChain();
-        }
-        
-        maxSerialNumberLength = DEFAULT_MAXSERIALNUMBERLENGTH;
-        final String maxSerialNumberLengthProp = config.getProperty(MAXSERIALNUMBERLENGTH);
-        
-        if (maxSerialNumberLengthProp != null) {
-            try {
-        	maxSerialNumberLength = Integer.parseInt(maxSerialNumberLengthProp);
-            } catch (NumberFormatException e) {
-        	maxSerialNumberLength = -1;
-                serialNumberError = "Maximum serial number length specified is invalid: \"" + maxSerialNumberLengthProp + "\"";
-            }
-
-            if (serialNumberError == null) {
-                if (maxSerialNumberLength > MAX_ALLOWED_MAXSERIALNUMBERLENGTH) {
-                    serialNumberError = "Maximum serial number length specified is too large: " + maxSerialNumberLength;
-                } else if (maxSerialNumberLength < MIN_ALLOWED_MAXSERIALNUMBERLENGTH) {
-                    serialNumberError = "Maximum serial number length specified is too small: " + maxSerialNumberLength;
-                }
-            }
-        }
+    }
     }
 
     /**
@@ -360,11 +290,11 @@ public class TimeStampSigner extends BaseSigner {
     public ProcessResponse processData(final ProcessRequest signRequest,
             final RequestContext requestContext) throws
                 IllegalRequestException,
-                CryptoTokenOfflineException,
-                SignServerException {
+                CryptoTokenOfflineException {
 
         // Log values
-        final LogMap logMap = LogMap.getInstance(requestContext);
+        final Map<String, String> logMap =
+                (Map<String, String>) requestContext.get(RequestContext.LOGMAP);
 
         final ISignRequest sReq = (ISignRequest) signRequest;
 
@@ -383,7 +313,7 @@ public class TimeStampSigner extends BaseSigner {
                 "Recieved request data wasn't a expected TimeStampRequest. ");
             throw exception;
         }
-        
+
         if (!validChain) {
             LOG.error("Certificate chain not correctly configured");
             throw new CryptoTokenOfflineException("Certificate chain not correctly configured");
@@ -399,19 +329,18 @@ public class TimeStampSigner extends BaseSigner {
                 serialNumber.toString(16));
 
 
-        GenericSignResponse signResponse = null;
+        GenericSignResponse signResponse;
         try {
-            final byte[] requestbytes = (byte[]) sReq.getRequestData();
             final TimeStampRequest timeStampRequest =
-                    new TimeStampRequest(requestbytes);
-            
+                    new TimeStampRequest((byte[]) sReq.getRequestData());
+
             // Log values for timestamp request
             logMap.put(ITimeStampLogger.LOG_TSA_TIMESTAMPREQUEST_CERTREQ,
                     String.valueOf(timeStampRequest.getCertReq()));
             logMap.put(ITimeStampLogger.LOG_TSA_TIMESTAMPREQUEST_CRITEXTOIDS,
                     String.valueOf(timeStampRequest.getCriticalExtensionOIDs()));
             logMap.put(ITimeStampLogger.LOG_TSA_TIMESTAMPREQUEST_ENCODED,
-                    new String(Base64.encode(requestbytes)));
+                    new String(Base64.encode(timeStampRequest.getEncoded())));
             logMap.put(ITimeStampLogger.LOG_TSA_TIMESTAMPREQUEST_NONCRITEXTOIDS,
                     String.valueOf(timeStampRequest.getNonCriticalExtensionOIDs()));
             logMap.put(ITimeStampLogger.LOG_TSA_TIMESTAMPREQUEST_NOUNCE,
@@ -420,7 +349,7 @@ public class TimeStampSigner extends BaseSigner {
                     String.valueOf(timeStampRequest.getVersion()));
             logMap.put(ITimeStampLogger
                         .LOG_TSA_TIMESTAMPREQUEST_MESSAGEIMPRINTALGOID,
-                    timeStampRequest.getMessageImprintAlgOID().getId());
+                    timeStampRequest.getMessageImprintAlgOID());
             logMap.put(ITimeStampLogger
                         .LOG_TSA_TIMESTAMPREQUEST_MESSAGEIMPRINTDIGEST,
                     new String(Base64.encode(
@@ -435,10 +364,11 @@ public class TimeStampSigner extends BaseSigner {
             final TimeStampResponse timeStampResponse =
                     timeStampResponseGen.generate(timeStampRequest,
                     serialNumber,
-                    date);
+                    date,
+                    getCryptoToken().getProvider(
+                        ICryptoToken.PROVIDERUSAGE_SIGN));
 
             final TimeStampToken token = timeStampResponse.getTimeStampToken();
-            final byte[] signedbytes = timeStampResponse.getEncoded();
 
             // Log values for timestamp response
             if (LOG.isDebugEnabled()) {
@@ -454,7 +384,7 @@ public class TimeStampSigner extends BaseSigner {
                             timeStampResponse.getFailInfo().intValue()));
             }
             logMap.put(ITimeStampLogger.LOG_TSA_TIMESTAMPRESPONSE_ENCODED,
-                    new String(Base64.encode(signedbytes)));
+                    new String(Base64.encode(timeStampResponse.getEncoded())));
             logMap.put(ITimeStampLogger.LOG_TSA_PKISTATUS_STRING,
                     timeStampResponse.getStatusString());
             
@@ -465,25 +395,21 @@ public class TimeStampSigner extends BaseSigner {
                 archiveId = token.getTimeStampInfo().getSerialNumber()
                                         .toString(16);
             }
-            
-            final Collection<? extends Archivable> archivables = Arrays.asList(
-                    new DefaultArchivable(Archivable.TYPE_REQUEST, REQUEST_CONTENT_TYPE, requestbytes, archiveId),
-                    new DefaultArchivable(Archivable.TYPE_RESPONSE, RESPONSE_CONTENT_TYPE, signedbytes, archiveId)
-                );
 
             if (signRequest instanceof GenericServletRequest) {
                 signResponse = new GenericServletResponse(sReq.getRequestID(),
-                        signedbytes,
+                        timeStampResponse.getEncoded(),
                                     getSigningCertificate(),
                                     archiveId,
-                                    archivables, 
-                                    RESPONSE_CONTENT_TYPE);
+                                    new ArchiveData(
+                                        timeStampResponse.getEncoded()),
+                                        "application/timestamp-reply");
             } else {
                 signResponse = new GenericSignResponse(sReq.getRequestID(),
-                        signedbytes,
+                        timeStampResponse.getEncoded(),
                         getSigningCertificate(),
                         archiveId,
-                        archivables);
+                        new ArchiveData(timeStampResponse.getEncoded()));
             }
 
             // Put in log values
@@ -548,13 +474,6 @@ public class TimeStampSigner extends BaseSigner {
             logMap.put(ITimeStampLogger.LOG_TSA_EXCEPTION,
                     exception.getMessage());
             throw exception;
-        } catch (OperatorCreationException e) {
-        	final SignServerException exception =
-        			new SignServerException(e.getMessage(), e);
-        	LOG.error("OperatorCreationException: ", e);
-        	logMap.put(ITimeStampLogger.LOG_TSA_EXCEPTION,
-        			exception.getMessage());
-        	throw exception;
         }
 
         return signResponse;
@@ -563,7 +482,7 @@ public class TimeStampSigner extends BaseSigner {
     /**
      * @return a time source interface expected to provide accurate time
      */
-    private ITimeSource getTimeSource() throws SignServerException {
+    private ITimeSource getTimeSource() {
         if (timeSource == null) {
             try {
                 String classpath =
@@ -578,11 +497,11 @@ public class TimeStampSigner extends BaseSigner {
                 timeSource.init(config.getProperties());
 
             } catch (ClassNotFoundException e) {
-                throw new SignServerException("Class not found", e);
+                throw new EJBException(e);
             } catch (IllegalAccessException iae) {
-                throw new SignServerException("Illegal access", iae);
+                throw new EJBException(iae);
             } catch (InstantiationException ie) {
-                throw new SignServerException("Instantiation error", ie);
+                throw new EJBException(ie);
             }
         }
 
@@ -590,7 +509,7 @@ public class TimeStampSigner extends BaseSigner {
     }
 
     @SuppressWarnings("unchecked")
-    private Set<ASN1ObjectIdentifier> getAcceptedAlgorithms() {
+    private Set<String> getAcceptedAlgorithms() {
         if (acceptedAlgorithms == null) {
             final String nonParsedAcceptedAlgorihms =
                     this.config.getProperties().getProperty(ACCEPTEDALGORITHMS);
@@ -602,7 +521,8 @@ public class TimeStampSigner extends BaseSigner {
                 if (subStrings.length > 0) {
                     acceptedAlgorithms = new HashSet();
                     for (int i = 0; i < subStrings.length; i++) {
-                        final ASN1ObjectIdentifier acceptAlg = ACCEPTEDALGORITHMSMAP.get(subStrings[i]);
+                        final String acceptAlg =
+                            (String) ACCEPTEDALGORITHMSMAP.get(subStrings[i]);
                         if (acceptAlg != null) {
                             acceptedAlgorithms.add(acceptAlg);
                         } else {
@@ -660,29 +580,27 @@ public class TimeStampSigner extends BaseSigner {
 
     private TimeStampTokenGenerator getTimeStampTokenGenerator(
             final TimeStampRequest timeStampRequest,
-            final LogMap logMap) throws
+            final Map<String, String> logMap) throws
                 IllegalRequestException,
                 CryptoTokenOfflineException,
                 InvalidAlgorithmParameterException,
                 NoSuchAlgorithmException,
                 NoSuchProviderException,
-                CertStoreException,
-                OperatorCreationException,
-                SignServerException {
+                CertStoreException {
 
         TimeStampTokenGenerator timeStampTokenGen = null;
         try {
-            final ASN1ObjectIdentifier digestOID = timeStampRequest.getMessageImprintAlgOID();
+            final String digestOID = timeStampRequest.getMessageImprintAlgOID();
             
             /*if (digestOID == null) {
                 digestOID = defaultDigestOID;
             }*/
 
-            ASN1ObjectIdentifier tSAPolicyOID = timeStampRequest.getReqPolicy();
+            String tSAPolicyOID = timeStampRequest.getReqPolicy();
             if (tSAPolicyOID == null) {
                 tSAPolicyOID = defaultTSAPolicyOID;
             }
-            logMap.put(ITimeStampLogger.LOG_TSA_POLICYID, tSAPolicyOID.getId());
+            logMap.put(ITimeStampLogger.LOG_TSA_POLICYID, tSAPolicyOID);
 
             final X509Certificate signingCert
                     = (X509Certificate) getSigningCertificate();
@@ -690,21 +608,14 @@ public class TimeStampSigner extends BaseSigner {
                 throw new CryptoTokenOfflineException(
                         "No certificate for this signer");
             }
-            
-            DigestCalculatorProvider calcProv = new BcDigestCalculatorProvider();    
-            DigestCalculator calc = calcProv.get(new AlgorithmIdentifier(TSPAlgorithms.SHA1));
-            
-            
-            Certificate cert = this.getSigningCertificate();
-            
-            PrivateKey privKey = this.getCryptoToken().getPrivateKey(ICryptoToken.PURPOSE_SIGN);
-            ContentSigner cs =
-            		new JcaContentSignerBuilder(signatureAlgorithm).setProvider(this.getCryptoToken().getProvider(ICryptoToken.PROVIDERUSAGE_SIGN)).build(privKey);
-            JcaSignerInfoGeneratorBuilder sigb = new JcaSignerInfoGeneratorBuilder(calcProv);
-            X509CertificateHolder certHolder = new X509CertificateHolder(cert.getEncoded());
-            SignerInfoGenerator sig = sigb.build(cs, certHolder);
-            
-            timeStampTokenGen = new TimeStampTokenGenerator(calc, sig, tSAPolicyOID);
+
+            timeStampTokenGen = new TimeStampTokenGenerator(
+                    this.getCryptoToken().getPrivateKey(
+                        ICryptoToken.PURPOSE_SIGN),
+                    signingCert,
+                    TSPAlgorithms.SHA1,
+                    tSAPolicyOID);
+
 
             if (config.getProperties().getProperty(ACCURACYMICROS) != null) {
                 timeStampTokenGen.setAccuracyMicros(Integer.parseInt(
@@ -728,37 +639,33 @@ public class TimeStampSigner extends BaseSigner {
             }
 
             if (config.getProperties().getProperty(TSA) != null) {
-                final X500Name x500Name = new X500Name(config.getProperties()
+                final X509Name x509Name = new X509Name(config.getProperties()
                             .getProperty(TSA));
-                timeStampTokenGen.setTSA(new GeneralName(x500Name));
+                timeStampTokenGen.setTSA(new GeneralName(x509Name));
             }
-           
-            timeStampTokenGen.addCertificates(getCertStoreWithChain(signingCert));
 
+            // TODO: will probably need to fix this when moving to BC 2.0...
+            timeStampTokenGen.setCertificatesAndCRLs(getCertStoreWithChain(signingCert));
+            
         } catch (IllegalArgumentException e) {
             LOG.error("IllegalArgumentException: ", e);
             throw new IllegalRequestException(e.getMessage());
         } catch (TSPException e) {
             LOG.error("TSPException: ", e);
             throw new IllegalRequestException(e.getMessage());
-        } catch (CertificateEncodingException e) {
-        	LOG.error("CertificateEncodingException: ", e);
-        	throw new IllegalRequestException(e.getMessage());
-        } catch (IOException e) {
-        	LOG.error("IOException: ", e);
-        	throw new IllegalRequestException(e.getMessage());
         }
-
         return timeStampTokenGen;
     }
-    
-    private Store getCertStoreWithChain(Certificate signingCert) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, CryptoTokenOfflineException, CertStoreException, CertificateEncodingException, IOException {
+
+    private CertStore getCertStoreWithChain(Certificate signingCert) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, CryptoTokenOfflineException, CertStoreException {
         Collection<Certificate> signingCertificateChain = getSigningCertificateChain();
         
         if (signingCertificateChain == null) {
             throw new CryptoTokenOfflineException("Certificate chain not available");
         } else {
-            JcaCertStore certStore = new JcaCertStore(signingCertificateChain);
+            final CertStore certStore = CertStore.getInstance("Collection",
+                    new CollectionCertStoreParameters(
+                        signingCertificateChain), "BC");
 
             if (!containsCertificate(certStore, signingCert)) {
                 throw new CryptoTokenOfflineException("Signer certificate not included in certificate chain");
@@ -770,14 +677,12 @@ public class TimeStampSigner extends BaseSigner {
     /**
      * @return True if the CertStore contained the Certificate
      */
-    private boolean containsCertificate(final Store store, final Certificate subject) throws CertStoreException, IOException, CertificateEncodingException {
-        final X509CertificateHolder cert = new X509CertificateHolder(subject.getEncoded());
-        final Collection<?> matchedCerts = store.getMatches(new Selector() {
-            
-            public boolean match(Object obj) {
-                return cert.equals(obj);
+    private boolean containsCertificate(final CertStore store, final Certificate subject) throws CertStoreException {
+        final Collection<? extends Certificate> matchedCerts = store.getCertificates(new CertSelector() {
+            @Override
+            public boolean match(Certificate cert) {
+                return subject.equals(cert);
             }
-            
             @Override
             public Object clone() {
                 return this;
@@ -796,20 +701,12 @@ public class TimeStampSigner extends BaseSigner {
     }
 
     /**
-     * Help method that generates a serial number using SecureRandom.
-     * Uses the configured length of the signer. This is public to allow using directly from
-     * unit test.
+     * Help method that generates a serial number using SecureRandom
      */
-    public BigInteger getSerialNumber() throws SignServerException {
+    private BigInteger getSerialNumber() {
         BigInteger serialNumber = null;
-        
-        if (maxSerialNumberLength < MIN_ALLOWED_MAXSERIALNUMBERLENGTH
-        	|| maxSerialNumberLength > MAX_ALLOWED_MAXSERIALNUMBERLENGTH) {
-        	throw new SignServerException("Maximum serial number length is not in allowed range");
-        }
-        
         try {
-            serialNumber = getSerno(maxSerialNumberLength);
+            serialNumber = getSerno();
         } catch (Exception e) {
             LOG.error("Error initiating Serial Number generator, SEVERE ERROR.",
                     e);
@@ -821,10 +718,9 @@ public class TimeStampSigner extends BaseSigner {
      * Generates a number of serial number bytes. The number returned should
      * be a positive number.
      *
-     * @param maxLength the maximum number of octects of the generated serial number
      * @return a BigInteger with a new random serial number.
      */
-    public BigInteger getSerno(int maxLength) {
+    public BigInteger getSerno() {
         if (random == null) {
             try {
                 random = SecureRandom.getInstance(algorithm);
@@ -832,43 +728,23 @@ public class TimeStampSigner extends BaseSigner {
                 LOG.error(e);
             }
         }
-        
-        final byte[] sernobytes = new byte[maxLength];
-        random.nextBytes(sernobytes);
-        BigInteger serno = new BigInteger(sernobytes).abs();
-       
+
+        final byte[] sernobytes = new byte[8];
+        boolean ok = false;
+        BigInteger serno = null;
+        while (!ok) {
+            random.nextBytes(sernobytes);
+            serno = new BigInteger(sernobytes).abs();
+
+            // Must be within the range 0080000000000000 - 7FFFFFFFFFFFFFFF
+            if ((serno.compareTo(LOWEST) >= 0)
+                    && (serno.compareTo(HIGHEST) <= 0)) {
+                ok = true;
+            }
+        }
         return serno;
     }
     
-    private static class SHA1DigestCalculator implements DigestCalculator {
-    	private ByteArrayOutputStream bOut = new ByteArrayOutputStream();
-    	private MessageDigest digest;
-
-    	public SHA1DigestCalculator() {
-    		try {
-    			this.digest = MessageDigest.getInstance("SHA1");
-    		} catch (NoSuchAlgorithmException e) {
-    			
-    		}
-    	}
-
-    	public AlgorithmIdentifier getAlgorithmIdentifier() {
-    		return new AlgorithmIdentifier(OIWObjectIdentifiers.idSHA1);
-    	}
-
-    	public OutputStream getOutputStream() {
-    		return bOut;
-    	}
-
-    	public byte[] getDigest() {
-    		byte[] bytes = digest.digest(bOut.toByteArray());
-
-    		bOut.reset();
-
-    		return bytes;
-    	}
-    }
-
     /**
      * @return True if each certificate in the certificate chain can be verified 
      * by the next certificate (if any). This does not check that the last 
@@ -930,7 +806,7 @@ public class TimeStampSigner extends BaseSigner {
         }
         return result;
     }
-
+    
     @Override
     protected List<String> getFatalErrors() {
         final List<String> result = new LinkedList<String>();
@@ -949,12 +825,6 @@ public class TimeStampSigner extends BaseSigner {
                 result.add("Unable to get certificate chain");
                 LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
             } catch (CertStoreException ex) {
-                result.add("Unable to get certificate chain");
-                LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
-            } catch (IOException ex) {
-                result.add("Unable to get certificate chain");
-                LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
-            } catch (CertificateEncodingException ex) {
                 result.add("Unable to get certificate chain");
                 LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
             } catch (InvalidAlgorithmParameterException ex) {
@@ -984,7 +854,7 @@ public class TimeStampSigner extends BaseSigner {
                         result.add("Missing extended key usage timeStamping");
                     }
                     if (cert.getCriticalExtensionOIDs() == null 
-                            || !cert.getCriticalExtensionOIDs().contains(org.bouncycastle.asn1.x509.X509Extension.extendedKeyUsage.getId())) {
+                        || !cert.getCriticalExtensionOIDs().contains(X509Extensions.ExtendedKeyUsage.getId())) {
                         result.add("The extended key usage extension must be present and marked as critical");
                     }
                 } else {
@@ -1011,21 +881,7 @@ public class TimeStampSigner extends BaseSigner {
         	}
         }
 
-        final String serialNumberError = getSerialNumberError();
-
-        if (serialNumberError != null) {
-            result.add(serialNumberError);
-        }
-
         return result;
     }
     
-    /**
-     * Get serial number error
-     * We run this stand-alone from the unit test
-     * 
-     */
-    protected String getSerialNumberError() {
-        return serialNumberError;
-    }
 }

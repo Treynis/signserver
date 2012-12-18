@@ -18,37 +18,74 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.URL;
-import java.security.*;
+import java.security.KeyManagementException;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Principal;
+import java.security.PrivateKey;
+import java.security.SecureRandom;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertStore;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Enumeration;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import javax.ejb.EJB;
 import javax.naming.NamingException;
-import javax.net.ssl.*;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509KeyManager;
+
 import javax.persistence.EntityManager;
 import javax.xml.namespace.QName;
+
 import org.apache.log4j.Logger;
-import org.bouncycastle.asn1.x509.BasicConstraints;
-import org.bouncycastle.asn1.x509.Extension;
-import org.bouncycastle.asn1.x509.X509Extension;
-import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cms.CMSSignedData;
-import org.bouncycastle.util.Selector;
-import org.bouncycastle.util.Store;
 import org.bouncycastle.util.encoders.Base64;
+import org.bouncycastle.x509.X509CertStoreSelector;
 import org.ejbca.util.CertTools;
-import org.signserver.common.*;
+import org.signserver.common.Base64SignerCertReqData;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericPropertiesRequest;
+import org.signserver.common.GenericPropertiesResponse;
+import org.signserver.common.GenericServletRequest;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.InvalidWorkerIdException;
+import org.signserver.common.KeyTestResult;
+import org.signserver.common.PKCS10CertReqInfo;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.ServiceLocator;
+import org.signserver.common.SignServerException;
+import org.signserver.common.WorkerConfig;
 import org.signserver.common.util.RandomPasswordGenerator;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.module.renewal.common.RenewalWorkerProperties;
-import org.signserver.module.renewal.ejbcaws.gen.*;
+import org.signserver.module.renewal.ejbcaws.gen.CertificateResponse;
+import org.signserver.module.renewal.ejbcaws.gen.EjbcaWS;
+import org.signserver.module.renewal.ejbcaws.gen.EjbcaWSService;
+import org.signserver.module.renewal.ejbcaws.gen.UserDataVOWS;
+import org.signserver.module.renewal.ejbcaws.gen.UserMatch;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.log.IWorkerLogger;
-import org.signserver.server.log.LogMap;
 import org.signserver.server.signers.BaseSigner;
 
 /**
@@ -80,7 +117,7 @@ public class RenewalWorker extends BaseSigner {
     private static final int MATCH_WITH_USERNAME = 0;
     private static final int MATCH_TYPE_EQUALS = 0;
     private static final int STATUS_NEW = 10;
-    
+
     // From CertificateHelper:
     /**
      * Indicates that the requester want a BASE64 encoded certificate in the
@@ -139,7 +176,8 @@ public class RenewalWorker extends BaseSigner {
         }
 
         // Log values
-        final LogMap logMap = LogMap.getInstance(requestContext);
+        final Map<String, String> logMap =
+                (Map<String, String>) requestContext.get(RequestContext.LOGMAP);
 
         responseData = process(requestData, logMap);
 
@@ -187,7 +225,7 @@ public class RenewalWorker extends BaseSigner {
      * @throws SignServerException
      */
     private Properties process(final Properties requestData,
-                final LogMap logMap)
+                final Map<String, String> logMap)
             throws IllegalRequestException, CryptoTokenOfflineException,
             SignServerException {
         final String workerName = requestData.getProperty(
@@ -214,7 +252,7 @@ public class RenewalWorker extends BaseSigner {
                 }
                 reneweeId = getWorkerSession().getWorkerId(workerName);
             }
-            
+
             // Get the worker config
             final WorkerConfig workerConfig
                     = getWorkerSession().getCurrentWorkerConfig(reneweeId);
@@ -342,7 +380,7 @@ public class RenewalWorker extends BaseSigner {
 
     private String renewKey(final int workerId, final String keyAlg,
            final String keySpec, final char[] authcode,
-           final LogMap logMap) throws Exception {
+           final Map<String, String> logMap) throws Exception {
         LOG.debug("<renewKey");
 
         if (authcode == null) {
@@ -396,7 +434,7 @@ public class RenewalWorker extends BaseSigner {
             final String sigAlg, final String subjectDN, final String endEntity,
             final boolean explicitEccParameters,
             final boolean defaultKey, final String nextCertSignKey, 
-            final LogMap logMap)
+            final Map<String, String> logMap)
             throws Exception {
 
         final String pkcs10
@@ -426,7 +464,7 @@ public class RenewalWorker extends BaseSigner {
         }
 
         final String truststorePass = config.getProperty("TRUSTSTOREPASSWORD");
-        if (truststorePass == null && !TRUSTSTORE_TYPE_PEM.equals(truststoreType)) {
+        if (truststorePass == null) {
             throw new IllegalArgumentException(
                     "Missing TRUSTSTOREPASSWORD property");
         }
@@ -482,27 +520,30 @@ public class RenewalWorker extends BaseSigner {
 
                 final CMSSignedData signedData = new CMSSignedData(
                         Base64.decode(b64Cert));
-                
-                final Store certStore = signedData.getCertificates();
-                final List<X509CertificateHolder> certChain = getCertificateChain(certStore.getMatches(new RenewalWorker.AllSelector()));
+                final CertStore certStore
+                        = signedData.getCertificatesAndCRLs("Collection", "BC");
+
+                final List<Certificate> certChain
+                        = getCertificateChain(certStore.getCertificates(
+                            new X509CertStoreSelector()));
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Got certificates: " + certChain);
                 }
 
-                final X509CertificateHolder signerCert
+                final X509Certificate signerCert
                         = getEndEntityCertificate(certChain);
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("New certificate subject DN: "
-                            + signerCert.getSubject());
+                            + signerCert.getSubjectDN());
                 }
 
                 // Log
                 logMap.put(RenewalWorkerProperties.LOG_NEWCERTISSUERDN,
-                        signerCert.getIssuer().toString());
+                        signerCert.getIssuerDN().getName());
                 logMap.put(RenewalWorkerProperties.LOG_NEWCERTSERIALNO,
                         signerCert.getSerialNumber().toString(16));
                 logMap.put(RenewalWorkerProperties.LOG_NEWCERTSUBJECTDN,
-                        signerCert.getSubject().toString());
+                        signerCert.getSubjectDN().getName());
 
                 // TODO: Check the certificate
                     // Public key should match
@@ -574,7 +615,7 @@ public class RenewalWorker extends BaseSigner {
             final String truststorePass) throws CryptoTokenOfflineException,
             NoSuchAlgorithmException, KeyStoreException,
             UnrecoverableKeyException, IOException, CertificateException,
-            NoSuchProviderException, KeyManagementException, SignServerException {
+            NoSuchProviderException, KeyManagementException {
 
         EjbcaWS result = null;
 
@@ -648,18 +689,15 @@ public class RenewalWorker extends BaseSigner {
     }
 
     // TODO: We are assuming here that a CA certificate is not used for signing
-    private static X509CertificateHolder getEndEntityCertificate(
-            final Collection<? extends X509CertificateHolder> certs) {
-        X509CertificateHolder result = null;
-        for (X509CertificateHolder cert : certs) {
-            Extension extension = cert.getExtension(X509Extension.basicConstraints);
-            if (extension == null) {
-                result = cert;
-                break;
-            } else {
-                BasicConstraints bc = BasicConstraints.getInstance(extension.getParsedValue());
-                if (!bc.isCA()) {
-                    result = cert;
+    private static X509Certificate getEndEntityCertificate(
+            final Collection<? extends Certificate> certs) {
+        X509Certificate result = null;
+        for (Certificate cert : certs) {
+            if (cert instanceof X509Certificate) {
+                final X509Certificate x509 = (X509Certificate) cert;
+                // If not CA certificate
+                if (x509.getBasicConstraints() == -1) {
+                    result = x509;
                     break;
                 }
             }
@@ -668,22 +706,20 @@ public class RenewalWorker extends BaseSigner {
     }
 
     // TODO: We are not ordering this chain and assumes that is not important
-    private static List<X509CertificateHolder> getCertificateChain(
-            final Collection certs) {
-        final LinkedList<X509CertificateHolder> result = new LinkedList<X509CertificateHolder>();
-        for (Object cert : certs) {
-            if (cert instanceof X509CertificateHolder) {
-                result.add((X509CertificateHolder) cert);
-            }
+    private static List<Certificate> getCertificateChain(
+            final Collection<? extends Certificate> certs) {
+        final LinkedList<Certificate> result = new LinkedList<Certificate>();
+        for (Certificate cert : certs) {
+            result.add(cert);
         }
         return result;
     }
 
     private static List<byte[]> getCertificateChainBytes(
-            final Collection<? extends X509CertificateHolder> certs)
-            throws CertificateEncodingException, IOException {
+            final Collection<? extends Certificate> certs)
+            throws CertificateEncodingException {
         final LinkedList<byte[]> result = new LinkedList<byte[]>();
-        for (X509CertificateHolder cert : certs) {
+        for (Certificate cert : certs) {
             result.add(cert.getEncoded());
         }
         return result;
@@ -749,21 +785,6 @@ public class RenewalWorker extends BaseSigner {
         public PrivateKey getPrivateKey(String string) {
             final PrivateKey key = base.getPrivateKey(string);
             return key;
-        }
-    }
-    
-    /**
-     * Simply matches true on all objects found.
-     */
-    private static class AllSelector implements Selector {
-        @Override
-        public boolean match(Object obj) {
-            return true;
-        }
-
-        @Override
-        public Object clone() {
-            return new RenewalWorker.AllSelector();
         }
     }
 }

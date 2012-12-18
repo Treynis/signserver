@@ -33,15 +33,15 @@ import java.net.URL;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
+
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1Object;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1TaggedObject;
+import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.DERTaggedObject;
-import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.X509Extensions;
 
 
 /**
@@ -58,15 +58,13 @@ public class CertTools {
     protected CertTools() {
     }
 
-    /**
-     * Return the CRL distribution point URL form a certificate.
-     */
     public static URL getCrlDistributionPoint(Certificate certificate)
       throws CertificateParsingException {
         if (certificate instanceof X509Certificate) {
 			X509Certificate x509cert = (X509Certificate) certificate;
 	        try {
-	            ASN1Object obj = getExtensionValue(x509cert, Extension.cRLDistributionPoints);
+	            DERObject obj = getExtensionValue(x509cert, X509Extensions
+	                                              .CRLDistributionPoints.getId());
 	            if (obj == null) {
 	                return null;
 	            }
@@ -86,14 +84,14 @@ public class CertTools {
 	            }
 	        }
 	        catch (Exception e) {
-	            log.error("Error parsing CrlDistributionPoint", e);
+                    log.error("Error parsing CrlDistributionPoint", e);
 	            throw new CertificateParsingException(e.toString(), e);
 	        }
         }
         return null;
     }
 
-    private static String getUriFromGeneralNames(ASN1Object names) {
+    private static String getUriFromGeneralNames(DERObject names) {
          ASN1Sequence namesSequence = ASN1Sequence.getInstance((ASN1TaggedObject)names, false);
          if (namesSequence.size() == 0) {
              return null;
@@ -106,15 +104,12 @@ public class CertTools {
          return new String(ASN1OctetString.getInstance(taggedObject, false).getOctets());
      } //getStringFromGeneralNames
 
-    /**
-     * Return an Extension DERObject from a certificate
-     */
-    protected static ASN1Object getExtensionValue(X509Certificate cert, ASN1ObjectIdentifier oid)
+    protected static DERObject getExtensionValue(X509Certificate cert, String oid)
       throws IOException {
     	if (cert == null) {
     		return null;
     	}
-        byte[] bytes = cert.getExtensionValue(oid.getId());
+        byte[] bytes = cert.getExtensionValue(oid);
         if (bytes == null) {
             return null;
         }

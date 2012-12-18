@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import org.apache.log4j.Logger;
-import org.signserver.common.AccessDeniedException;
 import org.signserver.common.AuthorizationRequiredException;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.RequestContext;
@@ -38,6 +37,9 @@ public class RemoteAddressAuthorizerTest extends ModulesTestCase {
     @Override
     protected void setUp() throws Exception {
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     @Override
@@ -58,7 +60,7 @@ public class RemoteAddressAuthorizerTest extends ModulesTestCase {
     }
 
     /**
-     * Tests that the worker throws an AccessDeniedException if no
+     * Tests that the worker throws an AuthorizationRequiredException if no
      * ALLOW_FROM is specified.
      * @throws Exception in case of exception
      */
@@ -69,7 +71,8 @@ public class RemoteAddressAuthorizerTest extends ModulesTestCase {
                 + "/signserver/process?workerId="
                 + getSignerIdDummy1() + "&data=%3Croot/%3E"));
 
-        assertEquals("HTTP response code", 403, responseCode);
+        assertTrue("HTTP response code: " + responseCode, responseCode == 401
+                || responseCode == 403);
     }
 
     /**
@@ -108,7 +111,8 @@ public class RemoteAddressAuthorizerTest extends ModulesTestCase {
                 + "/signserver/process?workerId="
                 + getSignerIdDummy1() + "&data=%3Croot/%3E"));
 
-        assertEquals("HTTP response code", 403, responseCode);
+        assertTrue("HTTP response code: " + responseCode, responseCode == 401
+                || responseCode == 403);
     }
 
     /**
@@ -150,8 +154,6 @@ public class RemoteAddressAuthorizerTest extends ModulesTestCase {
         try {
             workerSession.process(getSignerIdDummy1(), request, new RequestContext());
         } catch (AuthorizationRequiredException ex) {
-            fail(ex.getMessage());
-        } catch (AccessDeniedException ex) {
             fail(ex.getMessage());
         } catch (Exception ex) {
             LOG.error("Wrong type of exception", ex);

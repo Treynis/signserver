@@ -16,14 +16,24 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
-import java.util.Collection;
+
+import org.bouncycastle.util.encoders.Hex;
+import org.ejbca.util.CertTools;
+import org.odftoolkit.odfdom.crypto.dsig.DocumentSignatureManager;
+import org.odftoolkit.odfdom.crypto.dsig.SignatureCreationMode;
 import org.odftoolkit.odfdom.doc.OdfDocument;
-import org.odftoolkit.odfdom.pkg.signature.DocumentSignatureManager;
-import org.odftoolkit.odfdom.pkg.signature.SignatureCreationMode;
-import org.signserver.common.*;
-import org.signserver.server.archive.Archivable;
-import org.signserver.server.archive.DefaultArchivable;
+import org.signserver.common.ArchiveData;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericServletRequest;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.ISignRequest;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerException;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
@@ -38,14 +48,10 @@ import org.signserver.server.signers.BaseSigner;
  * Adds invisible signature to odt,ods,odp,odg.. files (created with Open Office
  * 3.1 and respecting ODF standard)
  * 
- * Patches for the ODF Toolkit library are available at:
- * https://issues.apache.org/jira/browse/ODFTOOLKIT-67
- * 
  * @author Aziz Göktepe
  * @version $Id$
  */
 public class ODFSigner extends BaseSigner {
-    private static final String CONTENT_TYPE = "application/octet-stream";
 
     @Override
     public ProcessResponse processData(ProcessRequest signRequest,
@@ -67,7 +73,9 @@ public class ODFSigner extends BaseSigner {
         }
 
         byte[] data = (byte[]) sReq.getRequestData();
-        final String archiveId = createArchiveId(data, (String) requestContext.get(RequestContext.TRANSACTION_ID));
+
+        byte[] fpbytes = CertTools.generateSHA1Fingerprint(data);
+        String fp = new String(Hex.encode(fpbytes));
 
         OdfDocument odfDoc;
         try {
@@ -113,14 +121,15 @@ public class ODFSigner extends BaseSigner {
 
         // return result
         byte[] signedbytes = bout.toByteArray();
-        final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
 
         if (signRequest instanceof GenericServletRequest) {
             signResponse = new GenericServletResponse(sReq.getRequestID(),
-                    signedbytes, getSigningCertificate(), archiveId, archivables, CONTENT_TYPE);
+                    signedbytes, getSigningCertificate(), fp, new ArchiveData(
+                    signedbytes), "application/octet-stream");
         } else {
             signResponse = new GenericSignResponse(sReq.getRequestID(),
-                    signedbytes, getSigningCertificate(), archiveId, archivables);
+                    signedbytes, getSigningCertificate(), fp, new ArchiveData(
+                    signedbytes));
         }
 
         return signResponse;

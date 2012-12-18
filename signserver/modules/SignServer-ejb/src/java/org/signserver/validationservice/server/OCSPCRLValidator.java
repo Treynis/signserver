@@ -13,11 +13,12 @@
 package org.signserver.validationservice.server;
 
 import java.io.IOException;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.PKIXParameters;
-import java.security.cert.X509Certificate;
+
 import org.signserver.common.SignServerException;
+import org.signserver.validationservice.common.ICertificate;
+import org.signserver.validationservice.common.X509Certificate;
 
 /**
  * OCSP fail over to CRL validator.
@@ -33,9 +34,8 @@ public class OCSPCRLValidator extends OCSPValidator {
     /**
      * override the ocsp validators path checker with ocspcrl pathchecker
      */
-    @Override
-    protected void addCertPathCheckers(Certificate cert,
-            PKIXParameters params, Certificate rootCert)
+    protected void addCertPathCheckers(ICertificate cert,
+            PKIXParameters params, ICertificate rootCert)
             throws SignServerException, CertificateException, IOException {
         params.addCertPathChecker(new OCSPCRLPathChecker((X509Certificate) rootCert, this.props, getIssuerAuthorizedOCSPResponderCertificates(cert), getIssuerCRLPaths(cert)));
     }

@@ -1,27 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- ======================================================================= -->
-<!--                                                                         -->
-<!--  SignServer: The OpenSource Automated Signing Server                    -->
-<!--                                                                         -->
-<!--  This software is free software; you can redistribute it and/or         -->
-<!--  modify it under the terms of the GNU Lesser General Public             -->
-<!--  License as published by the Free Software Foundation; either           -->
-<!--  version 2.1 of the License, or any later version.                      -->
-<!--                                                                         -->
-<!--  See terms of license at gnu.org.                                       -->
-<!--                                                                         -->
-<!-- ======================================================================= -->
-<!-- Version: $Id$         -->
 <project name="SignServer-modules" default="default" basedir=".">
 
     <target name="default">
         <fail message="This script is not intented to run on its own"/>
     </target>
-   
-    <property name="signserver.home" location="../../"/>
-    <property name="server.dist.dir" value="${signserver.home}/lib"/>
 
-    <!-- Module conditionals -->
+    <property name="signserver.home" location="../../"/>
+    <property name="server.dist.dir" value="${signserver.home}/dist-server"/>
+    <property name="client.dist.dir" value="${signserver.home}/dist-client"/>
+
+    <!--
+        ===================
+        Module conditionals
+        ===================
+    -->
     <condition property="signserverws.conditionenabled">
         <istrue value="${signserverws.enabled}"/>
     </condition>
@@ -42,11 +34,11 @@
             <istrue value="${genericws.enabled}"/>
         </or>
     </condition>
+    <condition property="clusterclassloader.conditionenabled">
+        <istrue value="${useclusterclassloader}"/>
+    </condition>
     <condition property="webdoc.conditionenabled">
         <istrue value="${webdoc.enabled}"/>
-    </condition>
-    <condition property="healthcheck.conditionenabled">
-        <istrue value="${healthcheck.enabled}"/>
     </condition>
 
     <!-- Enable clients -->
@@ -70,22 +62,23 @@
     </condition>
 
 
-    <!-- =================================================================== -->
-    <!-- Find application server                                             -->
-    <!-- =================================================================== -->
 
-    <!-- Trying to find APPSRV_HOME. Does not fail if not found. -->
+    <!--
+        ===================
+        Find the application server
+        ===================
+    -->
     <target name="-modules-set-appserver-home" depends="-set-from-file,-set-from-env">
-<!--        <echo message="var.APPSRV_HOME = ${var.APPSRV_HOME}"/>-->
+        <echo message="var.APPSRV_HOME = ${var.APPSRV_HOME}"/>
+        <fail unless="var.APPSRV_HOME" message="Missing variable APPSRV_HOME. Either set the environment variable APPSRV_HOME or edit ../signserver_build.propertes and set appserver.home."/>
         <property name="j2ee.server.home" value="${var.APPSRV_HOME}"/>
     </target>
-    
+
     <target name="-set-from-file" unless="var.APPSRV_HOME">
         <!-- Read properties from the main SignServer configuration if available -->
         <property file="${user.home}/signserver_build.properties" />
         <property file="../../signserver_build.properties" />
-        <property file="../../conf/signserver_build.properties" />
-<!--        <echo message="appserver.home = ${appserver.home}"/>-->
+        <echo message="appserver.home = ${appserver.home}"/>
         <!-- JBoss -->
         <available file="${appserver.home}/client/jbossall-client.jar" property="var.APPSRV_HOME" value="${appserver.home}" />
         <!-- GlassFish -->
@@ -95,108 +88,80 @@
     <target name="-set-from-env" unless="var.APPSRV_HOME">
         <!-- Get property from environment variable -->
         <property environment="env" />
-<!--        <echo message="env.APPSRV_HOME = ${env.APPSRV_HOME}"/>-->
+        <echo message="env.APPSRV_HOME = ${env.APPSRV_HOME}"/>
         <!-- JBoss -->
         <available file="${env.APPSRV_HOME}/client/jbossall-client.jar" property="var.APPSRV_HOME" value="${env.APPSRV_HOME}" />
         <!-- GlassFish -->
         <available file="${env.APPSRV_HOME}/lib/appserv-rt.jar" property="var.APPSRV_HOME" value="${env.APPSRV_HOME}"/>
     </target>
-    
-    <!-- Fail if APPSRV_HOME was not set -->
-    <target name="-modules-check-appserver-home">
-        <fail unless="var.APPSRV_HOME" message="Missing variable APPSRV_HOME. Either set the environment variable APPSRV_HOME or edit conf/signserver_build.propertes and set appserver.home."/>
-    </target>
 
-    <!-- =================================================================== -->
-    <!-- Clean modules -->
-    <!-- =================================================================== -->
-    
-    <target name="-do-clean-module">
-        <echo>Cleaning ${ant.project.name}...</echo>
-        <antcall target="clean"/>
-    </target>
 
     <!-- =================================================================== -->
     <!-- Build modules -->
     <!-- =================================================================== -->
 
     <target name="modules" description="Build all enabled modules">
+        <echo message="Include all modules: ${includemodulesinbuild}"/>
         <subant target="-do-module" verbose="false">
-            <fileset dir="modules" includes="${modules.build.includes}"/>
+            <fileset dir="modules" includes="SignServer-Module-*/build.xml"/>
         </subant>
     </target>
-    
+
     <target name="-do-module-build" if="moduleEnable.condition">
-        <echo message="Module: ${ant.project.name} enabled"/>
-        <antcall target="dist-module"/>
+        <echo message="Project ${ant.project.name} enabled"/>
+        <antcall target="jar"/>
+        <copy todir="${server.dist.dir}">
+            <fileset dir="./dist" includes="*.mar"/>
+        </copy>
     </target>
+
+    <target name="-do-module-include" depends="-do-module-build"
+        if="moduleInclude.condition">
+        <echo message="Project ${ant.project.name} included"/>
+        <antcall target="-module-include"/>
+        <antcall target="-post-module-include"/>
+    </target>
+
+    <!-- Copies the module JAR to the EAR lib folder for inclusion. This target
+        can be overridden the module project to do copy special files -->
+        <target name="-module-include">
+            <fail unless="moduleEnable.condition"
+                message="Module '${ant.project.name}' must have enabled=true to be included."/>
+            <copy todir="${server.dist.dir}/lib">
+                <fileset dir="./dist" includes="*.jar"/>
+            </copy>
+        </target>
+        
+        <!-- Override this target to copy additional files. -->
+        <target name="-post-module-include"/>
 
     <target name="-do-module">
+        <echo message="Module:  ${ant.project.name}"/>
         <property file="${user.home}/signserver_build.properties"/>
         <property file="../../signserver_build.properties"/>
-        <property file="../../conf/signserver_build.properties"/>
-        <property file="../../res/modules-project.properties"/>
+        <property file="../modules-project.properties"/>
         <taskdef name="setmoduleprops"
             classname="org.signserver.anttasks.SetModuleEnablePropertiesTask"
-            classpath="../SignServer-BuildTools/build/classes/"/>
+            classpath="../SignServer-Common/build/classes/"/>
         <setmoduleprops/>
-        <property name="dist-module.available" value="false"/>
-        <property name="moduleEnable" value="false"/>
+        <echo message="Enable:  ${moduleEnable}"/>
+        <echo message="Include: ${moduleInclude}"/>
         <condition property="moduleEnable.condition">
-            <and>
-                <or>
-                    <istrue value="${moduleEnable}"/>
-                    <istrue value="${includemodulesinbuild}"/>
-                </or>
-                <istrue value="${dist-module.available}"/>
-            </and>
+            <or>
+                <istrue value="${moduleEnable}"/>
+                <istrue value="${includemodulesinbuild}"/>
+            </or>
         </condition>
-        <echo/>
-        <echo>Module: ${ant.project.name}</echo>
-        <antcall target="-do-module-build"/>
+        <condition property="moduleInclude.condition">
+            <or>
+                <istrue value="${moduleInclude}"/>
+                <istrue value="${includemodulesinbuild}"/>
+            </or>
+        </condition>
+        <antcall target="-do-module-include"/>
     </target>
 
-    <!-- Convert from a colon separated classpath to comma separated list with 
-        some jars excluded -->
-    <target name="-init-macrodef-convertclasspath">
-        <macrodef name="convertclasspath">
-            <attribute name="classpath"/>
-            <attribute default="converted.classpath" name="id"/>
-            <attribute default="" name="excludes"/>
-            <attribute default="identity" name="mapperType"/>
-            <attribute default="*" name="mapperTo"/>
-            <attribute default="${basedir}/../../" name="dir"/>
-            <attribute default="," name="pathsep"/>
-            <sequential>
-                <property name="@{id}.base.dir" location="@{dir}"/>
 
-                <pathconvert property="@{id}.as_includes_pattern" pathsep="@{pathsep}">
-                    <path path="@{classpath}"/>
-                    <map from="${@{id}.base.dir}\" to=""/>
-                    <map from="${@{id}.base.dir}/" to=""/>
-                    <map from="${@{id}.base.dir}" to=""/>
-                </pathconvert>
-                <fileset dir="${@{id}.base.dir}" includes="${@{id}.as_includes_pattern}" id="@{id}.as_fileset" excludes="@{excludes}"/>
-                <pathconvert property="@{id}" pathsep="@{pathsep}" refid="@{id}.as_fileset">
-                    <map from="${@{id}.base.dir}\" to=""/>
-                    <map from="${@{id}.base.dir}/" to=""/>
-                    <map from="${@{id}.base.dir}" to=""/>
-                    <chainedmapper>
-                        <mapper type="@{mapperType}"/>
-                        <globmapper from="*" to="@{mapperTo}" />
-                    </chainedmapper>
-                </pathconvert>
-                
-                <echo level="debug">
-                    basedir             : ${@{id}.base.dir}
-                    classpath           : @{classpath}
-                    as_includes_pattern : ${@{id}.as_includes_pattern}
-                    result              : ${@{id}}
-                </echo>
-            </sequential>
-        </macrodef>
-    </target>
-    
     <!-- =================================================================== -->
     <!-- Client distributables                                               -->
     <!-- =================================================================== -->
@@ -206,44 +171,50 @@
         dependencies to client-dist/lib.
         We do this manually to not have to rely on the copylibstask.
     -->
-    <target name="-do-client-dist" depends="-init-macrodef-convertclasspath">
-   
-        <available file="${dist.jar}" property="dist.jar.available"/>
-        <fail unless="dist.jar.available" message="Error: dist.jar should have been configured by the module: ${ant.project.name}"/>
-        
-        <!-- Convert classpath to be relative to the lib folders -->
-        <convertclasspath classpath="${javac.classpath}" id="libs" excludes="modules/" dir="${basedir}/../../lib" pathsep=" "/>
-        <convertclasspath classpath="${javac.classpath}" id="mods" excludes="lib/" mapperType="flatten" mapperTo="*" pathsep=" "/>
-        <property name="jar.classpath" value="${libs} ${mods}"/>
+    <target name="-do-client-dist" 
+        depends="-do-client-classpath, -do-client-dist-jar, -do-client-dist-lib"/>
+    
+    <!-- Copies the client JAR to client-dist -->
+    <target name="-do-client-dist-jar" depends="-do-client-classpath">
+        <!-- Copy JAR to client-dist -->
+        <mkdir dir="${client.dist.dir}" />
+        <copy todir="${client.dist.dir}" failonerror="true" file="${dist.jar}"/>
+    </target>
+    
+    <!-- Copies all the clients dependencies to client-dist/lib -->
+    <target name="-do-client-dist-lib" depends="-do-client-classpath">
+        <!-- Copy dependencies to client-dist/lib -->
+        <pathconvert pathsep=" " property="copy.libs">
+            <path path="${run.classpath.without.build.classes.dir}"/>
+            <globmapper from="${signserver.home}/*" to="*" />
+        </pathconvert>
+        <mkdir dir="${client.dist.dir}/lib" />
+        <copy todir="${client.dist.dir}/lib" flatten="true" failonerror="true">
+            <fileset includes="${copy.libs}" dir="../../" erroronmissingdir="true"/>
+        </copy>
+    </target>
+    
+    <target name="-do-client-classpath">
+        <!-- Create classpath -->
+        <property location="${build.classes.dir}" name="build.classes.dir.resolved"/>
+        <pathconvert property="run.classpath.without.build.classes.dir">
+            <path path="${run.classpath}"/>
+            <map from="${build.classes.dir.resolved}" to=""/>
+        </pathconvert>
+        <pathconvert pathsep=" " property="jar.classpath">
+            <path path="${run.classpath.without.build.classes.dir}"/>
+            <chainedmapper>
+                <flattenmapper/>
+                <globmapper from="*" to="lib/*"/>
+            </chainedmapper>
+        </pathconvert>
+
+        <!-- Modify manifest -->
         <jar file="${dist.jar}" update="true">
             <manifest>
                 <attribute name="Class-Path" value="${jar.classpath}"/>
             </manifest>
         </jar>
-        
-        <!-- Move to lib -->
-        <copy todir="../../lib" failonerror="true" file="${dist.jar}"/>
-        
-        <!-- Convert classpath to be relative to this modules dist folder -->
-        <property name="base.dir" location="${distdir}/../../"/>
-        <property name="base2.dir" location="${distdir}/../../../"/>
-        <pathconvert property="localjar.classpath" pathsep=" ">
-            <path path="${javac.classpath}"/>
-            <map from="${base.dir}/" to="../../"/>
-            <map from="${base2.dir}/" to="../../../"/>
-        </pathconvert>
-        <jar file="${dist.jar}" update="true">
-            <manifest>
-                <attribute name="Class-Path" value="${localjar.classpath}"/>
-            </manifest>
-        </jar>
-    </target>
-    
-    <!-- Copy all jars to lib without updating manifest file or anything. -->
-    <target name="-do-module-dist">
-        <copy todir="../../lib/">
-            <fileset dir="./dist" includes="*.jar"/>
-        </copy>
     </target>
 
 </project>

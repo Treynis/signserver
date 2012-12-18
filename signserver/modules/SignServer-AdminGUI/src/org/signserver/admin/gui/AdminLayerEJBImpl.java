@@ -647,7 +647,6 @@ public class AdminLayerEJBImpl implements AdminWS {
      * @throws KeyStoreException_Exception
      */
     @Override
-    @SuppressWarnings("deprecation") // org.signserver.server.KeyTestResult is used for backwards compatibility
     public List<KeyTestResult> testKey(
             final int signerId,
             final String alias,
@@ -802,9 +801,10 @@ public class AdminLayerEJBImpl implements AdminWS {
 
             result.setState(config.getState());
             result.setAppVersion(config.getAppVersion());
-            result.setClusterClassLoaderEnabled(false);
-            result.setRequireSigning(false);
-            result.setUseClassVersions(false);
+            result.setClusterClassLoaderEnabled(
+                    GlobalConfiguration.isClusterClassLoaderEnabled());
+            result.setRequireSigning(GlobalConfiguration.isRequireSigning());
+            result.setUseClassVersions(GlobalConfiguration.isUseClassVersions());
         }
         return result;
     }
@@ -819,7 +819,7 @@ public class AdminLayerEJBImpl implements AdminWS {
     @Override
     public List<Integer> getWorkers(
             final int workerType) {
-        return worker.getWorkers(workerType);
+        return global.getWorkers(workerType);
     }
 
     /**

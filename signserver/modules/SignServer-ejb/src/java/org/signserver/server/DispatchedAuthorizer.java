@@ -12,8 +12,6 @@
  *************************************************************************/
 package org.signserver.server;
 
-import java.util.Collections;
-import java.util.List;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
@@ -41,9 +39,9 @@ public class DispatchedAuthorizer implements IAuthorizer {
     private static final String AUTHORIZEALLDISPATCHERS = "AUTHORIZEALLDISPATCHERS";
     
     private int workerId;
-
+    
     private boolean authorizeAllDispatchers;
-
+    
     
 
     @Override
@@ -56,11 +54,6 @@ public class DispatchedAuthorizer implements IAuthorizer {
         } else {
             authorizeAllDispatchers = Boolean.parseBoolean(value);
         }
-    }
-    
-    @Override
-    public List<String> getFatalErrors() {
-        return Collections.emptyList();
     }
 
     @Override

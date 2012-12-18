@@ -18,24 +18,25 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.security.KeyPair;
 import java.security.PrivateKey;
-import java.security.cert.Certificate;
 import java.security.cert.X509CRL;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
 import junit.framework.TestCase;
+
 import org.bouncycastle.asn1.x509.CRLDistPoint;
 import org.bouncycastle.jce.X509KeyUsage;
 import org.ejbca.core.model.ca.crl.RevokedCertInfo;
-import org.ejbca.util.CertTools;
 import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.RequestContext;
-import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerUtil;
+import org.signserver.common.ServiceLocator;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.validationservice.common.ICertificate;
 import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
@@ -206,17 +207,17 @@ public class CRLValidatorTest extends TestCase {
      * It has a distribution point with an URL.
      */
     public void test01NotRevoked() throws Exception {
-        ValidateRequest req = new ValidateRequest(certEndEntity1, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity1), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.VALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA1"));
-        assertEquals("CN=EndEntity1", CertTools.getSubjectDN(val.getCertificate()));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA1"));
+        assertEquals("CN=EndEntity1", val.getCertificate().getSubject());
     }
 
     /**
@@ -225,7 +226,7 @@ public class CRLValidatorTest extends TestCase {
      * It has a distribution point with an URL.
      */
     public void test02Revoked() throws Exception {
-        ValidateRequest req = new ValidateRequest(certEndEntity2, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity2), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
@@ -236,10 +237,10 @@ public class CRLValidatorTest extends TestCase {
         assertFalse(Validation.Status.VALID.equals(val.getStatus()));
 
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA1"));
-        assertEquals("CN=EndEntity2", CertTools.getSubjectDN(val.getCertificate()));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA1"));
+        assertEquals("CN=EndEntity2", val.getCertificate().getSubject());
     }
 
     /**
@@ -248,17 +249,17 @@ public class CRLValidatorTest extends TestCase {
      * It has a distribution point with an issuer name.
      */
     public void test03NotRevokedDPWithIssuer() throws Exception {
-        ValidateRequest req = new ValidateRequest(certEndEntity3, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity3), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.VALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA2"));
-        assertEquals("CN=EndEntity3", CertTools.getSubjectDN(val.getCertificate()));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA2"));
+        assertEquals("CN=EndEntity3", val.getCertificate().getSubject());
     }
 
     /**
@@ -267,7 +268,7 @@ public class CRLValidatorTest extends TestCase {
      * It has a distribution point with an issuer name.
      */
     public void test04RevokedDPWithIssuer() throws Exception {
-        ValidateRequest req = new ValidateRequest(certEndEntity4, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity4), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
@@ -278,10 +279,10 @@ public class CRLValidatorTest extends TestCase {
         assertFalse(Validation.Status.VALID.equals(val.getStatus()));
 
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA2"));
-        assertEquals("CN=EndEntity4", CertTools.getSubjectDN(val.getCertificate()));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA2"));
+        assertEquals("CN=EndEntity4", val.getCertificate().getSubject());
     }
 
     /**
@@ -289,17 +290,17 @@ public class CRLValidatorTest extends TestCase {
      * The certificate is expired.
      */
     public void test05Expired() throws Exception {
-        ValidateRequest req = new ValidateRequest(certEndEntity5Expired, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity5Expired), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertFalse("certificate should be expired", val.getStatus().equals(Validation.Status.VALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA1"));
-        assertEquals("CN=EndEntity5", CertTools.getSubjectDN(val.getCertificate()));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA1"));
+        assertEquals("CN=EndEntity5", val.getCertificate().getSubject());
     }
 
     /**
@@ -307,17 +308,17 @@ public class CRLValidatorTest extends TestCase {
      * The certificate is not yet valid.
      */
     public void test06NotYetValid() throws Exception {
-        ValidateRequest req = new ValidateRequest(certEndEntity6NotYetValid, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity6NotYetValid), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertFalse("certificate should not be valid yet", val.getStatus().equals(Validation.Status.VALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA1"));
-        assertEquals("CN=EndEntity6", CertTools.getSubjectDN(val.getCertificate()));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA1"));
+        assertEquals("CN=EndEntity6", val.getCertificate().getSubject());
     }
 
     /**
@@ -325,17 +326,17 @@ public class CRLValidatorTest extends TestCase {
      * The certificate is not valid as it is not signed width the right issuers key
      */
     public void test07WrongIssuer() throws Exception {
-        ValidateRequest req = new ValidateRequest(certEndEntity7WrongIssuer, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity7WrongIssuer), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertFalse("certificate should not be valid", val.getStatus().equals(Validation.Status.VALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA1"));
-        assertEquals("CN=EndEntity7", CertTools.getSubjectDN(val.getCertificate()));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA1"));
+        assertEquals("CN=EndEntity7", val.getCertificate().getSubject());
     }
 
     /**
@@ -346,32 +347,32 @@ public class CRLValidatorTest extends TestCase {
 
         // First: test one certificate that has CERTPURPOSE_ELECTRONIC_SIGNATURE and see that it works
         {
-            ValidateRequest req = new ValidateRequest(certEndEntity8KeyUsageSig, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
+            ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity8KeyUsageSig), ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
             ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
             Validation val = res.getValidation();
             assertTrue(val != null);
             assertTrue("certificate should be valid for electronic signature", val.getStatus().equals(Validation.Status.VALID));
             assertTrue(val.getStatusMessage() != null);
-            List<Certificate> cAChain = val.getCAChain();
+            List<ICertificate> cAChain = val.getCAChain();
             assertTrue(cAChain != null);
-            assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA1"));
-            assertEquals("CN=EndEntity8", CertTools.getSubjectDN(val.getCertificate()));
+            assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA1"));
+            assertEquals("CN=EndEntity8", val.getCertificate().getSubject());
         }
 
         // Second: test one certificate without CERTPURPOSE_ELECTRONIC_SIGNATURE and see that it fails
         {
-            ValidateRequest req = new ValidateRequest(certEndEntity1, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
+            ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity1), ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
             ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
             Validation val = res.getValidation();
             assertTrue(val != null);
             assertFalse("certificate should fail is it does not have keyusage sig", val.getStatus().equals(Validation.Status.VALID));
             assertTrue(val.getStatusMessage() != null);
-            List<Certificate> cAChain = val.getCAChain();
+            List<ICertificate> cAChain = val.getCAChain();
             assertTrue(cAChain != null);
-            assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA1"));
-            assertEquals("CN=EndEntity1", CertTools.getSubjectDN(val.getCertificate()));
+            assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA1"));
+            assertEquals("CN=EndEntity1", val.getCertificate().getSubject());
         }
     }
 
@@ -388,17 +389,17 @@ public class CRLValidatorTest extends TestCase {
         sSSession.setWorkerProperty(15, "VAL1.ISSUER2.CRLPATHS", "");
         sSSession.reloadConfiguration(15);
 
-        ValidateRequest req = new ValidateRequest(certEndEntity3, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certEndEntity3), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertNotNull(val);
         assertFalse("Not valid as no CRL should be found", Validation.Status.VALID.equals(val.getStatus()));
         assertNotNull(val.getStatusMessage());
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertNotNull(cAChain);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=RootCA2"));
-        assertEquals("CN=EndEntity3", CertTools.getSubjectDN(val.getCertificate()));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=RootCA2"));
+        assertEquals("CN=EndEntity3", val.getCertificate().getSubject());
 
         sSSession.setWorkerProperty(15, "VAL1.ISSUER2.CRLPATHS", crlPaths);
         sSSession.reloadConfiguration(15);

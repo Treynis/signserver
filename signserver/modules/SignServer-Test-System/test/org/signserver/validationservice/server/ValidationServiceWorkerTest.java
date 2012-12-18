@@ -13,21 +13,22 @@
 package org.signserver.validationservice.server;
 
 import java.security.KeyPair;
-import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
 import junit.framework.TestCase;
+
 import org.bouncycastle.jce.X509KeyUsage;
-import org.ejbca.util.CertTools;
 import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.RequestContext;
-import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerUtil;
+import org.signserver.common.ServiceLocator;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.validationservice.common.ICertificate;
 import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
@@ -165,22 +166,22 @@ public class ValidationServiceWorkerTest extends TestCase {
     }
 
     public void test01BasicValidation() throws Exception {
-        ValidateRequest req = new ValidateRequest(validCert1, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(validCert1), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.VALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
     }
 
     public void test02RevokedCertificate() throws Exception {
-        ValidateRequest req = new ValidateRequest(revokedCert1, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(revokedCert1), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
@@ -189,101 +190,101 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getStatusMessage() != null);
         assertTrue(val.getRevokationReason() == 3);
         assertTrue(val.getRevokedDate() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
     }
 
     public void test03ExpiredCertificate() throws Exception {
-        ValidateRequest req = new ValidateRequest(expiredCert1, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(expiredCert1), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.EXPIRED));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
     }
 
     public void test04NotYetValidCertificate() throws Exception {
-        ValidateRequest req = new ValidateRequest(noYetValidCert1, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(noYetValidCert1), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.NOTYETVALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
     }
 
     public void test05BadSignatureCertificate() throws Exception {
-        ValidateRequest req = new ValidateRequest(badSigCert1, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(badSigCert1), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.DONTVERIFY));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
     }
 
     public void test06signedByExpiredRootCertificate() throws Exception {
-        ValidateRequest req = new ValidateRequest(certByExpiredRoot, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certByExpiredRoot), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.CAEXPIRED));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=expiredRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=expiredRootCA1"));
 
     }
 
     public void test07signedByNotYetValidSubCA() throws Exception {
-        ValidateRequest req = new ValidateRequest(certByNotYetValidSub, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certByNotYetValidSub), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.CANOTYETVALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=notYetValidCA"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=notYetValidCA"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
     }
 
     public void test08signedByNotYetValidSubCA() throws Exception {
-        ValidateRequest req = new ValidateRequest(certByNotYetValidSub, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certByNotYetValidSub), ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.CANOTYETVALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=notYetValidCA"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=notYetValidCA"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
     }
 
     public void test09signedByRevocedRootCA() throws Exception {
-        ValidateRequest req = new ValidateRequest(certByRevocedRoot, null);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certByRevocedRoot), null);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
@@ -292,44 +293,44 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getStatusMessage() != null);
         assertTrue(val.getRevokedDate() != null);
         assertTrue(val.getRevokationReason() == 3);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=revocedRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=revocedRootCA1"));
 
     }
 
     public void test10LongChainValidation() throws Exception {
-        ValidateRequest req = new ValidateRequest(certSignedByLongChain, null);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(certSignedByLongChain), null);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.VALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubSubSubSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidSubSubSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(2)).equals("CN=ValidSubSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(3)).equals("CN=ValidSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(4)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubSubSubSubCA2"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidSubSubSubCA2"));
+        assertTrue(cAChain.get(2).getSubject().equals("CN=ValidSubSubCA2"));
+        assertTrue(cAChain.get(3).getSubject().equals("CN=ValidSubCA2"));
+        assertTrue(cAChain.get(4).getSubject().equals("CN=ValidRootCA1"));
 
     }
 
     public void test11CertPurpose() throws Exception {
-        ValidateRequest req = new ValidateRequest(identificationCert1, ValidationServiceConstants.CERTPURPOSE_IDENTIFICATION);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(identificationCert1), ValidationServiceConstants.CERTPURPOSE_IDENTIFICATION);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.VALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
-        req = new ValidateRequest(identificationCert1, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
+        req = new ValidateRequest(ICertificateManager.genICertificate(identificationCert1), ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         val = res.getValidation();
@@ -338,10 +339,10 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getStatusMessage() != null);
         cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
-        req = new ValidateRequest(esigCert1, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
+        req = new ValidateRequest(ICertificateManager.genICertificate(esigCert1), ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         val = res.getValidation();
@@ -352,10 +353,10 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getStatusMessage() != null);
         cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
-        req = new ValidateRequest(esigCert1, ValidationServiceConstants.CERTPURPOSE_IDENTIFICATION);
+        req = new ValidateRequest(ICertificateManager.genICertificate(esigCert1), ValidationServiceConstants.CERTPURPOSE_IDENTIFICATION);
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         val = res.getValidation();
@@ -365,10 +366,10 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getStatusMessage() != null);
         cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
-        req = new ValidateRequest(badKeyUsageCert1, ValidationServiceConstants.CERTPURPOSE_IDENTIFICATION);
+        req = new ValidateRequest(ICertificateManager.genICertificate(badKeyUsageCert1), ValidationServiceConstants.CERTPURPOSE_IDENTIFICATION);
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         val = res.getValidation();
@@ -377,10 +378,10 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getStatusMessage() != null);
         cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
-        req = new ValidateRequest(badKeyUsageCert1, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
+        req = new ValidateRequest(ICertificateManager.genICertificate(badKeyUsageCert1), ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         val = res.getValidation();
@@ -389,10 +390,10 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getStatusMessage() != null);
         cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
-        req = new ValidateRequest(validCert1, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
+        req = new ValidateRequest(ICertificateManager.genICertificate(validCert1), ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         val = res.getValidation();
@@ -401,10 +402,10 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getStatusMessage() != null);
         cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
-        req = new ValidateRequest(identificationCert1, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE + "," + ValidationServiceConstants.CERTPURPOSE_IDENTIFICATION);
+        req = new ValidateRequest(ICertificateManager.genICertificate(identificationCert1), ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE + "," + ValidationServiceConstants.CERTPURPOSE_IDENTIFICATION);
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         val = res.getValidation();
@@ -420,17 +421,17 @@ public class ValidationServiceWorkerTest extends TestCase {
         sSSession.reloadConfiguration(15);
 
 
-        ValidateRequest req = new ValidateRequest(validCert1, null);
+        ValidateRequest req = new ValidateRequest(ICertificateManager.genICertificate(validCert1), null);
         ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
         assertTrue(val.getStatus().equals(Validation.Status.VALID));
         assertTrue(val.getStatusMessage() != null);
-        List<Certificate> cAChain = val.getCAChain();
+        List<ICertificate> cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
         Validation val2 = res.getValidation();
@@ -440,10 +441,10 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getValidationDate().equals(val2.getValidationDate()));
         cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubCA1"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubCA1"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidRootCA1"));
 
-        req = new ValidateRequest(certSignedByLongChain, null);
+        req = new ValidateRequest(ICertificateManager.genICertificate(certSignedByLongChain), null);
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         val = res.getValidation();
@@ -452,11 +453,11 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(val.getStatusMessage() != null);
         cAChain = val.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubSubSubSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidSubSubSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(2)).equals("CN=ValidSubSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(3)).equals("CN=ValidSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(4)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubSubSubSubCA2"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidSubSubSubCA2"));
+        assertTrue(cAChain.get(2).getSubject().equals("CN=ValidSubSubCA2"));
+        assertTrue(cAChain.get(3).getSubject().equals("CN=ValidSubCA2"));
+        assertTrue(cAChain.get(4).getSubject().equals("CN=ValidRootCA1"));
 
         res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
@@ -467,11 +468,11 @@ public class ValidationServiceWorkerTest extends TestCase {
         assertTrue(!val.getValidationDate().equals(val2.getValidationDate()));
         cAChain = val2.getCAChain();
         assertTrue(cAChain != null);
-        assertTrue(CertTools.getSubjectDN(cAChain.get(0)).equals("CN=ValidSubSubSubSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(1)).equals("CN=ValidSubSubSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(2)).equals("CN=ValidSubSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(3)).equals("CN=ValidSubCA2"));
-        assertTrue(CertTools.getSubjectDN(cAChain.get(4)).equals("CN=ValidRootCA1"));
+        assertTrue(cAChain.get(0).getSubject().equals("CN=ValidSubSubSubSubCA2"));
+        assertTrue(cAChain.get(1).getSubject().equals("CN=ValidSubSubSubCA2"));
+        assertTrue(cAChain.get(2).getSubject().equals("CN=ValidSubSubCA2"));
+        assertTrue(cAChain.get(3).getSubject().equals("CN=ValidSubCA2"));
+        assertTrue(cAChain.get(4).getSubject().equals("CN=ValidRootCA1"));
 
     }
 

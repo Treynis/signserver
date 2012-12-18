@@ -29,7 +29,7 @@ import java.util.Map;
 public class RequestContext implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
+    
     /**
      * The request metadata optionally supplied by the client.
      */
@@ -53,12 +53,6 @@ public class RequestContext implements Serializable {
      * 'null' returned.
      */
     public static final String REMOTE_IP = "REMOTE_IP";
-    
-    
-    /**
-     * Used to fetch the forwarded IP address header if it exists, otherwise 'null' is returned.
-     */
-    public static final String X_FORWARDED_FOR = "X-Forwarded-For";
     
     /**
      * All requests called from a CLI interface should set this setting to Boolean true.
@@ -99,12 +93,6 @@ public class RequestContext implements Serializable {
      * Filename of file uploaded by client to the process servlet.
      */
     public static final String FILENAME = "FILENAME";
-    
-    /**
-     * Filename to set when returning the signed file. Can be changed by the 
-     * workers to suggest an other filename.
-     */
-    public static String RESPONSE_FILENAME = "RESPONSE_FILENAME";
     
     /**
      * A dispatcher such as the TSADispatcherServlet can set this value to

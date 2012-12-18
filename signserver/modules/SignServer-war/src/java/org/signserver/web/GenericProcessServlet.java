@@ -17,7 +17,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
 import javax.ejb.EJB;
 import javax.naming.Context;
 import javax.naming.InitialContext;
@@ -26,6 +31,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemFactory;
 import org.apache.commons.fileupload.FileUploadException;
@@ -33,13 +39,19 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.signserver.common.*;
+import org.signserver.common.AuthorizationRequiredException;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericServletRequest;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.NoSuchWorkerException;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerException;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.CertificateClientCredential;
 import org.signserver.server.IClientCredential;
-import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.log.IWorkerLogger;
-import org.signserver.server.log.LogMap;
+import org.signserver.server.UsernamePasswordClientCredential;
 
 /**
  * GenericProcessServlet is a general Servlet passing on it's request info to the worker configured by either
@@ -122,7 +134,6 @@ public class GenericProcessServlet extends HttpServlet {
         	workerId = getWorkerSession().getWorkerId(workerNameOverride);
         	workerRequest = true;
         }
-
         if (ServletFileUpload.isMultipartContent(req)) {
             final FileItemFactory factory = new DiskFileItemFactory();
             final ServletFileUpload upload = new ServletFileUpload(factory);
@@ -131,45 +142,42 @@ public class GenericProcessServlet extends HttpServlet {
             upload.setSizeMax(MAX_UPLOAD_SIZE);
 
             try {
-                final List items = upload.parseRequest(req);
+                final List<FileItem> items = upload.parseRequest(req);
                 final Iterator iter = items.iterator();
                 FileItem fileItem = null;
                 while (iter.hasNext()) {
-                    final Object o = iter.next();
-                    if (o instanceof FileItem) {
-                        final FileItem item = (FileItem) o;
+                    final FileItem item = (FileItem) iter.next();
 
-                        if (item.isFormField()) {
-                            if (!workerRequest) {
-                                if (WORKERNAME_PROPERTY_NAME.equals(item.getFieldName())) {
-                                    if (LOG.isDebugEnabled()) {
-                                        LOG.debug("Found a signerName in the request: "
-                                                + item.getString());
-                                    }
-                                    workerId = getWorkerSession().getWorkerId(item.getString());
-                                } else if (WORKERID_PROPERTY_NAME.equals(item.getFieldName())) {
-                                    if (LOG.isDebugEnabled()) {
-                                        LOG.debug("Found a signerId in the request: "
-                                                + item.getString());
-                                    }
-                                    try {
-                                        workerId = Integer.parseInt(item.getString());
-                                    } catch (NumberFormatException ignored) {
-                                    }
-                                }
+                    if (item.isFormField()) {
+                    	if (!workerRequest) {
+	                        if (WORKERNAME_PROPERTY_NAME.equals(item.getFieldName())) {
+	                            if (LOG.isDebugEnabled()) {
+	                                LOG.debug("Found a signerName in the request: "
+	                                        + item.getString());
+	                            }
+	                            workerId = getWorkerSession().getWorkerId(item.getString());
+	                        } else if (WORKERID_PROPERTY_NAME.equals(item.getFieldName())) {
+	                            if (LOG.isDebugEnabled()) {
+	                                LOG.debug("Found a signerId in the request: "
+	                                        + item.getString());
+	                            }
+	                            try {
+	                                workerId = Integer.parseInt(item.getString());
+	                            } catch (NumberFormatException ignored) {
+	                            }
+	                        }
+                    	}
+                    	
+                    	if (PDFPASSWORD_PROPERTY_NAME.equals(item.getFieldName())) {
+                            if (LOG.isDebugEnabled()) {
+                                LOG.debug("Found a pdfPassword in the request.");
                             }
-
-                            if (PDFPASSWORD_PROPERTY_NAME.equals(item.getFieldName())) {
-                                if (LOG.isDebugEnabled()) {
-                                    LOG.debug("Found a pdfPassword in the request.");
-                                }
-                                pdfPassword = item.getString("ISO-8859-1");
-                            }
-                        } else {
-                            // We only care for one upload at a time right now
-                            if (fileItem == null) {
-                                fileItem = item;
-                            }
+                            pdfPassword = item.getString("ISO-8859-1");
+                        }
+                    } else {
+                        // We only care for one upload at a time right now
+                        if (fileItem == null) {
+                            fileItem = item;
                         }
                     }
                 }
@@ -240,7 +248,7 @@ public class GenericProcessServlet extends HttpServlet {
                 // Get an input stream and read the bytes from the stream
                 InputStream in = req.getInputStream();
                 ByteArrayOutputStream os = new ByteArrayOutputStream();
-                int len;
+                int len = 0;
                 byte[] buf = new byte[1024];
                 while ((len = in.read(buf)) > 0) {
                     os.write(buf, 0, len);
@@ -290,10 +298,10 @@ public class GenericProcessServlet extends HttpServlet {
             clientCertificate = certificates[0];
         }
 
-        // Create request context and meta data
         final RequestContext context = new RequestContext(clientCertificate,
                 remoteAddr);
-        RequestMetadata metadata = RequestMetadata.getInstance(context);
+        final Map<String, String> metadata = new HashMap<String, String>();
+        context.put(RequestContext.REQUEST_METADATA, metadata);
 
         IClientCredential credential;
 
@@ -322,29 +330,24 @@ public class GenericProcessServlet extends HttpServlet {
         }
         context.put(RequestContext.CLIENT_CREDENTIAL, credential);
 
-        // Create log map
-        LogMap logMap = LogMap.getInstance(context);
 
-        final String xForwardedFor = req.getHeader(RequestContext.X_FORWARDED_FOR);
-        
+        final Map<String, String> logMap = new HashMap<String, String>();
+        context.put(RequestContext.LOGMAP, logMap);
+
         // Add HTTP specific log entries
         logMap.put(IWorkerLogger.LOG_REQUEST_FULLURL, req.getRequestURL().append("?").append(req.getQueryString()).toString());
         logMap.put(IWorkerLogger.LOG_REQUEST_LENGTH,
                 String.valueOf(data.length));
         logMap.put(IWorkerLogger.LOG_FILENAME, fileName);
-        logMap.put(IWorkerLogger.LOG_XFORWARDEDFOR, xForwardedFor);
+        logMap.put(IWorkerLogger.LOG_XFORWARDEDFOR,
+                req.getHeader("X-Forwarded-For"));
 
-        if (xForwardedFor != null) {
-            context.put(RequestContext.X_FORWARDED_FOR, xForwardedFor);
-        }
-        
         // Store filename for use by archiver etc
         if (fileName != null) {
             fileName = stripPath(fileName);
         }
         context.put(RequestContext.FILENAME, fileName);
-        context.put(RequestContext.RESPONSE_FILENAME, fileName);
-
+        
         // PDF Password
         if (pdfPassword != null) {
             metadata.put(RequestContext.METADATA_PDFPASSWORD, pdfPassword);
@@ -356,7 +359,7 @@ public class GenericProcessServlet extends HttpServlet {
 
         final int requestId = random.nextInt();
 
-        GenericServletResponse response;
+        GenericServletResponse response = null;
         try {
             response = (GenericServletResponse) getWorkerSession().process(workerId,
                     new GenericServletRequest(requestId, data, req), context);
@@ -371,15 +374,14 @@ public class GenericProcessServlet extends HttpServlet {
             byte[] processedBytes = (byte[]) response.getProcessedData();
 
             res.setContentType(response.getContentType());
-            Object responseFileName = context.get(RequestContext.RESPONSE_FILENAME);
-            if (responseFileName instanceof String) {
-                res.setHeader("Content-Disposition", "attachment; filename=\"" + responseFileName + "\"");
+            if (fileName != null) {
+                res.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
             }
             res.setContentLength(processedBytes.length);
             res.getOutputStream().write(processedBytes);
             res.getOutputStream().close();
         } catch (AuthorizationRequiredException e) {
-            LOG.debug("Sending back HTTP 401: " + e.getLocalizedMessage());
+            LOG.debug("Sending back HTTP 401");
 
             final String httpAuthBasicRealm = "SignServer Worker " + workerId;
 
@@ -387,16 +389,11 @@ public class GenericProcessServlet extends HttpServlet {
                     "Basic realm=\"" + httpAuthBasicRealm + "\"");
             res.sendError(HttpServletResponse.SC_UNAUTHORIZED,
                     "Authorization Required");
-        } catch (AccessDeniedException e) {
-            LOG.debug("Sending back HTTP 403: " + e.getLocalizedMessage());
-            res.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
         } catch (NoSuchWorkerException ex) {
             res.sendError(HttpServletResponse.SC_NOT_FOUND, "Worker Not Found");
         } catch (IllegalRequestException e) {
             res.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         } catch (CryptoTokenOfflineException e) {
-            res.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, e.getMessage());
-        } catch (ServiceUnavailableException e) {
             res.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, e.getMessage());
         } catch (SignServerException e) {
             res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());

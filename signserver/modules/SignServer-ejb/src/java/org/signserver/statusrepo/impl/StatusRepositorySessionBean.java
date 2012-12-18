@@ -17,10 +17,7 @@ import java.util.Map;
 import javax.ejb.EJBException;
 import javax.ejb.Stateless;
 import org.apache.log4j.Logger;
-import org.signserver.server.log.EventType;
 import org.signserver.server.log.ISystemLogger;
-import org.signserver.server.log.LogMap;
-import org.signserver.server.log.ModuleType;
 import org.signserver.server.log.SystemLoggerException;
 import org.signserver.server.log.SystemLoggerFactory;
 import org.signserver.statusrepo.IStatusRepositorySession;
@@ -32,7 +29,7 @@ import org.signserver.statusrepo.common.StatusName;
  * Session bean offering an interface towards the status repository.
  *
  * @author Markus Kilås
- * @version $Id$
+ * @version $Id: StatusRepositorySessionBean.java 1823 2011-08-10 07:53:56Z netmackan $
  */
 @Stateless
 public class StatusRepositorySessionBean implements
@@ -113,7 +110,7 @@ public class StatusRepositorySessionBean implements
         try {
             final long currentTime = System.currentTimeMillis();
             repository.set(StatusName.valueOf(key), new StatusEntry(currentTime, value, expiration));
-            auditLog(key, value, expiration);
+            auditLog("setProperty", key, value, expiration);
         } catch (IllegalArgumentException ex) {
             throw new NoSuchPropertyException(key);
         }
@@ -127,21 +124,29 @@ public class StatusRepositorySessionBean implements
         return repository.getEntries();
     }
     
-    private static void auditLog(String property, String value, Long expiration) {
+    private static void auditLog(String operation, String property, 
+            String value,
+            Long expiration) {
         try {
-            final LogMap logMap = new LogMap();
 
-            logMap.put(IStatusRepositorySession.LOG_PROPERTY, property);
+            final Map<String, String> logMap = new HashMap<String, String>();
+
+            logMap.put(ISystemLogger.LOG_CLASS_NAME,
+                    StatusRepositorySessionBean.class.getSimpleName());
+            logMap.put(IStatusRepositorySession.LOG_OPERATION,
+                    operation);
+            logMap.put(IStatusRepositorySession.LOG_PROPERTY,
+                    property);
             if (value != null) {
                 logMap.put(IStatusRepositorySession.LOG_VALUE,
                         value);
             }
             if (expiration != null) {
                 logMap.put(IStatusRepositorySession.LOG_EXPIRATION,
-                    String.valueOf(expiration));
+                    value);
             }
 
-            AUDITLOG.log(EventType.SET_STATUS_PROPERTY, ModuleType.STATUS_REPOSITORY, "", logMap);
+            AUDITLOG.log(logMap);
         } catch (SystemLoggerException ex) {
             LOG.error("Audit log failure", ex);
             throw new EJBException("Audit log failure", ex);

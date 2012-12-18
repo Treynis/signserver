@@ -34,7 +34,7 @@ public class FileWorkerLogger implements IWorkerLogger {
     /** Logger for this class. */
     private static final Logger LOG =
             Logger.getLogger(FileWorkerLogger.class);
-
+    
     private String logFilePath;
     
     public void init(final Properties props) {

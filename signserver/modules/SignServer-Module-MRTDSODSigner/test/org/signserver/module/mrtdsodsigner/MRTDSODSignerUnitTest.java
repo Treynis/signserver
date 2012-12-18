@@ -21,13 +21,17 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import junit.framework.TestCase;
+
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ASN1InputStream;
-import org.bouncycastle.asn1.ASN1Object;
+import org.bouncycastle.asn1.DERObject;
 import org.bouncycastle.asn1.util.ASN1Dump;
-import org.bouncycastle.cert.jcajce.JcaX500NameUtil;
 import org.bouncycastle.jce.ECKeyUtil;
 import org.ejbca.util.CertTools;
 import org.ejbca.util.keystore.KeyTools;
@@ -40,7 +44,7 @@ import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
-import org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases;
+import org.signserver.server.cryptotokens.HardCodedCryptoToken;
 import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
 import org.signserver.test.utils.mock.WorkerSessionMock;
 
@@ -277,7 +281,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
 
         // ASN.1 Dump SODFile
         ASN1InputStream in = new ASN1InputStream(new ByteArrayInputStream(sod.getEncoded()));
-        ASN1Object object = in.readObject();
+        DERObject object = in.readObject();
         LOG.info("Object: " + ASN1Dump.dumpAsString(object, true));
 
 //        // ANS.1 Dump LDSSecurityObject
@@ -299,7 +303,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
 
         // ASN.1 Dump
         ASN1InputStream in = new ASN1InputStream(new ByteArrayInputStream(sod.getEncoded()));
-        ASN1Object object = in.readObject();
+        DERObject object = in.readObject();
         LOG.info("Object: " + ASN1Dump.dumpAsString(object, true));
 
 //        // ANS.1 Dump LDSSecurityObject
@@ -448,7 +452,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
         // The real asn.1 order in the cert is CN=DemoCSCA1, C=SE
         assertEquals("C=SE,CN=DemoCSCA1", sod.getIssuerX500Principal().getName());
         assertEquals("C=SE,CN=DemoCSCA1", sod.getDocSigningCertificate().getIssuerX500Principal().getName());
-        assertEquals("CN=DemoCSCA1,C=SE", JcaX500NameUtil.getIssuer(sod.getDocSigningCertificate()).toString());
+        assertEquals("C=SE, CN=DemoCSCA1", sod.getDocSigningCertificate().getIssuerDN().getName());
 
         // Make sure it matches in all ways
         assertEquals("DN should match", sod.getIssuerX500Principal().getName(),
@@ -482,7 +486,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
         // The real asn.1 order in the cert is C=SE,O=Reversed Org,CN=ReversedCA2
         assertEquals("CN=ReversedCA2,O=Reversed Org,C=SE", sod.getIssuerX500Principal().getName());
         assertEquals("CN=ReversedCA2,O=Reversed Org,C=SE", sod.getDocSigningCertificate().getIssuerX500Principal().getName());
-        assertEquals("C=SE,O=Reversed Org,CN=ReversedCA2", JcaX500NameUtil.getIssuer(sod.getDocSigningCertificate()).toString());
+        assertEquals("CN=ReversedCA2, O=Reversed Org, C=SE", sod.getDocSigningCertificate().getIssuerDN().getName());
         
         // Make sure it matches in all ways
         assertEquals("DN should match", sod.getIssuerX500Principal().getName(),
@@ -510,7 +514,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
 
         SODSignResponse res = (SODSignResponse) workerSession.process(workerId,
                 new SODSignRequest(requestId, dataGroups),
-                getRequestContext());
+                new RequestContext());
         assertNotNull(res);
         assertEquals(requestId, res.getRequestID());
         Certificate signercert = res.getSignerCertificate();
@@ -723,7 +727,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DIGESTALGORITHM", "SHA512");
             config.setProperty("SIGNATUREALGORITHM", "SHA512withRSAandMGF1");
-            config.setProperty("defaultKey", HardCodedCryptoTokenAliases.KEY_ALIAS_2); // Use a larger key
+            config.setProperty("defaultKey", HardCodedCryptoToken.KEY_ALIAS_2); // Use a larger key
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -819,11 +823,5 @@ public class MRTDSODSignerUnitTest extends TestCase {
             workerSession.reloadConfiguration(workerId);
         }
         
-    }
-
-    private RequestContext getRequestContext() {
-        final RequestContext result = new RequestContext();
-        result.put(RequestContext.TRANSACTION_ID, UUID.randomUUID().toString());
-        return result;
     }
 }

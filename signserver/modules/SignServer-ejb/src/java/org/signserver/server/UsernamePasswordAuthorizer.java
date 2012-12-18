@@ -17,18 +17,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+
 import javax.persistence.EntityManager;
+
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Hex;
 import org.signserver.common.AuthorizationRequiredException;
-import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
+import org.signserver.common.IllegalRequestException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.server.log.LogMap;
 
 /**
  * Authorizer requiring a username password pair.
@@ -59,11 +59,6 @@ public class UsernamePasswordAuthorizer implements IAuthorizer {
             final EntityManager em)
             throws SignServerException {
         loadAccounts(config);
-    }
-    
-    @Override
-    public List<String> getFatalErrors() {
-        return Collections.emptyList();
     }
 
     @Override
@@ -164,7 +159,13 @@ public class UsernamePasswordAuthorizer implements IAuthorizer {
 
     private static void logUsername(final String username,
             final RequestContext requestContext) {
-        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_USERNAME, username);
+        Map<String, String> logMap = (Map)
+                requestContext.get(RequestContext.LOGMAP);
+        if (logMap == null) {
+            logMap = new HashMap<String, String>();
+            requestContext.put(RequestContext.LOGMAP, logMap);
+        }
+        logMap.put(IAuthorizer.LOG_USERNAME, username);
     }
 
     private static class Account {

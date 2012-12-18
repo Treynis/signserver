@@ -65,4 +65,4 @@ public class ValidatorStatus extends WorkerStatus {
             // Validator specific status information can be added here
         }
     }
-}
+    }

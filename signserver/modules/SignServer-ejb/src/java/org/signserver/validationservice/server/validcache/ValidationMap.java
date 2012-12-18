@@ -12,11 +12,11 @@
  *************************************************************************/
 package org.signserver.validationservice.server.validcache;
 
-import java.security.cert.Certificate;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.signserver.validationservice.common.ICertificate;
 import org.signserver.validationservice.common.Validation;
 
 /**
@@ -28,14 +28,14 @@ import org.signserver.validationservice.common.Validation;
  */
 class ValidationMap {
 
-    Map<Certificate, Validation> validationMap = Collections.synchronizedMap(new HashMap<Certificate, Validation>());
+    Map<ICertificate, Validation> validationMap = Collections.synchronizedMap(new HashMap<ICertificate, Validation>());
 
     /**
      * Adds a entry to the map.
      * @param cert key 
      * @param validation validation
      */
-    void put(Certificate cert, Validation validation) {
+    void put(ICertificate cert, Validation validation) {
         validationMap.put(cert, validation);
     }
 
@@ -44,7 +44,7 @@ class ValidationMap {
      * @param cert the certificate to search a validation for
      * @return the validation of null if it doesn't exists in map.
      */
-    Validation get(Certificate cert) {
+    Validation get(ICertificate cert) {
         return validationMap.get(cert);
     }
 
@@ -53,7 +53,7 @@ class ValidationMap {
      * 
      * @param cert key that should be removed from the cache.
      */
-    void remove(Certificate cert) {
+    void remove(ICertificate cert) {
         validationMap.remove(cert);
     }
 }

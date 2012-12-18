@@ -13,30 +13,43 @@
 package org.signserver.module.cmssigner;
 
 import java.io.IOException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
-import java.security.PublicKey;
+import java.security.cert.CertStore;
+import java.security.cert.CertStoreException;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateEncodingException;
+import java.security.cert.CollectionCertStoreParameters;
 import java.security.cert.X509Certificate;
-import java.security.interfaces.DSAPublicKey;
-import java.security.interfaces.ECPublicKey;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+
 import javax.persistence.EntityManager;
+
 import org.apache.log4j.Logger;
-import org.bouncycastle.cert.jcajce.JcaCertStore;
-import org.bouncycastle.cms.*;
-import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.OperatorCreationException;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
-import org.signserver.common.*;
+import org.bouncycastle.cms.CMSException;
+import org.bouncycastle.cms.CMSProcessable;
+import org.bouncycastle.cms.CMSProcessableByteArray;
+import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.cms.CMSSignedDataGenerator;
+import org.bouncycastle.util.encoders.Hex;
+import org.ejbca.util.CertTools;
+import org.signserver.common.ArchiveData;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericServletRequest;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.ISignRequest;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerException;
+import org.signserver.common.WorkerConfig;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.archive.Archivable;
-import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
@@ -54,7 +67,7 @@ public class CMSSigner extends BaseSigner {
 
     /** Content-type for the produced data. */
     private static final String CONTENT_TYPE = "application/pkcs7-signature";
-    
+
     @Override
     public void init(final int workerId, final WorkerConfig config,
             final WorkerContext workerContext, final EntityManager workerEM) {
@@ -80,7 +93,8 @@ public class CMSSigner extends BaseSigner {
         }
 
         byte[] data = (byte[]) sReq.getRequestData();
-        final String archiveId = createArchiveId(data, (String) requestContext.get(RequestContext.TRANSACTION_ID));
+        byte[] fpbytes = CertTools.generateSHA1Fingerprint(data);
+        String fp = new String(Hex.encode(fpbytes));
 
         // Get certificate chain and signer certificate
         Collection<Certificate> certs = this.getSigningCertificateChain();
@@ -106,60 +120,45 @@ public class CMSSigner extends BaseSigner {
         try {
             final CMSSignedDataGenerator generator
                     = new CMSSignedDataGenerator();
-            final ContentSigner contentSigner = new JcaContentSignerBuilder(getDefaultSignatureAlgorithm(cert.getPublicKey())).setProvider(getCryptoToken().getProvider(ICryptoToken.PROVIDERUSAGE_SIGN)).build(privKey);
-            generator.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(
-                     new JcaDigestCalculatorProviderBuilder().setProvider("BC").build())
-                     .build(contentSigner, (X509Certificate) cert));
-                      
-            generator.addCertificates(new JcaCertStore(certs));
-            final CMSTypedData content = new CMSProcessableByteArray(data);
-            final CMSSignedData signedData = generator.generate(content, true);
+            generator.addSigner(privKey, (X509Certificate) cert,
+                    CMSSignedDataGenerator.DIGEST_SHA1);
+            generator.addCertificatesAndCRLs(CertStore.getInstance("Collection",
+                    new CollectionCertStoreParameters(certs), "BC"));
+            final CMSProcessable content = new CMSProcessableByteArray(data);
+            final CMSSignedData signedData = generator.generate(content, true,
+                    getCryptoToken().getProvider(ICryptoToken.PROVIDERUSAGE_SIGN));
 
             final byte[] signedbytes = signedData.getEncoded();
-            final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
 
             if (signRequest instanceof GenericServletRequest) {
                 signResponse = new GenericServletResponse(sReq.getRequestID(),
-                        signedbytes, getSigningCertificate(), archiveId,
-                        archivables,
+                        signedbytes, getSigningCertificate(), fp,
+                        new ArchiveData(signedbytes),
                         CONTENT_TYPE);
             } else {
                 signResponse = new GenericSignResponse(sReq.getRequestID(),
-                        signedbytes, getSigningCertificate(), archiveId,
-                        archivables);
+                        signedbytes, getSigningCertificate(), fp,
+                        new ArchiveData(signedbytes));
             }
-            
-            // Suggest new file name
-            final Object fileNameOriginal = requestContext.get(RequestContext.FILENAME);
-            if (fileNameOriginal instanceof String) {
-                requestContext.put(RequestContext.RESPONSE_FILENAME, fileNameOriginal + ".p7s");
-            }
-            
             return signResponse;
-        } catch (OperatorCreationException ex) {
-            LOG.error("Error initializing signer", ex);
-            throw new SignServerException("Error initializing signer", ex);
-        } catch (CertificateEncodingException ex) {
+        } catch (InvalidAlgorithmParameterException ex) {
             LOG.error("Error constructing cert store", ex);
             throw new SignServerException("Error constructing cert store", ex);
+        } catch (CertStoreException ex) {
+            LOG.error("Error constructing cert store", ex);
+            throw new SignServerException("Error constructing cert store", ex);
+        } catch (NoSuchAlgorithmException ex) {
+            LOG.error("Error constructing CMS", ex);
+            throw new SignServerException("Error constructing CMS", ex);
         } catch (CMSException ex) {
+            LOG.error("Error constructing CMS", ex);
+            throw new SignServerException("Error constructing CMS", ex);
+        } catch (NoSuchProviderException ex) {
             LOG.error("Error constructing CMS", ex);
             throw new SignServerException("Error constructing CMS", ex);
         } catch (IOException ex) {
             LOG.error("Error constructing CMS", ex);
             throw new SignServerException("Error constructing CMS", ex);
         }
-    }
-
-    private String getDefaultSignatureAlgorithm(final PublicKey publicKey) {
-        final String result;
-        if (publicKey instanceof ECPublicKey) {
-            result = "SHA1withECDSA";
-        }  else if (publicKey instanceof DSAPublicKey) {
-            result = "SHA1withDSA";
-        } else {
-            result = "SHA1withRSA";
-        }
-        return result;
     }
 }

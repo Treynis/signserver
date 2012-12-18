@@ -22,19 +22,27 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.cert.jcajce.JcaX500NameUtil;
+import org.bouncycastle.asn1.x509.X509Name;
 import org.ejbca.util.CertTools;
-import org.signserver.common.*;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
-import org.signserver.server.archive.Archivable;
-import org.signserver.server.archive.DefaultArchivable;
+import org.signserver.common.ArchiveData;
+import org.signserver.common.CryptoTokenAuthenticationFailureException;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.ISignRequest;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SODSignRequest;
+import org.signserver.common.SODSignResponse;
+import org.signserver.common.SignServerException;
+import org.signserver.common.SignerStatus;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
@@ -238,16 +246,12 @@ public class MRTDSODSigner extends BaseSigner {
             }
             // Return response
             final byte[] signedbytes = sod.getEncoded();
-            final String archiveId = createArchiveId(signedbytes, (String) requestContext.get(RequestContext.TRANSACTION_ID));
-            final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, signedbytes, archiveId));
+            String fp = CertTools.getFingerprintAsString(signedbytes);
             ret = new SODSignResponse(sReq.getRequestID(), signedbytes, cert,
-                    archiveId, archivables);
+                    fp, new ArchiveData(signedbytes));
         } catch (GeneralSecurityException e) {
             log.error("Error verifying the SOD we signed ourselves. ", e);
             throw new SignServerException("SOD verification failure", e);
-        } catch (IOException e) {
-        	log.error("Error encoding SOD", e);
-        	throw new SignServerException("SOD encoding failure", e);
         }
 
         if (log.isTraceEnabled()) {
@@ -258,7 +262,7 @@ public class MRTDSODSigner extends BaseSigner {
 
     private X509Certificate findIssuerCert(Collection<Certificate> chain, X509Certificate sodCert) {
         X509Certificate result = null;
-        final X500Name issuer = JcaX500NameUtil.getIssuer(sodCert);
+        final X509Name issuer = new X509Name(sodCert.getIssuerX500Principal().getName());
         if (log.isDebugEnabled()) {
             final StringBuilder buff = new StringBuilder();
             buff.append("Looking for ");
@@ -268,7 +272,7 @@ public class MRTDSODSigner extends BaseSigner {
         for (Certificate cert : chain) {
             if (cert instanceof X509Certificate) {
                 final X509Certificate x509 = (X509Certificate) cert;
-                final X500Name subject = JcaX500NameUtil.getSubject(x509);
+                final X509Name subject = new X509Name(x509.getSubjectX500Principal().getName());
                 if (issuer.equals(subject)) {
                     result = (X509Certificate) cert;
                     if (log.isDebugEnabled()) {

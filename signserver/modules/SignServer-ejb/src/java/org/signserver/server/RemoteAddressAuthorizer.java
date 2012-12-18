@@ -12,21 +12,20 @@
  *************************************************************************/
 package org.signserver.server;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
 import javax.persistence.EntityManager;
+
 import org.apache.log4j.Logger;
-import org.signserver.common.AccessDeniedException;
 import org.signserver.common.AuthorizationRequiredException;
-import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
+import org.signserver.common.IllegalRequestException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.util.XForwardedForUtils;
-import org.signserver.server.log.LogMap;
 
 /**
  * Authorizer only accepting requests from certain IP addresses.
@@ -69,11 +68,9 @@ public class RemoteAddressAuthorizer implements IAuthorizer {
         this.workerId = workerId;
         
         allowFrom = new HashSet<String>();
-        
-        final String allowFromProperty = config.getProperty(PROPERTY_ALLOW_FROM);
-        
-        if (allowFromProperty != null) {
-            final String[] allowFromStrings = allowFromProperty.split(",");
+        if (config.getProperty(PROPERTY_ALLOW_FROM) != null) {
+            final String[] allowFromStrings = config.getProperty(
+                    PROPERTY_ALLOW_FROM).split(",");
             for (String allowFromString : allowFromStrings) {
                 allowFromString = allowFromString.trim();
                 if (allowFromString.length() > 0) {
@@ -92,14 +89,13 @@ public class RemoteAddressAuthorizer implements IAuthorizer {
      * @throws SignServerException
      * @throws IllegalRequestException
      */
-    @Override
     public void isAuthorized(final ProcessRequest request,
             final RequestContext requestContext)
-            throws AccessDeniedException, SignServerException, IllegalRequestException {
+            throws SignServerException, IllegalRequestException {
 
         String remoteAddress
                 = (String) requestContext.get(RequestContext.REMOTE_IP);
-       
+
         if (remoteAddress == null) {
             remoteAddress = "null";
         }
@@ -107,14 +103,20 @@ public class RemoteAddressAuthorizer implements IAuthorizer {
         if (!allowFrom.contains(remoteAddress)) {
             LOG.error("Worker " + workerId + ": "
                     + "Not authorized remote address: " + remoteAddress);
-            throw new AccessDeniedException("Remote address not authorized");
+            throw new AuthorizationRequiredException("Authentication denied");
         }
-        
-        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_REMOTEADDRESS, remoteAddress);
+
+        logRemoteAddress(remoteAddress, requestContext);
     }
 
-    @Override
-    public List<String> getFatalErrors() {
-        return Collections.emptyList();
+    private void logRemoteAddress(final String remoteAddress,
+            final RequestContext requestContext) {
+        Map<String, String> logMap = (Map)
+                requestContext.get(RequestContext.LOGMAP);
+        if (logMap == null) {
+            logMap = new HashMap<String, String>();
+            requestContext.put(RequestContext.LOGMAP, logMap);
+        }
+        logMap.put(IAuthorizer.LOG_REMOTEADDRESS, remoteAddress);
     }
 }

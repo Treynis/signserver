@@ -16,9 +16,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Properties;
+
 import org.apache.log4j.Logger;
 import org.ejbca.core.model.UpgradeableDataHashMap;
 
@@ -120,7 +119,8 @@ public class WorkerConfig extends UpgradeableDataHashMap {
     /**
      * Special method to ge access to the complete data field
      */
-    HashMap<Object, Object> getData() {
+    @SuppressWarnings("unchecked")
+    HashMap<String, Serializable> getData() {
         return data;
     }
 
@@ -143,10 +143,16 @@ public class WorkerConfig extends UpgradeableDataHashMap {
      * 
      */
     public static String getNodeId() {
+
+
         if (nodeId == null) {
-            nodeId = System.getenv(NODEID_ENVVAR);
-            if (nodeId != null) {
-                nodeId = nodeId.toUpperCase();
+
+            if (GlobalConfiguration.getBuildMode().equalsIgnoreCase("MAILSIGNER")) {
+                nodeId = "NODE1";
+            }
+
+            if (nodeId == null) {
+                nodeId = System.getenv(NODEID_ENVVAR);
             }
 
             if (nodeId == null) {
@@ -167,51 +173,6 @@ public class WorkerConfig extends UpgradeableDataHashMap {
 
         return nodeId;
     }
-       
-    /**
-     * Compute the difference of properties between two WorkerConfig instances.
-     * Puts the result in a new Map with keys:
-     * <pre>
-     * changed:key, changedvalue
-     * removed:key, removedvalue
-     * added:key, addedvalue
-     * </pre>
-     * 
-     * @param oldConfig
-     * @param newConfig
-     * @return Map<String, String> with differences
-     */
-    public static Map<String, String> propertyDiff(final WorkerConfig oldConfig,
-            final WorkerConfig newConfig) {
-        final Map<String, String> result = new HashMap<String, String>();
-        final Properties oldProps = oldConfig.getProperties();
-        final Properties newProps = newConfig.getProperties();
-        
-        for (final Object o : newProps.keySet()) {
-            final String prop = (String) o;
-            final String val = (String) newProps.get(prop);
-            
-            if (oldProps.containsKey(prop)) {
-                if (!val.equals(oldProps.get(prop))) {
-                    result.put("changed:" + prop, val);
-                }
-            } else {
-                result.put("added:" + prop, val);
-            }
-        }
-        
-        for (final Object o : oldProps.keySet()) {
-            final String prop = (String) o;
-            final String val = (String) oldProps.get(prop);
-
-            if (!newProps.containsKey(prop)) {
-                result.put("removed:" + prop, val);
-            }
-        }
-        
-        return result;
-    }
-
 
     private static String getSignServerConfigFile() {
         String configFile = CompileTimeSettings.getInstance().getProperty(CompileTimeSettings.SIGNSERVER_CONFIGFILE);

@@ -12,11 +12,10 @@
  *************************************************************************/
 package org.signserver.server;
 
-import java.util.Collections;
-import java.util.List;
 import javax.persistence.EntityManager;
-import org.signserver.common.IllegalRequestException;
+
 import org.signserver.common.ProcessRequest;
+import org.signserver.common.IllegalRequestException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
@@ -32,7 +31,6 @@ public class NoAuthorizer implements IAuthorizer {
     /**
      * @see org.signserver.server.IAuthorizer#init(int, org.signserver.common.WorkerConfig, javax.persistence.EntityManager)
      */
-    @Override
     public void init(int workerId, WorkerConfig config, EntityManager em)
             throws SignServerException {
     }
@@ -40,13 +38,7 @@ public class NoAuthorizer implements IAuthorizer {
     /**
      * @see org.signserver.server.IAuthorizer#isAuthorized(ProcessRequest, RequestContext)
      */
-    @Override
     public void isAuthorized(ProcessRequest request, RequestContext requestContext)
             throws SignServerException, IllegalRequestException {
-    }
-
-    @Override
-    public List<String> getFatalErrors() {
-        return Collections.emptyList();
     }
 }

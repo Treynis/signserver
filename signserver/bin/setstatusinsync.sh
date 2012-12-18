@@ -18,4 +18,4 @@ EXPIRE=$((1000*STAMP+5000))
 echo "Will expire:  $EXPIRE"
 
 # Set the property
-./bin/signserver setstatusproperty TIMESOURCE0_INSYNC true $EXPIRE
+./bin/signserver.sh setstatusproperty TIMESOURCE0_INSYNC true $EXPIRE

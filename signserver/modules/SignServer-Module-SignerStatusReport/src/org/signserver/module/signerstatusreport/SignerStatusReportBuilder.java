@@ -18,11 +18,14 @@ import java.util.Date;
 import java.util.List;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
-import org.signserver.common.*;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.CryptoTokenStatus;
+import org.signserver.common.InvalidWorkerIdException;
+import org.signserver.common.SignServerConstants;
+import org.signserver.common.WorkerStatus;
+import org.signserver.ejb.IKeyUsageCounterDataService;
 import org.signserver.ejb.interfaces.IWorkerSession;
-import org.signserver.server.KeyUsageCounterHash;
-import org.signserver.server.entities.IKeyUsageCounterDataService;
-import org.signserver.server.entities.KeyUsageCounter;
+import org.signserver.server.KeyUsageCounter;
 
 /**
  * Builds a signer's status report for the chosen signers in a special format.
@@ -150,7 +153,7 @@ public class SignerStatusReportBuilder implements ReportBuilder {
             final Certificate cert = workerSession
                     .getSignerCertificate(worker);
             if (cert != null) {
-                ret = KeyUsageCounterHash.create(cert.getPublicKey());
+                ret = KeyUsageCounter.createKeyHash(cert.getPublicKey());
             }
         } catch (CryptoTokenOfflineException ignored) {}
         return ret;

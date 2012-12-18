@@ -15,13 +15,14 @@ package org.signserver.validationservice.common;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
+
 import org.apache.log4j.Logger;
 import org.ejbca.util.CertTools;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestAndResponseManager;
+import org.signserver.validationservice.server.ICertificateManager;
 
 /**
  * ValidateRequest is a process request sent to a validation service in order to 
@@ -35,7 +36,7 @@ public class ValidateRequest extends ProcessRequest {
     private transient Logger log = Logger.getLogger(this.getClass());
     private static final long serialVersionUID = 1L;
     // Not really used in this case.	
-    private transient Certificate certificate;
+    private transient ICertificate certificate;
     private byte[] certificateData;
     private String certPurposes;
 
@@ -50,7 +51,7 @@ public class ValidateRequest extends ProcessRequest {
      * returning the complete chain of the certificates
      * @throws CertificateEncodingException 
      */
-    public ValidateRequest(Certificate certificate, String certPurposes) throws CertificateEncodingException {
+    public ValidateRequest(ICertificate certificate, String certPurposes) throws CertificateEncodingException {
         super();
         this.certificate = certificate;
         this.certificateData = certificate.getEncoded();
@@ -61,10 +62,10 @@ public class ValidateRequest extends ProcessRequest {
     /**
      * @return the certificate
      */
-    public Certificate getCertificate() {
+    public ICertificate getCertificate() {
         if (certificate == null) {
             try {
-                certificate = CertTools.getCertfromByteArray(certificateData);
+                certificate = ICertificateManager.genICertificate(CertTools.getCertfromByteArray(certificateData));
             } catch (CertificateException e) {
                 log.error(e);
             }

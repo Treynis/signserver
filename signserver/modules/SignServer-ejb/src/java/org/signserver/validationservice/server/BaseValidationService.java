@@ -12,7 +12,10 @@
  *************************************************************************/
 package org.signserver.validationservice.server;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
 
 import javax.persistence.EntityManager;
 
@@ -90,7 +93,6 @@ public abstract class BaseValidationService implements IValidationService {
     /**
      * @see org.signserver.validationservice.server.IValidationService#getStatus()
      */
-    @Override
     public WorkerStatus getStatus() {
 
         HashMap<Integer, String> validatorStatuses = new HashMap<Integer, String>();
@@ -104,7 +106,7 @@ public abstract class BaseValidationService implements IValidationService {
 
         }
 
-        return new ValidationStatus(workerId, ct.getCryptoTokenStatus(), Collections.<String>emptyList(), config, validatorStatuses);
+        return new ValidationStatus(workerId, ct.getCryptoTokenStatus(), config, validatorStatuses);
     }
 
     /**

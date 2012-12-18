@@ -91,7 +91,7 @@ public class MockedCryptoToken implements ICryptoToken {
         return signerCertificate;
     }
 
-    public List<Certificate> getCertificateChain(int purpose) throws CryptoTokenOfflineException {
+    public Collection<Certificate> getCertificateChain(int purpose) throws CryptoTokenOfflineException {
         LOG.debug(">getCertificateChain");
         return certificateChain;
     }

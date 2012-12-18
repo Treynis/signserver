@@ -24,20 +24,12 @@
                 <id>jar</id>
             </reference>
             <reference>
-                <foreign-project>SignServer-Lib-EJBCA-util</foreign-project>
+                <foreign-project>SignServer-ejb</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
-                <target>jar</target>
+                <target>dist</target>
                 <clean-target>clean</clean-target>
-                <id>jar</id>
-            </reference>
-            <reference>
-                <foreign-project>SignServer-ejb-interfaces</foreign-project>
-                <artifact-type>jar</artifact-type>
-                <script>build.xml</script>
-                <target>jar</target>
-                <clean-target>clean</clean-target>
-                <id>jar</id>
+                <id>dist</id>
             </reference>
         </references>
     </configuration>

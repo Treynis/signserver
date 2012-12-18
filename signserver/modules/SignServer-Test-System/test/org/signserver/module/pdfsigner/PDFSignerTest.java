@@ -14,18 +14,36 @@ package org.signserver.module.pdfsigner;
 
 import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.PdfSignatureAppearance;
+
 import java.io.*;
 import java.net.URL;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateParsingException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 import java.util.regex.Pattern;
+
 import org.ejbca.util.Base64;
 import org.ejbca.util.CertTools;
-import org.signserver.common.*;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerException;
+import org.signserver.common.SignServerUtil;
+import org.signserver.common.SignerStatus;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
 import org.signserver.testutils.TestingSecurityManager;
+
+import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.PdfSignatureAppearance;
 
 /**
  * Unit tests for the PDFSigner.
@@ -36,6 +54,8 @@ public class PDFSignerTest extends ModulesTestCase {
 
     private static final int WORKERID = 5675;
 
+    private static Random random = new Random(WORKERID);
+
     private static final String CERTIFICATION_LEVEL = "CERTIFICATION_LEVEL";
 
     private static final String TESTPDF_OK = "ok.pdf";
@@ -45,6 +65,9 @@ public class PDFSignerTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     /* (non-Javadoc)
@@ -63,7 +86,7 @@ public class PDFSignerTest extends ModulesTestCase {
 
     public void test01BasicPdfSign() throws Exception {
 
-        final GenericSignResponse res = signGenericDocument(WORKERID, Base64.decode(
+        final GenericSignResponse res = signDocument(WORKERID, Base64.decode(
                 (testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
         final PdfReader reader = new PdfReader(res.getProcessedData());
@@ -90,7 +113,7 @@ public class PDFSignerTest extends ModulesTestCase {
         workerSession.removeWorkerProperty(WORKERID, CERTIFICATION_LEVEL);
         workerSession.reloadConfiguration(WORKERID);
 
-        final GenericSignResponse res = signGenericDocument(WORKERID,
+        final GenericSignResponse res = signDocument(WORKERID,
                 Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
         final PdfReader reader = new PdfReader(res.getProcessedData());
@@ -110,7 +133,7 @@ public class PDFSignerTest extends ModulesTestCase {
         workerSession.setWorkerProperty(WORKERID, CERTIFICATION_LEVEL, "NOT_CERTIFIED");
         workerSession.reloadConfiguration(WORKERID);
 
-        final GenericSignResponse res = signGenericDocument(WORKERID,
+        final GenericSignResponse res = signDocument(WORKERID,
                 Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
         final PdfReader reader = new PdfReader(res.getProcessedData());
@@ -130,7 +153,7 @@ public class PDFSignerTest extends ModulesTestCase {
         workerSession.setWorkerProperty(WORKERID, CERTIFICATION_LEVEL, "NO_CHANGES_ALLOWED");
         workerSession.reloadConfiguration(WORKERID);
 
-        final GenericSignResponse res = signGenericDocument(WORKERID,
+        final GenericSignResponse res = signDocument(WORKERID,
                 Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
         final PdfReader reader = new PdfReader(res.getProcessedData());
@@ -150,7 +173,7 @@ public class PDFSignerTest extends ModulesTestCase {
         workerSession.setWorkerProperty(WORKERID, CERTIFICATION_LEVEL, "FORM_FILLING_AND_ANNOTATIONS");
         workerSession.reloadConfiguration(WORKERID);
 
-        final GenericSignResponse res = signGenericDocument(WORKERID,
+        final GenericSignResponse res = signDocument(WORKERID,
                 Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
         final PdfReader reader = new PdfReader(res.getProcessedData());
@@ -170,7 +193,7 @@ public class PDFSignerTest extends ModulesTestCase {
         workerSession.setWorkerProperty(WORKERID, CERTIFICATION_LEVEL, "FORM_FILLING");
         workerSession.reloadConfiguration(WORKERID);
 
-        final GenericSignResponse res = signGenericDocument(WORKERID,
+        final GenericSignResponse res = signDocument(WORKERID,
                 Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
         final PdfReader reader = new PdfReader(res.getProcessedData());
@@ -216,7 +239,7 @@ public class PDFSignerTest extends ModulesTestCase {
         Date date = cal.getTime();
         Map<String, String> fields = new HashMap<String, String>();
         fields.put("WORKERID", "4311");
-
+        
         SimpleDateFormat sdf = new SimpleDateFormat("MMMMMMMMM");
         String expectedMonth = sdf.format(date);
 
@@ -243,7 +266,7 @@ public class PDFSignerTest extends ModulesTestCase {
                 "${REQUESTID}.pdf");
         workerSession.reloadConfiguration(WORKERID);
 
-        final GenericSignResponse res = signGenericDocument(WORKERID,
+        final GenericSignResponse res = signDocument(WORKERID,
                 Base64.decode((testpdf1 + testpdf2 + testpdf3 + testpdf4).getBytes()));
 
         final Calendar cal = Calendar.getInstance();
@@ -273,7 +296,7 @@ public class PDFSignerTest extends ModulesTestCase {
         signNoCheck(WORKERID, pdfOk);
 
         // Test that we can sign a strange PDF when the check is disabled
-        signGenericDocument(WORKERID, pdf2Catalogs);
+        signDocument(WORKERID, pdf2Catalogs);
 
         // Enable the check
         workerSession.setWorkerProperty(WORKERID,
@@ -282,14 +305,14 @@ public class PDFSignerTest extends ModulesTestCase {
 
         // Test that we can't sign the strange PDF when the check is on
         try {
-            signGenericDocument(WORKERID, pdf2Catalogs);
+            signDocument(WORKERID, pdf2Catalogs);
             fail("Accepted the faulty PDF!");
         } catch (SignServerException ok) {
             // OK
         }
 
         // Test that we can still sign a normal PDF when the check is enables
-        signGenericDocument(WORKERID, pdfOk);
+        signDocument(WORKERID, pdfOk);
     }
 
     public void test12VeryLongCertChain() throws Exception {
@@ -299,19 +322,40 @@ public class PDFSignerTest extends ModulesTestCase {
     	workerSession.setWorkerProperty(WORKERID, "SIGNERCERTCHAIN", new String(certFile));
     	workerSession.reloadConfiguration(WORKERID);
     	
-    	signGenericDocument(WORKERID, pdfOk);
+    	signDocument(WORKERID, pdfOk);
     }
     
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(5675);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker",
+                    "5675"});
+        workerSession.reloadConfiguration(WORKERID);
     }
 
     private GenericSignResponse signNoCheck(final int workerId,
             final byte[] data) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
-        final GenericSignRequest request = new GenericSignRequest(1234,
+        final int requestId = random.nextInt();
+        final GenericSignRequest request = new GenericSignRequest(requestId,
                 data);
         final GenericSignResponse response = (GenericSignResponse) workerSession.process(workerId, request, new RequestContext());
+        return response;
+    }
+
+    private GenericSignResponse signDocument(final int workerId,
+            final byte[] data) throws IllegalRequestException,
+            CryptoTokenOfflineException, SignServerException {
+
+        final int requestId = random.nextInt();
+
+        final GenericSignRequest request = new GenericSignRequest(requestId,
+                data);
+
+        final GenericSignResponse response = (GenericSignResponse) workerSession.process(workerId, request, new RequestContext());
+        assertEquals("requestId", requestId, response.getRequestID());
+
+        Certificate signercert = response.getSignerCertificate();
+        assertNotNull(signercert);
+
         return response;
     }
 
@@ -319,7 +363,7 @@ public class PDFSignerTest extends ModulesTestCase {
         final ByteArrayOutputStream bout = new ByteArrayOutputStream();
 
         final File file = new File(getSignServerHome(),
-                "res" + File.separator + "test" + File.separator + name);
+                "src" + File.separator + "test" + File.separator + name);
         FileInputStream in = null;
         try {
             in = new FileInputStream(file);

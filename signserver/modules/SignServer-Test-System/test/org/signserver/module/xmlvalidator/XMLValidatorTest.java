@@ -15,14 +15,26 @@ package org.signserver.module.xmlvalidator;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
-import java.security.cert.Certificate;
 import java.util.List;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.apache.log4j.Logger;
-import org.ejbca.util.CertTools;
-import org.signserver.common.*;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericValidationRequest;
+import org.signserver.common.GenericValidationResponse;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.InvalidWorkerIdException;
+import org.signserver.common.RequestContext;
+import org.signserver.common.SignServerException;
+import org.signserver.common.SignServerUtil;
+import org.signserver.common.ValidatorStatus;
 import org.signserver.testutils.ModulesTestCase;
+import org.signserver.testutils.TestUtils;
+import org.signserver.testutils.TestingSecurityManager;
+import org.signserver.validationservice.common.ICertificate;
 import org.signserver.validationservice.common.Validation;
 import org.signserver.validationservice.common.Validation.Status;
 import org.w3c.dom.Document;
@@ -46,16 +58,22 @@ public class XMLValidatorTest extends ModulesTestCase {
     private static final String SIGNER2_ISSUERDN = "CN=DSS Root CA 10,OU=Testing,O=SignServer,C=SE";
     private static final String SIGNER2_SUBJECTDN = "CN=Signer 2,OU=Testing,O=SignServer,C=SE";
 	
+    private String signserverhome;
+    private static int moduleVersion;
 
     @Override
     protected void setUp() throws Exception {
         super.setUp();
         SignServerUtil.installBCProvider();
+        TestUtils.redirectToTempOut();
+        TestUtils.redirectToTempErr();
+        TestingSecurityManager.install();
     }
 
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
+        TestingSecurityManager.remove();
     }
 
     public void test00SetupDatabase() throws Exception {
@@ -107,10 +125,10 @@ public class XMLValidatorTest extends ModulesTestCase {
             assertTrue("valid document", res.isValid());
 
             // Check certificate and path
-            Certificate signercert = res.getCertificateValidation().getCertificate();
-            assertEquals("Signer certificate", SIGNER2_SUBJECTDN, CertTools.getSubjectDN(signercert));
-            List<Certificate> caChain = res.getCertificateValidation().getCAChain();
-            assertEquals("ca certificate 0", SIGNER2_ISSUERDN, CertTools.getSubjectDN(caChain.get(0)));
+            ICertificate signercert = res.getCertificateValidation().getCertificate();
+            assertEquals("Signer certificate", SIGNER2_SUBJECTDN, signercert.getSubject());
+            List<ICertificate> caChain = res.getCertificateValidation().getCAChain();
+            assertEquals("ca certificate 0", SIGNER2_ISSUERDN, caChain.get(0).getSubject());
             assertEquals("caChain length", 1, caChain.size());
             log.info("Status message: " + res.getCertificateValidation().getStatusMessage());
             assertEquals(Validation.Status.VALID, res.getCertificateValidation().getStatus());
@@ -265,10 +283,10 @@ public class XMLValidatorTest extends ModulesTestCase {
             assertTrue("valid document", res.isValid());
 
             // Check certificate and path
-            Certificate signercert = res.getCertificateValidation().getCertificate();
-            assertEquals("Signer certificate", SIGNER2_SUBJECTDN, CertTools.getSubjectDN(signercert));
-            List<Certificate> caChain = res.getCertificateValidation().getCAChain();
-            assertEquals("ca certificate 0", SIGNER2_ISSUERDN, CertTools.getSubjectDN(caChain.get(0)));
+            ICertificate signercert = res.getCertificateValidation().getCertificate();
+            assertEquals("Signer certificate", SIGNER2_SUBJECTDN, signercert.getSubject());
+            List<ICertificate> caChain = res.getCertificateValidation().getCAChain();
+            assertEquals("ca certificate 0", SIGNER2_ISSUERDN, caChain.get(0).getSubject());
             assertEquals("caChain length", 1, caChain.size());
             log.info("Status message: " + res.getCertificateValidation().getStatusMessage());
             assertEquals(Validation.Status.VALID, res.getCertificateValidation().getStatus());
@@ -294,10 +312,10 @@ public class XMLValidatorTest extends ModulesTestCase {
             assertTrue("valid document", res.isValid());
 
             // Check certificate and path
-            Certificate signercert = res.getCertificateValidation().getCertificate();
-            assertEquals("Signer certificate", SIGNER2_SUBJECTDN, CertTools.getSubjectDN(signercert));
-            List<Certificate> caChain = res.getCertificateValidation().getCAChain();
-            assertEquals("ca certificate 0", SIGNER2_ISSUERDN, CertTools.getSubjectDN(caChain.get(0)));
+            ICertificate signercert = res.getCertificateValidation().getCertificate();
+            assertEquals("Signer certificate", SIGNER2_SUBJECTDN, signercert.getSubject());
+            List<ICertificate> caChain = res.getCertificateValidation().getCAChain();
+            assertEquals("ca certificate 0", SIGNER2_ISSUERDN, caChain.get(0).getSubject());
             assertEquals("caChain length", 1, caChain.size());
             log.info("Status message: " + res.getCertificateValidation().getStatusMessage());
             assertEquals(Validation.Status.VALID, res.getCertificateValidation().getStatus());
@@ -331,10 +349,10 @@ public class XMLValidatorTest extends ModulesTestCase {
             assertTrue("valid document", res.isValid());
 
             // Check certificate and path
-            Certificate signercert = res.getCertificateValidation().getCertificate();
-            assertEquals("Signer certificate", SIGNER2_SUBJECTDN, CertTools.getSubjectDN(signercert));
-            List<Certificate> caChain = res.getCertificateValidation().getCAChain();
-            assertEquals("ca certificate 0", SIGNER2_ISSUERDN, CertTools.getSubjectDN(caChain.get(0)));
+            ICertificate signercert = res.getCertificateValidation().getCertificate();
+            assertEquals("Signer certificate", SIGNER2_SUBJECTDN, signercert.getSubject());
+            List<ICertificate> caChain = res.getCertificateValidation().getCAChain();
+            assertEquals("ca certificate 0", SIGNER2_ISSUERDN, caChain.get(0).getSubject());
             assertEquals("caChain length", 1, caChain.size());
             log.info("Status message: " + res.getCertificateValidation().getStatusMessage());
             assertEquals(Validation.Status.VALID, res.getCertificateValidation().getStatus());
@@ -373,7 +391,7 @@ public class XMLValidatorTest extends ModulesTestCase {
             assertEquals(Validation.Status.REVOKED, res.getCertificateValidation().getStatus());
             log.info("Revoked cert status: " + res.getCertificateValidation().getStatusMessage());
 
-            Certificate cert = res.getSignerCertificate();
+            ICertificate cert = res.getSignerCertificate();
             assertNotNull(cert);
         }
     }
@@ -397,10 +415,10 @@ public class XMLValidatorTest extends ModulesTestCase {
             assertTrue("valid document", res.isValid());
 
             // Check certificate and path
-            Certificate signercert = res.getCertificateValidation().getCertificate();
-            assertEquals("Signer certificate", "CN=xmlsigner4", CertTools.getSubjectDN(signercert));
-            List<Certificate> caChain = res.getCertificateValidation().getCAChain();
-            assertEquals("ca certificate 0", "CN=DemoRootCA2,OU=EJBCA,O=SignServer Sample,C=SE", CertTools.getSubjectDN(caChain.get(0)));
+            ICertificate signercert = res.getCertificateValidation().getCertificate();
+            assertEquals("Signer certificate", "CN=xmlsigner4", signercert.getSubject());
+            List<ICertificate> caChain = res.getCertificateValidation().getCAChain();
+            assertEquals("ca certificate 0", "CN=DemoRootCA2,OU=EJBCA,O=SignServer Sample,C=SE", caChain.get(0).getSubject());
             assertEquals("caChain length", 1, caChain.size());
             log.info("Status message: " + res.getCertificateValidation().getStatusMessage());
             assertEquals(Validation.Status.VALID, res.getCertificateValidation().getStatus());
@@ -419,7 +437,7 @@ public class XMLValidatorTest extends ModulesTestCase {
 
     public void test99TearDownDatabase() throws Exception {
 
-        removeWorker(WORKERID);
+        TestUtils.assertSuccessfulExecution(new String[]{"removeworker", "" + WORKERID});
 
         workerSession.removeWorkerProperty(WORKERID, "RETURNDOCUMENT");
         workerSession.removeWorkerProperty(WORKERID, "STRIPSIGNATURE");
