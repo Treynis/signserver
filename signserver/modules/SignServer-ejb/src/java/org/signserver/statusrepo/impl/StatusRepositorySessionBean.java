@@ -12,19 +12,17 @@
  *************************************************************************/
 package org.signserver.statusrepo.impl;
 
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
-import javax.ejb.EJB;
 import javax.ejb.EJBException;
 import javax.ejb.Stateless;
 import org.apache.log4j.Logger;
-import org.cesecore.audit.enums.EventStatus;
-import org.cesecore.audit.log.AuditRecordStorageException;
-import org.cesecore.audit.log.SecurityEventsLoggerSessionLocal;
-import org.signserver.common.CompileTimeSettings;
-import org.signserver.server.log.SignServerEventTypes;
-import org.signserver.server.log.SignServerModuleTypes;
-import org.signserver.server.log.SignServerServiceTypes;
+import org.signserver.server.log.EventType;
+import org.signserver.server.log.ISystemLogger;
+import org.signserver.server.log.LogMap;
+import org.signserver.server.log.ModuleType;
+import org.signserver.server.log.SystemLoggerException;
+import org.signserver.server.log.SystemLoggerFactory;
 import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.statusrepo.common.StatusEntry;
@@ -33,8 +31,8 @@ import org.signserver.statusrepo.common.StatusName;
 /**
  * Session bean offering an interface towards the status repository.
  *
- * @version $Id$
  * @author Markus Kilås
+ * @version $Id$
  */
 @Stateless
 public class StatusRepositorySessionBean implements
@@ -43,23 +41,22 @@ public class StatusRepositorySessionBean implements
     /** Logger for this class. */
     private static final Logger LOG =
             Logger.getLogger(StatusRepositorySessionBean.class);
-   
+
+    /** Audit logger. */
+    private static final ISystemLogger AUDITLOG = SystemLoggerFactory
+            .getInstance().getLogger(StatusRepository.class);
+
     /** The repository instance. */
-    private static final StatusRepository repository = StatusRepository.getInstance();
+    private final StatusRepository repository;
 
-    @EJB
-    private SecurityEventsLoggerSessionLocal logSession;
     
-    private LogUpdates logUpdates;
-
+    /**
+     * Constructs this class.
+     */
     public StatusRepositorySessionBean() {
-        String logTypes = CompileTimeSettings.getInstance().getProperty(CompileTimeSettings.STATUSREPOSITORY_LOG);
-        if (logTypes == null) {
-            logTypes = LogUpdates.ALL.name();
-        }
-        logUpdates = LogUpdates.valueOf(logTypes);
+        repository = StatusRepository.getInstance();
     }
-        
+
     /**
      * Get a property.
      *
@@ -108,70 +105,18 @@ public class StatusRepositorySessionBean implements
      * After the expiration the get method will return null.
      *
      * @param key The key to set the value for
-     * @param newValue The value to set
+     * @param value The value to set
      */
     @Override
-    public void update(final String key, final String newValue,
+    public void update(final String key, final String value,
             final long expiration) throws NoSuchPropertyException {
         try {
             final long currentTime = System.currentTimeMillis();
-            final StatusName name = StatusName.valueOf(key);
-            final StatusEntry oldEntry;
-            
-            synchronized (repository) { // Synchronization only for writes so we can detect changes
-                // Get the old value
-                oldEntry = repository.get(name);
-                // Set the new value
-                repository.set(name, new StatusEntry(currentTime, newValue, expiration));
-            }
-            
-            if (shouldLog(logUpdates, oldEntry, newValue)) {
-                auditLog(key, newValue, expiration);
-            }
+            repository.set(StatusName.valueOf(key), new StatusEntry(currentTime, value, expiration));
+            auditLog(key, value, expiration);
         } catch (IllegalArgumentException ex) {
             throw new NoSuchPropertyException(key);
         }
-    }
-    
-    /**
-     * @return if the change should be logged or not
-     */
-    private static boolean shouldLog(final LogUpdates logUpdates, final StatusEntry oldEntry, final String newValue) {
-        final boolean result;
-        switch (logUpdates) {
-            // Log all
-            case ALL: {
-                result = true;
-            } break;
-                
-            // Only log changes
-            case CHANGES: {
-                if (oldEntry == null) {
-                   // Log change (new entry)
-                    result = true;
-                } else if (oldEntry.getValue() == null) {
-                    if (newValue == null) {
-                        // No change as both are null
-                        result = false;
-                    } else {
-                        // Log change as new value is not null
-                        result = true;
-                    }
-                } else if (!oldEntry.getValue().equals(newValue)) {
-                    // Log change of existing entry
-                    result = true;
-                } else {
-                    // No change
-                    result = false;
-                }
-            } break;
-                
-            // No log as LogUpdates.NONE
-            default: {
-                result = false;
-            }
-        }
-        return result;
     }
 
     /**
@@ -182,22 +127,22 @@ public class StatusRepositorySessionBean implements
         return repository.getEntries();
     }
     
-    private void auditLog(String property, String value, Long expiration) {
+    private static void auditLog(String property, String value, Long expiration) {
         try {
-            final Map<String, Object> details = new LinkedHashMap<String, Object>();
+            final LogMap logMap = new LogMap();
 
-            details.put(IStatusRepositorySession.LOG_PROPERTY, property);
-
+            logMap.put(IStatusRepositorySession.LOG_PROPERTY, property);
             if (value != null) {
-                details.put(IStatusRepositorySession.LOG_VALUE, value);
+                logMap.put(IStatusRepositorySession.LOG_VALUE,
+                        value);
             }
             if (expiration != null) {
-                details.put(IStatusRepositorySession.LOG_EXPIRATION, String.valueOf(expiration));
+                logMap.put(IStatusRepositorySession.LOG_EXPIRATION,
+                    String.valueOf(expiration));
             }
 
-            logSession.log(SignServerEventTypes.SET_STATUS_PROPERTY, EventStatus.SUCCESS, SignServerModuleTypes.STATUS_REPOSITORY,
-                    SignServerServiceTypes.SIGNSERVER, "StatusRepositorySessionBean.auditLog", null, null, null, details);
-        } catch (AuditRecordStorageException ex) {
+            AUDITLOG.log(EventType.SET_STATUS_PROPERTY, ModuleType.STATUS_REPOSITORY, "", logMap);
+        } catch (SystemLoggerException ex) {
             LOG.error("Audit log failure", ex);
             throw new EJBException("Audit log failure", ex);
         }

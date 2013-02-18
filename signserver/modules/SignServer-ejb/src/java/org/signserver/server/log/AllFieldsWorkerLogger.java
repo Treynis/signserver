@@ -45,7 +45,7 @@ public class AllFieldsWorkerLogger implements IWorkerLogger {
      * @param fields The fields to include.
      * @throws WorkerLoggerException
      */
-    public void log(final AdminInfo adminInfo, final Map<String, String> fields)
+    public void log(final Map<String, String> fields)
             throws WorkerLoggerException {
         final StringBuilder str = new StringBuilder();
         str.append("AllVariablesLogger; ");
@@ -64,11 +64,4 @@ public class AllFieldsWorkerLogger implements IWorkerLogger {
         // Do log
         ACCOUNTLOG.log(this.logLevel, str.toString());
     }
-
-    @Override
-    public void setEjbs(Map<Class<?>, ?> ejbs) {
-        // NO-OP for this implementation
-    }
-    
-    
 }

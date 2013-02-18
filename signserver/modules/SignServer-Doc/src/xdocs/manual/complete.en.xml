@@ -39,14 +39,6 @@ lookup the validation of a given certificate.
             </section>
 
             <section name="Changes from previous versions">
-                <subsection name="Changes between version 3.3 and 3.4">
-                    <ul>
-<!-- New major features -->
-                        <li>Secure logging to database from CESeCore</li>
-                        <li>Query audit log from CLI, GUI or over web services</li>
-                        <li>See ChangeLog.txt and RELASE_NOTES.txt for details.</li>
-                    </ul>
-                </subsection>
                 <subsection name="Changes between version 3.2 and 3.3">
                     <ul>
 <!-- New major features -->
@@ -388,7 +380,7 @@ you decide to run SignServer without a database management system.
 Create a database and user for SignServer. The application server will try to
 create tables during startup of SignServer but if the database user does not
 have table create permissions or if you run on GlassFish the tables must be
-created manually. See doc/sql-scripts/create-tables-signserver34-*.sql.
+created manually. See doc/sql-scripts/create-tables-signserver33-*.sql.
                     </p>
                     <p>
 Copy the driver for your database to the application server lib folder.
@@ -488,8 +480,8 @@ client authentication.
                         <source>
 httpserver.privhttps=8181
                         </source>
-                    </subsubsection>    
-                        
+                    </subsubsection>
+
                     <subsubsection name="Database configuration">
                         <p>
 For GlassFish make sure the datasource.jndi-name and datasource.jndi-name-prefix
@@ -548,10 +540,7 @@ module.log4j.enabled=true
 module.log4j.include=true
                         </source>
                     </subsubsection>
-                    
-                    <p>
-See <a href="complete.en.html#Signed%20log">Signed log</a> for how to configure for signed audit logs in the database.
-                    </p>
+
                 </subsection>
 
                 <subsection name="8. Build and deploy SignServer">
@@ -1192,102 +1181,6 @@ certificate serialnumber and issuer DN.
                         <p>
 Removes an administrator from the list of authorized administrators.
                         </p>
-                        
-                        <p><b>Auditors Related</b></p>
-                        <p>
-<b>wsauditors -list:</b>
-                        </p>
-                        <p>
-Lists auditor certificates (certificate serial number and issuer DN) for
-administrators authorized to use the Admin Web Service interface to query the
-audit log of SignServer.
-                        </p>
-                        <p>
-<b>wsauditors -add:</b>
-                        </p>
-                        <p>
-Authorizes an auditor to use the Admin Web Service interface by
-certificate serialnumber and issuer DN.
-                        </p>
-                        <p>
-<b>wsauditors -remove:</b>
-                        </p>
-                        <p>
-Removes an auditor from the list of authorized administrators.
-                        </p>
-                        
-                        <p>
-<b>auditlog -query:</b>
-                        </p>
-                        <p>
-Query the CESeCore audit log.
-                        </p>
-                        <p>
-Usage:
-                        </p>
-                        <source>
-signserver auditlog -query -limit &lt;number&gt; [-criteria  "&lt;field&gt; &lt;op&gt; &lt;value&gt;" [-criteria...]] [-from &lt;index&gt;] [-header]
-                        </source>
-                        <p>
--limit sets the maximum number of rows matched, this option is required to avoid putting too much load on the server.
-                        </p>
-                        <p>
-&lt;field&gt; is a field name from the audit log: additionalDetails, authToken, customId, eventStatus, eventType, module, nodeId,
-searchDetail1, searchDetail2, sequenceNumber, service, timeStamp.
-                        </p>
-                        <p>
-&lt;op&gt; is a relational operator: GT, GE, LT, LE, EQ, NEQ, LIKE, NULL, NOTNULL
-                        </p>
-                        <p>
-When given the -header option, a column header is outputted before the results.
-                        </p>
-                        <p>
-If databaseprotection.enableverify is enabled at the server side the signature 
-of each row displayed are verified. If the verification fails for any of the 
-rows matching the search criteria, an error message is displayed. The error message contains 
-information about the first row that failed.
-                        </p>
-                    </subsubsection>
-                </subsection>
-                
-                <subsection name="Database CLI">
-                    <p>
-The SignServer Database CLI uses Java Persistence API (JPA) to connect to the 
-SignServer database. The CLI is configured by the dbcli.* properties in 
-signserver_cli.properties.
-                    </p>
-                    <p>
-The CLI needs to have the JDBC driver of the selected database available on the 
-classpath. This can be achieved by setting the OPTIONAL_CLASSPATH environment 
-variable when calling the bin/signserver-db script or by putting the JAR under
-lib/ext/jdbc/ and calling it jdbc.jar. The last method is required to be able 
-to run the JUnit tests. 
-                    </p>
-                    <p>
-Sample usage:
-                    </p>
-                    <source>
-OPTIONAL_CLASSPATH=/usr/share/java/mysql-connector-java.jar bin/signserver-db audit verifylog
-                    </source>
-                    <subsubsection name="Verify Auditlog Command">
-                        <p>
-The command can be run to verify the signature of every entry in the auditlog 
-as well as checking the sequence number in order to make sure that it does not 
-contain any gaps.
-                        </p>
-                        <p>
-The keys used to verify the log are configured in conf/databaseprotection.properties.
-                        </p>
-                        <p>
-Sample output:
-                        </p>
-                        <source>
-2013-02-08 21:26:13,067 INFO  [PKCS11CryptoToken] Activated Crypto Token with id 300.
-2013-02-08 21:26:13,203 INFO  [VerifyLogCommand] Progress: node=0 rowCount=63
-2013-02-08 21:26:13,685 INFO  [VerifyLogCommand] Progress: node=1 rowCount=701
-2013-02-08 21:26:13,690 INFO  [VerifyLogCommand] Audit log validation completed in 1 seconds. 701 rows found. Errors: 0 Warnings: 0
-2013-02-08 21:26:13,690 INFO  [VerifyLogCommand] Verification finished with success
-                        </source>
                     </subsubsection>
                 </subsection>
 
@@ -1478,35 +1371,6 @@ the currently selected workers.
 the currently selected workers.
                         </p>
                     </subsubsection>
-                    
-                    <subsubsection name="Main window: Audit log">
-                        <p>
-In the "Audit log" tab controls for querying and filter the audit log exists.
-                        </p>
-                        <ul>
-<li><b>Current conditions</b>: Lists query conditions used to filter the search results.</li>
-<li><b>Add</b>: Opens a dialog box for adding query conditions.</li>
-<li><b>Remove</b>: Removes the selected query condition.</li>
-<li><b>First</b>: Go to the first search results page.</li>
-<li><b>Previous</b>: Go to the previous search results page.</li>
-<li><b>Reload</b>: Loads or reloads the search result according the the current 
-search condition(s), index and the selected number of entries per page.</li>
-<li><b>Next</b>: Go to the next search results page.</li>
-<li><b>Displaying results</b>: Displays the first row index and the last in the current result.</li>
-<li><b>Entries per page:</b>: The maximum number of rows to display in one page.</li>
-                        </ul>
-                        <p>
-Double clicking or pressing the Enter key on a selected row opens a window 
-showing details for the row.
-                        </p>
-                        <p>
-If databaseprotection.enableverify is enabled at the server side the signature 
-of each row displayed are verified. If the verification fails for any of the 
-rows in a page, an error message is displayed. The error message contains 
-information about the first row that failed.
-                        </p>
-                        
-                    </subsubsection>
 
                     <subsubsection name="Renew key dialog">
                         <p>
@@ -1573,8 +1437,8 @@ remove or edit properties.
 
                     <subsubsection name="Administrators dialog">
                         <p>
-Lists all the authorized WS administrators and auditors and gives the ability to add,
-remove or edit them.
+Lists all the authorized WS administrators and gives the ability to add,
+remove or edit authorized administrators.
                         </p>
                     </subsubsection>
 
@@ -4776,7 +4640,7 @@ The module descriptor can contain:
 module.name=module.pdfsigner
 module.type=lib
 to.root=
-to.lib=lib/ext/1.6/bcprov-jdk.jar,lib/ext/1.6/bctsp-jdk.jar,lib/ext/cert-cvc.jar,lib/ext/commons-collections-3.2.jar,lib/ext/commons-io-1.4.jar,lib/ext/commons-lang-2.5.jar,lib/ext/commons-logging.jar,lib/ext/ejbca-util.jar,lib/ext/log4j.jar,lib/ext/module/pdfsigner/itext/itext.jar,lib/SignServer-Common.jar,lib/SignServer-ejb-interfaces.jar,lib/SignServer-Module-PDFSigner.jar
+to.lib=lib/ext/1.6/bcprov-jdk.jar,lib/ext/1.6/bctsp-jdk.jar,lib/ext/cert-cvc.jar,lib/ext/commons-collections-3.2.jar,lib/ext/commons-io-1.4.jar,lib/ext/commons-lang-2.4.jar,lib/ext/commons-logging.jar,lib/ext/ejbca-util.jar,lib/ext/log4j.jar,lib/ext/module/pdfsigner/itext/itext.jar,lib/SignServer-Common.jar,lib/SignServer-ejb-interfaces.jar,lib/SignServer-Module-PDFSigner.jar
                 </pre>
                 <p>
                 Example (mods-available/20_signserverws.properties):    
@@ -4786,7 +4650,7 @@ module.name=signserverws
 module.type=ejb
 module.ejb=SignServer-ejb-SignServerWS.jar
 to.root=lib/SignServer-ejb-SignServerWS.jar
-to.lib=lib/ext/1.6/bcprov-jdk.jar,lib/ext/1.6/bctsp-jdk.jar,lib/ext/cert-cvc.jar,lib/ext/commons-collections-3.2.jar,lib/ext/commons-io-1.4.jar,lib/ext/commons-lang-2.5.jar,lib/ext/commons-logging.jar,lib/ext/ejbca-util.jar,lib/ext/log4j.jar,lib/SignServer-Common.jar,lib/SignServer-ejb-interfaces.jar
+to.lib=lib/ext/1.6/bcprov-jdk.jar,lib/ext/1.6/bctsp-jdk.jar,lib/ext/cert-cvc.jar,lib/ext/commons-collections-3.2.jar,lib/ext/commons-io-1.4.jar,lib/ext/commons-lang-2.4.jar,lib/ext/commons-logging.jar,lib/ext/ejbca-util.jar,lib/ext/log4j.jar,lib/SignServer-Common.jar,lib/SignServer-ejb-interfaces.jar
 postprocess.files=postprocess.file1
 postprocess.file1.src=SignServer-ejb-SignServerWS.jar
 postprocess.file1.includes=META-INF/ejb-jar.xml
@@ -5328,10 +5192,6 @@ properties should be set in signserver_build.properties:
                     </ul>
                     </p>
                     <p>
-For the Database CLI tests to run successfully you will need to put the JDBC 
-driver for your database as lib/ext/jdbc/jdbc.jar.
-                    </p>
-                    <p>
 To run the test suite do the following:
                     </p>
                     <ul>
@@ -5352,7 +5212,7 @@ has tests by executing the command from their project directory.
 If SignServer is configured to run without database some tests needs to be excluded by running like this:    
                     </p>
                     <source>
-bin/ant test:run -Dexcludes="**/ArchivingCLITest*,**/GroupKeyServiceCLITest*,**/Base64DatabaseArchiverTest*,**/OldDatabaseArchiverTest*,,**/GroupKeyServiceTest*,**/ArchiveTest*,**/AuditLogCLITest*,**/DatabaseCLITest*"
+bin/ant test:run -Dexcludes="**/ArchivingCLITest*,**/GroupKeyServiceCLITest*,**/Base64DatabaseArchiverTest*,**/OldDatabaseArchiverTest*,,**/GroupKeyServiceTest*,**/ArchiveTest*"
                     </source>
                     
                     <subsubsection name="System tests with HSM">
@@ -5534,11 +5394,14 @@ From the Admin CLI the status repository can be controlled using the <i>getstatu
 
             <section name="Logging">
                 <p>
-SignServer uses Log4j for debug logging and the security events logger from CESeCore 
-for system/audit logging. In addition the worker logger (transaction log) can be configured 
-to use Log4j and/or the security events logger.
+SignServer uses Log4j for logging and there are a few different loggers
+available where the first two can be useful for audit logging:
                 </p>
-
+                <ul>
+                    <li>Worker Log (org.signserver.server.log.IWorkerLogger)</li>
+                    <li>System Log (org.signserver.server.log.ISystemLogger)</li>
+                    <li>Debug Log (any other class name)</li>
+                </ul>
                 <subsection name="Worker Log">
                     <p>
 The purpose of the Worker Loggers are to log each transaction handled by the
@@ -5563,19 +5426,6 @@ the logger will do log output. These are specified as standard Log4J levels
                         <source>
 WORKERLOGGER=org.signserver.server.log.AllFieldsWorkerLogger
 LOGLEVEL_DEFAULT=INFO
-                        </source>
-                    </subsubsection>
-                    <subsubsection name="SecurityEventsWorkerLogger">
-                        <p>
-Worker logger using the CESeCore security events logger.
-This logger included all fields in the additionalDetails fields in the audit log, except the worker ID, which is mapped to searchDetail2. 
-                        </p>
-                        <p>
-The properties LOGINCLUDEFIELDS and LOGEXCLUDEFIELDS can be used to restrict the fields included in additionalDetails by explicitly setting a
-comma-separated list of field names. Only one of these options can be set at a time.
-                        </p>
-                        <source>
-WORKERLOGGER=org.signserver.server.log.SecurityEventsWorkerLogger
                         </source>
                     </subsubsection>
                     <subsubsection name="PatternWorkerLogger">
@@ -5627,8 +5477,7 @@ LOG_FILE_PATH=/path/to/logfile
                 
                 <subsection name="System Log">
                     <p>
-The purpose of the system log is to log events concerning the SignServer application but not necessarily related to any signing transaction (that is covered by the Worker Log). The audit log covers key and certificate management events, status properties updates (for instance for the status of the time source) and to some extent also configuration changes. For details see the table of events below.<br/>
-From version 3.4.0 SignServer uses the CESeCore library to perform audit logging.
+The purpose of the system log is to log events concerning the SignServer application but not necessarily related to any signing transaction (that is covered by the Worker Log). The audit log covers key and certificate management events, status properties updates (for instance for the status of the time source) and to some extent also configuration changes. For details see the table of events below.
                     </p>
                     
                     <subsubsection name="Available log events">
@@ -5647,7 +5496,7 @@ Logged at startup of the SignServer application.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: SIGNSERVER_STARTUP; MODULE: SERVICE; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: null; VERSION: SignServer 3.3.0alpha12; REPLY_TIME:1350562045545</pre>
+<pre class="code">EVENT: SIGNSERVER_STARTUP; MODULE: SERVICE; CUSTOM_ID: ; VERSION: SignServer 3.3.0alpha12; REPLY_TIME:1350562045545</pre>
                                     </p>
                                 </td>
                             </tr>
@@ -5662,7 +5511,7 @@ Logged at shutdown of the SignServer application.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: SIGNSERVER_SHUTDOWN; MODULE: SERVICE; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: null; VERSION: SignServer 3.3.0alpha12; REPLY_TIME:1350562045545</pre>
+<pre class="code">EVENT: SIGNSERVER_SHUTDOWN; MODULE: SERVICE; CUSTOM_ID: ; VERSION: SignServer 3.3.0alpha12; REPLY_TIME:1350562045545</pre>
                                     </p>
                                 </td>
                             </tr>
@@ -5682,7 +5531,7 @@ Logged when a global configuration property was updated.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: SET_GLOBAL_PROPERTY; MODULE: GLOBAL_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: null; GLOBALCONFIG_VALUE: TESTVALUE47; GLOBALCONFIG_PROPERTY: GLOB.TESTPROPERTY47; REPLY_TIME:1350657202153</pre>
+<pre class="code">EVENT: SET_GLOBAL_PROPERTY; MODULE: GLOBAL_CONFIG; CUSTOM_ID: ; GLOBALCONFIG_VALUE: TESTVALUE47; GLOBALCONFIG_PROPERTY: GLOB.TESTPROPERTY47; REPLY_TIME:1350657202153</pre>
                                     </p>
                                 </td>
                             </tr>
@@ -5697,7 +5546,7 @@ Logged when a global configuration property was removed.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: REMOVE_GLOBAL_PROPERTY; MODULE: GLOBAL_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: null; GLOBALCONFIG_PROPERTY: GLOB.TESTPROPERTY47; REPLY_TIME:1350657202444</pre>
+<pre class="code">EVENT: REMOVE_GLOBAL_PROPERTY; MODULE: GLOBAL_CONFIG; CUSTOM_ID: ; GLOBALCONFIG_PROPERTY: GLOB.TESTPROPERTY47; REPLY_TIME:1350657202444</pre>
                                     </p>
                                 </td>
                             </tr>
@@ -5709,7 +5558,7 @@ Logged when the global configuration was reloaded from the database.
                                     </p>
                                     <p>
 Example:
-<pre class="code">EVENT: GLOBAL_CONFIG_RELOAD; MODULE: GLOBAL_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: null; REPLY_TIME:1350657202593</pre>
+<pre class="code">EVENT: GLOBAL_CONFIG_RELOAD; MODULE: GLOBAL_CONFIG; CUSTOM_ID: ; REPLY_TIME:1350657202593</pre>
                                     </p>
                                 </td>
                             </tr>
@@ -5721,7 +5570,7 @@ Logged when the resync command was executed.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: GLOBAL_CONFIG_RESYNC; MODULE: GLOBAL_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: null; REPLY_TIME:1350894343902</pre>
+<pre class="code">EVENT: GLOBAL_CONFIG_RESYNC; MODULE: GLOBAL_CONFIG; CUSTOM_ID: ; REPLY_TIME:1350894343902</pre>
                                     </p>
                                 </td>
                             </tr>
@@ -5736,7 +5585,7 @@ Example:<br/>
 Logged when a worker's configuration was updated by adding and/or removing and/or changing any values.
                                     </p>
                                     <p>
-<b>WORKER_ID:</b> The ID of the worker.
+<b>CUSTOM_ID:</b> The ID of the worker.
                                     </p>
                                     <p>
 Changes in worker properties are logged with prefixes <b>added/changed/removed</b> followed by a colon and the property name a colon and the property value.<br/>
@@ -5745,19 +5594,19 @@ Authorized clients are shown as a property with the name <b>authorized_client</b
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 100; added:FOO: bar; REPLY_TIME:1350657202773</pre>
+<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; CUSTOM_ID: 100; added:FOO: bar; REPLY_TIME:1350657202773</pre>
                                     </p>
                                     <p>
-<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 100; changed:FOO: newvalue; REPLY_TIME:1350657202873</pre>
+<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; CUSTOM_ID: 100; changed:FOO: newvalue; REPLY_TIME:1350657202873</pre>
                                     </p>
                                     <p>
-<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 100; removed:FOO: newvalue; REPLY_TIME:1350657202873</pre>
+<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; CUSTOM_ID: 100; removed:FOO: newvalue; REPLY_TIME:1350657202873</pre>
                                     </p>
                                     <p>
-<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 100; added:FOO: bar; changed:BAR: newvalue; REPLY_TIME:1350657202873</pre>                                    
+<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; CUSTOM_ID: 100; added:FOO: bar; changed:BAR: newvalue; REPLY_TIME:1350657202873</pre>                                    
                                     </p>
                                     <p>
-<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 100; added:authorized_client: SN: 1234567890, issuer DN: CN=Test; REPLY_TIME:1350657202873</pre>
+<pre class="code">EVENT: SET_WORKER_CONFIG; MODULE: WORKER_CONFIG; CUSTOM_ID: 100; added:authorized_client: SN: 1234567890, issuer DN: CN=Test; REPLY_TIME:1350657202873</pre>
                                     </p>
                                     
                                 </td>
@@ -5769,14 +5618,14 @@ Example:<br/>
 Logged when a certificate was uploaded to the worker configuration.
                                     </p>
                                     <p>
-<b>WORKER_ID:</b> The ID of the worker.<br/>
+<b>CUSTOM_ID:</b> The ID of the worker.<br/>
 <b>CERTIFICATE:</b> The certificate in PEM format.<br/>
 <b>SCOPE: </b> If the setting was at GLOBAL or NODE scope.<br/>
 <b>NODE: </b> The ID of the node if the setting was at NODE scope, otherwise not available.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: CERTINSTALLED; MODULE: WORKER_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 100; CERTIFICATE: Subject: CN=Anyone
+<pre class="code">EVENT: CERTINSTALLED; MODULE: WORKER_CONFIG; CUSTOM_ID: 100; CERTIFICATE: Subject: CN=Anyone
 Issuer: CN=Anyone
 -----BEGIN CERTIFICATE-----
 MIIBnTCCAQagAwIBAgIIWWNYSOeuN+swDQYJKoZIhvcNAQEFBQAwETEPMA0GA1UE
@@ -5800,14 +5649,14 @@ EK4rfPBXEl33gKbsO5aeMHd5iF2jtx7RfYMsOuHKoDSe
 Logged when a certificate chain was uploaded to the worker configuration.
                                     </p>
                                     <p>
-<b>WORKER_ID:</b> The ID of the worker.<br/>
+<b>CUSTOM_ID:</b> The ID of the worker.<br/>
 <b>CERTIFICATECHAIN:</b> The certificates in PEM format.<br/>
 <b>SCOPE: </b> If the setting was at GLOBAL or NODE scope.<br/>
 <b>NODE: </b> The ID of the node if the setting was at NODE scope, otherwise not available.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: CERTCHAININSTALLED; MODULE: WORKER_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 100; CERTIFICATECHAIN: Subject: CN=Signer,C=SE
+<pre class="code">EVENT: CERTCHAININSTALLED; MODULE: WORKER_CONFIG; CUSTOM_ID: 100; CERTIFICATECHAIN: Subject: CN=Signer,C=SE
 Issuer: CN=Issuer,C=SE
 -----BEGIN CERTIFICATE-----
 MIIBdjCCASCgAwIBAgIIE+fXOs/SAwMwDQYJKoZIhvcNAQEFBQAwHjEPMA0GA1UE
@@ -5842,14 +5691,14 @@ VAfkEktRrO04Hi5eLR+AxW7EVz6l
 Logged when the key-pair to use was selected by changing the value of the DEFAULTKEY worker property.
                                     </p>
                                     <p>
-<b>WORKER_ID:</b> The ID of the worker.<br/>
+<b>CUSTOM_ID:</b> The ID of the worker.<br/>
 <b>KEYALIAS:</b> The new key alias.<br/>
 <b>SCOPE: </b> If the setting was at GLOBAL or NODE scope.<br/>
 <b>NODE: </b> The ID of the node if the setting was at NODE scope, otherwise not available.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: KEYSELECTED; MODULE: WORKER_CONFIG; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 100; KEYALIAS: ts_key00002; SCOPE: GLOBAL; REPLY_TIME:1350891907048</pre>
+<pre class="code">EVENT: KEYSELECTED; MODULE: WORKER_CONFIG; CUSTOM_ID: 100; KEYALIAS: ts_key00002; SCOPE: GLOBAL; REPLY_TIME:1350891907048</pre>
                                     </p>
                                 </td>
                             </tr>
@@ -5864,14 +5713,14 @@ Example:<br/>
 Logged when a new key-pair was generated using the built-in key generation command.
                                     </p>
                                     <p>
-<b>WORKER_ID:</b> The ID of the worker.<br/>
+<b>CUSTOM_ID:</b> The ID of the worker.<br/>
 <b>KEYALIAS:</b> The new key alias.<br/>
 <b>KEYSPEC:</b> The key specification (ie. RSA/DSA bit length or EC curve).<br/>
 <b>KEYALG:</b> The key algorithm.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: KEYGEN; MODULE: KEY_MANAGEMENT; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 5676; KEYALIAS: ts_key00004; KEYSPEC: 2048; KEYALG: RSA; REPLY_TIME:135089190791</pre>
+<pre class="code">EVENT: KEYGEN; MODULE: KEY_MANAGEMENT; CUSTOM_ID: 5676; KEYALIAS: ts_key00004; KEYSPEC: 2048; KEYALG: RSA; REPLY_TIME:135089190791</pre>
                                     </p>
                                 </td>
                             </tr>
@@ -5882,13 +5731,13 @@ Example:<br/>
 Logged when the key test command was executed and a test signing with either the specified key or all keys in the slot if that was specified.
                                     </p>
                                     <p>
-<b>WORKER_ID:</b> The ID of the worker.<br/>
+<b>CUSTOM_ID:</b> The ID of the worker.<br/>
 <b>KEYALIAS:</b> Alias of the the key to test or "all" to test all available keys in the slot.<br/>
 <b>TESTRESULTS:</b> The test report with an entry for each tested key.
                                     </p>
                                     <p>
 Example:<br/>            
-<pre class="code">EVENT: KEYTEST; MODULE: KEY_MANAGEMENT; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 47; KEYALIAS: all; TESTRESULTS: KeyTestResult{alias=tsu47_key00005, success=true, status=, publicKeyHash=979359e5261112b11fac341962bec1e7e6052d9e}
+<pre class="code">EVENT: KEYTEST; MODULE: KEY_MANAGEMENT; CUSTOM_ID: 47; KEYALIAS: all; TESTRESULTS: KeyTestResult{alias=tsu47_key00005, success=true, status=, publicKeyHash=979359e5261112b11fac341962bec1e7e6052d9e}
 KeyTestResult{alias=key5, success=true, status=, publicKeyHash=46b264e4892ef2e4fd9616e4927534ca3597fd9c}
 KeyTestResult{alias=key3, success=true, status=, publicKeyHash=ae64792f1f50e23eb54bf79d46d819bc07db2d79}
 KeyTestResult{alias=key2, success=true, status=, publicKeyHash=b1317f363e6124a8e15bba8c1adb9f20b2f4ef59}
@@ -5904,12 +5753,12 @@ KeyTestResult{alias=TS Signer 1, success=true, status=, publicKeyHash=8f6dfccdce
 Logged when a certificate signing request (CSR) was generated.
                                     </p>
                                     <p>
-<b>WORKER_ID:</b> The ID of the worker.<br/>
+<b>CUSTOM_ID:</b> The ID of the worker.<br/>
 <b>CSR:</b> Base64 encoded CSR (typically in PKCS#10 format).
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: GENCSR; MODULE: KEY_MANAGEMENT; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: 5676; CSR: MIIBYDCBygIBADAjMRQwEgYDVQQDDAtUUyBTaWduZXIgMTELMAkGA1UEBhMCU0Uw
+<pre class="code">EVENT: GENCSR; MODULE: KEY_MANAGEMENT; CUSTOM_ID: 5676; CSR: MIIBYDCBygIBADAjMRQwEgYDVQQDDAtUUyBTaWduZXIgMTELMAkGA1UEBhMCU0Uw
 gZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAJt8F51wD+QcX+WLyIxjWu3at3q+
 IiJrL5jIenmggUhjOLHGHOStoNOiYEQAaiiTZ623m9y7O3zhqFdAdWZg+JrfsHQJ
 pjKV9RgvJznl6yk/K54BWOBgqjvbloAUGtn8y8Hf+5DYJUJNFqrzvRLcmCQ9JU0H
@@ -5937,7 +5786,7 @@ Logged when a status property was updated.
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: SET_STATUS_PROPERTY; MODULE: STATUS_REPOSITORY; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: null; STATUSREPO_EXPIRATION: 1350891909366; STATUSREPO_PROPERTY: TEST_PROPERTY1; STATUSREPO_VALUE: TESTVALUE47; REPLY_TIME:1350891908372</pre>
+<pre class="code">EVENT: SET_STATUS_PROPERTY; MODULE: STATUS_REPOSITORY; CUSTOM_ID: ; STATUSREPO_EXPIRATION: 1350891909366; STATUSREPO_PROPERTY: TEST_PROPERTY1; STATUSREPO_VALUE: TESTVALUE47; REPLY_TIME:1350891908372</pre>
                                     </p>
                                 </td>
                             </tr>
@@ -5952,228 +5801,18 @@ Example:<br/>
 Logged for events regarding worker processing but when a worker logger can not be used because the requested worker does not exist etc.
                                     </p>
                                     <p>
-<b>WORKER_ID:</b> The ID of the worker or empty in case of non existing worker.<br/>
+<b>CUSTOM_ID:</b> The ID of the worker or empty in case of non existing worker.<br/>
 <b>Worker logger fields:</b> All fields available to the worker logger.<br/>
                                     </p>
                                     <p>
 Example:<br/>
-<pre class="code">EVENT: PROCESS; MODULE: WORKER; ADMINISTRATOR: null; ISSUER: null; SERIAL_NUMBER: null; WORKER_ID: null; LOG_ID: db517726-ff0d-40dd-8f2b-2297925cb4d3; CLIENT_IP: 127.0.0.1; PROCESS_SUCCESS: false; REQUEST_LENGTH: 0; XFORWARDEDFOR: null; FILENAME: noname.dat; 
+<pre class="code">EVENT: PROCESS; MODULE: WORKER; CUSTOM_ID: ; LOG_ID: db517726-ff0d-40dd-8f2b-2297925cb4d3; CLIENT_IP: 127.0.0.1; PROCESS_SUCCESS: false; REQUEST_LENGTH: 0; XFORWARDEDFOR: null; FILENAME: noname.dat; 
 REQUEST_FULLURL: http://localhost:8080/signserver/process?null; LOG_TIME: 1350628977410; WORKER_ID: 0; EXCEPTION: No such worker: 0; REPLY_TIME:1350628977411
 </pre>
                                     </p>
                                 </td>
                             </tr>
                         </table>
-                    </subsubsection>
-                </subsection>
- 
-                <subsection name="CESeCore Security Events Logger">
-                    <p>
-An example configuration for CESeCore is provided in <code>conf/cesecore.properties.sample</code>.
-The default logging implementation, <code>org.signserver.server.log.SignServerLog4jDevice</code> uses Log4J and a similar logging format as the old SystemLogger.
-                    </p>
-                    <subsubsection name="Signed log">
-                        <p>
-To enable signed audit logs configure conf/databaseprotection.properties (see conf/databaseprotection.properties.sample). And set the following which enables signing of the AuditRecordData table as well as verification of the log entries queried using for instance the CLI or GUI:
-                        </p>
-                        <source>
-databaseprotection.enablesign.AuditRecordData = true
-databaseprotection.enableverify.AuditRecordData = true
-                        </source>
-                        <p>
-Configure a key-pair to use for signing and verification of the log with something similar to this:
-                        </p>
-                        <source>
-databaseprotection.keyid = 400
-databaseprotection.keyid.0 = 400
-databaseprotection.keylabel.0 = dbProtKey
-databaseprotection.classname.0 = org.cesecore.keys.token.PKCS11CryptoToken
-databaseprotection.properties.0 = sharedLibrary=/opt/utimaco/Software/PKCS11/lib/Linux-x86-64/libcs2_pkcs11.so, slot=1
-databaseprotection.data.0 =
-databaseprotection.tokenpin.0 = userpin1
-databaseprotection.version.0 = 2
-                        </source>
-                        
-                        <p>
-Note: each SignServer node writing to the audit log needs to use different node IDs. By default the hostname is used. If multiple instances 
-are running from the same host set the node id manually in conf/cesecore.properties as cluster.nodeid.
-                        </p>
-                        <p>
-If enableverify is set to true, all individual log entries that are displayed 
-using CLI, GUI or over web services are verified at the server side and in case 
-of inconsistent signatures an error message is displayed. This verification will 
-not discover missing log entries. To verify the complete log for all nodes as 
-well as detect gaps in the sequence numbering, run the <a href="complete.en.html#Database%20CLI">Database CLI</a>.
-                        </p>
-                    </subsubsection>
-                    
-                    <subsubsection name="AuditRecordData table">
-                        <p>
-The exact database table structure is described in the SQL scripts available under doc/sql-scripts/.                            
-                        </p>
-                        <table border="1">
-                            <tr>
-                                <th>Friendly Name</th>
-                                <th>Table Name</th>
-                                <th>Description</th>
-                            </tr>
-
-                            <tr>
-                                <td>Time</td>
-                                <td>timeStamp</td>
-                                <td>
-                                    <p>
-Time stamp (number of milliseconds since January 1, 1970, 00:00:00 GMT). Example:
-                                    </p>
-                                    <pre class="code">1359550503607</pre>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Outcome</td>
-                                <td>eventStatus</td>
-                                <td>
-                                    <p>Status/result of the operation performed. Can be:</p>
-                                    <ul>
-                                        <li>SUCCESS</li>
-                                        <li>FAILURE</li>
-                                        <li>VOID</li>
-                                    </ul>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Event</td>
-                                <td>eventType</td>
-                                <td>
-                                    <p>The event. Some examples:</p>
-                                    <ul>
-                                        <li>SIGNSERVER_STARTUP</li>
-                                        <li>SET_GLOBAL_PROPERTY</li>
-                                        <li>SET_WORKER_CONFIG</li>
-                                        <li>KEYGEN</li>
-                                        <li>PROCESS</li>
-                                    </ul>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Module</td>
-                                <td>module</td>
-                                <td>
-                                    <p>The source module of the event. Some examples:</p>
-                                    <ul>
-                                        <li>SERVICE</li>
-                                        <li>GLOBAL_CONFIG</li>
-                                        <li>WORKER_CONFIG</li>
-                                        <li>KEY_MANAGEMENT</li>
-                                        <li>WORKER</li>
-                                        <li>STATUS_REPOSITORY</li>
-                                    </ul>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Service</td>
-                                <td>service</td>
-                                <td>
-                                    <p>The service performing the operation. Some examples:</p>
-                                    <ul>
-                                        <li>CORE</li>
-                                        <li>SIGNSERVER</li>
-                                        <li>EJBCA</li>
-                                    </ul>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Admin Subject</td>
-                                <td>authToken</td>
-                                <td>
-                                    <p>Information about which administrator performed the operation.</p>
-                                    <p>
-Subject DN from the administrator's certificate if the operation was performed 
-over web services, "CLI User" if the EJB remote interface was used, the name 
-of the service if it was an internal operation or "Client User" if the request 
-came from a client.
-                                    </p>
-                                    <p>Some examples:</p>
-                                    <pre class="code">C=SE, O=My Organization, CN=Admin 1</pre>
-                                    <pre class="code">CLI User</pre>
-                                    <pre class="code">StartServicesServlet.init</pre>
-                                    <pre class="code">Client User</pre>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Admin Serial Number</td>
-                                <td>searchDetail1</td>
-                                <td>
-                                    <p>Information about which administrator performed the operation.</p>
-                                    <p>Certificate serial number for the administrator performing the operation (if available). Example:</p>
-                                    <pre class="code">4a3442e98e3ce428</pre>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Admin Issuer</td>
-                                <td>customId</td>
-                                <td>
-                                    <p>Information about which administrator performed the operation.</p>
-                                    <p>
-Issuer DN from the administrator's certificate (if available). Example:
-                                    </p>
-                                    <pre class="code">C=SE, O=My Organization, CN=AdminCA1</pre>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Worker ID</td>
-                                <td>searchDetail2</td>
-                                <td>
-                                    <p>ID of worker involved in the operation (if any). Example:</p>
-                                    <pre class="code">71</pre>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Node</td>
-                                <td>nodeId</td>
-                                <td>
-                                    <p>ID of the node (typically the hostname if not explicitly specified). Example:</p>
-                                    <pre class="code">dsstsa1.example.com</pre>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Details</td>
-                                <td>additionalDetails</td>
-                                <td>
-                                    <p>Additional key-value pairs with information about the operation encoded with Java XML serialization. Example:</p>
-                                    <pre class="code">
-&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;java version="1.6.0_24" class="java.beans.XMLDecoder"&gt;
- &lt;object class="org.cesecore.util.Base64PutHashMap"&gt;
-  &lt;void method="put"&gt;
-   &lt;string&gt;GLOBALCONFIG_PROPERTY&lt;/string&gt;
-   &lt;string&gt;GLOB.WORKER1.CLASSPATH&lt;/string&gt;
-  &lt;/void&gt;
-  &lt;void method="put"&gt;
-   &lt;string&gt;GLOBALCONFIG_VALUE&lt;/string&gt;
-   &lt;string&gt;org.signserver.module.xmlsigner.XMLSigner&lt;/string&gt;
-  &lt;/void&gt;
- &lt;/object&gt;
-&lt;/java&gt;
-                                    </pre>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Sequence Number</td>
-                                <td>sequenceNumber</td>
-                                <td>
-                                    <p>Sequence number of the log entry. Should be unique and sequential per node.</p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Row Protection</td>
-                                <td>rowProtection</td>
-                                <td>
-                                    <p>Contains information about wich key-pair and signature algorithm that has been used and the actual signature value (if the row is signed). Example:</p>
-                                    <pre class="code">1:2:400:079b6c2d89671702077b1802ff221cd7c6d71804ea3771b7d5f7cd1...</pre>
-                                </td>
-                            </tr>
-                        </table>
-                        
                     </subsubsection>
                 </subsection>
  
@@ -6202,7 +5841,7 @@ put the audit logs in a separate file.
     &lt;/layout&gt;
 &lt;/appender&gt;
 
-&lt;category name="org.signserver.server.log.SignServerLog4jDevice"&gt;
+&lt;category name="org.signserver.server.log.ISystemLogger"&gt;
     &lt;appender-ref ref="SIGNSERVER_AUDIT"/&gt;
 &lt;/category&gt;
 &lt;category name="org.signserver.server.log.IWorkerLogger"&gt;
@@ -6213,48 +5852,7 @@ put the audit logs in a separate file.
 For GlassFish a similar setup is already configured in SIGNSERVER_HOME/modules/SignServer-Module-Log4j/src/log4j.properties. 
                     </p>
                 </subsection>
-                
-                <subsection name="Status Repository Logging">
-                    <p>
-By default the Status Repository produces a log entry for every update. This can 
-be disabled or changed in the configuration so that only changes are 
-logged. See the property <i>statusrepository.log</i> in 
-signserver_build.properties.sample.
-                    </p>
-                </subsection>
 
-            </section>
-            
-            <section name="Database Command Line Interface">
-                <p>
-The SignServer DB CLI can be run against a database. Currently it only supports 
-verifying the audit log.
-                </p>
-                <subsection name="Building">
-                    <p>
-The DB CLI is built if the property databasecli.enabled=true is specified in 
-signserver_build.properties. It can also be built using:
-                    </p>
-                    <source>
-$ bin/ant -f modules/SignServer-DatabaseCLI/build.xml dist-module
-                    </source>
-                </subsection>
-                
-                <subsection name="Configuring">
-                    <p>
-Configure the dbcli.* properties in conf/signserver_cli.properties.
-                    </p>
-                </subsection>
-                
-                <subsection name="Running">
-                    <p>
-There is start-up script available under bin. You might have specify a classpath
-containing the JDBC connectors for the specific database type. Example:
-                    </p>
-                    <source>
-$ OPTIONAL_CLASSPATH=/usr/share/java/mysql-connector-java.jar bin/signserver-db audit verifylog
-                    </source>
-                </subsection>
             </section>
 
             <section name="SignServer without Database">

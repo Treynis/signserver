@@ -38,7 +38,6 @@ import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.CertificateClientCredential;
 import org.signserver.server.IClientCredential;
 import org.signserver.server.UsernamePasswordClientCredential;
-import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
 
@@ -282,9 +281,7 @@ public class GenericProcessServlet extends HttpServlet {
 
     private void processRequest(HttpServletRequest req, HttpServletResponse res, int workerId, byte[] data, String fileName, String pdfPassword) throws java.io.IOException, ServletException {
         final String remoteAddr = req.getRemoteAddr();
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Recieved HTTP process request for worker " + workerId + ", from ip " + remoteAddr);
-        }
+        LOG.info("Recieved HTTP process request for worker " + workerId + ", from ip " + remoteAddr);
 
         // Client certificate
         Certificate clientCertificate = null;
@@ -361,7 +358,7 @@ public class GenericProcessServlet extends HttpServlet {
 
         GenericServletResponse response;
         try {
-            response = (GenericServletResponse) getWorkerSession().process(new AdminInfo("Client user", null, null), workerId,
+            response = (GenericServletResponse) getWorkerSession().process(workerId,
                     new GenericServletRequest(requestId, data, req), context);
 
             if (response.getRequestID() != requestId) { // TODO: Is this possible to get at all?

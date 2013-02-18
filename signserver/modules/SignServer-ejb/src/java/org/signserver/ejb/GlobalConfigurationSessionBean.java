@@ -12,9 +12,7 @@
  *************************************************************************/
 package org.signserver.ejb;
 
-import java.security.cert.Certificate;
 import java.util.*;
-
 import javax.annotation.PostConstruct;
 import javax.ejb.EJB;
 import javax.ejb.EJBException;
@@ -22,9 +20,6 @@ import javax.ejb.Stateless;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceException;
 import org.apache.log4j.Logger;
-import org.cesecore.audit.enums.EventStatus;
-import org.cesecore.audit.log.AuditRecordStorageException;
-import org.cesecore.audit.log.SecurityEventsLoggerSessionLocal;
 import org.signserver.common.*;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
@@ -33,10 +28,12 @@ import org.signserver.server.config.entities.FileBasedGlobalConfigurationDataSer
 import org.signserver.server.config.entities.GlobalConfigurationDataBean;
 import org.signserver.server.config.entities.GlobalConfigurationDataService;
 import org.signserver.server.config.entities.IGlobalConfigurationDataService;
-import org.signserver.server.log.AdminInfo;
-import org.signserver.server.log.SignServerEventTypes;
-import org.signserver.server.log.SignServerModuleTypes;
-import org.signserver.server.log.SignServerServiceTypes;
+import org.signserver.server.log.EventType;
+import org.signserver.server.log.ISystemLogger;
+import org.signserver.server.log.LogMap;
+import org.signserver.server.log.ModuleType;
+import org.signserver.server.log.SystemLoggerException;
+import org.signserver.server.log.SystemLoggerFactory;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
 
 /**
@@ -51,12 +48,14 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(GlobalConfigurationSessionBean.class);
     
+    /** Audit logger. */
+    private static final ISystemLogger AUDITLOG = SystemLoggerFactory
+            .getInstance().getLogger(GlobalConfigurationSessionBean.class);
+
     @EJB
     private IWorkerManagerSessionLocal workerManagerSession;
     
-    @EJB
-    private SecurityEventsLoggerSessionLocal logSession;
-    
+
     EntityManager em;
 
     private static final long serialVersionUID = 1L;
@@ -92,16 +91,8 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
      */
     @Override
     public void setProperty(String scope, String key, String value) {
-        setProperty(new AdminInfo("CLI user", null, null), scope, key, value);
-    }
 
-    /**
-     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession.ILocal#setProperty(AdminInfo, String, String, String)
-     */    
-    @Override
-    public void setProperty(AdminInfo adminInfo, String scope, String key,
-            String value) {
-        auditLog(adminInfo, SignServerEventTypes.SET_GLOBAL_PROPERTY, scope + key, value);
+        auditLog(EventType.SET_GLOBAL_PROPERTY, scope + key, value);
 
         if (cache.getCurrentState().equals(GlobalConfiguration.STATE_OUTOFSYNC)) {
             cache.getCachedGlobalConfig().setProperty(propertyKeyHelper(scope, key), value);
@@ -128,13 +119,13 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     }
 
     /**
-     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession.ILocal#removeProperty(AdminInfo, String, String)
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#removeProperty(String, String)
      */
     @Override
-    public boolean removeProperty(final AdminInfo adminInfo, String scope, String key) {
+    public boolean removeProperty(String scope, String key) {
         boolean retval = false;
 
-        auditLog(adminInfo, SignServerEventTypes.REMOVE_GLOBAL_PROPERTY, scope + key, null);
+        auditLog(EventType.REMOVE_GLOBAL_PROPERTY, scope + key, null);
 
         if (cache.getCurrentState().equals(GlobalConfiguration.STATE_OUTOFSYNC)) {
             cache.getCachedGlobalConfig().remove(propertyKeyHelper(scope, key));
@@ -150,15 +141,6 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
         }
         return retval;
     }
-    
-    /**
-     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#removeProperty(String, String)
-     */    
-    @Override
-    public boolean removeProperty(String scope, String key) {
-        return removeProperty(new AdminInfo("CLI user", null, null), scope, key);
-    }
-    
 
     /**
      * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#getGlobalConfiguration()
@@ -199,12 +181,12 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
     }
 
     /**
-     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession.ILocal#resync()
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#resync()
      */
     @Override
-    public void resync(final AdminInfo adminInfo) throws ResyncException {
+    public void resync() throws ResyncException {
 
-        auditLog(adminInfo, SignServerEventTypes.GLOBAL_CONFIG_RESYNC, null, null); // TODO Should handle errors
+        auditLog(EventType.GLOBAL_CONFIG_RESYNC, null, null); // TODO Should handle errors
 
         if (!cache.getCurrentState().equals(GlobalConfiguration.STATE_OUTOFSYNC)) {
             String message = "Error it is only possible to resync a database that have the state " + GlobalConfiguration.STATE_OUTOFSYNC;
@@ -262,17 +244,12 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
         cache.setCurrentState(GlobalConfiguration.STATE_INSYNC);
     }
 
-    @Override
-    public void resync() throws ResyncException {
-        resync(new AdminInfo("CLI user", null, null));
-    }
-    
     /**
-     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession.ILocal#reload()
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#reload()
      */
     @Override
-    public void reload(final AdminInfo adminInfo) {
-        auditLog(adminInfo, SignServerEventTypes.GLOBAL_CONFIG_RELOAD, null, null);
+    public void reload() {
+        auditLog(EventType.GLOBAL_CONFIG_RELOAD, null, null);
 
         workerManagerSession.flush();
         cache.setCachedGlobalConfig(null);
@@ -280,11 +257,6 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
 
         // Set the state to insync.
         cache.setCurrentState(GlobalConfiguration.STATE_INSYNC);
-    }
-    
-    @Override
-    public void reload() {
-        reload(new AdminInfo("CLI user", null, null));
     }
     
     /**
@@ -305,24 +277,21 @@ public class GlobalConfigurationSessionBean implements IGlobalConfigurationSessi
 
     }
 
-    private void auditLog(final AdminInfo adminInfo, final SignServerEventTypes eventType, final String property,
+    private static void auditLog(final EventType eventType, final String property,
             final String value) {
         try {
-            Map<String, Object> details = new LinkedHashMap<String, Object>();
+            final LogMap logMap = new LogMap();
 
             if (property != null) {
-                details.put(IGlobalConfigurationSession.LOG_PROPERTY, property);
+                logMap.put(IGlobalConfigurationSession.LOG_PROPERTY,
+                    property);
             }
             if (value != null) {
-                details.put(IGlobalConfigurationSession.LOG_VALUE, value);
-
+                logMap.put(IGlobalConfigurationSession.LOG_VALUE,
+                        value);
             }
-            
-            final String serialNo =
-                    adminInfo.getCertSerialNumber() == null ? null : adminInfo.getCertSerialNumber().toString(16);
-            logSession.log(eventType, EventStatus.SUCCESS, SignServerModuleTypes.GLOBAL_CONFIG, SignServerServiceTypes.SIGNSERVER, 
-                    adminInfo.getSubjectDN(), adminInfo.getIssuerDN(), serialNo, null, details);
-        } catch (AuditRecordStorageException ex) {
+            AUDITLOG.log(eventType, ModuleType.GLOBAL_CONFIG, "", logMap);
+        } catch (SystemLoggerException ex) {
             LOG.error("Audit log failure", ex);
             throw new EJBException("Audit log failure", ex);
         }

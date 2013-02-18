@@ -20,6 +20,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.bouncycastle.asn1.x509.X509NameTokenizer;
 import org.ejbca.util.CertTools;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
@@ -157,7 +158,7 @@ public class WSAdminsCommand extends AbstractAdminCommand {
             		String dn = certificate.getIssuerX500Principal().getName();
             		
             		CertTools.BasicX509NameTokenizer tok = new CertTools.BasicX509NameTokenizer(dn);
-            		StringBuilder buf = new StringBuilder();
+            		StringBuffer buf = new StringBuffer();
 
             		while (tok.hasMoreTokens()) {
             			final String token = tok.nextToken();

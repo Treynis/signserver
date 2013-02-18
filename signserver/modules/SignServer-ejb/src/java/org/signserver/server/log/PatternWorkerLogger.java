@@ -65,7 +65,7 @@ public class PatternWorkerLogger implements IWorkerLogger {
         		DEFAULT_LOGLEVEL), Level.INFO);
     }
 
-    public void log(final AdminInfo adminInfo, Map<String, String> entries) throws WorkerLoggerException {
+    public void log(Map<String, String> entries) throws WorkerLoggerException {
         final EjbcaPatternLogger pl = new EjbcaPatternLogger(this.pattern.matcher(
                 this.orderString), this.orderString, ACCOUNTLOG,
                 this.logDateFormat, this.timeZone, this.logLevel);
@@ -73,10 +73,4 @@ public class PatternWorkerLogger implements IWorkerLogger {
         pl.writeln();
         pl.flush();
     }
-
-    @Override
-    public void setEjbs(Map<Class<?>, ?> ejbs) {
-        // NO-OP for this implementation    
-    }
-    
 }

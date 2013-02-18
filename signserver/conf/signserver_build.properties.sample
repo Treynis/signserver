@@ -273,9 +273,6 @@ j2ee.web-nohttps=true
 # Default: true
 #clientcli.enabled=true
 
-# Set to enable build of the Database CLI
-# Default: true
-#databasecli.enabled=true
 
 # ------------ PrimeCardHSM ----------------------------------------------------
 
@@ -326,17 +323,6 @@ j2ee.web-nohttps=true
 # Where the node will be down for maintenance if the property is true, and not down for maintenance if the property is false.
 # Default: DOWN_FOR_MAINTENANCE
 #healthcheck.maintenancepropertyname=DOWN_FOR_MAINTENANCE
-
-
-# ------------- Status Repository Configuration --------------------------------
-
-# Status Repository Audit Logging
-#
-# The following options are possible:
-#   ALL (default):  All updates are logged (even if the value did not change).
-#   CHANGES:        Only updates where the value is changed are logged.
-#   NONE:           No updates are logged.
-#statusrepository.log=ALL
 
 
 # ------------- Cluster Deployment Configuration -------------------------------

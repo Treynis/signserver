@@ -114,8 +114,7 @@ public class SODSignerTest extends TestCase {
      */
     public void test02signDataFromParameterOverClientWS() throws Exception {
         assertEquals(CommandLineInterface.RETURN_SUCCESS, 
-                clientCLI.execute("signdatagroups", "-workername", "TestMRTDSODSigner1", "-data", "1=value1&2=value2&3=value3", "-protocol", "CLIENTWS", 
-                "-truststore", getSignServerHome() + "/p12/truststore.jks", "-truststorepwd", "changeit"));
+                clientCLI.execute("signdatagroups", "-workername", "TestMRTDSODSigner1", "-data", "1=value1&2=value2&3=value3", "-protocol", "CLIENTWS"));
         String res = clientCLI.getOut().toString();
         assertNotNull("non null result", res);
         assertTrue("non empty result: " + res.length(), res.length() > 50);

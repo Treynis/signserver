@@ -18,7 +18,6 @@ import javax.ejb.Remote;
 import org.signserver.common.GlobalConfiguration;
 
 import org.signserver.common.ResyncException;
-import org.signserver.server.log.AdminInfo;
 
 /**
  * Common interface containing all the session bean methods.
@@ -74,48 +73,9 @@ public interface IGlobalConfigurationSession {
         String JNDI_NAME = "signserver/GlobalConfigurationSessionBean/remote";
     }
 
-    /**
-     * Local EJB interface.
-     * Mirrors methods which are audit-logged, taking an extra AdminInfo instance.
-     */
     @Local
     interface ILocal extends IGlobalConfigurationSession {
+
         String JNDI_NAME = "signserver/GlobalConfigurationSessionBean/local";
-        
-        /**
-         * Method setting a global configuration property. For node. prefix will the
-         * node id be appended.
-         * @param adminInfo Administrator information
-         * @param scope one of the GlobalConfiguration.SCOPE_ constants
-         * @param key of the property should not have any scope prefix, never null
-         * @param value the value, never null.
-         */
-        void setProperty(final AdminInfo adminInfo, String scope, String key, String value);
-        
-        /**
-         * Method used to remove a property from the global configuration.
-         * @param adminInfo Administrator information
-         * @param scope one of the GlobalConfiguration.SCOPE_ constants
-         * @param key of the property should start with either glob. or node.,
-         * never null
-         * @return true if removal was successful, othervise false.
-         */
-        boolean removeProperty(final AdminInfo adminInfo, String scope, String key);
-        
-        /**
-         * Method that is used after a database crash to restore all cached data to
-         * database.
-         * @param adminInfo Administrator information
-         * @throws ResyncException if resync was unsuccessfull
-         */
-        void resync(final AdminInfo adminInfo) throws ResyncException;
-        
-        /**
-         * Method that is used after a database crash to restore all cached data to
-         * database.
-         * @param adminInfo Administrator information
-         * @throws ResyncException if resync was unsuccessfull
-         */
-        void reload(final AdminInfo adminInfo);
     }
 }

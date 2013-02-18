@@ -27,9 +27,6 @@ public class NullWorkerLogger implements IWorkerLogger {
     public void init(Properties props) {}
 
     @Override
-    public void log(final AdminInfo adminInfo, Map<String, String> fields) throws WorkerLoggerException {}
-
-    @Override
-    public void setEjbs(Map<Class<?>, ?> ejbs) {}
-
+    public void log(Map<String, String> fields) throws WorkerLoggerException {}
+    
 }

@@ -46,7 +46,7 @@ public class FileWorkerLogger implements IWorkerLogger {
     }
 
 	@Override
-	public void log(final AdminInfo adminInfo, Map<String, String> fields) throws WorkerLoggerException {
+	public void log(Map<String, String> fields) throws WorkerLoggerException {
 		FileOutputStream fos = null;
 		
 		try {
@@ -82,9 +82,4 @@ public class FileWorkerLogger implements IWorkerLogger {
 			}
 		}
 	}
-
-    @Override
-    public void setEjbs(Map<Class<?>, ?> ejbs) {
-        // NO-OP for this implementation   
-    }
 }

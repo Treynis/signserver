@@ -18,7 +18,6 @@ import java.util.regex.Pattern;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.ejbca.util.IPatternLogger;
-import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.EjbcaPatternLogger;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.WorkerLoggerException;
@@ -85,7 +84,7 @@ public class DefaultTimeStampLogger implements IWorkerLogger {
     }
 
     @Override
-    public void log(final AdminInfo adminInfo, Map<String, String> entries) throws WorkerLoggerException {
+    public void log(Map<String, String> entries) throws WorkerLoggerException {
         final IPatternLogger pl = new EjbcaPatternLogger(this.pattern.matcher(
                 this.orderString), this.orderString, ACCOUNTLOG,
                 this.logDateFormat, this.timeZone, this.logLevel);
@@ -97,10 +96,4 @@ public class DefaultTimeStampLogger implements IWorkerLogger {
         pl.writeln();
         pl.flush();
     }
-
-    @Override
-    public void setEjbs(Map<Class<?>, ?> ejbs) {
-        // NO-OP for this implementation        
-    }
-
 }

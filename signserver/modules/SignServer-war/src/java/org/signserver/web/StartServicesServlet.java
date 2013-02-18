@@ -13,7 +13,7 @@
 package org.signserver.web;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ejb.EJB;
@@ -25,19 +25,15 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.log4j.Logger;
-import org.cesecore.audit.enums.EventStatus;
-import org.cesecore.audit.log.AuditRecordStorageException;
-import org.cesecore.audit.log.SecurityEventsLoggerSessionLocal;
-import org.cesecore.authentication.tokens.AuthenticationToken;
-import org.cesecore.authentication.tokens.UsernamePrincipal;
 import org.signserver.common.CompileTimeSettings;
 import org.signserver.common.FileBasedDatabaseException;
 import org.signserver.common.ServiceLocator;
 import org.signserver.ejb.interfaces.IServiceTimerSession;
-import org.signserver.server.cesecore.AlwaysAllowLocalAuthenticationToken;
-import org.signserver.server.log.SignServerEventTypes;
-import org.signserver.server.log.SignServerModuleTypes;
-import org.signserver.server.log.SignServerServiceTypes;
+import org.signserver.server.log.EventType;
+import org.signserver.server.log.ISystemLogger;
+import org.signserver.server.log.ModuleType;
+import org.signserver.server.log.SystemLoggerException;
+import org.signserver.server.log.SystemLoggerFactory;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
 import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.NoSuchPropertyException;
@@ -54,21 +50,20 @@ public class StartServicesServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
     
-    private static final String LOG_VERSION = "VERSION";
-    
     /** Logger for this class. */
     private static final Logger LOG
             = Logger.getLogger(StartServicesServlet.class);
     
+    /** SystemLogger for this class. */
+    private static final ISystemLogger AUDITLOG = SystemLoggerFactory
+            .getInstance().getLogger(StartServicesServlet.class);
+
     @EJB
     private IServiceTimerSession.IRemote timedServiceSession;
 
     @EJB
     private IStatusRepositorySession.IRemote statusRepositorySession;
 
-    @EJB
-    private SecurityEventsLoggerSessionLocal logSession;
-    
     private IServiceTimerSession.IRemote getTimedServiceSession(){
     	if(timedServiceSession == null) {
             try {
@@ -104,7 +99,15 @@ public class StartServicesServlet extends HttpServlet {
                 CompileTimeSettings.SIGNSERVER_VERSION);
 
         LOG.info("Destroy,  " + version + " shutdown.");
-        
+
+        try {
+            final Map<String, String> fields = new HashMap<String, String>();
+            fields.put(ISystemLogger.LOG_VERSION, version);
+            AUDITLOG.log(EventType.SIGNSERVER_SHUTDOWN, ModuleType.SERVICE, "", fields);
+        } catch (SystemLoggerException ex) {
+            LOG.error("Audit log error", ex);
+        }
+
         // Try to unload the timers
         LOG.debug(">destroy calling ServiceSession.unload");
         try {
@@ -125,19 +128,15 @@ public class StartServicesServlet extends HttpServlet {
                 CompileTimeSettings.SIGNSERVER_VERSION);
         
         LOG.info("Init, " + version + " startup.");
-      
-        // Make a log row that EJBCA is starting
-        AuthenticationToken admin = new AlwaysAllowLocalAuthenticationToken(new UsernamePrincipal("StartServicesServlet.init"));
-        Map<String, Object> details = new LinkedHashMap<String, Object>();
-        details.put("msg", "start services startup msg");
-        details.put(LOG_VERSION, version);
-        try {
-            logSession.log(SignServerEventTypes.SIGNSERVER_STARTUP, EventStatus.SUCCESS, SignServerModuleTypes.SERVICE, SignServerServiceTypes.SIGNSERVER, admin.toString(), null, null, null, details);
-        } catch (AuditRecordStorageException ex) {
-            LOG.error("Logging", ex);
-            throw new ServletException("Could not log", ex);
-        }
 
+        try {
+            final Map<String, String> fields = new HashMap<String, String>();
+            fields.put(ISystemLogger.LOG_VERSION, version);
+            AUDITLOG.log(EventType.SIGNSERVER_STARTUP, ModuleType.SERVICE, "", fields);
+        } catch (SystemLoggerException ex) {
+            LOG.error("Audit log error", ex);
+        }
+        
         // Cancel old timers as we can not rely on them being cancelled at shutdown
         LOG.debug(">init calling ServiceSession.unload");
         getTimedServiceSession().unload(0);

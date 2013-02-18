@@ -33,8 +33,7 @@ public class ProcessModulesTask extends Task {
     private File modsDir;
     private String rootSet;
     private String libSet;
-    private String configRootSet;
-    private String configConfSet;
+    private String configSet;
     private String applicationXml;
     private String enabledModules;
     private boolean allEnabled;
@@ -49,12 +48,11 @@ public class ProcessModulesTask extends Task {
         };
         Set<String> libJars = new HashSet<String>();
         Set<String> rootJars = new HashSet<String>();
-        Set<String> configRootFiles = new HashSet<String>();
-        Set<String> configConfFiles = new HashSet<String>();
+        Set<String> configJars = new HashSet<String>();
         StringBuilder xmlBuff = new StringBuilder();
         StringBuilder enabledModulesBuff = new StringBuilder();
         File[] propertyFiles = modsDir.listFiles(filter);
-        Arrays.sort(propertyFiles, new ProcessModulesTask.FileNameComparator());
+        Arrays.sort(propertyFiles, new FileNameComparator());
         for (File file : propertyFiles) {
             log("Processing: " + file, Project.MSG_VERBOSE);
             Properties properties = loadProperties(file);
@@ -78,17 +76,11 @@ public class ProcessModulesTask extends Task {
                 libJars.addAll(toLibList);
                 log("To lib: " + toLibList.toString(), Project.MSG_VERBOSE);
                 
-                String toConfigRoot = properties.getProperty("to.config");
-                if (toConfigRoot != null) {
-                    List<String> toConfigList = Arrays.asList(toConfigRoot.split(",")); 
-                    configRootFiles.addAll(toConfigList);
-                    log("To config root: " + toConfigList.toString(), Project.MSG_VERBOSE);
-                }
-                String toConfigConf = properties.getProperty("to.config.conf");
-                if (toConfigConf != null) {
-                    List<String> toConfigList = Arrays.asList(toConfigConf.split(",")); 
-                    configConfFiles.addAll(toConfigList);
-                    log("To config conf: " + toConfigList.toString(), Project.MSG_VERBOSE);
+                String toConfig = properties.getProperty("to.config");
+                if (toConfig != null) {
+                    List<String> toConfigList = Arrays.asList(toConfig.split(",")); 
+                    configJars.addAll(toConfigList);
+                    log("To config: " + toConfigList.toString(), Project.MSG_VERBOSE);
                 }
                 
                 String type = properties.getProperty("module.type", "lib");
@@ -126,11 +118,8 @@ public class ProcessModulesTask extends Task {
         
         getProject().setProperty(libSet, getAsString(libJars));
         getProject().setProperty(rootSet, getAsString(rootJars));
-        if (configRootSet != null) {
-            getProject().setProperty(configRootSet, getAsString(configRootFiles));
-        }
-        if (configConfSet != null) {
-            getProject().setProperty(configConfSet, getAsString(configConfFiles));
+        if (configSet != null) {
+            getProject().setProperty(configSet, getAsString(configJars));
         }
         getProject().setProperty(applicationXml, xmlBuff.toString());
         getProject().setProperty(enabledModules, enabledModulesBuff.toString());
@@ -170,20 +159,12 @@ public class ProcessModulesTask extends Task {
         this.rootSet = rootSet;
     }
 
-    public String getConfigRootSet() {
-        return configRootSet;
+    public String getConfigSet() {
+        return configSet;
     }
 
-    public void setConfigRootSet(String configSet) {
-        this.configRootSet = configSet;
-    }
-    
-    public String getConfigConfSet() {
-        return configConfSet;
-    }
-
-    public void setConfigConfSet(String configSet) {
-        this.configConfSet = configSet;
+    public void setConfigSet(String configSet) {
+        this.configSet = configSet;
     }
 
     public File getModsDir() {

@@ -15,45 +15,34 @@ package org.signserver.adminws;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.security.KeyStoreException;
 import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import javax.ejb.EJB;
-import javax.ejb.Stateless;
 import javax.jws.WebMethod;
 import javax.jws.WebParam;
 import javax.jws.WebService;
 import javax.naming.NamingException;
+import org.signserver.common.*;
+import org.signserver.ejb.interfaces.IWorkerSession;
+import java.security.cert.X509Certificate;
+import java.security.KeyStoreException;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Properties;
+import javax.annotation.Resource;
+import javax.ejb.Stateless;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.audit.AuditLogEntry;
-import org.cesecore.audit.audit.SecurityEventsAuditorSessionLocal;
-import org.cesecore.authorization.AuthorizationDeniedException;
-import org.cesecore.util.query.Criteria;
-import org.cesecore.util.query.Elem;
-import org.cesecore.util.query.QueryCriteria;
-import org.cesecore.util.query.clauses.Order;
-import org.cesecore.util.query.elems.Term;
-import org.signserver.common.*;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
-import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.CertificateClientCredential;
 import org.signserver.server.IClientCredential;
 import org.signserver.server.UsernamePasswordClientCredential;
-import org.signserver.server.log.AdminInfo;
 
 /**
  * Class implementing the Admin WS interface.
@@ -62,7 +51,7 @@ import org.signserver.server.log.AdminInfo;
  * @author Markus Kilås
  * @version $Id$
  */
-@WebService(serviceName = "AdminWSService")
+@WebService(wsdlLocation="META-INF/wsdl/AdminWSService.wsdl")
 @Stateless
 public class AdminWS {
 
@@ -70,32 +59,22 @@ public class AdminWS {
     private static final Logger LOG = Logger.getLogger(AdminWS.class);
 
     private static final String HTTP_AUTH_BASIC_AUTHORIZATION = "Authorization";
-    
-    private static final HashSet<String> LONG_COLUMNS = new HashSet<String>();
-    
-    static {
-        LONG_COLUMNS.add(AuditLogEntry.FIELD_TIMESTAMP);
-        LONG_COLUMNS.add(AuditLogEntry.FIELD_SEQUENCENUMBER);
-    }
 
     @Resource
     private WebServiceContext wsContext;
 
     @EJB
-    private IWorkerSession.ILocal worker;
+    private IWorkerSession.IRemote worker;
 
     @EJB
-    private IGlobalConfigurationSession.ILocal global;
-    
-    @EJB
-    private SecurityEventsAuditorSessionLocal auditor;
-    
+    private IGlobalConfigurationSession.IRemote global;
+
     @PostConstruct
     private void postConstruct() { // NOPMD
         if (worker == null) {
             try {
                 worker = ServiceLocator.getInstance().lookupRemote(
-                        IWorkerSession.ILocal.class);
+                        IWorkerSession.IRemote.class);
             } catch (NamingException ex) {
                 LOG.error("Error looking up WorkerSession", ex);
             }
@@ -103,7 +82,7 @@ public class AdminWS {
         if (global == null) {
             try {
                 global = ServiceLocator.getInstance().lookupRemote(
-                        IGlobalConfigurationSession.ILocal.class);
+                        IGlobalConfigurationSession.IRemote.class);
             } catch (NamingException ex) {
                 LOG.error("Error looking up GlobalConfigurationSession", ex);
             }
@@ -172,10 +151,10 @@ public class AdminWS {
     @WebMethod(operationName = "reloadConfiguration")
     public void reloadConfiguration(@WebParam(name = "workerId") int workerId)
             throws AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("reloadConfiguration",
+        requireAdminAuthorization("reloadConfiguration",
                 String.valueOf(workerId));
         
-        worker.reloadConfiguration(adminInfo, workerId);
+        worker.reloadConfiguration(workerId);
     }
 
     /**
@@ -254,10 +233,10 @@ public class AdminWS {
             @WebParam(name = "key") final String key,
             @WebParam(name = "value") final String value)
             throws AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("setWorkerProperty",
+        requireAdminAuthorization("setWorkerProperty",
                 String.valueOf(workerId), key);
 
-        worker.setWorkerProperty(adminInfo, workerId, key, value);
+        worker.setWorkerProperty(workerId, key, value);
     }
 
     /**
@@ -272,10 +251,10 @@ public class AdminWS {
             @WebParam(name = "workerId") final int workerId,
             @WebParam(name = "key") final String key)
             throws AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("removeWorkerProperty",
+        requireAdminAuthorization("removeWorkerProperty",
                 String.valueOf(workerId), key);
         
-        return worker.removeWorkerProperty(adminInfo, workerId, key);
+        return worker.removeWorkerProperty(workerId, key);
     }
 
     /**
@@ -305,11 +284,11 @@ public class AdminWS {
     public void addAuthorizedClient(@WebParam(name = "workerId") final int workerId,
             @WebParam(name = "authClient") final AuthorizedClient authClient)
             throws AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("addAuthorizedClient", 
+        requireAdminAuthorization("addAuthorizedClient", 
                 String.valueOf(workerId), authClient.getCertSN(),
                 authClient.getIssuerDN());
         
-        worker.addAuthorizedClient(adminInfo, workerId, authClient);
+        worker.addAuthorizedClient(workerId, authClient);
     }
 
     /**
@@ -323,11 +302,11 @@ public class AdminWS {
             @WebParam(name = "workerId") final int workerId,
             @WebParam(name = "authClient") final AuthorizedClient authClient) 
             throws AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("removeAuthorizedClient",
+        requireAdminAuthorization("removeAuthorizedClient",
                 String.valueOf(workerId), authClient.getCertSN(),
                 authClient.getIssuerDN());
         
-        return worker.removeAuthorizedClient(adminInfo, workerId, authClient);
+        return worker.removeAuthorizedClient(workerId, authClient);
     }
 
     /**
@@ -348,10 +327,10 @@ public class AdminWS {
                 final boolean explicitEccParameters)
             throws CryptoTokenOfflineException,
             InvalidWorkerIdException, AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("getPKCS10CertificateRequest",
+        requireAdminAuthorization("getPKCS10CertificateRequest",
                 String.valueOf(signerId));
         
-        final ICertReqData data = worker.getCertificateRequest(adminInfo, signerId,
+        final ICertReqData data = worker.getCertificateRequest(signerId,
                 certReqInfo, explicitEccParameters);
         if (!(data instanceof Base64SignerCertReqData)) {
             throw new RuntimeException("Unsupported cert req data");
@@ -380,10 +359,10 @@ public class AdminWS {
             @WebParam(name = "defaultKey") final boolean defaultKey)
                 throws CryptoTokenOfflineException, InvalidWorkerIdException,
                 AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("getPKCS10CertificateRequestForKey",
+        requireAdminAuthorization("getPKCS10CertificateRequestForKey",
                 String.valueOf(signerId));
         
-        final ICertReqData data = worker.getCertificateRequest(adminInfo, signerId,
+        final ICertReqData data = worker.getCertificateRequest(signerId,
                 certReqInfo, explicitEccParameters, defaultKey);
         if (!(data instanceof Base64SignerCertReqData)) {
             throw new RuntimeException("Unsupported cert req data");
@@ -490,9 +469,9 @@ public class AdminWS {
     public boolean destroyKey(@WebParam(name = "signerId") final int signerId,
             @WebParam(name = "purpose") final int purpose)
             throws InvalidWorkerIdException, AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("destroyKey", String.valueOf(signerId));
+        requireAdminAuthorization("destroyKey", String.valueOf(signerId));
         
-        return worker.destroyKey(adminInfo, signerId, purpose);
+        return worker.destroyKey(signerId, purpose);
     }
 
     /**
@@ -514,10 +493,10 @@ public class AdminWS {
             @WebParam(name = "authCode") final String authCode)
             throws CryptoTokenOfflineException, InvalidWorkerIdException,
             AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("generateSignerKey", String.valueOf(signerId),
+        requireAdminAuthorization("generateSignerKey", String.valueOf(signerId),
                 keyAlgorithm, keySpec, alias);
         
-        return worker.generateSignerKey(adminInfo, signerId, keyAlgorithm, keySpec, alias,
+        return worker.generateSignerKey(signerId, keyAlgorithm, keySpec, alias,
                 authCode.toCharArray());
     }
 
@@ -540,11 +519,11 @@ public class AdminWS {
             throws CryptoTokenOfflineException,
             InvalidWorkerIdException, KeyStoreException,
             AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("testKey", String.valueOf(signerId), alias);
+        requireAdminAuthorization("testKey", String.valueOf(signerId), alias);
 
         // Workaround for KeyTestResult first placed in wrong package
         final Collection<KeyTestResult> results;
-        Collection<?> res = worker.testKey(adminInfo, signerId, alias, authCode.toCharArray());
+        Collection<?> res = worker.testKey(signerId, alias, authCode.toCharArray());
         if (res.size() < 1) {
             results = new LinkedList<KeyTestResult>();
         } else {
@@ -584,11 +563,11 @@ public class AdminWS {
             @WebParam(name = "signerCert") final byte[] signerCert,
             @WebParam(name = "scope") final String scope)
             throws IllegalRequestException, AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("uploadSignerCertificate",
+        requireAdminAuthorization("uploadSignerCertificate",
                 String.valueOf(signerId));
         
         try {
-            worker.uploadSignerCertificate(adminInfo, signerId, signerCert, scope);
+            worker.uploadSignerCertificate(signerId, signerCert, scope);
         } catch (CertificateException ex) {
             // Log stacktrace and only pass on description to client
             LOG.error("Unable to parse certificate", ex);
@@ -609,11 +588,11 @@ public class AdminWS {
             @WebParam(name = "signerCerts") final List<byte[]> signerCerts,
             @WebParam(name = "scope") final String scope)
                 throws IllegalRequestException, AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("uploadSignerCertificateChain",
+        requireAdminAuthorization("uploadSignerCertificateChain",
                 String.valueOf(signerId));
         
         try {
-            worker.uploadSignerCertificateChain(adminInfo, signerId, signerCerts, scope);
+            worker.uploadSignerCertificateChain(signerId, signerCerts, scope);
         } catch (CertificateException ex) {
             // Log stacktrace and only pass on description to client
             LOG.error("Unable to parse certificate", ex);
@@ -634,9 +613,9 @@ public class AdminWS {
             @WebParam(name = "key") final String key,
             @WebParam(name = "value") final String value)
             throws AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("setGlobalProperty", key);
+        requireAdminAuthorization("setGlobalProperty", key);
         
-        global.setProperty(adminInfo, scope, key, value);
+        global.setProperty(scope, key, value);
     }
 
     /**
@@ -651,9 +630,9 @@ public class AdminWS {
             @WebParam(name = "scope") final String scope,
             @WebParam(name = "key") final String key)
             throws AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("removeGlobalProperty", key);
+        requireAdminAuthorization("removeGlobalProperty", key);
         
-        return global.removeProperty(adminInfo, scope, key);
+        return global.removeProperty(scope, key);
     }
 
     /**
@@ -711,9 +690,9 @@ public class AdminWS {
      */
     @WebMethod(operationName = "globalResync")
     public void globalResync() throws ResyncException, AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("globalResync");
+        requireAdminAuthorization("globalResync");
         
-        global.resync(adminInfo);
+        global.resync();
     }
 
     /**
@@ -721,9 +700,9 @@ public class AdminWS {
      */
     @WebMethod(operationName = "globalReload")
     public void globalReload() throws AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("globalReload");
+        requireAdminAuthorization("globalReload");
         
-        global.reload(adminInfo);
+        global.reload();
     }
 
     /**
@@ -744,7 +723,7 @@ public class AdminWS {
             throws InvalidWorkerIdException, IllegalRequestException,
             CryptoTokenOfflineException, SignServerException,
             AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("process", workerIdOrName);
+        requireAdminAuthorization("process", workerIdOrName);
 
         final Collection<byte[]> result = new LinkedList<byte[]>();
 
@@ -806,7 +785,7 @@ public class AdminWS {
             }
             try {
                 result.add(RequestAndResponseManager.serializeProcessResponse(
-                    worker.process(adminInfo, workerId, req, requestContext)));
+                    worker.process(workerId, req, requestContext)));
             } catch (IOException ex) {
                 LOG.error("Error serializing process response", ex);
                 throw new IllegalRequestException(
@@ -815,91 +794,8 @@ public class AdminWS {
         }
         return result;
     }
-    
-    /**
-     * Query the audit log.
-     *
-     * @param startIndex Index where select will start. Set to 0 to start from the beginning.
-     * @param max maximum number of results to be returned.
-     * @param conditions List of conditions defining the subset of logs to be selected.
-     * @param orderings List of ordering conditions for ordering the result.
-     * @return List of log entries
-     * @throws SignServerException In case of internal failures
-     * @throws AdminNotAuthorizedException  In case the administrator was not authorized to perform the operation
-     */
-    @WebMethod(operationName="queryAuditLog")
-    public List<LogEntry> queryAuditLog(@WebParam(name="startIndex") int startIndex, @WebParam(name="max") int max, @WebParam(name="condition") final List<QueryCondition> conditions, @WebParam(name="ordering") final List<QueryOrdering> orderings) throws SignServerException, AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAuditorAuthorization("queryAuditLog", String.valueOf(startIndex), String.valueOf(max));
-        
-        // For now we only query one of the available audit devices
-        Set<String> devices = auditor.getQuerySupportingLogDevices();
-        if (devices.isEmpty()) {
-            throw new SignServerException("No log devices available for querying");
-        }
-        final String device = devices.iterator().next();
 
-        final List<Elem> elements = toElements(conditions);
-        final QueryCriteria qc = QueryCriteria.create();
-        
-        for (QueryOrdering order : orderings) {
-            qc.add(new Order(order.getColumn(), Order.Value.valueOf(order.getOrder().name())));
-        }
-        
-        if (!elements.isEmpty()) {
-            qc.add(andAll(elements, 0));
-        }
-        
-        try {
-            return toLogEntries(worker.selectAuditLogs(adminInfo, startIndex, max, qc, device));
-        } catch (AuthorizationDeniedException ex) {
-            throw new AdminNotAuthorizedException(ex.getMessage());
-        }
-    }
-    
-    /**
-     * Convert to WS model LogEntry:s.
-     */
-    private List<LogEntry> toLogEntries(final List<? extends AuditLogEntry> entries) {
-        final List<LogEntry> results = new LinkedList<LogEntry>();
-        for (AuditLogEntry entry : entries) {
-            results.add(LogEntry.fromAuditLogEntry(entry));
-        }
-        return results;
-    }
-    
-    /**
-     * Convert to the CESeCore model Elem:s.
-     */
-    private List<Elem> toElements(final List<QueryCondition> conditions) {
-        final LinkedList<Elem> results = new LinkedList<Elem>();
-        for (QueryCondition cond : conditions) {
-            final Object value;
-            if (LONG_COLUMNS.contains(cond.getColumn())) {
-                value = Long.parseLong(cond.getValue());
-            } else {
-                value = cond.getValue();
-            }
-            results.add(new Term(cond.getOperator(), cond.getColumn(), value));
-        }
-        return results;
-    }
-    
-    /**
-     * Tie together the list of Elem:s to a tree of AND operations.
-     * This uses a recursive implementation not expected to work for larger 
-     * lists of Elem:s, however as the number of columns are limited it is not 
-     * expected to be a real problem.
-     */
-    protected Elem andAll(final List<Elem> elements, final int index) {
-        if (index >= elements.size() - 1) {
-            return elements.get(index);
-        } else {
-            return Criteria.and(elements.get(index), andAll(elements, index + 1));
-        }
-    }
-    
-
-    private AdminInfo requireAdminAuthorization(final String operation,
+    private void requireAdminAuthorization(final String operation,
             final String... args) throws AdminNotAuthorizedException {
         LOG.debug(">requireAdminAuthorization");
 
@@ -910,42 +806,13 @@ public class AdminWS {
                     + "Client certificate authentication required.");
         } else {
            final boolean authorized = isAdminAuthorized(certificates[0]);
-           final X509Certificate cert = certificates[0];
 
-           log(cert, authorized, operation, args);
+           log(certificates[0], authorized, operation, args);
 
            if (!authorized) {
                throw new AdminNotAuthorizedException(
                        "Administrator not authorized to resource.");
            }
-           
-           return new AdminInfo(cert.getSubjectDN().getName(),
-                   cert.getIssuerDN().getName(), cert.getSerialNumber());
-        }
-    }
-    
-    private AdminInfo requireAuditorAuthorization(final String operation,
-            final String... args) throws AdminNotAuthorizedException {
-        LOG.debug(">requireAuditorAuthorization");
-
-        final X509Certificate[] certificates = getClientCertificates();
-        if (certificates == null || certificates.length == 0) {
-            throw new AdminNotAuthorizedException(
-                    "Auditor not authorized to resource. "
-                    + "Client certificate authentication required.");
-        } else {
-           final boolean authorized = isAuditorAuthorized(certificates[0]);
-           final X509Certificate cert = certificates[0];
-
-           log(cert, authorized, operation, args);
-
-           if (!authorized) {
-               throw new AdminNotAuthorizedException(
-                       "Auditor not authorized to resource.");
-           }
-           
-           return new AdminInfo(cert.getSubjectDN().getName(),
-                   cert.getIssuerDN().getName(), cert.getSerialNumber());
         }
     }
 
@@ -1008,30 +875,6 @@ public class AdminWS {
         }
         return authorized;
     }
-    
-    private boolean isAuditorAuthorized(final X509Certificate cert) { 
-        boolean authorized = false;
-        final String admins = global.getGlobalConfiguration().getProperty(
-                GlobalConfiguration.SCOPE_GLOBAL, "WSAUDITORS");
-        final String admin = cert.getSerialNumber().toString(16) + "," +
-                cert.getIssuerDN();
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("admin: " + admin + ", admins: " + admins);
-        }
-
-        if (admins == null) {
-            LOG.warn("No WSAUDITORS global property set");
-        } else {
-            for (String entry : admins.split(";")) {
-                if (entry.trim().equalsIgnoreCase(admin)) {
-                    authorized = true;
-                    break;
-                }
-            }
-        }
-        return authorized;
-    }
 
     private X509Certificate[] getClientCertificates() {
         final HttpServletRequest req =
@@ -1044,6 +887,4 @@ public class AdminWS {
     }
 
     // "Insert Code > Add Web Service Operation")
-
-    
 }

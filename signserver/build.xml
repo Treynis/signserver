@@ -186,7 +186,7 @@ Configured ear file available at: ${ear.dist.file}
     
     <target name="-process-modules" depends="-init-configure, -preprocess-persistence, -set-ejbjarheader-nodb">
         <echo/>
-<!--        <taskdef name="postprocess-jar" classname="org.signserver.anttasks.JarPostProcessTask" classpath="lib/SignServer-BuildTools.jar:lib/ext/commons-io-1.4.jar:lib/ext/commons-lang-2.5.jar"/>-->
+<!--        <taskdef name="postprocess-jar" classname="org.signserver.anttasks.JarPostProcessTask" classpath="lib/SignServer-BuildTools.jar:lib/ext/commons-io-1.4.jar:lib/ext/commons-lang-2.4.jar"/>-->
         
         <taskdef name="mods" classname="org.signserver.anttasks.ProcessModulesTask" classpath="lib/SignServer-BuildTools.jar"/>
         
@@ -194,7 +194,7 @@ Configured ear file available at: ${ear.dist.file}
             <istrue value="${includemodulesinbuild}"/>
         </condition>
         
-        <mods modsDir="mods-available" libSet="toLibs" rootSet="toRoot" configRootSet="toConfigRoot" configConfSet="toConfigConf" applicationXml="appXml" enabledModules="enabledModules" allEnabled="${allEnabled}"/>
+        <mods modsDir="mods-available" libSet="toLibs" rootSet="toRoot" applicationXml="appXml" enabledModules="enabledModules" allEnabled="${allEnabled}"/>
 <!--        <echo>
 Enabled modules:
     ${enabledModules}</echo>-->
@@ -227,79 +227,12 @@ Libraries to include:
         <echo/>
         <echo>Post processing files...</echo>
         
-        <taskdef name="postprocess" classname="org.signserver.anttasks.PostProcessModulesTask" classpath="lib/SignServer-BuildTools.jar:lib/ext/commons-io-1.4.jar:lib/ext/commons-lang-2.5.jar"/>
+        <taskdef name="postprocess" classname="org.signserver.anttasks.PostProcessModulesTask" classpath="lib/SignServer-BuildTools.jar:lib/ext/commons-io-1.4.jar:lib/ext/commons-lang-2.4.jar"/>
         
         <postprocess modules="${enabledModules}"/>
         
-        <echo/>
-        <echo>Filtering jars...</echo>
-        <antcall target="-filter-jars"/>
-        
-        <echo level="verbose">
-Configurations to include:
-  /
-    ${toConfigRoot}
-  /conf/
-    ${toConfigConf}
-            
-        </echo>
-        
-        <!-- Config -->
-        <property name="config.tmp.dir" location="${tmp}/config.jar"/>
-        <delete dir="${config.tmp.dir}"/>
-        <mkdir dir="${config.tmp.dir}"/>
-        <mkdir dir="${config.tmp.dir}/conf"/>
-        <copy todir="${config.tmp.dir}" flatten="true">
-            <fileset dir="." includes="-non-existing-,${toConfigRoot}"/>
-        </copy>
-        <copy todir="${config.tmp.dir}/conf" flatten="true">
-            <fileset dir="." includes="-non-existing-,${toConfigConf}"/>
-        </copy>
-        
-        <mkdir dir="${signserver.ear.dir}/lib"/>
-        <jar destfile="${signserver.ear.dir}/lib/config.jar">
-            <zipfileset dir="${config.tmp.dir}" />
-        </jar>
+<!--        <antcallforall names="${enabledModules}" target="-postprocess-module" newPropertyPrefix="_acfa" unlessEmpty="postprocess.files" />-->
     </target>
-    
-    <!-- 
-        Special trick to filter out different SessionBeans from cesecore-ejb
-        depending on if the NODB mode is used or not.
-    -->
-    <!-- TODO: This is SignServer and CESeCore specific but could be made more generic 
-        by adding properties to the module descriptors to configure what to filter etc. -->
-    <target name="-filter-jars" depends="-init-filter-jars-db,-init-filter-jars-nodb">
-        
-        <!-- cesecore-ejb.jar -->
-        <property name="cesecore-ejb.jar" value="cesecore-ejb_1.1.2.jar"/>
-        <move todir="${tmp}" file="${signserver.ear.dir}/${cesecore-ejb.jar}"/>
-        <jar destfile="${signserver.ear.dir}/${cesecore-ejb.jar}">
-            <zipfileset src="${tmp}/${cesecore-ejb.jar}" excludes="${cesecore-ejb-excludes}"/>
-        </jar>
-        
-        <!-- cesecore-entities.jar -->
-        <property name="cesecore-entities.jar" value="cesecore-entity_1.1.2.jar"/>
-        <move todir="${tmp}" file="${signserver.ear.dir}/lib/${cesecore-entities.jar}"/>
-        <jar destfile="${signserver.ear.dir}/lib/${cesecore-entities.jar}">
-            <zipfileset src="${tmp}/${cesecore-entities.jar}" excludes="${cesecore.entities.excludes}"/>
-        </jar>
-        
-        <!-- signserver-ejb.jar -->
-        <property name="signserver-ejb.jar" value="SignServer-ejb.jar"/>
-        <move todir="${tmp}" file="${signserver.ear.dir}/${signserver-ejb.jar}"/>
-        <jar destfile="${signserver.ear.dir}/${signserver-ejb.jar}">
-            <zipfileset src="${tmp}/${signserver-ejb.jar}" excludes="${signserver-ejb-excludes}"/>
-        </jar>
-    </target>
-    <target name="-init-filter-jars-db" unless="noDB">
-        <property name="cesecore-ejb-excludes" value="${cesecore.ejb.withdb.excludes}"/>
-        <property name="signserver-ejb-excludes" value="${signserver.ejb.withdb.excludes}"/>
-    </target>
-    <target name="-init-filter-jars-nodb" if="noDB">
-        <property name="cesecore-ejb-excludes" value="${cesecore.ejb.nodb.excludes}"/>
-        <property name="signserver-ejb-excludes" value="${signserver.ejb.nodb.excludes}"/>
-    </target>
-    
     
 <!--    <target name="-postprocess-module">
         <echo>Post processing module: ${_acfa.calledname}</echo>

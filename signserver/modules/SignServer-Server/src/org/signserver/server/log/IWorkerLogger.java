@@ -66,12 +66,5 @@ public interface IWorkerLogger {
      * @param fields Fields that potentially could be placed in the log entry.
      * @throws WorkerLoggerException In case there is a problem writing the log.
      */
-    void log(final AdminInfo adminInfo, Map<String,String> fields) throws WorkerLoggerException;
-    
-    /**
-     * Sets EJB session mapping.
-     * 
-     * @param ejbs EJB map
-     */
-    void setEjbs(final Map<Class<?>, ?> ejbs);
+    void log(Map<String,String> fields) throws WorkerLoggerException;
 }
