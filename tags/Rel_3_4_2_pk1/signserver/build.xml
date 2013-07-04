@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ======================================================================= -->
+<!--                                                                         -->
+<!--  SignServer: The OpenSource Automated Signing Server                    -->
+<!--                                                                         -->
+<!--  This software is free software; you can redistribute it and/or         -->
+<!--  modify it under the terms of the GNU Lesser General Public             -->
+<!--  License as published by the Free Software Foundation; either           -->
+<!--  version 2.1 of the License, or any later version.                      -->
+<!--                                                                         -->
+<!--  See terms of license at gnu.org.                                       -->
+<!--                                                                         -->
+<!-- ======================================================================= -->
+<!-- Version: $Id$ -->
+<project name="signserver" default="usage" basedir=".">
+
+    <!-- Load properties before including files -->
+    <property environment="env" />
+    <property name="base" location="."/>
+    
+    <property name="platform.project.dir" location="."/>
+
+    <!-- Import property file containing version numbers and other constants -->
+    <property file="res/compile.properties"/>
+    
+    <!-- Project properties such as folder names and locations. Can be overriden 
+        by creating a file called signserver-project-custom.properties. -->
+    <property file="res/signserver-project-custom.properties"/>
+    <property file="res/signserver-project.properties"/>
+    
+
+    <!-- Give user a chance to override without editing this file
+       (and without typing -D each time it compiles it).
+       First it checks your home directory for signserver_build.properties
+       net it checks the properties file here. -->
+    <property file="${user.home}/${app.name}_build.properties" />
+    <property file="${app.name}_build.properties" />
+    <property file="${conf}/${app.name}_build.properties" />
+ 	
+    <!--
+    A little special something to handle backward compatibility with people
+    using JBOSS_HOME. They can switch to APPSRV_HOME now, and both will work.
+    -->
+    <condition property="jboss.home" value="${env.JBOSS_HOME}" >
+      <equals arg1="${appserver.home}" arg2="${appserver.home}"/>
+    </condition>
+    <condition property="appserver.home" value="${env.APPSRV_HOME}" else="${jboss.home}">
+      <contains string="${jboss.home}" substring="JBOSS_HOME"/>
+    </condition>
+    <property name="j2ee.server.home" value="${appserver.home}"/>
+
+    <!-- Lastly import the default properties -->
+    <property file="${res}/default_build.properties"/>
+    
+    <condition property="j2ee.web-nohttps.condition">
+        <istrue value="${j2ee.web-nohttps}"/>
+    </condition>
+    
+    <!-- Import for the right appserver -->
+    <import file="${res}/appserver/${appserver.type}.xml" />  
+	
+    <import file="${custom.build.xml}" optional="true"/>
+
+    <!-- Properties with paths to all module projects -->
+    <property file="${res}/modules-project.properties"/>
+    
+    <import file="${modules}/modules.xml" optional="true"/> 
+    <import file="${modules}/compile.xml" optional="true"/>
+    
+    
+    <!-- =================================================================== -->
+    <!-- Help targets                                                        -->
+    <!-- =================================================================== -->
+    
+    <target name="help" depends="usage"/>
+    <target name="usage" description="Displays usage examples for this Ant script">
+        <echo>
+Usage examples for the SignServer Ant script
+
+
+bin/ant -p                  Prints the main Ant targets supported by this 
+                            script.
+bin/ant usage               Prints this text with sample usages.
+bin/ant clean               Cleans temporary files, the final EAR file and if 
+                            this is a source distribution all the built 
+                            binaries.
+
+Some targets available in both binary and source distribution:
+bin/ant display-properties  Prints the properties that will be used to build or
+                            composing the EAR file.
+bin/ant compose-ear         Puts together the final configured EAR file.
+bin/ant deploy              Configures the EAR file and then deploys it and 
+                            data sources etc (if supported) to the configured 
+                            application server.
+
+Some targets available only in the source distribution:
+bin/ant build               Builds everything enabled.
+bin/ant test:run            Run the default JUnit tests.
+bin/ant test:compile        Compiles the tests so they can be run by an IDE.
+
+To clean &amp; build and deploy run:
+bin/ant clean build deploy
+        </echo>
+    </target>
+    
+    <target name="display-properties">
+        <echo>
+------------- SYSTEM PROPERTIES --------------
+ANT version                         = ${ant.version}
+JRE version                         = ${java.version}
+JRE vendor                          = ${java.vendor}
+Java home                           = ${java.home}
+Java extensions dir                 = ${java.ext.dirs}
+OS name                             = ${os.name}
+OS architecture                     = ${os.arch}
+OS version                          = ${os.version}
+        </echo>
+
+        <!-- Build properties, if source distribution -->
+        <subant target="display-build-properties" inheritall="true">
+            <fileset dir="${base}" includes="modules/compile.xml"/>
+         </subant>
+         
+         <echo>
+------------- CONFIG PROPERTIES --------------
+appserver.type                      = ${appserver.type}
+appserver.home                      = ${appserver.home}
+web.contentencoding                 = ${web.contentencoding}
+j2ee.web-nohttps                    = ${j2ee.web-nohttps}
+datasource.jndi-name                = ${datasource.jndi-name}
+datasource.jndi-name-prefix         = ${datasource.jndi-name-prefix}
+database.name                       = ${database.name}
+database.url                        = ${database.url}
+database.driver                     = ${database.driver}
+database.username                   = ${database.username}
+database.password                   = ${database.password}
+database.nodb.location              = ${database.nodb.location}
+healthcheck.maintenancefile         = ${healthcheck.maintenancefile}
+        </echo>
+    </target>
+    
+    <target name="showtime">
+        <tstamp>
+                <format property="completiontime" pattern="yyyy-MM-dd HH:mm:ss Z"/>
+        </tstamp>
+        <echo message="Task completed ${completiontime}."/>
+    </target>
+
+
+    <!-- =================================================================== -->
+    <!-- Main Clean                                                          -->
+    <!-- =================================================================== -->
+
+    <target name="clean">
+        <echo>Cleaning tmp</echo>
+        <delete dir="${tmp}"/>	
+
+        <!-- Clean everything if this is a source distribution -->
+        <subant target="clean-build" inheritall="true" failonerror="true">
+            <fileset dir="${base}" includes="modules/compile.xml"/>
+         </subant>
+    </target>
+
+    
+    <!-- =================================================================== -->
+    <!-- Configuring                                                         -->
+    <!-- =================================================================== -->
+    
+    <target name="-check-built">
+        <available file="lib/SignServer-ejb.jar" property="signserver-ejb.jar.available"/>
+        <fail message="SignServer needs to be built first. Run 'ant build'." unless="signserver-ejb.jar.available"/>
+    </target>
+    
+    <target name="compose-ear" description="Compose the configured EAR file" depends="-check-built, display-properties, -init-configure, -process-modules">
+        <!-- Build the ear file from the signserver.ear folder -->
+        <ear destfile="${ear.dist.file}" appxml="${signserver.ear.dir}/META-INF/application.xml" duplicate="fail">
+            <fileset dir="${signserver.ear.dir}">
+                <exclude name="META-INF/application.xml" />
+            </fileset>
+            <zipfileset refid="appserver.extralibs"/>
+        </ear>
+        <echo>
+Configured ear file available at: ${ear.dist.file}    
+        </echo>
+    </target>
+    
+    <target name="-process-modules" depends="-init-configure, -preprocess-persistence, -set-ejbjarheader-nodb">
+        <echo/>
+<!--        <taskdef name="postprocess-jar" classname="org.signserver.anttasks.JarPostProcessTask" classpath="lib/SignServer-BuildTools.jar:lib/ext/commons-io-1.4.jar:lib/ext/commons-lang-2.5.jar"/>-->
+        
+        <taskdef name="mods" classname="org.signserver.anttasks.ProcessModulesTask" classpath="lib/SignServer-BuildTools.jar"/>
+        
+        <condition property="allEnabled">
+            <istrue value="${includemodulesinbuild}"/>
+        </condition>
+        
+        <mods modsDir="mods-available" libSet="toLibs" rootSet="toRoot" configRootSet="toConfigRoot" configConfSet="toConfigConf" applicationXml="appXml" enabledModules="enabledModules" allEnabled="${allEnabled}"/>
+<!--        <echo>
+Enabled modules:
+    ${enabledModules}</echo>-->
+        <echo level="verbose">
+Additions to application.xml: 
+${appXml}
+        </echo>
+        <replace file="${signserver.ear.dir}/META-INF/application.xml" value="${appXml}">
+            <replacetoken><![CDATA[<!--@MODULES@-->]]></replacetoken>
+        </replace>
+
+        <echo level="verbose">Enterprise modules to include:
+    ${toRoot}</echo>
+        <copy todir="${signserver.ear.dir}" flatten="true">
+            <fileset dir="." includes="${toRoot}"/>
+        </copy>
+        
+        <echo level="verbose">
+Libraries to include:
+    ${toLibs}
+        </echo>
+        <mkdir dir="${signserver.ear.dir}/lib"/>
+        <copy todir="${signserver.ear.dir}/lib" flatten="true">
+            <fileset dir="." includes="${toLibs}"/>
+        </copy>
+        
+        <!-- For each module call postprocess -->
+<!--        <taskdef name="antcallforall" classname="org.signserver.anttasks.AntCallForAllTask" classpath="lib/SignServer-BuildTools.jar"/>-->
+
+        <echo/>
+        <echo>Post processing files...</echo>
+        
+        <taskdef name="postprocess" classname="org.signserver.anttasks.PostProcessModulesTask" classpath="lib/SignServer-BuildTools.jar:lib/ext/commons-io-1.4.jar:lib/ext/commons-lang-2.5.jar"/>
+        
+        <postprocess modules="${enabledModules}"/>
+        
+        <echo/>
+        <echo>Filtering jars...</echo>
+        <antcall target="-filter-jars"/>
+        
+        <echo level="verbose">
+Configurations to include:
+  /
+    ${toConfigRoot}
+  /conf/
+    ${toConfigConf}
+            
+        </echo>
+        
+        <!-- Config -->
+        <property name="config.tmp.dir" location="${tmp}/config.jar"/>
+        <delete dir="${config.tmp.dir}"/>
+        <mkdir dir="${config.tmp.dir}"/>
+        <mkdir dir="${config.tmp.dir}/conf"/>
+        <copy todir="${config.tmp.dir}" flatten="true">
+            <fileset dir="." includes="-non-existing-,${toConfigRoot}"/>
+        </copy>
+        <copy todir="${config.tmp.dir}/conf" flatten="true">
+            <fileset dir="." includes="-non-existing-,${toConfigConf}"/>
+        </copy>
+        
+        <mkdir dir="${signserver.ear.dir}/lib"/>
+        <jar destfile="${signserver.ear.dir}/lib/config.jar">
+            <zipfileset dir="${config.tmp.dir}" />
+        </jar>
+    </target>
+    
+    <!-- 
+        Special trick to filter out different SessionBeans from cesecore-ejb
+        depending on if the NODB mode is used or not.
+    -->
+    <!-- TODO: This is SignServer and CESeCore specific but could be made more generic 
+        by adding properties to the module descriptors to configure what to filter etc. -->
+    <target name="-filter-jars" depends="-init-filter-jars-db,-init-filter-jars-nodb">
+        
+        <!-- cesecore-ejb.jar -->
+        <property name="cesecore-ejb.jar" value="cesecore-ejb_1.1.2.jar"/>
+        <move todir="${tmp}" file="${signserver.ear.dir}/${cesecore-ejb.jar}"/>
+        <jar destfile="${signserver.ear.dir}/${cesecore-ejb.jar}">
+            <zipfileset src="${tmp}/${cesecore-ejb.jar}" excludes="${cesecore-ejb-excludes}"/>
+        </jar>
+        
+        <!-- cesecore-entities.jar -->
+        <property name="cesecore-entities.jar" value="cesecore-entity_1.1.2.jar"/>
+        <move todir="${tmp}" file="${signserver.ear.dir}/lib/${cesecore-entities.jar}"/>
+        <jar destfile="${signserver.ear.dir}/lib/${cesecore-entities.jar}">
+            <zipfileset src="${tmp}/${cesecore-entities.jar}" excludes="${cesecore.entities.excludes}"/>
+        </jar>
+        
+        <!-- signserver-ejb.jar -->
+        <property name="signserver-ejb.jar" value="SignServer-ejb.jar"/>
+        <move todir="${tmp}" file="${signserver.ear.dir}/${signserver-ejb.jar}"/>
+        <jar destfile="${signserver.ear.dir}/${signserver-ejb.jar}">
+            <zipfileset src="${tmp}/${signserver-ejb.jar}" excludes="${signserver-ejb-excludes}"/>
+        </jar>
+    </target>
+    <target name="-init-filter-jars-db" unless="noDB">
+        <property name="cesecore-ejb-excludes" value="${cesecore.ejb.withdb.excludes}"/>
+        <property name="signserver-ejb-excludes" value="${signserver.ejb.withdb.excludes}"/>
+    </target>
+    <target name="-init-filter-jars-nodb" if="noDB">
+        <property name="cesecore-ejb-excludes" value="${cesecore.ejb.nodb.excludes}"/>
+        <property name="signserver-ejb-excludes" value="${signserver.ejb.nodb.excludes}"/>
+    </target>
+    
+    
+<!--    <target name="-postprocess-module">
+        <echo>Post processing module: ${_acfa.calledname}</echo>
+        <antcallforall names="${_acfa.postprocess.files}" target="-postprocess-file" prePrefix="_acfa." newPropertyPrefix="_acfa2"/>
+    </target>-->
+    
+<!--    <target name="-postprocess-file">
+        <echo level="verbose">Post processing file "${_acfa2.src}" with includes "${_acfa2.includes}"</echo>
+        <echo>module.type: ${_acfa.module.type}</echo>
+        <property name="_acfa2.dest" value=""/>
+        <postprocess-jar src="lib/${_acfa2.src}" destfile="${signserver.ear.dir}/${_acfa2.dest}${_acfa2.src}" tempdir="${tmp}/${_acfa.calledname}-${_acfa2.src}.dir" replaceincludes="${_acfa2.includes}"/>
+    </target>-->
+        
+    <target name="-init-configure">
+        <echo>
+Configuring EAR...    
+        </echo>
+        
+    	<condition property="noDB">
+    		<equals arg1="${database.name}" arg2="nodb"/>
+    	</condition>
+
+        <property name="signserver.ear.dir" location="${tmp}/signserver.ear"/>
+        <property name="database.name" value="${database.name}"/>
+    	<delete dir="${signserver.ear.dir}"/>
+        <mkdir dir="${signserver.ear.dir}"/>
+        
+        <mkdir dir="${signserver.ear.dir}/META-INF"/>
+        <copy todir="${signserver.ear.dir}">
+            <fileset dir="${res}/deploy/ear" includes="*/*.*"/>
+        </copy>
+    </target>
+	
+    <target name="-set-ejbjarheader-nodb" if="noDB">
+    	<!-- generate starting and closing comment marks short-circuiting the
+    		enterprise-beans tag in the generated ejb-jar.xml file -->
+    	<property name="ejbjarheader">
+			<![CDATA[
+    			<!--
+    		]]>
+    	</property>
+    	<property name="ejbjarfooter">
+    		<![CDATA[
+    			-->
+    		]]>
+    	</property>
+    	<property name="persistenceheader">
+    		<![CDATA[
+    			<!--
+    		]]>
+    	</property>
+    	<property name="persistencefooter">
+    		<![CDATA[
+    			-->
+    		]]>
+		</property>
+    </target>
+
+    <target name="-preprocess-persistence">
+        <echo message="Database type:      ${database.name}"/>
+        <echo message="DataSource mapping: ${datasource.jndi-name-prefix}${datasource.jndi-name}"/>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.DB2Dialect">
+            <equals arg1="${database.name}" arg2="db2"/>
+        </condition>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.DerbyDialect">
+            <equals arg1="${database.name}" arg2="derby"/>
+        </condition>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.HSQLDialect">
+            <equals arg1="${database.name}" arg2="hsqldb"/>
+        </condition>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.InformixDialect">
+            <equals arg1="${database.name}" arg2="informix"/>
+        </condition>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.IngresDialect">
+            <equals arg1="${database.name}" arg2="ingres"/>
+        </condition>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.SQLServerDialect">
+            <equals arg1="${database.name}" arg2="mssql"/>
+        </condition>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect">
+            <equals arg1="${database.name}" arg2="mysql"/>
+        </condition>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.Oracle10gDialect">
+            <equals arg1="${database.name}" arg2="oracle"/>
+        </condition>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect">
+            <equals arg1="${database.name}" arg2="postgres"/>
+        </condition>
+        <condition property="hibernate.dialect" value="org.hibernate.dialect.SybaseDialect">
+            <equals arg1="${database.name}" arg2="sybase"/>
+        </condition>
+    	<condition property="hibernate.dialect" value="dummy">
+    		<equals arg1="${database.name}" arg2="nodb"/>
+    	</condition>
+        <fail unless="hibernate.dialect" message="Unsupported database type '${database.name}'."/>
+    </target>
+    
+    <!-- =================================================================== -->
+    <!-- Deploy target                                                       -->
+    <!-- =================================================================== -->
+    <target name="deploy" depends="j2ee:check,compose-ear, j2ee:deploy" description="Deploys SignServer">
+        <antcall target="showtime" />
+    </target>
+
+   
+</project>
