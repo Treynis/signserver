@@ -20,8 +20,6 @@ import org.junit.runners.MethodSorters;
 import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.InvalidWorkerIdException;
-import org.signserver.module.xmlvalidator.XMLValidatorTestData;
-
 import static org.junit.Assert.*;
 import org.junit.Test;
 
@@ -35,7 +33,7 @@ import org.junit.Test;
 public class GenericProcessServletResponseTest extends WebTestCase {
 
     private static final String KEYDATA = "KEYDATA";
-    
+
     @Override
     protected String getServletURL() {
         return "http://localhost:8080/signserver/process";
@@ -49,7 +47,6 @@ public class GenericProcessServletResponseTest extends WebTestCase {
     public void test00SetupDatabase() throws Exception {
         addDummySigner1();
         addCMSSigner1();
-        addXMLValidator();
     }
 
     /**
@@ -212,139 +209,7 @@ public class GenericProcessServletResponseTest extends WebTestCase {
 
         con.disconnect();
     }
-    
-    /**
-     * Test explicitly setting the processType request parameter
-     * to signDocument (the default value).
-     * 
-     * @throws Exception
-     */
-    @Test
-    public void test07ExplicitProcessTypeSignDocument() throws Exception {
-        Map<String, String> fields = new HashMap<String, String>();
-        fields.put("workerName", getSignerNameDummy1());
-        fields.put("processType", "signDocument");
-        fields.put("data", "<root/>");
 
-        assertStatusReturned(fields, 200);
-    }
-
-    /**
-     * Test setting processType to validateDocument for a signer.
-     * 
-     * @throws Exception
-     */
-    @Test
-    public void test08WrongProcessType() throws Exception {
-        Map<String, String> fields = new HashMap<String, String>();
-        fields.put("workerName", getSignerNameDummy1());
-        fields.put("processType", "validateDocument");
-        fields.put("data", "<root/>");
-
-        assertStatusReturned(fields, 400);
-    }
-    
-    /**
-     * Test setting processType to signDocument for a validator.
-     * 
-     * @throws Exception
-     */
-    @Test
-    public void test08WrongProcessTypeValidator() throws Exception {
-        Map<String, String> fields = new HashMap<String, String>();
-        fields.put("workerName", getWorkerNameXmlValidator());
-        fields.put("processType", "signDocument");
-        fields.put("data", "<root/>");
-
-        assertStatusReturned(fields, 400);
-    }
-    
-    /**
-     * Test setting an invalid value for processType.
-     * 
-     * @throws Exception
-     */
-    @Test
-    public void test10InvalidProcessType() throws Exception {
-        Map<String, String> fields = new HashMap<String, String>();
-        fields.put("workerName", getSignerNameDummy1());
-        fields.put("processType", "foobar");
-        fields.put("data", "<root/>");
-
-        assertStatusReturned(fields, 400);
-    }
-    
-    /**
-     * Test issuing a validateDocument call.
-     * 
-     * @throws Exception
-     */
-    @Test
-    public void test11ValidateDocument() throws Exception {
-        Map<String, String> fields = new HashMap<String, String>();
-        fields.put("workerId", Integer.toString(getWorkerIdXmlValidator()));
-        fields.put("processType", "validateDocument");
-        fields.put("data", XMLValidatorTestData.TESTXML1);
-
-        final byte[] content = sendPostFormUrlencodedReadBody(getServletURL(), fields);
-        assertEquals("Response content", "VALID", new String(content));
-    }
-    
-    /**
-     * Test validating a document with an invalid signature.
-     * 
-     * @throws Exception
-     */
-    @Test
-    public void test12ValidateDocumentInvalid() throws Exception {
-        Map<String, String> fields = new HashMap<String, String>();
-        fields.put("workerId", Integer.toString(getWorkerIdXmlValidator()));
-        fields.put("processType", "validateDocument");
-        fields.put("data", XMLValidatorTestData.TESTXML2);
-
-        final byte[] content = sendPostFormUrlencodedReadBody(getServletURL(), fields);
-        assertEquals("Response content", "INVALID", new String(content));
-    }
-    
-    /**
-     * Test validating a valid certificate using the validation service through the HTTP servlet.
-     * 
-     * @throws Exception
-     */
-    @Test
-    public void test13ValidateCertificate() throws Exception {
-        Map<String, String> fields = new HashMap<String, String>();
-        fields.put("workerId", Integer.toString(getWorkerIdValidationService()));
-        fields.put("processType", "validateCertificate");
-        fields.put("data", XMLValidatorTestData.CERT_ISSUER);
-        fields.put("encoding", "base64");
-        
-        // test returned status (GET, POST and POST with multi-part content)
-        assertStatusReturned(fields, 200);
-        
-        // check the returned content
-        final byte[] content = sendAndReadyBody(fields);
-        assertEquals("Response content", "VALID;;This certificate is valid;-1;", new String(content));
-    }
-    
-    /**
-     * Test validating an other, non-supported issuer using the validation service through the HTTP servlet.
-     * 
-     * @throws Exception
-     */
-    @Test
-    public void test14ValidateCertificateOther() throws Exception {        
-        Map<String, String> fields = new HashMap<String, String>();
-        fields.put("workerId", Integer.toString(getWorkerIdValidationService()));
-        fields.put("processType", "validateCertificate");
-        fields.put("data", XMLValidatorTestData.CERT_OTHER);
-        fields.put("encoding", "base64");
-        
-        // check the returned content
-        final byte[] content = sendAndReadyBody(fields);
-        assertEquals("Response content", "ISSUERNOTSUPPORTED;;Issuer of given certificate isn't supported;-1;", new String(content));
-    }
-  
     /**
      * Remove the workers created etc.
      * @throws Exception in case of error
@@ -353,7 +218,5 @@ public class GenericProcessServletResponseTest extends WebTestCase {
     public void test99TearDownDatabase() throws Exception {
         removeWorker(getSignerIdDummy1());
         removeWorker(getSignerIdCMSSigner1());
-        removeWorker(getWorkerIdXmlValidator());
-        removeWorker(getWorkerIdValidationService());
     }
 }

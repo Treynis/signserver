@@ -13,6 +13,7 @@
 package org.signserver.common.util;
 
 import org.signserver.common.RequestContext;
+import org.signserver.common.util.XForwardedForUtils;
 
 import junit.framework.TestCase;
 

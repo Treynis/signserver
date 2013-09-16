@@ -45,6 +45,7 @@ import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
 import org.signserver.validationservice.common.Validation;
 import org.signserver.validationservice.common.ValidationServiceConstants;
+import org.signserver.validationservice.server.BaseValidator;
 
 /**
  * OCSP validator used for validating certificates using OCSP only for revocation checking.
@@ -104,9 +105,9 @@ public class OCSPValidator extends BaseValidator {
 
         // certStore & certPath construction
         CertPath certPath = null;
-        CertStore certStore;
+        CertStore certStore = null;
         List<Object> certs = new ArrayList<Object>();
-        CertificateFactory certFactory;
+        CertificateFactory certFactory = null;
         CertPathValidator validator = null;
         PKIXParameters params = null;
         Certificate rootCert = null;
@@ -182,7 +183,7 @@ public class OCSPValidator extends BaseValidator {
 
 
         //do actual validation
-        PKIXCertPathValidatorResult cpv_result;
+        PKIXCertPathValidatorResult cpv_result = null;
         try {
             cpv_result = (PKIXCertPathValidatorResult) validator.validate(certPath, params);
             //if we are down here then validation is successful

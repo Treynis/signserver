@@ -100,7 +100,7 @@ public class SignServerUtil {
         String retval = null;
         FileReader fr = new FileReader(confFile);
         BufferedReader br = new BufferedReader(fr);
-        String next;
+        String next = null;
         while ((next = br.readLine()) != null) {
             next = next.trim();
             if (next.startsWith(key) || next.startsWith(key.toUpperCase())) {
@@ -126,7 +126,7 @@ public class SignServerUtil {
      */
     public static X509Certificate getCertFromFile(final String filename)
                 throws IllegalArgumentException {
-        Collection<?> certs;
+        Collection<?> certs = null;
         X509Certificate cert = null;
         
         try {

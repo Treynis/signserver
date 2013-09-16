@@ -115,7 +115,7 @@ public class StatusPropertiesWorker extends BaseSigner {
         responseData = process(requestData);
 
         if (request instanceof GenericSignRequest) {
-            final GenericSignRequest signRequest = (GenericSignRequest) request;
+            final GenericSignRequest signRequest = (GenericServletRequest) request;
             try {
                 final ByteArrayOutputStream bout = new ByteArrayOutputStream();
                 responseData.store(bout, null);

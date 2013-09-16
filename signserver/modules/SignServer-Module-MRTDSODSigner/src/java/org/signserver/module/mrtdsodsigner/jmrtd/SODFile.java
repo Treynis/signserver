@@ -544,7 +544,6 @@ public class SODFile extends PassportFile
 	 * 
 	 * @return a textual representation of this file
 	 */
-        @Override
 	public String toString() {
 		try {
 			X509Certificate cert = getDocSigningCertificate();
@@ -554,7 +553,6 @@ public class SODFile extends PassportFile
 		}
 	}
 
-        @Override
 	public boolean equals(Object obj) {
 		if (obj == null) { return false; }
 		if (obj == this) { return true; }
@@ -568,7 +566,6 @@ public class SODFile extends PassportFile
 		}
 	}
 
-        @Override
 	public int hashCode() {
 		int hash = 0;
 		

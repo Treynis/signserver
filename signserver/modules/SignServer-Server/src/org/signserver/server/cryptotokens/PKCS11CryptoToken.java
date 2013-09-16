@@ -76,7 +76,7 @@ public class PKCS11CryptoToken implements ICryptoToken, IKeyGenerator {
     
     private String keyAlias;
     private String nextKeyAlias;
-
+    
     private boolean cachePrivateKey;
     private PrivateKey cachedPrivateKey;
     

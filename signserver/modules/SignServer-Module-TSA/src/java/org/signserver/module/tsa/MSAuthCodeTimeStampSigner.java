@@ -170,10 +170,16 @@ public class MSAuthCodeTimeStampSigner extends BaseSigner {
         // Check that the timestamp server is properly configured
         try {
             timeSource = getTimeSource();
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("TimeStampSigner[" + signerId + "]: "
-                        + "Using TimeSource: "
-                        + timeSource.getClass().getName());
+            if (timeSource == null) {
+                final String error = "Error: Timestamp signer :" + signerId +
+                    " has a malconfigured timesource.";
+                LOG.error(error);
+            } else {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("TimeStampSigner[" + signerId + "]: "
+                            + "Using TimeSource: "
+                            + timeSource.getClass().getName());
+                }
             }
             
             signatureAlgo = config.getProperty(SIGNATUREALGORITHM);
@@ -298,12 +304,17 @@ public class MSAuthCodeTimeStampSigner extends BaseSigner {
                         "Null certificate chain. This signer needs a certificate.");
             }
 
-            Certificate[] certs = (Certificate[]) certList.toArray(new Certificate[certList.size()]);
+            Certificate[] certs = (Certificate[]) certList.toArray(new Certificate[0]);
             PrivateKey pk = this.getCryptoToken().getPrivateKey(
                     ICryptoToken.PURPOSE_SIGN);
 
             // Sign
             X509Certificate x509cert = (X509Certificate) certs[0]; 
+            List<X509Certificate> certL = new ArrayList<X509Certificate>();
+
+            for (final Certificate cert : certs) {
+                    certL.add((X509Certificate) cert);
+            }
             
             final Date date = getTimeSource().getGenTime();
             
@@ -359,11 +370,12 @@ public class MSAuthCodeTimeStampSigner extends BaseSigner {
 
   
             // Log values
-            logMap.put(ITimeStampLogger.LOG_TSA_TIME, String.valueOf(date.getTime()));
+            logMap.put(ITimeStampLogger.LOG_TSA_TIME, date == null ? null
+                : String.valueOf(date.getTime()));
             
             final String archiveId = createArchiveId(requestbytes, (String) requestContext.get(RequestContext.TRANSACTION_ID));
 
-            final GenericSignResponse signResponse;
+            GenericSignResponse signResponse = null;
             byte[] signedbytes = Base64.encode(der);
             
             logMap.put(ITimeStampLogger.LOG_TSA_TIMESTAMPRESPONSE_ENCODED,
@@ -502,8 +514,8 @@ public class MSAuthCodeTimeStampSigner extends BaseSigner {
     private boolean validateChain() {
         boolean result = true;
         try {
-            final List<Certificate> signingCertificateChain = getSigningCertificateChain();
-            if (signingCertificateChain != null) {
+            Collection<Certificate> signingCertificateChain = getSigningCertificateChain();
+            if (signingCertificateChain instanceof List) {
                 List<Certificate> chain = (List<Certificate>) signingCertificateChain;
                 for (int i = 0; i < chain.size(); i++) {
                     Certificate subject = chain.get(i);

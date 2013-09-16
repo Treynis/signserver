@@ -162,7 +162,7 @@ public final class Hex {
     */
    public static String bytesToHexString(byte[] text, int offset, int length, int numRow) {
       if(text == null) return "NULL";
-      final StringBuilder result = new StringBuilder();
+      StringBuffer result = new StringBuffer();
       for (int i = 0; i < length; i++) {
          if(i != 0 && i % numRow == 0) result.append("\n");
          result.append(byteToHexString(text[offset + i]));
@@ -243,7 +243,7 @@ public final class Hex {
    public static byte[] hexStringToBytes(String text)
    throws NumberFormatException {
       if (text == null) { return null; }
-      final StringBuilder hexText = new StringBuilder();
+      StringBuffer hexText = new StringBuffer();
       for (int i=0; i < text.length(); i++) {
          char c = text.charAt(i);
          if (Character.isWhitespace(c)) {
@@ -335,7 +335,7 @@ public final class Hex {
     * @return spaced hexadecimal representation of <code>data</code>.
     */
    public static String bytesToSpacedHexString(byte[] data) {
-      final StringBuilder result = new StringBuilder();
+      StringBuffer result = new StringBuffer();
       for (int i = 0; i < data.length; i++) {
          result.append(byteToHexString(data[i]));
          result.append((i < data.length - 1) ? " " : "");
@@ -368,7 +368,7 @@ public final class Hex {
    }
 
    public static String bytesToASCIIString(byte[] data) {
-      final StringBuilder result = new StringBuilder();
+      StringBuffer result = new StringBuffer();
       for (int i = 0; i < data.length; i++) {
          char c = (char)data[i];
          result.append(Character.toString(PRINTABLE.indexOf(c) >= 0 ? c : '.'));
@@ -458,20 +458,20 @@ public final class Hex {
    public static String bytesToPrettyString(byte[] data, int columns,
                           boolean useIndex, int indexPadWidth, String altIndex,
                           boolean useASCII) {
-      final StringBuilder result = new StringBuilder();
+      StringBuffer result = new StringBuffer();
       String[] hexStrings = bytesToSpacedHexStrings(data,columns,3 * columns);
       String[] asciiStrings = bytesToASCIIStrings(data,columns,columns);
       for (int j = 0; j < hexStrings.length; j++) {
          if (useIndex) {
             String prefix = Integer.toHexString(j * columns).toUpperCase();
-            result.append(pad(prefix,indexPadWidth,'0',LEFT)).append(": ");
+            result.append(pad(prefix,indexPadWidth,'0',LEFT) + ": ");
          } else {
             String prefix = j == 0 ? altIndex : "";
-            result.append(pad(prefix,indexPadWidth,' ',LEFT)).append(" ");
+            result.append(pad(prefix,indexPadWidth,' ',LEFT) + " ");
          }
          result.append(hexStrings[j]);
          if (useASCII) {
-            result.append(" ").append(asciiStrings[j]);
+            result.append(" " + asciiStrings[j]);
          }
          result.append("\n");
       }

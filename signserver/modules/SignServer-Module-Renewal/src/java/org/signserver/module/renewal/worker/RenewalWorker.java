@@ -153,7 +153,7 @@ public class RenewalWorker extends BaseSigner {
 
         if (request instanceof GenericSignRequest) {
             final GenericSignRequest signRequest =
-                    (GenericSignRequest) request;
+                    (GenericServletRequest) request;
             try {
                 final ByteArrayOutputStream bout = new ByteArrayOutputStream();
                 responseData.store(bout, null);
@@ -576,7 +576,7 @@ public class RenewalWorker extends BaseSigner {
             UnrecoverableKeyException, IOException, CertificateException,
             NoSuchProviderException, KeyManagementException, SignServerException {
 
-        EjbcaWS result;
+        EjbcaWS result = null;
 
         final String urlstr = ejbcaUrl + WS_PATH;
 
@@ -594,38 +594,30 @@ public class RenewalWorker extends BaseSigner {
         kKeyManagerFactory.init(keystore, null);
         final KeyStore keystoreTrusted;
 
-        FileInputStream in = null;
-        try {
-            in = new FileInputStream(truststorePath);
-            
-            if (TRUSTSTORE_TYPE_PEM.equals(truststoreType)) {
-                keystoreTrusted = KeyStore.getInstance("JKS");
-                keystoreTrusted.load(null, null);
-                final Collection certs = CertTools.getCertsFromPEM(in);
-                int i = 0;
-                for (Object o : certs) {
-                    if (o instanceof Certificate) {
-                        keystoreTrusted.setCertificateEntry("cert-" + i,
-                                (Certificate) o);
-                        i++;
-                    }
+        if (TRUSTSTORE_TYPE_PEM.equals(truststoreType)) {
+            keystoreTrusted = KeyStore.getInstance("JKS");
+            keystoreTrusted.load(null, null);
+            final Collection certs = CertTools.getCertsFromPEM(
+                    new FileInputStream(truststorePath));
+            int i = 0;
+            for (Object o : certs) {
+                if (o instanceof Certificate) {
+                    keystoreTrusted.setCertificateEntry("cert-" + i,
+                            (Certificate) o);
+                    i++;
                 }
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Loaded " + i + " certs to truststore");
-                }
-            } else if (TRUSTSTORE_TYPE_JKS.equals(truststoreType)) {
-                keystoreTrusted = KeyStore.getInstance(truststoreType);
-                keystoreTrusted.load(in, truststorePass.toCharArray());
-            } else {
-                keystoreTrusted = KeyStore.getInstance(truststoreType, "BC");
-                keystoreTrusted.load(in, truststorePass.toCharArray());
             }
-        } finally {
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException ignored) {} // NOPMD
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Loaded " + i + " certs to truststore");
             }
+        } else if (TRUSTSTORE_TYPE_JKS.equals(truststoreType)) {
+            keystoreTrusted = KeyStore.getInstance(truststoreType);
+            keystoreTrusted.load(new FileInputStream(truststorePath),
+                    truststorePass.toCharArray());
+        } else {
+            keystoreTrusted = KeyStore.getInstance(truststoreType, "BC");
+            keystoreTrusted.load(new FileInputStream(truststorePath),
+                    truststorePass.toCharArray());
         }
         final TrustManagerFactory tTrustManagerFactory
                 = TrustManagerFactory.getInstance("SunX509");
@@ -746,8 +738,7 @@ public class RenewalWorker extends BaseSigner {
         @Override
         public X509Certificate[] getCertificateChain(String string) {
             try {
-                final List<Certificate> chain = getSigningCertificateChain();
-                return chain.toArray(new X509Certificate[chain.size()]);
+                return getSigningCertificateChain().toArray(new X509Certificate[0]);
             } catch (CryptoTokenOfflineException ex) {
                 LOG.error("Offline getting chain", ex);
                 return new X509Certificate[0];

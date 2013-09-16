@@ -16,7 +16,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import javax.ejb.EJB;
@@ -34,7 +33,6 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.ejbca.util.CertTools;
 import org.signserver.common.*;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.CertificateClientCredential;
@@ -43,9 +41,6 @@ import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
-import org.signserver.validationservice.common.ValidateRequest;
-import org.signserver.validationservice.common.ValidateResponse;
-import org.signserver.validationservice.common.Validation;
 
 /**
  * GenericProcessServlet is a general Servlet passing on it's request info to the worker configured by either
@@ -79,15 +74,6 @@ public class GenericProcessServlet extends HttpServlet {
             "WWW-Authenticate";
     private static final String PDFPASSWORD_PROPERTY_NAME = "pdfPassword";
 
-    private static final String PROCESS_TYPE_PROPERTY_NAME = "processType";
-    private static final String CERT_PURPOSES_PROPERTY_NAME = "certPurposes";
-    
-    private enum ProcessType {
-        signDocument,
-        validateDocument,
-        validateCertificate
-    };
-    
     private final Random random = new Random();
 
     @EJB
@@ -138,8 +124,6 @@ public class GenericProcessServlet extends HttpServlet {
         	workerRequest = true;
         }
 
-        ProcessType processType = ProcessType.signDocument;
-        
         if (ServletFileUpload.isMultipartContent(req)) {
             final FileItemFactory factory = new DiskFileItemFactory();
             final ServletFileUpload upload = new ServletFileUpload(factory);
@@ -151,7 +135,6 @@ public class GenericProcessServlet extends HttpServlet {
                 final List items = upload.parseRequest(req);
                 final Iterator iter = items.iterator();
                 FileItem fileItem = null;
-                String encoding = null;
                 while (iter.hasNext()) {
                     final Object o = iter.next();
                     if (o instanceof FileItem) {
@@ -182,25 +165,6 @@ public class GenericProcessServlet extends HttpServlet {
                                     LOG.debug("Found a pdfPassword in the request.");
                                 }
                                 pdfPassword = item.getString("ISO-8859-1");
-                            } else if (PROCESS_TYPE_PROPERTY_NAME.equals(item.getFieldName())) {
-                                final String processTypeAttribute = item.getString("ISO-8859-1");
-                                
-                                if (LOG.isDebugEnabled()) {
-                                    LOG.debug("Found process type in the request: " + processTypeAttribute);
-                                }
-                                
-                                if (processTypeAttribute != null) {
-                                    try {
-                                        processType = ProcessType.valueOf(processTypeAttribute);
-                                    } catch (IllegalArgumentException e) {
-                                        sendBadRequest(res, "Illegal process type: " + processTypeAttribute);
-                                        return;
-                                    }
-                                } else {
-                                    processType = ProcessType.signDocument;
-                                }
-                            } else if (ENCODING_PROPERTY_NAME.equals(item.getFieldName())) {
-                                encoding = item.getString("ISO-8859-1");
                             }
                         } else {
                             // We only care for one upload at a time right now
@@ -217,20 +181,6 @@ public class GenericProcessServlet extends HttpServlet {
                 } else {
                     fileName = fileItem.getName();
                     data = fileItem.get();
-
-                    if (encoding != null && !encoding.isEmpty()) {
-                        if (ENCODING_BASE64.equalsIgnoreCase(encoding)) {
-                            if (LOG.isDebugEnabled()) {
-                                LOG.debug("Decoding base64 data");
-                            }
-                            data = Base64.decode(data);
-                        } else {
-                            sendBadRequest(res,
-                                    "Unknown encoding for the 'data' field: "
-                                    + encoding);
-                            return;
-                        }
-                    }
                 }
             } catch (FileUploadException ex) {
                 throw new ServletException("Upload failed", ex);
@@ -258,22 +208,6 @@ public class GenericProcessServlet extends HttpServlet {
                     LOG.debug("Found a pdfPassword in the request.");
                 }
             }
-            
-            final String processTypeAttribute = (String) req.getParameter(PROCESS_TYPE_PROPERTY_NAME);
-            
-            if (processTypeAttribute != null) {
-                try {
-                    processType = ProcessType.valueOf(processTypeAttribute);
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Found process type in the request: " + processType.name());
-                    }
-                } catch (IllegalArgumentException e) {
-                    sendBadRequest(res, "Illegal process type: " + processTypeAttribute);
-                    return;
-                }
-            } else {
-                processType = ProcessType.signDocument;
-            }
 
             if (METHOD_GET.equalsIgnoreCase(req.getMethod())
                     || (req.getContentType() != null && req.getContentType().contains(FORM_URL_ENCODED))) {
@@ -288,9 +222,7 @@ public class GenericProcessServlet extends HttpServlet {
                 String encoding = req.getParameter(ENCODING_PROPERTY_NAME);
                 if (encoding != null && !encoding.isEmpty()) {
                     if (ENCODING_BASE64.equalsIgnoreCase(encoding)) {
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Decoding base64 data");
-                        }
+                        LOG.info("Decoding base64 data");
                         data = Base64.decode(data);
                     } else {
                         sendBadRequest(res,
@@ -320,17 +252,13 @@ public class GenericProcessServlet extends HttpServlet {
             }
         }
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Request of type: " + processType.name());
-        }
-        
         // Limit the maximum size of input
         if (data.length > MAX_UPLOAD_SIZE) {
             LOG.error("Content length exceeds 100MB, not processed: " + req.getContentLength());
             res.sendError(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
                     "Maximum content length is 100 MB");
         } else {
-            processRequest(req, res, workerId, data, fileName, pdfPassword, processType);
+            processRequest(req, res, workerId, data, fileName, pdfPassword);
         }
 
         LOG.debug("<doPost()");
@@ -352,8 +280,7 @@ public class GenericProcessServlet extends HttpServlet {
         LOG.debug("<doGet()");
     } // doGet
 
-    private void processRequest(final HttpServletRequest req, final HttpServletResponse res, final int workerId, final byte[] data,
-            String fileName, final String pdfPassword, final ProcessType processType) throws java.io.IOException, ServletException {
+    private void processRequest(HttpServletRequest req, HttpServletResponse res, int workerId, byte[] data, String fileName, String pdfPassword) throws java.io.IOException, ServletException {
         final String remoteAddr = req.getRemoteAddr();
         if (LOG.isDebugEnabled()) {
             LOG.debug("Recieved HTTP process request for worker " + workerId + ", from ip " + remoteAddr);
@@ -434,99 +361,28 @@ public class GenericProcessServlet extends HttpServlet {
 
         final int requestId = random.nextInt();
 
+        GenericServletResponse response;
         try {
-            String responseText;
-            
-            switch (processType) {
-            case signDocument:
-                final GenericServletResponse servletResponse =
-                    (GenericServletResponse) getWorkerSession().process(new AdminInfo("Client user", null, null), workerId,
-                        new GenericServletRequest(requestId, data, req), context);
-               
-                if (servletResponse.getRequestID() != requestId) { // TODO: Is this possible to get at all?
-                    LOG.error("Response ID " + servletResponse.getRequestID()
-                            + " not matching request ID " + requestId);
-                    res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                            "Request and response ID missmatch");
-                    return;
-                }
-                
-                byte[] processedBytes = (byte[]) servletResponse.getProcessedData();
+            response = (GenericServletResponse) getWorkerSession().process(new AdminInfo("Client user", null, null), workerId,
+                    new GenericServletRequest(requestId, data, req), context);
 
-                res.setContentType(servletResponse.getContentType());
-                Object responseFileName = context.get(RequestContext.RESPONSE_FILENAME);
-                if (responseFileName instanceof String) {
-                    res.setHeader("Content-Disposition", "attachment; filename=\"" + responseFileName + "\"");
-                }
-                res.setContentLength(processedBytes.length);
-                res.getOutputStream().write(processedBytes);
-                break;
-            case validateDocument:
-                final GenericValidationResponse validationResponse =
-                    (GenericValidationResponse) getWorkerSession().process(new AdminInfo("Client user", null, null), workerId, 
-                            new GenericValidationRequest(requestId, data), context);
-                    
-                responseText = validationResponse.isValid() ? "VALID" : "INVALID";
-                
-                if (LOG.isDebugEnabled()) {
-                    final Validation validation = validationResponse.getCertificateValidation();
-                    
-                    if (validation != null) {
-                        LOG.debug("Cert validation status: " + validationResponse.getCertificateValidation().getStatusMessage());
-                    }
-                }
-                
-                res.setContentType("text/plain");
-                res.setContentLength(responseText.getBytes().length);
-                res.getOutputStream().write(responseText.getBytes());
-                break;
-            case validateCertificate:
-                final Certificate cert;
-                try {
-                    cert = CertTools.getCertfromByteArray(data);
-                
-                    final String certPurposes = req.getParameter(CERT_PURPOSES_PROPERTY_NAME);
-                    final ValidateResponse certValidationResponse =
-                            (ValidateResponse) getWorkerSession().process(new AdminInfo("Client user", null, null), workerId,
-                                    new ValidateRequest(cert, certPurposes), context);
-                    final Validation validation = certValidationResponse.getValidation();
-                    
-                    final StringBuilder sb = new StringBuilder(validation.getStatus().name());
-                    
-                    sb.append(";");
-                    
-                    final String validPurposes = certValidationResponse.getValidCertificatePurposes();
-                    
-                    if (validPurposes != null) {
-                        sb.append(certValidationResponse.getValidCertificatePurposes());
-                    }
-                    sb.append(";");
-                    sb.append(certValidationResponse.getValidation().getStatusMessage());
-                    sb.append(";");
-                    sb.append(certValidationResponse.getValidation().getRevokationReason());
-                    sb.append(";");
-                    
-                    final Date revocationDate = certValidationResponse.getValidation().getRevokedDate();
-                    
-                    if (revocationDate != null) {
-                        sb.append(certValidationResponse.getValidation().getRevokedDate().getTime());
-                    }
+            if (response.getRequestID() != requestId) { // TODO: Is this possible to get at all?
+                LOG.error("Response ID " + response.getRequestID()
+                        + " not matching request ID " + requestId);
+                res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "Request and response ID missmatch");
+                return;
+            }
+            byte[] processedBytes = (byte[]) response.getProcessedData();
 
-                    responseText = sb.toString();
-                    
-                    res.setContentType("text/plain");
-                    res.setContentLength(responseText.getBytes().length);
-                    res.getOutputStream().write(responseText.getBytes());
-                } catch (CertificateException e) {
-                    LOG.error("Invalid certificate: " + e.getMessage());
-                    sendBadRequest(res, "Invalid certificate: " + e.getMessage());
-                    return;
-                }
-                break;
-            };
-            
+            res.setContentType(response.getContentType());
+            Object responseFileName = context.get(RequestContext.RESPONSE_FILENAME);
+            if (responseFileName instanceof String) {
+                res.setHeader("Content-Disposition", "attachment; filename=\"" + responseFileName + "\"");
+            }
+            res.setContentLength(processedBytes.length);
+            res.getOutputStream().write(processedBytes);
             res.getOutputStream().close();
-            
         } catch (AuthorizationRequiredException e) {
             LOG.debug("Sending back HTTP 401: " + e.getLocalizedMessage());
 

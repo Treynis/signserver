@@ -20,6 +20,7 @@ import java.util.Map;
 import javax.jws.WebService;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.core.protocol.IRequestMessage;
 import org.ejbca.core.protocol.PKCS10RequestMessage;
 import org.ejbca.util.RequestMessageUtils;
 import org.signserver.module.renewal
@@ -278,7 +279,7 @@ public class MockEjbcaWS {
             throws EjbcaException_Exception,
             AuthorizationDeniedException_Exception { 
         try {
-            final byte[] retval;
+            byte[] retval = null;
             
             UserDataVOWS userdata = findUser(username);
             if (userdata == null) {
@@ -302,7 +303,7 @@ public class MockEjbcaWS {
             if (RESPONSETYPE_PKCS7WITHCHAIN.equals(responseType)) {
                 retval = ca.createPKCS7(cert, true);
             } else {
-                //retval = cert.getEncoded();
+                retval = cert.getEncoded();
                 throw new UnsupportedOperationException("Not supported yet");
             }
 

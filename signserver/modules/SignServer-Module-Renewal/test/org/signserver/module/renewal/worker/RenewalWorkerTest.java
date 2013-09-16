@@ -21,13 +21,14 @@ import java.security.NoSuchProviderException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import javax.xml.namespace.QName;
 import javax.xml.ws.Endpoint;
-import static junit.framework.TestCase.assertNotNull;
 import org.apache.log4j.Logger;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.GenericPropertiesRequest;
@@ -49,6 +50,7 @@ import org.signserver.module.renewal.ejbcaws.gen.EjbcaWS;
 import org.signserver.module.renewal.ejbcaws.gen.EjbcaWSService;
 import org.signserver.module.renewal.ejbcaws.gen.UserDataVOWS;
 import org.signserver.server.IProcessable;
+import org.signserver.server.log.AdminInfo;
 import org.signserver.server.signers.BaseSigner;
 import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
 import org.signserver.test.utils.mock.WorkerSessionMock;
@@ -555,7 +557,6 @@ public class RenewalWorkerTest extends AbstractTestCase {
         GenericPropertiesResponse response
                 = (GenericPropertiesResponse) workerSession.process(
                     6110, request, new RequestContext());
-        assertNotNull(response);
         
         assertFalse("Explicit ECC parameters not set", workerSession.explicitEccParametersSet);
     }
@@ -588,7 +589,6 @@ public class RenewalWorkerTest extends AbstractTestCase {
         GenericPropertiesResponse response
                 = (GenericPropertiesResponse) workerSession.process(
                     6110, request, new RequestContext());
-        assertNotNull(response);
         
         assertTrue("Explicit ECC parameters set", workerSession.explicitEccParametersSet);
     }
@@ -621,7 +621,6 @@ public class RenewalWorkerTest extends AbstractTestCase {
         GenericPropertiesResponse response
                 = (GenericPropertiesResponse) workerSession.process(
                     6110, request, new RequestContext());
-        assertNotNull(response);
         
         assertFalse("Explicit ECC parameters not set", workerSession.explicitEccParametersSet);
     }
@@ -819,7 +818,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
      * @author Marcus Lundblad
      *
      */
-    private static class MockWorkerSession extends WorkerSessionMock {
+    private class MockWorkerSession extends WorkerSessionMock {
 
         protected boolean explicitEccParametersSet = false;
         private WorkerConfig workerConfig;

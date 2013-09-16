@@ -177,16 +177,15 @@ public class PDFSigner extends BaseSigner {
      */
     public ProcessResponse processData(ProcessRequest signRequest,
             RequestContext requestContext) throws IllegalRequestException,
-            CryptoTokenOfflineException, SignServerException {        
+            CryptoTokenOfflineException, SignServerException {
+
+        ISignRequest sReq = (ISignRequest) signRequest;
         // Check that the request contains a valid GenericSignRequest object
         // with a byte[].
         if (!(signRequest instanceof GenericSignRequest)) {
             throw new IllegalRequestException(
                     "Recieved request wasn't a expected GenericSignRequest.");
         }
-        
-        final ISignRequest sReq = (ISignRequest) signRequest;
-        
         if (!(sReq.getRequestData() instanceof byte[])) {
             throw new IllegalRequestException(
                     "Recieved request data wasn't a expected byte[].");
@@ -393,7 +392,7 @@ public class PDFSigner extends BaseSigner {
     		PdfSignatureAppearance sap) throws IOException, DocumentException, SignServerException {
      
         final HashMap<PdfName, Integer> exc = new HashMap<PdfName, Integer>();
-        exc.put(PdfName.CONTENTS, Integer.valueOf(size * 2 + 2));
+        exc.put(PdfName.CONTENTS, new Integer(size * 2 + 2));
         sap.preClose(exc);
 
 
@@ -431,7 +430,7 @@ public class PDFSigner extends BaseSigner {
             throw new SignServerException(
                     "Null certificate chain. This signer needs a certificate.");
         }
-        Certificate[] certChain = (Certificate[]) certs.toArray(new Certificate[certs.size()]);
+        Certificate[] certChain = (Certificate[]) certs.toArray(new Certificate[0]);
         PrivateKey privKey = this.getCryptoToken().getPrivateKey(
                 ICryptoToken.PURPOSE_SIGN);
 
@@ -681,7 +680,7 @@ public class PDFSigner extends BaseSigner {
         if (retCrls.isEmpty()) {
             return null;
         } else {
-            return retCrls.toArray(new CRL[retCrls.size()]);
+            return retCrls.toArray(new CRL[0]);
         }
 
     }

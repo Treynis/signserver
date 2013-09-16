@@ -106,26 +106,22 @@ public class DocumentValidatorTest extends ModulesTestCase {
             fail("Should have thrown exception about missing arguments");
         } catch (IllegalCommandArgumentsException expected) {}
     }
-    
-    
-    private void testValidateDocumentFromParameter(final String protocol) throws Exception {
+
+    /**
+     * Tests the sample use case a from the documentation.
+     * <pre>
+     * a) signdocument -workername XMLSigner -data "&lt;root/&gt;"
+     * </pre>
+     * @throws Exception
+     */
+    public void test02validateDocumentFromParameter() throws Exception {
         try {
             String res =
-                    new String(protocol == null ?
-                            execute("validatedocument",
-                                    "-workername", "TestXMLValidator",
-                                    "-data", XMLValidatorTestData.TESTXML1,
-                                    "-truststore", new File(new File(signserverhome), "p12/truststore.jks").getAbsolutePath(),
-                                    "-truststorepwd", getTruststorePassword()) :
-                            execute("validatedocument",
-                                    "-workername", "TestXMLValidator",
-                                    "-data", XMLValidatorTestData.TESTXML1,
-                                    "-truststore", new File(new File(signserverhome), "p12/truststore.jks").getAbsolutePath(),
-                                    "-truststorepwd", getTruststorePassword(),
-                                    "-protocol", protocol));
-                    
-                        
-            
+                    new String(execute("validatedocument",
+                    "-workername", "TestXMLValidator",
+                    "-data", XMLValidatorTestData.TESTXML1,
+                    "-truststore", new File(new File(signserverhome), "p12/truststore.jks").getAbsolutePath(),
+                    "-truststorepwd", getTruststorePassword()));
             assertTrue("contains Valid: true: "
                     + res, res.contains("Valid: true"));
         } catch (IllegalCommandArgumentsException ex) {
@@ -134,7 +130,14 @@ public class DocumentValidatorTest extends ModulesTestCase {
         }
     }
 
-    private void testValidateDocumentFromFile(final String protocol) throws Exception {
+    /**
+     * Tests the sample use case b from the documentation.
+     * <pre>
+     * b) signdocument -workername XMLSigner -infile /tmp/document.xml
+     * </pre>
+     * @throws Exception
+     */
+    public void test02signDocumentFromFile() throws Exception {
         try {
             final File doc = File.createTempFile("test2.xml", null);
             FileOutputStream out = null;
@@ -149,16 +152,10 @@ public class DocumentValidatorTest extends ModulesTestCase {
             }
 
             String res =
-                    new String(protocol == null ?
-                            execute("validatedocument", "-workername",
-                                    "TestXMLValidator", "-infile", doc.getAbsolutePath(),
-                                    "-truststore", new File(new File(signserverhome), "p12/truststore.jks").getAbsolutePath(),
-                                    "-truststorepwd", getTruststorePassword()) :
-                            execute("validatedocument", "-workername",
-                                    "TestXMLValidator", "-infile", doc.getAbsolutePath(),
-                                    "-truststore", new File(new File(signserverhome), "p12/truststore.jks").getAbsolutePath(),
-                                    "-truststorepwd", getTruststorePassword(),
-                                    "-protocol", protocol));
+                    new String(execute("validatedocument", "-workername",
+                    "TestXMLValidator", "-infile", doc.getAbsolutePath(),
+                    "-truststore", new File(new File(signserverhome), "p12/truststore.jks").getAbsolutePath(),
+                    "-truststorepwd", getTruststorePassword()));
             assertTrue("contains Valid: true: "
                     + res, res.contains("Valid: true"));
         } catch (IllegalArgumentException ex) {
@@ -166,64 +163,7 @@ public class DocumentValidatorTest extends ModulesTestCase {
             fail(ex.getMessage());
         }
     }
-    
-    /**
-     * Tests the sample use case a from the documentation.
-     * <pre>
-     * a) validatedocument -workername XMLSigner -data "&lt;root/&gt;" -truststore $SIGNSERVER_HOME/p12/truststore.jks -truststorepwd foo123
-     * </pre>
-     * @throws Exception
-     */
-    public void test02ValidateDocumentFromParameterDefaultProtocol() throws Exception {
-        testValidateDocumentFromParameter(null);
-    }
-    
-    /**
-     * Test with explicitly setting -protocol WEBSERVICES (the default).
-     * 
-     * @throws Exception
-     */
-    public void test03ValidateDocumentFromParameterWebservices() throws Exception {
-        testValidateDocumentFromParameter("WEBSERVICES");
-    }
-    
-    /**
-     * Test with -protocol HTTP.
-     * 
-     * @throws Exception
-     */
-    public void test04ValidateDocumentFromParameterHTTP() throws Exception {
-        testValidateDocumentFromParameter("HTTP");
-    }
 
-    /**
-     * Tests the sample use case b from the documentation.
-     * <pre>
-     * b) signdocument -workername XMLSigner -infile /tmp/document.xml
-     * </pre>
-     * @throws Exception
-     */
-    public void test05ValidateDocumentFromFileDefaultProtocol() throws Exception {
-        testValidateDocumentFromFile(null);
-    }
-
-    /**
-     * Test with -protcol WEBSERVICES and -infile.
-     * 
-     * @throws Exception
-     */
-    public void test06ValidateDocumentFromFileWebservices() throws Exception {
-       testValidateDocumentFromFile("WEBSERVICES"); 
-    }
-    
-    /**
-     * Test with -protocol HTTP and -infile.
-     * 
-     * @throws Exception
-     */
-    public void test07ValidateDocumentFromFileHTTP() throws Exception {
-        testValidateDocumentFromFile("HTTP");
-    }
 
     public void test99TearDownDatabase() throws Exception {
         removeWorker(WORKERID);

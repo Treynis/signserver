@@ -74,6 +74,7 @@ public class CMSSigner extends BaseSigner {
             CryptoTokenOfflineException, SignServerException {
 
         ProcessResponse signResponse;
+        ISignRequest sReq = (ISignRequest) signRequest;
 
         // Check that the request contains a valid GenericSignRequest object
         // with a byte[].
@@ -81,9 +82,6 @@ public class CMSSigner extends BaseSigner {
             throw new IllegalRequestException(
                     "Recieved request wasn't a expected GenericSignRequest.");
         }
-        
-        final ISignRequest sReq = (ISignRequest) signRequest;
-        
         if (!(sReq.getRequestData() instanceof byte[])) {
             throw new IllegalRequestException(
                     "Recieved request data wasn't a expected byte[].");

@@ -293,14 +293,20 @@ public class TimeStampSigner extends BaseSigner {
 
         // Check that the timestamp server is properly configured
         try {
-            timeSource = getTimeSource();
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("TimeStampSigner[" + signerId + "]: "
-                        + "Using TimeSource: "
-                        + timeSource.getClass().getName());
-            }
+        	timeSource = getTimeSource();
+        	if (timeSource == null) {
+        		final String error = "Error: Timestamp signer :" + signerId +
+        				" has a malconfigured timesource.";
+        		LOG.error(error);
+        	} else {
+        		if (LOG.isDebugEnabled()) {
+        			LOG.debug("TimeStampSigner[" + signerId + "]: "
+        					+ "Using TimeSource: "
+        					+ timeSource.getClass().getName());
+        		}
+        	}
         } catch (SignServerException e) {
-            LOG.error("Could not create time source: " + e.getMessage());
+        	LOG.error("Could not create time source: " + e.getMessage());
         }
         
         // Get the signature algorithm
@@ -703,6 +709,12 @@ public class TimeStampSigner extends BaseSigner {
 
         TimeStampTokenGenerator timeStampTokenGen = null;
         try {
+            final ASN1ObjectIdentifier digestOID = timeStampRequest.getMessageImprintAlgOID();
+            
+            /*if (digestOID == null) {
+                digestOID = defaultDigestOID;
+            }*/
+
             ASN1ObjectIdentifier tSAPolicyOID = timeStampRequest.getReqPolicy();
             if (tSAPolicyOID == null) {
                 tSAPolicyOID = defaultTSAPolicyOID;
@@ -873,8 +885,8 @@ public class TimeStampSigner extends BaseSigner {
     private boolean validateChain() {
         boolean result = true;
         try {
-            final List<Certificate> signingCertificateChain = getSigningCertificateChain();
-            if (signingCertificateChain != null) {
+            Collection<Certificate> signingCertificateChain = getSigningCertificateChain();
+            if (signingCertificateChain instanceof List) {
                 List<Certificate> chain = (List<Certificate>) signingCertificateChain;
                 for (int i = 0; i < chain.size(); i++) {
                     Certificate subject = chain.get(i);
