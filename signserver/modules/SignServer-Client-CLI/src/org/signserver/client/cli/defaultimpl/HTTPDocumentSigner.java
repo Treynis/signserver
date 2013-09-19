@@ -180,7 +180,9 @@ public class HTTPDocumentSigner extends AbstractDocumentSigner {
 
             conn.addRequestProperty("Content-Type",
                     "multipart/form-data; boundary=" + BOUNDARY);
-
+            conn.addRequestProperty("Content-Length", String.valueOf(
+                    sb.toString().length() + BOUNDARY.length() + 8-1));
+            
             out = conn.getOutputStream();
             
             out.write(sb.toString().getBytes());

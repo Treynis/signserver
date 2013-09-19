@@ -2,6 +2,7 @@ package org.signserver.module.mrtdsodsigner.bc.asn1.icao;
 
 import java.util.Enumeration;
 
+import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1EncodableVector;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;

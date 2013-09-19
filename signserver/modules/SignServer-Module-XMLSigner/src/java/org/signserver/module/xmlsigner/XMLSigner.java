@@ -21,8 +21,6 @@ import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.security.interfaces.DSAPrivateKey;
-import java.security.interfaces.ECPrivateKey;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -69,52 +67,21 @@ public class XMLSigner extends BaseSigner {
     private static final Logger LOG = Logger.getLogger(XMLSigner.class);
     private static final String CONTENT_TYPE = "text/xml";
 
-    // Property constants
-    public static final String SIGNATUREALGORITHM = "SIGNATUREALGORITHM";
-    
-    /**
-     * Addional signature methods not yet covered by
-     * javax.xml.dsig.SignatureMethod
-     * 
-     * Defined in RFC 4051 {@link http://www.ietf.org/rfc/rfc4051.txt}
-     */
-    private static final String SIGNATURE_METHOD_RSA_SHA256 =
-            "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
-    private static final String SIGNATURE_METHOD_RSA_SHA384 =
-            "http://www.w3.org/2001/04/xmldsig-more#rsa-sha384";
-    private static final String SIGNATURE_METHOD_RSA_SHA512 =
-            "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512";
-    private static final String SIGNATURE_METHOD_ECDSA_SHA1 =
-            "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha1";
-    private static final String SIGNATURE_METHOD_ECDSA_SHA256 =
-            "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256";
-    private static final String SIGNATURE_METHOD_ECDSA_SHA384 =
-            "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha384";
-    private static final String SIGNATURE_METHOD_ECDSA_SHA512 =
-            "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha512";
-
-    private String signatureAlgorithm;
-    
     @Override
     public void init(final int workerId, final WorkerConfig config,
             final WorkerContext workerContext, final EntityManager workerEM) {
         super.init(workerId, config, workerContext, workerEM);
-        
-        // Get the signature algorithm
-        signatureAlgorithm = config.getProperty(SIGNATUREALGORITHM);
     }
 
     public ProcessResponse processData(ProcessRequest signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
 
         ProcessResponse signResponse;
+        ISignRequest sReq = (ISignRequest) signRequest;
 
         // Check that the request contains a valid GenericSignRequest object with a byte[].
         if (!(signRequest instanceof GenericSignRequest)) {
             throw new IllegalRequestException("Recieved request wasn't a expected GenericSignRequest.");
         }
-        
-        final ISignRequest sReq = (ISignRequest) signRequest;
-        
         if (!(sReq.getRequestData() instanceof byte[])) {
             throw new IllegalRequestException("Recieved request data wasn't a expected byte[].");
         }
@@ -123,7 +90,7 @@ public class XMLSigner extends BaseSigner {
         String archiveId = createArchiveId(data, (String) requestContext.get(RequestContext.TRANSACTION_ID));
 
 
-        String providerName = System.getProperty("jsr105Provider", "org.apache.jcp.xml.dsig.internal.dom.XMLDSigRI");
+        String providerName = System.getProperty("jsr105Provider", "org.jcp.xml.dsig.internal.dom.XMLDSigRI");
         XMLSignatureFactory fac;
         try {
             fac = XMLSignatureFactory.getInstance("DOM", (Provider) Class.forName(providerName).newInstance());
@@ -134,7 +101,7 @@ public class XMLSigner extends BaseSigner {
         } catch (ClassNotFoundException e) {
             throw new SignServerException("Problem with JSR105 provider", e);
         }
-        
+
         // Get certificate chain and signer certificate
         Collection<Certificate> certs = this.getSigningCertificateChain();
         if (certs == null) {
@@ -155,14 +122,13 @@ public class XMLSigner extends BaseSigner {
 
         SignedInfo si;
         try {
-            final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(privKey) : signatureAlgorithm;
             Reference ref = fac.newReference("",
                     fac.newDigestMethod(DigestMethod.SHA1, null),
                     Collections.singletonList(fac.newTransform(Transform.ENVELOPED, (XMLStructure) null)),
                     null, null);
 
             si = fac.newSignedInfo(fac.newCanonicalizationMethod(CanonicalizationMethod.INCLUSIVE_WITH_COMMENTS, (XMLStructure) null),
-                    fac.newSignatureMethod(getSignatureMethod(sigAlg), null),
+                    fac.newSignatureMethod(getSignatureMethod(privKey), null),
                     Collections.singletonList(ref));
 
         } catch (InvalidAlgorithmParameterException ex) {
@@ -171,7 +137,7 @@ public class XMLSigner extends BaseSigner {
             throw new SignServerException("XML signing algorithm error", ex);
         }
 
-        
+
 
         KeyInfoFactory kif = fac.getKeyInfoFactory();
         X509Data x509d = kif.newX509Data(x509CertChain);
@@ -228,57 +194,16 @@ public class XMLSigner extends BaseSigner {
         return signResponse;
     }
 
-    /**
-     * Get an XMLSec URI for a given signature algorithm in BC style.
-     * 
-     * @param sigAlg Signature algorithm name in BC style
-     * @return The URI for the algo in XMLSec.
-     * @throws NoSuchAlgorithmException
-     */
-    private static String getSignatureMethod(final String sigAlg)
+    private static String getSignatureMethod(final PrivateKey key)
             throws NoSuchAlgorithmException {
         String result;
 
-        if ("SHA1withDSA".equals(sigAlg)) {
+        if ("DSA".equals(key.getAlgorithm())) {
             result = SignatureMethod.DSA_SHA1;
-        } else if ("SHA1withRSA".equals(sigAlg)) {
+        } else if ("RSA".equals(key.getAlgorithm())) {
             result = SignatureMethod.RSA_SHA1;
-        } else if ("SHA256withRSA".equals(sigAlg)) {
-            result = SIGNATURE_METHOD_RSA_SHA256;
-        } else if ("SHA384withRSA".equals(sigAlg)) {
-            result = SIGNATURE_METHOD_RSA_SHA384;
-        } else if ("SHA512withRSA".equals(sigAlg)) {
-            result = SIGNATURE_METHOD_RSA_SHA512;
-        } else if ("SHA1withECDSA".equals(sigAlg)) {
-            result = SIGNATURE_METHOD_ECDSA_SHA1;
-        } else if ("SHA256withECDSA".equals(sigAlg)) {
-            result = SIGNATURE_METHOD_ECDSA_SHA256;
-        } else if ("SHA384withECDSA".equals(sigAlg)) {
-            result = SIGNATURE_METHOD_ECDSA_SHA384;
-        } else if ("SHA512withECDSA".equals(sigAlg)) {
-            result = SIGNATURE_METHOD_ECDSA_SHA512;
         } else {
-            throw new NoSuchAlgorithmException("XMLSigner does not support algorithm: " + sigAlg);
-        }
-
-        return result;
-    }
-    
-    /**
-     * Return the default signature algo name given the private key.
-     * 
-     * @param privKey
-     * @return
-     */
-    private String getDefaultSignatureAlgorithm(final PrivateKey privKey) {
-        final String result;
-
-        if (privKey instanceof DSAPrivateKey) {
-            result = "SHA1withDSA";
-        } else if (privKey instanceof ECPrivateKey) {
-            result = "SHA1withECDSA";
-        } else {
-            result = "SHA1withRSA";
+            throw new NoSuchAlgorithmException("XMLSigner does not support algorithm: " + key.getAlgorithm());
         }
 
         return result;

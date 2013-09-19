@@ -108,8 +108,13 @@ public class XMLValidator extends BaseValidator {
         if (!(sReq.getRequestData() instanceof byte[])) {
             throw new IllegalRequestException("Recieved request data wasn't a expected byte[].");
         }
+        if (signRequest instanceof GenericServletRequest) {
+            throw new IllegalArgumentException("GenericServletRequest not yet supported");
+        }
 
         byte[] data = (byte[]) sReq.getRequestData();
+//        byte[] fpbytes = CertTools.generateSHA1Fingerprint(data);
+//		String fp = new String(Hex.encode(fpbytes));
 
         GenericValidationResponse response = validate(sReq.getRequestID(), data);
         return response;
@@ -136,7 +141,7 @@ public class XMLValidator extends BaseValidator {
             return new GenericValidationResponse(requestId, false);
         }
 
-        String providerName = System.getProperty("jsr105Provider", "org.apache.jcp.xml.dsig.internal.dom.XMLDSigRI");
+        String providerName = System.getProperty("jsr105Provider", "org.jcp.xml.dsig.internal.dom.XMLDSigRI");
         XMLSignatureFactory fac;
         try {
             fac = XMLSignatureFactory.getInstance("DOM", (Provider) Class.forName(providerName).newInstance());

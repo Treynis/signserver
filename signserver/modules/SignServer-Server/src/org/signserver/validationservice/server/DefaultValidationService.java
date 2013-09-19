@@ -22,6 +22,8 @@ import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
 import org.signserver.validationservice.common.Validation.Status;
+import org.signserver.validationservice.server.ICertificateManager;
+import org.signserver.validationservice.server.IValidator;
 
 /**
  * Default validation service performing a full verification and iterating

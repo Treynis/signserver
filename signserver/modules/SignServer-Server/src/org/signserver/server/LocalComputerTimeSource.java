@@ -14,6 +14,7 @@ package org.signserver.server;
 
 import java.util.Date;
 import java.util.Properties;
+import org.signserver.server.ITimeSource;
 
 /**
  * Simple class implementing the ITimeSource interface taking the current time

@@ -14,7 +14,9 @@ package org.signserver.common;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import org.apache.log4j.Logger;

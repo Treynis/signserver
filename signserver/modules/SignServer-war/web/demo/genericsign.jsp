@@ -3,7 +3,7 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <link rel="stylesheet" href="../publicweb.css" type="text/css"/>
-        <title>Generic Signing and Validation Demo - SignServer</title>
+        <title>Generic Signing Demo - SignServer</title>
         <style type="text/css">
             img {
                 border: 0px;
@@ -42,21 +42,20 @@
             <%@include file="../WEB-INF/jspf/demo_menu.jspf" %>
 
 
-            <h3 style="margin-top: 4em;">Generic Signing and Validation Demo</h3>
+            <h3 style="margin-top: 4em;">Generic Signing Demo</h3>
             <p>
-                The forms below can be used to request signing and validation from any of the
-                generic signers and validators. The content to be signed or validated can be submitted
+                The forms below can be used to request signing from any of the
+                generic signers. The content to be signed can be submitted
                 by <a href="#submit-by-input">direct input</a> in a text field
                 optionally Base64 encoded or by <a href="#submit-by-upload">
                 file upload</a>. In any case the name of the worker that should
-                process the request needs to be specified. To perform document and certificate validation,
-                use the process type dropdown to select the appropriate operation. 
+                process the request needs to be specified.
             </p>
 
             <p>
-                The name of all workers/signers available if all demo signers and validators
+                The name of all workers/signers available if all demo signers
                 are configured are: PDFSigner, ODFSigner, OOXMLSigner,
-                XMLSigner, CMSSigner, and DemoXMLValidator.
+                XMLSigner and CMSSigner.
             </p>
 
             <a name="submit-by-input"/>
@@ -75,12 +74,6 @@
                             <option value="" selected="selected">None</option>
                             <option value="base64">Base64</option>
                         </select>
-                        Process type:
-                        <select name="processType">
-                        	<option value="signDocument" selected="selected">Sign document</option>
-                        	<option value="validateDocument">Validate document</option>
-                        	<option value="validateCertificate">Validate certificate</option>
-                       	</select>
                     </p>
                     <p>
                         <input type="submit" name="buttonrecievefile" value="Submit" /><br />
@@ -99,14 +92,6 @@
                     </p>
                     <p>
                         File: <input type="file" name="filerecievefile"/>
-                    </p>
-                    <p>
-                    	Process type:
-                        <select name="processType">
-                        	<option value="signDocument" selected="selected">Sign document</option>
-                        	<option value="validateDocument">Validate document</option>
-                        	<option value="validateCertificate">Validate certificate</option>
-                       	</select>
                     </p>
                     <p>
                         <input type="submit" name="buttonrecievefile" onclick="return check()" value="Submit"/>

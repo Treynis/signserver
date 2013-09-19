@@ -12,6 +12,7 @@
  *************************************************************************/
 package org.signserver.ejb;
 
+import java.security.cert.Certificate;
 import java.util.*;
 
 import javax.annotation.PostConstruct;

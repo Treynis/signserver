@@ -49,27 +49,6 @@ class CertificateAndKeySelector extends KeySelector {
     private X509Certificate choosenCert;
     private List<? extends Certificate> certificates;
 
-    /**
-     * Addional signature methods not yet covered by
-     * javax.xml.dsig.SignatureMethod
-     * 
-     * Defined in RFC 4051 {@link http://www.ietf.org/rfc/rfc4051.txt}
-     */
-    private static final String SIGNATURE_METHOD_RSA_SHA256 =
-            "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
-    private static final String SIGNATURE_METHOD_RSA_SHA384 =
-            "http://www.w3.org/2001/04/xmldsig-more#rsa-sha384";
-    private static final String SIGNATURE_METHOD_RSA_SHA512 =
-            "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512";
-    private static final String SIGNATURE_METHOD_ECDSA_SHA1 =
-            "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha1";
-    private static final String SIGNATURE_METHOD_ECDSA_SHA256 =
-            "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256";
-    private static final String SIGNATURE_METHOD_ECDSA_SHA384 =
-            "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha384";
-    private static final String SIGNATURE_METHOD_ECDSA_SHA512 =
-            "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha512";
-    
     public CertificateAndKeySelector() {
         this(-1);
     }
@@ -96,12 +75,7 @@ class CertificateAndKeySelector extends KeySelector {
                 for (Object o2 : data.getContent()) {
                     if (o2 instanceof X509Certificate) {
                         X509Certificate cert = (X509Certificate) o2;
-                        final String keyAlgo = cert.getPublicKey().getAlgorithm();
-                        final String sigMethod = signatureMethod.getAlgorithm();
-                        if (log.isDebugEnabled()) {
-                            log.debug("Trying to match " + keyAlgo + " key with " + sigMethod + " signature method");
-                        }
-                        if (matchingAlgorithms(keyAlgo, sigMethod)) {
+                        if (matchingAlgorithms(cert.getPublicKey().getAlgorithm(), signatureMethod.getAlgorithm())) {
                             foundCerts.add(cert);
                         }
                     }
@@ -153,17 +127,11 @@ class CertificateAndKeySelector extends KeySelector {
 
     private boolean matchingAlgorithms(String keyAlg, String signAlg) {
         if ("RSA".equalsIgnoreCase(keyAlg)) {
-            return SignatureMethod.RSA_SHA1.equalsIgnoreCase(signAlg) ||
-                    SIGNATURE_METHOD_RSA_SHA256.equals(signAlg) ||
-                    SIGNATURE_METHOD_RSA_SHA384.equals(signAlg) ||
-                    SIGNATURE_METHOD_RSA_SHA512.equals(signAlg);
+            return SignatureMethod.RSA_SHA1.equalsIgnoreCase(signAlg);
         } else if ("DSA".equalsIgnoreCase(keyAlg)) {
             return SignatureMethod.DSA_SHA1.equalsIgnoreCase(signAlg);
-        } else if ("EC".equalsIgnoreCase(keyAlg)) {
-            return SIGNATURE_METHOD_ECDSA_SHA1.equals(signAlg) ||
-                    SIGNATURE_METHOD_ECDSA_SHA256.equals(signAlg) ||
-                    SIGNATURE_METHOD_ECDSA_SHA384.equals(signAlg) ||
-                    SIGNATURE_METHOD_ECDSA_SHA512.equals(signAlg);
+        } else if ("ECDSA".equalsIgnoreCase(keyAlg)) {
+            return "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha1".equals(signAlg);
         }
         return false;
     }

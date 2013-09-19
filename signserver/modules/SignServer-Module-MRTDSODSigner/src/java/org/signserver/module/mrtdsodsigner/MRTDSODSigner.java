@@ -92,14 +92,12 @@ public class MRTDSODSigner extends BaseSigner {
             log.trace(">processData");
         }
         ProcessResponse ret = null;
+        final ISignRequest sReq = (ISignRequest) signRequest;
 
         // Check that the request contains a valid SODSignRequest object.
         if (!(signRequest instanceof SODSignRequest)) {
             throw new IllegalRequestException("Recieved request wasn't an expected SODSignRequest.");
         }
-        
-        final ISignRequest sReq = (ISignRequest) signRequest;
-        
         final SODSignRequest sodRequest = (SODSignRequest) signRequest;
 
         final ICryptoToken token = getCryptoToken();
@@ -164,8 +162,8 @@ public class MRTDSODSigner extends BaseSigner {
                 // If true here the "data group hashes" are not really hashes but values that we must hash.
                 // The input is already decoded (if needed) and nice, so we just need to hash it
                 dghashes = new HashMap<Integer, byte[]>(16);
-                for (Map.Entry<Integer, byte[]> dgId : dgvalues.entrySet()) {
-                    final byte[] value = dgId.getValue();
+                for (Integer dgId : dgvalues.keySet()) {
+                    byte[] value = dgvalues.get(dgId);
                     if (log.isDebugEnabled()) {
                         log.debug("Hashing data group " + dgId + ", value is of length: " + value.length);
                     }
@@ -175,7 +173,7 @@ public class MRTDSODSigner extends BaseSigner {
                         if (log.isDebugEnabled()) {
                             log.debug("Resulting hash is of length: " + result.length);
                         }
-                        dghashes.put(dgId.getKey(), result);
+                        dghashes.put(dgId, result);
                     }
                 }
             }

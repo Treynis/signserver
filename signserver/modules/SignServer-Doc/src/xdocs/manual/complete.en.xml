@@ -270,7 +270,6 @@ PKCS11 Crypto Token to connect to different PKCS11 implementations.
                     </tr><tr><td>PDF Signer</td><td>A Signer that attaches an electronic signature signature to a PDF document.</td>
                     </tr><tr><td>XML Signer</td><td>A Signer that puts in an enveloped signature in XML documents (XMLDSig)</td>
                     </tr><tr><td>XML Validator</td><td>A Document Validator that validates signed XML documents (XMLDSig)</td>
-                    </tr><tr><td>XAdES Signer</td><td>A Signer signing XML documents using XAdES</td>
                     </tr><tr><td>ODF Signer</td><td>A Signer that attaches an electronic signature to an ODF document. ODF Signer is tested with documents produced by <a href="http://www.openoffice.org">OpenOffice.org v 3.1.0</a></td>
                     </tr><tr><td>ODF (Open Document Format) Document</td><td>XML-based file format for representing electronic documents such as spreadsheets, charts, presentations and word processing documents. <a href="http://en.wikipedia.org/wiki/OpenDocument">more...</a></td>
                     </tr><tr><td>OOXML (Office Open XML) Document</td><td>XML-based file format  for representing spreadsheets, charts, presentations and word processing documents. <a href="http://en.wikipedia.org/wiki/Office_Open_XML">more...</a></td>
@@ -321,17 +320,16 @@ One SignServer can have multiple services for different purposes.
 Make sure all required softwares are installed:
                     </p>
                     <ul>
-                        <li>Java 6: Oracle JDK 6 Update 10 or later*, OpenJDK 6 or<br/>
-                            Java 7: OpenJDK 7**</li>
-                        <li>Application server: JBoss 5.1.0.GA***, JBoss EAP 5.1 or GlassFish Server Open Source Edition 2.1.1 or 3.1.2</li>
+                        <li>Java 6: Oracle JDK 6 Update 10 or later* or OpenJDK 6**</li>
+                        <li>Application server: JBoss 5.1.0.GA***, JBoss EAP 5.1 or GlassFish Server Open Source Edition 2.1.1</li>
                         <li>Database: HypersonicSQL (bundled with JBoss), MySQL 5.1, Oracle Database 10/11g or without****</li>
                         <li>Build tool: Apache Ant 1.8.0 or later</li>
                     </ul>
                     <p>
 * When using Oracle JDK you must install the 'Unlimited Strength Jurisdiction Policy Files' for JDK for the parts of SignServer that  makes use of strong crypto to work. The policy files can be found at the same place as the JDK download at Oracle. Further information on this can be found in the Oracle documentation on the JCE. <br/>
-** If the application server supports JDK 7. Works for GlassFish 3 and JBoss 7/EAP 6.<br/>
+** The ODFSigner has issues with OpenJDK. Please see <a href="https://jira.primekey.se/browse/DSS-168">DSS-168</a> for a workaround.<br/>
 *** JBoss 5.1.0.GA is available in two different versions (standard and JDK6) which differs in web services stacks. The one called JBoss 5.1.0.GA-JDK6 should be used.<br/>
-**** See <a href="complete.en.html#SignServer%20without%20Database">SignServer without Database</a>
+**** See <a href="complete.en.html#SignServer%20without%20Database">SignServer without Database</a>.
                     </p>
                 </subsection>
 
@@ -453,24 +451,6 @@ If you are using Oracle's JDK and JBoss 5.1.x you need to copy
 SIGNSERVER_HOME/lib/ext/1.6/bc*.jar to JBOSS_HOME/server/default/lib/. Remember this
 when it's time for upgrades! This is a bug tracked by JBoss as JBAS-7882.
                         </p>
-                    </subsubsection>
-                    <subsubsection name="Fix XML Security library issue in JBoss">
-                        <p>
-JBoss 5 bundles an older version of the XML Security library which conflicts with the one included in SignServer.
-Run the below Ant target to copy the SignServer version and its dependencies to the JBoss endorsed folder:
-                        </p>
-                        <source>
-bin/ant j2ee:copy-xmlsec
-                        </source>
-                    </subsubsection>
-                    <subsubsection name="Install Hibernate in GlassFish 3">
-                        <p>
-If you are using GlassFish 3 and run with a database you will have to install Hibernate. 
-Run pkg install in the GlassFish folder:
-                        </p>
-                        <source>
-./bin/pkg install hibernate
-                        </source>
                     </subsubsection>
                 </subsection>
 
@@ -601,7 +581,7 @@ Executing Command on host : localhost
 ===========================================
 
 
-Current version of server is : SignServer 3.5.0alpha0
+Current version of server is : SignServer 3.3.0alpha0
                     </source>
 					</subsubsection>
 					<subsubsection name="Graphical User Interface">
@@ -1436,9 +1416,6 @@ right shows details for the selected workers (if any).
 <b> Edit -&gt; Renew signer...</b>: Opens the Renew signer dialog for the selected worker(s).
                         </p>
                         <p>
-<b> Edit -&gt; Remove...</b>: Removes the selected workers from the SignServer configuration.
-                        </p>
-                        <p>
 <b> Edit -&gt; Global configuration...</b>: Opens the Global configuration window.
                         </p>
                         <p>
@@ -2108,8 +2085,6 @@ try {
                                         <li><b>pdfPassword</b> - Password for changing PDF. Optionally and only used by PDFSigner.</li>
                                         <li><b>encoding</b> - Encoding of the data field. Optional. By specifying "base64" SignServer Base64-decodes
                                         the data property before passing it to the worker.</li>
-                                        <li><b>processType</b> - The type of request. Can be any of "signDocument", "validateDocument",
-                                        or "validateCertificate". Optional. If not specified, defaults to "signDocument".</li>
                                     </ul>
                                 </td>
                             </tr>
@@ -2128,34 +2103,7 @@ try {
                                 </td>
                             </tr>
                             <tr>
-                                <td>Response content-type:</td><td>Depending on the worker, text/plain for the validators.</td>
-                            </tr>
-                            <tr>
-                                <td>Response content:</td>
-                                <td>The signed document for signers.<br/>
-                                A string starting with "VALID" or "INVALID" for document validators.
-                                <sup>*</sup>Note to integrators: In future versions of SignServer there might be more information added after VALID/INVALID, such as a ;-separated list of addtional information or more lines with information.<br/>
-                                A ;-separated string containing
-                                validation status code (see list below), valid purposes, status message, revocation reason (-1 if not revoked), and revocation date (empty when not revoked)
-                                for certificate validators.
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Validation status codes:</td>
-                                <td>
-                                    <ul>
-                                        <li><b>VALID</b> The certificate is valid</li>
-                                        <li><b>REVOKED</b> The certificate has been revoked</li>
-                                        <li><b>NOTYETVALID</b> The certificate is not yet valid</li>
-                                        <li><b>EXPIRED</b> The certificate has expired</li>
-                                        <li><b>DONTVERIFY</b> The certificate doesn't verify</li>
-                                        <li><b>CAREVOKED</b> The CA certificate has been revoked</li>
-                                        <li><b>CANOTYETVALID</b> The CA certificate is not yet valid</li>
-                                        <li><b>CAEXPIRED</b> The CA certificate has expired</li>
-                                        <li><b>BADCERTPURPOSE</b> The certificate has no valid certificate purpose</li>
-                                        <li><b>ISSUERNOTSUPPORTED</b> The issuer of the certificate is not supported</li>
-                                    </ul>
-                                </td>
+                                <td>Response content-type:</td><td>Depending on the worker</td>
                             </tr>
                         </table>
                         <p>
@@ -2181,14 +2129,6 @@ try {
                                     HTTP POST with other content-type:<br/>
                                     See the TimeStampClient.<br/>
                                     <br/>
-                                </li>
-                                <li>
-                                    Samples of content output for certificate validation:<br/>
-                                    <ul>
-                                        <li>VALID;;This certificate is valid;-1;</li>
-                                        <li>ISSUERNOTSUPPORTED;;Issuer of given certificate isn't supported;-1;</li>
-                                        <li>REVOKED;;This certificate is revoked;3;1376565200519</li>
-                                    </ul>
                                 </li>
                             </ul>
                         </subsubsection>
@@ -2372,8 +2312,6 @@ Request a document to be validated by SignServer
  -password         Password for authentication.
  -port             Server port. Default: 8080 (for HTTP), 8442 for HTTPS
                    and 8443 for HTTPS with client authentication.
- -protocol &lt;arg&gt;   Method of interaction with SignServer.
-                   WEBSERVICES, or HTTP. Default: WEBSERVICES.
  -truststore       Keystore with trusted certificates to use with HTTPS.
  -truststorepwd    Password for the keystore with trusted certificates.
  -username         Username for authentication.
@@ -2387,8 +2325,6 @@ c) validatedocument -workerid 2 -infile /tmp/signed.xml -truststore
 truststore.jks -truststorepwd changeit
 d) validatedocument -workerid 2 -infile /tmp/signed.xml -keystore
 superadmin.jks -truststorepwd foo123
-e) validatedocument -workername XMLValidator -protocol HTTP -infile
-/tmp/signed.xml
                         </source>
                     </subsection>
 
@@ -2455,16 +2391,12 @@ usage: Usage: java -jar validate.jar &lt;options&gt;
                                 requested certificate purposes.
  -der                           Certificate is in DER format.
  -help                          Display this info
- -hosts &lt;hosts&gt;           A ',' separated string containing the
-                                hostnames of the validation service nodes.
-                                Ex 'host1.someorg.org,host2.someorg.org'.
-                                When using the HTTP protocol, only one
-                                host name can be specified. (Required).
+ -hosts &lt;hosts&gt;                 A ',' separated string containing the
+                                hostnames of the validation service nodes. Ex
+                                'host1.someorg.org,host2.someorg.org' (Required).
  -pem                           Certificate is in PEM format (Default).
  -port &lt;port&gt;                   Remote port of service (Default is 8080 or
                                 8442 for SSL).
- -protocol &lt;protocol&gt;           Protocol to use, either WEBSERVICES or
-                                HTTP. Default: WEBSERVICES.
  -service &lt;service-name&gt;        The name or id of the validation service
                                 to process request. (Required)
  -silent                        Don't produce any output, only return
@@ -2491,8 +2423,6 @@ a) validatecertificate -service CertValidationWorker -hosts localhost -cert
     certificate.pem
 b) validatecertificate -service 5806 -hosts localhost -cert certificate.pem
     -truststore p12/truststore.jks -truststorepwd changeit
-c) validatecertificate -service CertValidationWorker -hosts localhost
-    -cert certificate.pem -protocol HTTP
                         </source>
                     </subsection>
 
@@ -3814,9 +3744,6 @@ Default: unset (if the permissions are changed, the existing owner password will
                 </subsection>
 
                 <subsection name="ODF Signer">
-                        <p>
-Fully qualified class name: org.signserver.module.odfsigner.ODFSigner
-                        </p>
                     <subsubsection name="Overview">
                         <p>
 ODF Signer, which stands for Open Document Format Signer is a plug-in to SignServer that applies server side signature to documents in ODF format. It has been tested with OpenOffice.org 3.1.
@@ -3833,9 +3760,6 @@ ODF Signer, which stands for Open Document Format Signer is a plug-in to SignSer
                 </subsection>
 
                 <subsection name="XML Signer">
-                    <p>
-Fully qualified class name: org.signserver.module.xmlsigner.XMLSigner
-                    </p>
                     <subsubsection name="Overview">
                         <p>
 The XML Signer creates enveloped XML signatures using XMLDSig.
@@ -3846,52 +3770,12 @@ The signed XML document can be validated using the XML Validator.
                     </subsubsection>
                     <subsubsection name="Available Properties">
                         <p>
-				<b>SIGNATUREALGORITHM</b> = property specifying the algorithm used to sign the data (default: depending on the signer's private key: SHA1withDSA for DSA keys, SHA1withRSA for RSA keys, and SHA1withECDSA for ECDSA keys.)
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="Supported Signature Algorithms">
-                        <ul>
-                            <li>SHA1withDSA</li>
-                            <li>SHA1withRSA</li>
-                            <li>SHA256withRSA</li>
-                            <li>SHA384withRSA</li>
-                            <li>SHA512withRSA</li>
-                            <li>SHA1withECDSA</li>
-                            <li>SHA256withECDSA</li>
-                            <li>SHA384withECDSA</li>
-                            <li>SHA512withECDSA</li>
-                        </ul>
-                    </subsubsection>
-                </subsection>
-                
-                <subsection name="XAdES Signer">
-                    <p>
-Fully qualified class name: org.signserver.module.xades.signer.XAdESSigner
-                    </p>
-                    <subsubsection name="Overview">
-                        <p>
-The XAdES Signer creates XML signatures according to the specified profile of XAdES.
-                        </p>
-<!--                        <p>
-The signed XML document can be validated using the XML Validator.
-                        </p>
-                        -->
-                    </subsubsection>
-                    <subsubsection name="Available Properties">
-                        <p>
-                            <b>XADESFORM</b> = Which profile of XAdES to use. Currently only BES is supported. Default: BES<br/>
-                            <b>TSA_URL</b> = URL of timestamp authority. Required if XADESFORM=T.<br/>
-                            <b>TSA_USERNAME</b> = Login username used if the TSA uses HTTP Basic Auth.<br/>
-                            <b>TSA_PASSWORD</b> = Login password used if the TSA uses HTTP Basic Auth.<br/>
-                            <!-- <b>SIGNATUREALGORITHM</b> = property specifying the algorithm used to sign the data (default: depending on the signer's private key: SHA1withDSA for DSA keys and SHA1withRSA for RSA keys.)<br/>-->
+This signer has no extra properties above the standard worker properties.
                         </p>
                     </subsubsection>
                 </subsection>
 
                 <subsection name="OOXML Signer">
-                    <p>
-Fully qualified class name: org.signserver.module.ooxmlsigner.OOXMLSigner
-                    </p>
                     <subsubsection name="Overview">
                         <p>
 OOXML Signer, which stands for Office Open XML Signer is a plug-in to SignServer that applies server side signature to documents in OOXML format. It has been tested with MS Office 2007.
@@ -3948,20 +3832,6 @@ The XML validator validates the signature of XML documents. The certificate is c
                         <p><b>VALIDATIONSERVICEWORKER</b> = Name or id of validation service worker for handling certificate validation</p>
                         <p><b>RETURNDOCUMENT</b> = True if the response should contain the validated document</p>
                         <p><b>STRIPSIGNATURE</b> = True if the signature should be removed from the document if it is returned</p>
-                    </subsubsection>
-                </subsection>
-                
-                <subsection name="XAdES Validator">
-
-                    <subsubsection name="Overview">
-                        <p>
-The XAdES validator validates the signature of XAdES documents and validatates the certificate chain.
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="Available Properties">
-                        <p><b>TRUSTANCHORS</b> = Trusted certificates. In PEM format. Required.</p>
-                        <p><b>CERTIFICATES</b> = Intermediate CA certificates that might be needed to build a trust path from the signer certificates to any of the trusted certifivcates. In PEM format.</p>
-                        <p><b>REVOCATION_CHECKING</b> = True if revocation checking should be performed (currently only CRLs are supported and each certificate needs to have an accessible CDP). Default: true</p>
                     </subsubsection>
                 </subsection>
             </section>
@@ -4050,7 +3920,7 @@ The default validation service have a set of Validators. A validator is responsi
 The Default Validation Service supports validations to be cached for some or all issuers for a specified amount of time.
                         </p>
                         <p>
-If not configured otherwise will the validation service use the DefaultX509CertTypeChecker that determines the certificate type from the key usage in the certificate.  Key Encipherment and Digital Signature indicates a IDENTIFICATION type and Non-reputation and/or Digital Signature indicates ELECTRONIC_SIGNATURE.
+If not configured otherwise will the validation service use the DefaultX509CertTypeChecker that determines the certificate type from the key usage in the certificate.  Key Encipherment and Digital Signature indicates a IDENTIFICATION type and Non-reputation indicates ELECTRONIC SIGNATURE.
                         </p>
                         <p>
 There exists a validation specific WebService that can be used for platform independent client calls.
@@ -4081,7 +3951,7 @@ The validation service have three types of properties, general properties (that 
 Validator properties is specified with the prefix of 'validator&lt;validatorId&gt;.' or 'val&lt;validatorId&gt;.' were validator Id should be an integer between 1 and 255. For instance, to specify the type of a validator with an id of 1 then specify 'val1.classpath=some.classpath.SomeClass'. This validator will be initialized with all its validator specific properties (with 'val&lt;id&gt;.' prefix removed) as well as the general ones.
                         </p>
                         <p>
-<b>CLASSPATH</b> = Fully qualified class name of the validator that should be used. (Required for each configured validator)
+<b>CLASSPATH</b> = Class path to the validator that should be used. (Required for each configured validator)
                         </p>
                         <p>
 <i>Issuer properties:</i>  Issuer properties are specified as 'val&lt;val id&gt;.issuer&lt;issuer id&gt;.&lt;property&gt;' were issuer id is a positive integer between 1 and 255. All generic and validator specific properties (with the given validator id) will also be propagated to the specific issuer configuration.
@@ -4117,43 +3987,6 @@ WORKER1.VAL2.ISSUER1.CERTCHAIN=EFWAASDFADFASDFKASDKFW1231.....
                     </subsubsection>
                 </subsection>
 
-                <subsection name="Certificate Validators">
-                    <subsubsection name="CRLValidator">
-                        <p>
-Class name: <b>org.signserver.validationservice.server.CRLValidator</b>
-                        </p>
-                        <!-- TODO: Document as part of DSS-251 -->
-                    </subsubsection>
-                    <subsubsection name="OCSPValidator">
-                        <p>
-Class name: <b>org.signserver.validationservice.server.OCSPValidator</b>
-                        </p>
-                        <!-- TODO: Document as part of DSS-251 -->
-                    </subsubsection>
-                    <subsubsection name="OCSPCRLValidator">
-                        <p>
-Class name: <b>org.signserver.validationservice.server.OCSPCRLValidator</b>
-                        </p>
-                        <!-- TODO: Document as part of DSS-251 -->
-                    </subsubsection>
-                    <subsubsection name="NoRevocationCheckingValidator">
-                        <p>
-Class name: <b>org.signserver.validationservice.server.NoRevocationCheckingValidator</b>
-                        </p>
-                        <p>
-Certificate Validator that validates the certificate chain but does not perform any revocation checking. This can be useful for demonstation purposes or when revocation checking should not be performed.
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="DummyValidator">
-                        <p>
-Class name: <b>org.signserver.validationservice.server.DummyValidator</b>
-                        </p>
-                        <p>
-Certificate Validator that only works for specific issuers and certificates and is only available for testing and demonstration purposes as no real certificate validation is performed. The keystores under res/test/dss10/ with certificates issued by "DSS Root CA 10" can for instance be used together with this validator.
-                        </p>
-                    </subsubsection>
-                </subsection>
-                
                 <subsection name="The Validation CLI interface.">
                     <p>
 There exists a Java CLI tool that can be used to check the validity of a certificate from scripts. It supports a clustered SignServer installation by using the "Use first host that response OK" policy.
@@ -4197,7 +4030,7 @@ The following return values is used:
 
                 </subsection>
 
-                <section name="SignServer Group Key Service Framework">
+                <subsection name="SignServer Group Key Service Framework">
                     <subsubsection name="Overview">
                         <p>
 The group key service framework is used to manage and distribute group keys to clients in an organisation. The keys can be generated on demand or pre-generated at times when the system is not utilized a lot. The group keys can be both symmetric and asymmetric but one service can only distribute one type of key. If several kinds of keys are required should multiple services be set up within the same server.
@@ -4241,7 +4074,7 @@ The basic configuration of a group key service is very similar to that of a vali
 <b>KEYSWITCHTHRESHOLD</b> = Setting defining the number of group keys that should be  encrypted by the same encryption key before it's switched. (Optional, default is 100000)
                         </p>
                     </subsubsection>
-                </section>
+                </subsection>
             </section>
             
             <section name="Timed Services">

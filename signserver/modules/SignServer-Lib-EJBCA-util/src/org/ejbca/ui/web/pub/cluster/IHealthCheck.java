@@ -13,7 +13,6 @@
 
 package org.ejbca.ui.web.pub.cluster;
 
-import javax.persistence.EntityManager;
 import javax.servlet.ServletConfig;
 import javax.servlet.http.HttpServletRequest;
 
@@ -33,7 +32,7 @@ public interface IHealthCheck {
 	 * 
 	 *
 	 */
-	void init(ServletConfig config, EntityManager em);
+	public void init(ServletConfig config);
 	
 	/**
 	 * Method used to check the health of a specific application.

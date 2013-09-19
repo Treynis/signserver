@@ -152,7 +152,7 @@ public class MSAuthCodeTimeStampSignerTest extends TestCase {
         final String CRYPTOTOKEN_CLASSNAME =
                 "org.signserver.server.cryptotokens.HardCodedCryptoToken";
         
-        final ProcessRequest signRequest;
+        ProcessRequest signRequest = null;
         
         final GlobalConfigurationSessionMock globalConfig
                 = new GlobalConfigurationSessionMock();

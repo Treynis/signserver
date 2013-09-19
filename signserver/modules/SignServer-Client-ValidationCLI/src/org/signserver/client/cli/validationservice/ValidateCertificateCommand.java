@@ -13,13 +13,9 @@
 package org.signserver.client.cli.validationservice;
 
 import java.io.*;
-import java.net.URL;
-import java.net.URLConnection;
-import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import javax.net.ssl.SSLSocketFactory;
 import org.apache.commons.cli.*;
@@ -68,7 +64,6 @@ public class ValidateCertificateCommand extends AbstractCommand {
     public static final String OPTION_TRUSTSTORE = "truststore";
     public static final String OPTION_TRUSTSTOREPWD = "truststorepwd";
     public static final String OPTION_SERVLET = "servlet";
-    public static final String OPTION_PROTOCOL = "protocol";
     
     public static final int RETURN_ERROR = CommandLineInterface.RETURN_ERROR;
     public static final int RETURN_BADARGUMENT = CommandLineInterface.RETURN_INVALID_ARGUMENTS;
@@ -82,19 +77,6 @@ public class ValidateCertificateCommand extends AbstractCommand {
     public static final int RETURN_CAEXPIRED = 7;
     public static final int RETURN_BADCERTPURPOSE = 8;
     
-    public static final String CRLF = "\r\n";
-    private static final String BOUNDARY = "------------------signserver";
-    
-    /**
-     * Protocols that can be used for accessing SignServer.
-     */
-    public static enum Protocol {
-        /** The Web Services interface. */
-        WEBSERVICES,
-        /** HTTP servlet protocol. */
-        HTTP,
-    }
-    
     private boolean pemFlag = false;
     private boolean derFlag = false;
     private boolean silentMode = false;
@@ -106,7 +88,6 @@ public class ValidateCertificateCommand extends AbstractCommand {
     private boolean useSSL = false;
     private String usages = null;
     private String service = null;
-    private Protocol protocol;
     
     Options options = new Options();
 	private String servlet;
@@ -129,7 +110,7 @@ public class ValidateCertificateCommand extends AbstractCommand {
 
         OptionBuilder.withArgName("hosts");
         OptionBuilder.hasArg();
-        OptionBuilder.withDescription("A ',' separated string containing the hostnames of the validation service nodes. Ex 'host1.someorg.org,host2.someorg.org'. When using the HTTP protocol, only one host name can be specified. (Required).");
+        OptionBuilder.withDescription("A ',' separated string containing the hostnames of the validation service nodes. Ex 'host1.someorg.org,host2.someorg.org' (Required).");
         Option hostsOption = OptionBuilder.create(OPTION_HOSTS);
 
         OptionBuilder.withArgName("port");
@@ -155,13 +136,8 @@ public class ValidateCertificateCommand extends AbstractCommand {
         OptionBuilder.withArgName("servlet-url");
         OptionBuilder.hasArg();
         OptionBuilder.withDescription("URL to the webservice servlet. Default: " +
-        		SignServerWSClientFactory.DEFAULT_WSDL_URL + " when using the webservice protocol, otherwise /signserver/process");
+        		SignServerWSClientFactory.DEFAULT_WSDL_URL);
         Option servlet = OptionBuilder.create(OPTION_SERVLET);
-        
-        OptionBuilder.withArgName("protocol");
-        OptionBuilder.hasArg();
-        OptionBuilder.withDescription("Protocol to use, either WEBSERVICES or HTTP. Default: WEBSERVICES.");
-        Option protocol = OptionBuilder.create(OPTION_PROTOCOL);
         
         options.addOption(help);
         options.addOption(serviceOption);
@@ -175,7 +151,6 @@ public class ValidateCertificateCommand extends AbstractCommand {
         options.addOption(truststore);
         options.addOption(truststorepwd);
         options.addOption(servlet);
-        options.addOption(protocol);
     }
 
     @Override
@@ -186,17 +161,7 @@ public class ValidateCertificateCommand extends AbstractCommand {
     @Override
     public String getUsages() {
         final StringBuilder footer = new StringBuilder();
-        footer.append(NL).append("The following values is returned by the program that can be used when scripting.").append(NL).
-        append("  -2   : Error happened during execution").append(NL).append("  -1   : Bad arguments").append(NL).
-        append("   0   : Certificate is valid").append(NL).append("   1   : Certificate is revoked").append(NL).
-        append("   2   : Certificate is not yet valid").append(NL).append("   3   : Certificate have expired").append(NL).
-        append("   4   : Certificate doesn't verify").append(NL).append("   5   : CA Certificate have been revoked").append(NL).
-        append("   6   : CA Certificate is not yet valid").append(NL).append("   7   : CA Certificate have expired.").append(NL).
-        append("   8   : Certificate have no valid certificate purpose.").append(NL).append(NL).
-        append("Sample usages:").append(NL).
-        append("a) ").append(COMMAND).append(" -service CertValidationWorker -hosts localhost -cert").append(NL).append("    certificate.pem").append(NL).
-        append("b) ").append(COMMAND).append(" -service 5806 -hosts localhost -cert certificate.pem").append(NL).append("    -truststore p12/truststore.jks -truststorepwd changeit").append(NL).
-        append("c) ").append(COMMAND).append(" -service CertValidationWorker -hosts localhost -cert certificate.pem -protocol HTTP").append(NL);
+        footer.append(NL).append("The following values is returned by the program that can be used when scripting.").append(NL).append("  -2   : Error happened during execution").append(NL).append("  -1   : Bad arguments").append(NL).append("   0   : Certificate is valid").append(NL).append("   1   : Certificate is revoked").append(NL).append("   2   : Certificate is not yet valid").append(NL).append("   3   : Certificate have expired").append(NL).append("   4   : Certificate doesn't verify").append(NL).append("   5   : CA Certificate have been revoked").append(NL).append("   6   : CA Certificate is not yet valid").append(NL).append("   7   : CA Certificate have expired.").append(NL).append("   8   : Certificate have no valid certificate purpose.").append(NL).append(NL).append("Sample usages:").append(NL).append("a) ").append(COMMAND).append(" -service CertValidationWorker -hosts localhost -cert").append(NL).append("    certificate.pem").append(NL).append("b) ").append(COMMAND).append(" -service 5806 -hosts localhost -cert certificate.pem").append(NL).append("    -truststore p12/truststore.jks -truststorepwd changeit").append(NL);
 
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         final HelpFormatter formatter = new HelpFormatter();
@@ -337,17 +302,6 @@ public class ValidateCertificateCommand extends AbstractCommand {
                 		cmd.getOptionValue(OPTION_SERVLET) != null) {
                 	servlet = cmd.getOptionValue(OPTION_SERVLET);
                 }
-                
-                if (cmd.hasOption(OPTION_PROTOCOL)) {
-                    protocol = Protocol.valueOf(cmd.getOptionValue(OPTION_PROTOCOL));
-                    // override default servlet URL (if not set manually) for HTTP
-                    if (Protocol.HTTP.equals(protocol) &&
-                            !cmd.hasOption(OPTION_SERVLET)) {
-                        servlet = "/signserver/process";
-                    }
-                } else {
-                    protocol = Protocol.WEBSERVICES;
-                }
 
 
             } catch (ParseException e) {
@@ -363,7 +317,7 @@ public class ValidateCertificateCommand extends AbstractCommand {
             result = run();
         } catch (Exception e) {
             if (!e.getClass().getSimpleName().equals("ExitException")) {
-                
+
                 err.println("Error occured during validation : " + e.getClass().getName());
                 if (e.getMessage() != null) {
                     err.println("  Message : " + e.getMessage());
@@ -376,8 +330,13 @@ public class ValidateCertificateCommand extends AbstractCommand {
 
     private int run() throws Exception {
 
-        
-        // read certificate
+        // 1. set up trust
+        SSLSocketFactory sslf = null;
+        if (trustStorePath != null) {
+            sslf = WSClientUtil.genCustomSSLSocketFactory(null, null, trustStorePath, trustStorePwd);
+        }
+
+        // 2. read certificate
         X509Certificate cert = null;
         FileInputStream fis = new FileInputStream(certPath);
         try {
@@ -406,47 +365,7 @@ public class ValidateCertificateCommand extends AbstractCommand {
         println("  Valid To   : " + cert.getNotAfter());
 
         println("\n");
-        
-        // validate
-        final ValidateResponse vresp;
-        switch (protocol) {
-        case WEBSERVICES:
-            // set up trust
-            SSLSocketFactory sslf = null;
-            if (trustStorePath != null) {
-                sslf = WSClientUtil.genCustomSSLSocketFactory(null, null, trustStorePath, trustStorePwd);
-            }
-
-            vresp = runWS(sslf, cert);
-            break;
-        case HTTP:
-            vresp = runHTTP(cert);
-            break;
-        default:
-            throw new IllegalArgumentException("Unknown protocol: " + protocol.toString());
-        };
-        
-        
-        // output result
-        String certificatePurposes = vresp.getValidCertificatePurposes();
-        println("Valid Certificate Purposes:\n  " + (certificatePurposes == null ? "" : certificatePurposes));
-        Validation validation = vresp.getValidation();
-        println("Certificate Status:\n  " + validation.getStatus());
-
-        return getReturnValue(validation.getStatus());
-    }
-    
-    /**
-     * Run validation using the webservice interface.
-     * 
-     * @param sslf SSL socket factory
-     * @param cert Certificate to validate
-     * @return The validation response
-     * @throws CertificateEncodingException
-     * @throws IOException
-     */
-    private ValidateResponse runWS(final SSLSocketFactory sslf, final X509Certificate cert)
-            throws CertificateEncodingException, IOException {
+        // 3. validate
         SignServerWSClientFactory fact = new SignServerWSClientFactory();
         ISignServerWSClient client = fact.generateSignServerWSClient(SignServerWSClientFactory.CLIENTTYPE_CALLFIRSTNODEWITHSTATUSOK,
                 hosts, useSSL,
@@ -465,122 +384,13 @@ public class ValidateCertificateCommand extends AbstractCommand {
         }
         ValidateResponse vresp = (ValidateResponse) RequestAndResponseManager.parseProcessResponse(response.get(0).getResponseData());
 
-        return vresp;
-    }
-    
-    private ValidateResponse runHTTP(final X509Certificate cert) throws Exception {
-        
-        final URL processServlet = new URL(useSSL ? "https" : "http", hosts[0], port, servlet);
-        
-        OutputStream out = null;
-        InputStream in = null;
-        
-        try {
-            final URLConnection conn = processServlet.openConnection();
-        
-            conn.setDoOutput(true);
-            conn.setAllowUserInteraction(false);
-            
-            final StringBuilder sb = new StringBuilder();
-            sb.append("--" + BOUNDARY);
-            sb.append(CRLF);
-            
-            try {
-                final int workerId = Integer.parseInt(service);
-                
-                sb.append("Content-Disposition: form-data; name=\"workerId\"");
-                sb.append(CRLF);
-                sb.append(CRLF);
-                sb.append(workerId);
-            } catch (NumberFormatException e) {
-                sb.append("Content-Disposition: form-data; name=\"workerName\"");
-                sb.append(CRLF);
-                sb.append(CRLF);
-                sb.append(service);
-            }
+        // 4. output result
+        String certificatePurposes = vresp.getValidCertificatePurposes();
+        println("Valid Certificate Purposes:\n  " + (certificatePurposes == null ? "" : certificatePurposes));
+        Validation validation = vresp.getValidation();
+        println("Certificate Status:\n  " + validation.getStatus());
 
-            sb.append(CRLF);
-            sb.append("--" + BOUNDARY);
-            sb.append(CRLF);
-            
-            sb.append("Content-Disposition: form-data; name=\"processType\"");
-            sb.append(CRLF);
-            sb.append(CRLF);
-            sb.append("validateCertificate");
-            sb.append(CRLF);
-            sb.append("--" + BOUNDARY);
-            sb.append(CRLF);
-            sb.append("Content-Disposition: form-data; name=\"datafile\"");
-            sb.append("; filename=\"");
-            sb.append(certPath.getAbsolutePath());
-            sb.append("\"");
-            sb.append(CRLF);
-            
-            sb.append("Content-Type: application/octet-stream");
-            sb.append(CRLF);
-            sb.append("Content-Transfer-Encoding: binary");
-            sb.append(CRLF);
-            sb.append(CRLF);
-
-            conn.addRequestProperty("Content-Type",
-                    "multipart/form-data; boundary=" + BOUNDARY);
-           
-            out = conn.getOutputStream();
-            
-            out.write(sb.toString().getBytes());
-            
-            out.write(cert.getEncoded());
-            
-            out.write(("\r\n--" + BOUNDARY + "--\r\n").getBytes());
-            out.flush();
-            
-            // Get the response
-            in = conn.getInputStream();
-            final ByteArrayOutputStream os = new ByteArrayOutputStream();
-            int len;
-            final byte[] buf = new byte[1024];
-            while ((len = in.read(buf)) > 0) {
-                os.write(buf, 0, len);
-            }
-            os.close();
-            
-            // read string from response
-            final String response = os.toString();
-            final String[] responseParts = response.split(";");
-            
-            // last part of the response string can by empty (revocation date)
-            if (responseParts.length < 4 || responseParts.length > 5) {
-                throw new IOException("Malformed HTTP response");
-            }
-            
-            final String revocationDateString = responseParts.length == 4 ? null : responseParts[4];
-            final Date revocationDate =
-                    revocationDateString != null && revocationDateString.length() > 0 ?
-                            new Date(Integer.valueOf(revocationDateString)) : null;
-            final Validation validation =
-                    new Validation(cert, null, Validation.Status.valueOf(responseParts[0]), responseParts[2],
-                            revocationDate, Integer.valueOf(responseParts[3]));
-            final ValidateResponse validateResponse = new ValidateResponse(validation, responseParts[1].split(","));
-            
-            return validateResponse;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } finally {
-            if (out != null) {
-                try {
-                    out.close();
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-        }
+        return getReturnValue(validation.getStatus());
     }
 
     private void println(String string) {

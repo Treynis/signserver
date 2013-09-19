@@ -61,8 +61,8 @@ public class MRTDSigner extends BaseSigner {
             log.trace(">processData");
         }
         ProcessResponse ret = null;
-      
-        final ISignRequest sReq = (ISignRequest) signRequest;
+
+        ISignRequest sReq = (ISignRequest) signRequest;
 
         if (sReq.getRequestData() == null) {
             throw new IllegalRequestException("Signature request data cannot be null.");

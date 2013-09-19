@@ -328,12 +328,12 @@ public class PDFSignerParameters {
      * @throws IOException
      */
     public byte[] readFile(String pFilePath) throws IOException {
-        FileInputStream fis = null;
+        FileInputStream fis = new FileInputStream(pFilePath);
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         try {
-            fis = new FileInputStream(pFilePath);
+
             byte[] buff = new byte[1024];
-            int count;
+            int count = 0;
             while ((count = fis.read(buff, 0, buff.length)) > 0) {
                 bout.write(buff, 0, count);
             }

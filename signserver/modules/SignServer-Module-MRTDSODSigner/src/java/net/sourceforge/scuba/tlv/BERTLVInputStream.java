@@ -64,7 +64,7 @@ public class BERTLVInputStream extends InputStream
 	 * @throws IOException if reading goes wrong
 	 */
 	public int readTag() throws IOException {
-		int tag;
+		int tag = -1;
 		int bytesRead = 0;
 		try {
 			int b = in.readUnsignedByte(); bytesRead++;
@@ -109,7 +109,7 @@ public class BERTLVInputStream extends InputStream
 		try {
 			if (!state.isAtStartOfLength()) { throw new IllegalStateException("Not at start of length"); }
 			int bytesRead = 0;
-			int length;
+			int length = 0;
 			int b = in.readUnsignedByte(); bytesRead++;
 			if ((b & 0x80) == 0x00) {
 				/* short form */
@@ -168,7 +168,7 @@ public class BERTLVInputStream extends InputStream
 	public void skipToTag(int searchTag) throws IOException {
 		while (true) {
 			/* Get the next tag. */
-			int tag;
+			int tag = -1;
 			if (state.isAtStartOfTag()) {
 				/* Nothing. */
 			} else if (state.isAtStartOfLength()) {
@@ -205,7 +205,6 @@ public class BERTLVInputStream extends InputStream
 	 * 
 	 * @throws IOException if something goes wrong
 	 */
-        @Override
 	public int available() throws IOException {
 		return in.available();
 	}
@@ -231,7 +230,6 @@ public class BERTLVInputStream extends InputStream
 	 * 
 	 * @throws IOException if something goes wrong
 	 */
-        @Override
 	public long skip(long n) throws IOException {
 		if (n <= 0) { return 0; }
 		long result = in.skip(n);
@@ -244,7 +242,6 @@ public class BERTLVInputStream extends InputStream
 	 * 
 	 * @param readLimit limit for marking
 	 */
-        @Override
 	public synchronized void mark(int readLimit) {
 		in.mark(readLimit);
 		markedState = (State)state.clone();
@@ -256,7 +253,6 @@ public class BERTLVInputStream extends InputStream
 	 * 
 	 * @return whether mark and reset are supported
 	 */
-        @Override
 	public boolean markSupported() {
 		return in.markSupported();
 	}
@@ -266,7 +262,6 @@ public class BERTLVInputStream extends InputStream
 	 * 
 	 * @throws IOException if something goes wrong
 	 */
-        @Override
 	public synchronized void reset() throws IOException {
 		if (!markSupported()) {
 			throw new IOException("mark/reset not supported");
@@ -281,12 +276,10 @@ public class BERTLVInputStream extends InputStream
 	 * 
 	 * @throws IOException if something goes wrong
 	 */
-        @Override
 	public void close() throws IOException {
 		in.close();
 	}
 	
-        @Override
 	public String toString() {
 		return state.toString();
 	}
@@ -433,12 +426,10 @@ public class BERTLVInputStream extends InputStream
 		}
 		
 		@SuppressWarnings("unchecked")
-                @Override
 		public Object clone() {
 			return new State((Stack<TLStruct>)state.clone(), isAtStartOfTag, isAtStartOfLength, isReadingValue);
 		}
 		
-                @Override
 		public String toString() {
 			return state.toString();
 		}
@@ -459,10 +450,8 @@ public class BERTLVInputStream extends InputStream
 
 			public void updateValueBytesRead(int n) { this.valueBytesRead += n; }
 
-                        @Override
 			public Object clone() { return new TLStruct(tag, length, valueBytesRead); }
 
-                        @Override
 			public String toString() { return "[TLStruct " + Integer.toHexString(tag) + ", " + length + ", " + valueBytesRead + "]"; }
 		}
 	}

@@ -28,9 +28,11 @@ import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 
 /**
- * Base class implementing the base functionality for a certificate validator.
+ * Base class implementing the base functionality for a validator
+ * 
  * 
  * @author Philip Vendil 30 nov 2007
+ *
  * @version $Id$
  */
 public abstract class BaseValidator implements IValidator {
@@ -50,6 +52,7 @@ public abstract class BaseValidator implements IValidator {
      * certificate chains for all issuers
      */
     protected HashMap<String, List<Certificate>> getCertChainMap() {
+
         if (certChainMap == null) {
             certChainMap = new HashMap<String, List<Certificate>>();
             for (Integer issuerId : getIssuerProperties().keySet()) {
@@ -98,7 +101,7 @@ public abstract class BaseValidator implements IValidator {
 
         X509Certificate x509Cert = (X509Certificate) cert;
 
-        List<Certificate> retVal;
+        List<Certificate> retVal = null;
         //first look if the certificate is directly issued by CA that is in the beginning of the one of configured chains
         //"in the beginning" here means that the issuer of the certificate is at position 0 after sortCerts method is called
         //it is easy to check since the CA Certificate at position 0 is the key to HashMap holding certificate chains
@@ -108,7 +111,7 @@ public abstract class BaseValidator implements IValidator {
             //"in the middle" here means that issuer of this certificate is not at position 0 after sortCerts method is called
             //match is done on issuerDN and authorityKeyIdentifier (if exists)
             X509Certificate issuerCACert = null;
-            byte[] aki;
+            byte[] aki = null;
             boolean issuerFound = false;
             for (String certDN : getCertChainMap().keySet()) {
                 for (Certificate cACert : getCertChainMap().get(certDN)) {
@@ -301,7 +304,7 @@ public abstract class BaseValidator implements IValidator {
      */
     protected List<Certificate> getCertificateChainForCACertificate(Certificate cACert, boolean includeSelfInReturn) {
 
-        int indx;
+        int indx = -1;
         int fromindex;
         for (String certDN : getCertChainMap().keySet()) {
             indx = getCertChainMap().get(certDN).indexOf(cACert);
@@ -352,7 +355,7 @@ public abstract class BaseValidator implements IValidator {
      * @throws SignServerException 
      */
     protected List<URL> getIssuerCRLPaths(Certificate cert) throws SignServerException {
-        ArrayList<URL> retval;
+        ArrayList<URL> retval = null;
         Properties issuerProps = getIssuerProperties(cert);
         if (issuerProps == null || !issuerProps.containsKey(ValidationServiceConstants.VALIDATIONSERVICE_ISSUERCRLPATHS)) {
             return null;

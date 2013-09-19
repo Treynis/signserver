@@ -28,7 +28,6 @@ import java.util.LinkedList;
 import java.util.Random;
 
 import junit.framework.TestCase;
-import org.apache.log4j.Logger;
 
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
@@ -47,9 +46,6 @@ import org.signserver.ejb.interfaces.IWorkerSession.IRemote;
  */
 public abstract class AbstractTestCase extends TestCase {
 
-    /** Logger for this class. */
-    private static final Logger LOG = Logger.getLogger(AbstractTestCase.class);
-    
     private static IWorkerSession.IRemote workerSession;
     private static IGlobalConfigurationSession.IRemote globalSession;
 
@@ -81,9 +77,7 @@ public abstract class AbstractTestCase extends TestCase {
 
     protected void removeTempFiles() {
         for (File file : tempFiles) {
-            if (!file.delete()) {
-                LOG.warn("Temporary file could not be deleted: " + file.getAbsolutePath());
-            }
+            file.delete();
         }
     }
 
@@ -99,15 +93,9 @@ public abstract class AbstractTestCase extends TestCase {
             ks = KeyStore.getInstance(keystoreType, "BC");
         }
         ks.load(null, keystorePassword.toCharArray());
-        OutputStream out = null;
-        try {
-            out = new FileOutputStream(keystorePath);
-            ks.store(out, keystorePassword.toCharArray());
-        } finally {
-            if (out != null) {
-                out.close();
-            }
-        }
+        final OutputStream out = new FileOutputStream(keystorePath);
+        ks.store(out, keystorePassword.toCharArray());
+        out.close();
         return ks;
     }
 

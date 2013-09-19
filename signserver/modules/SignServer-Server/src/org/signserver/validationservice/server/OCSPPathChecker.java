@@ -178,7 +178,7 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
 
 
         // Read der encoded ocsp response
-        byte[] responsearr;
+        byte[] responsearr = null;
 
         InputStream reader = con.getInputStream();
         int responselen = con.getContentLength();
@@ -353,7 +353,7 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
      */
     protected X509Certificate getAuthorizedOCSPRespondersCertificateFromOCSPResponse(BasicOCSPResp basicOCSPResponse) throws NoSuchAlgorithmException, NoSuchProviderException, OCSPException, CertStoreException, CertificateEncodingException, OperatorCreationException {
         X509Certificate retCert = null;
-        X509Certificate tempCert;
+        X509Certificate tempCert = null;
         X509CertificateHolder[] certs = basicOCSPResponse.getCerts();
         Store ocspRespCertStore = new JcaCertStore(Arrays.asList(certs));
         
@@ -415,7 +415,7 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
     @Override
     public Object clone() {
         try {
-            OCSPPathChecker clonedOCSPPathChecker;
+            OCSPPathChecker clonedOCSPPathChecker = null;
             X509Certificate clonedPrevCert = null;
             if (cACert != null) {
                 CertificateFactory certFact = CertificateFactory.getInstance("X509", "BC");

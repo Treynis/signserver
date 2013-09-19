@@ -25,7 +25,6 @@ import javax.jws.WebMethod;
 import javax.jws.WebParam;
 import javax.jws.WebService;
 import javax.naming.NamingException;
-import javax.persistence.EntityManager;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
@@ -66,9 +65,6 @@ public class ValidationWS implements IValidationWS {
     
     @EJB
     private IGlobalConfigurationSession.ILocal globalconfigsession;
-    
-    /** EntityManager is conditionally injected from ejb-jar.xml. */
-    private EntityManager em;
 
     /**
      * @see org.signserver.protocol.validationservice.ws.IValidationWS#isValid(String, String, String)
@@ -155,7 +151,7 @@ public class ValidationWS implements IValidationWS {
         if (FileBasedDatabaseManager.getInstance().isUsed()) {
             errors.addAll(FileBasedDatabaseManager.getInstance().getFatalErrors());
         } else {
-            errors.addAll(HealthCheckUtils.checkDB(em, getCheckDBString()));
+            errors.addAll(HealthCheckUtils.checkDB(getCheckDBString()));
         }
         
         if (errors.isEmpty()) {
