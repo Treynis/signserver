@@ -311,7 +311,7 @@ Configurations to include:
         </jar>
         
         <!-- signserver-ejb.jar -->
-        <property name="signserver-ejb.jar" value="SignServerMVN-core-ejb-1.0-SNAPSHOT.jar"/> <!-- TODO -->
+        <property name="signserver-ejb.jar" value="SignServer-core-ejb-3.5.0-SNAPSHOT.jar"/> <!-- TODO -->
         <move todir="${tmp}" file="${signserver.ear.dir}/${signserver-ejb.jar}"/>
         <jar destfile="${signserver.ear.dir}/${signserver-ejb.jar}">
             <zipfileset src="${tmp}/${signserver-ejb.jar}" excludes="${signserver-ejb-excludes}"/>

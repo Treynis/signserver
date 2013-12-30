@@ -10,6 +10,15 @@
     <module>SignServer-BuildTools-maven-plugin</module>
     <module>SignServer-Lib-EJBCA-util</module>
     <module>SignServer-Common</module>
+    <module>SignServer-Entities</module>
+    <module>SignServer-ejb</module>
+    <module>SignServer-ejb-interfaces</module>
+    <module>SignServer-Server</module>
+    <module>SignServer-CLI-Common</module>
+    <module>SignServer-AdminCLI</module>
+    <module>SignServer-Module-Renewal-interface</module>
+    <module>SignServer-war</module>
+    <module>CESeCore-jars</module>
   </modules>
   <dependencies>
     <dependency>
