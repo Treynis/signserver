@@ -187,6 +187,12 @@ healthcheck.maintenancefile         = ${healthcheck.maintenancefile}
     <!-- =================================================================== -->
     
     <target name="-check-built">
+        <fileset dir="lib" includes="SignServer*.jar" id="signserverjar"/>
+        <condition property="signserver-ejb.jar.available">
+          <not>
+            <equals arg1="${toString:signserverjar}" arg2="" />
+          </not>
+        </condition>
         <available file="lib/SignServer-ejb.jar" property="signserver-ejb.jar.available"/>
         <fail message="SignServer needs to be built first. Run 'ant build'." unless="signserver-ejb.jar.available"/>
     </target>
@@ -208,7 +214,7 @@ Configured ear file available at: ${ear.dist.file}
         <echo/>
 <!--        <taskdef name="postprocess-jar" classname="org.signserver.anttasks.JarPostProcessTask" classpath="lib/SignServer-BuildTools.jar:lib/ext/commons-io-1.4.jar:lib/ext/commons-lang-2.5.jar"/>-->
         
-        <taskdef name="mods" classname="org.signserver.anttasks.ProcessModulesTask" classpath="lib/SignServer-BuildTools.jar"/>
+        <taskdef name="mods" classname="org.signserver.anttasks.ProcessModulesTask" classpath="lib/SignServer-BuildTools.jar:lib/SignServerMVN-BuildTools-1.0-SNAPSHOT.jar"/>
         
         <condition property="allEnabled">
             <istrue value="${includemodulesinbuild}"/>
@@ -305,7 +311,7 @@ Configurations to include:
         </jar>
         
         <!-- signserver-ejb.jar -->
-        <property name="signserver-ejb.jar" value="SignServer-ejb.jar"/>
+        <property name="signserver-ejb.jar" value="SignServerMVN-core-ejb-1.0-SNAPSHOT.jar"/> <!-- TODO -->
         <move todir="${tmp}" file="${signserver.ear.dir}/${signserver-ejb.jar}"/>
         <jar destfile="${signserver.ear.dir}/${signserver-ejb.jar}">
             <zipfileset src="${tmp}/${signserver-ejb.jar}" excludes="${signserver-ejb-excludes}"/>
