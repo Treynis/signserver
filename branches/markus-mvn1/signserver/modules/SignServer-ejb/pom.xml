@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.signserver</groupId>
+        <artifactId>SignServer-Modules</artifactId>
+        <version>3.5.0-SNAPSHOT</version>
+    </parent>
+    
+    <artifactId>SignServer-core-ejb</artifactId>
+    <packaging>ejb</packaging>
+
+    <name>SignServer-core-ejb</name>
+
+    <properties>
+        <endorsed.dir>${project.build.directory}/endorsed</endorsed.dir>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        
+        <dist.jar>${project.build.finalName}.jar</dist.jar>
+        <!--<dest.dist.jar>SignServer-ejb.jar</dest.dist.jar>-->
+        <module.name>signserverejb</module.name>
+        <module.priority>10</module.priority>
+        <postprocess.files>postprocess.file1, postprocess.file2</postprocess.files>
+        <postprocess.file1.src>SignServer-Entities-${project.version}.jar</postprocess.file1.src>
+        <postprocess.file1.includes>META-INF/persistence.xml</postprocess.file1.includes>
+        <postprocess.file1.dest>lib/</postprocess.file1.dest>
+        <postprocess.file2.src>${project.build.finalName}.jar</postprocess.file2.src>
+        <postprocess.file2.includes>META-INF/ejb-jar.xml</postprocess.file2.includes>
+        <postprocess.file2.dest>/</postprocess.file2.dest>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>SignServer-ejb-interfaces</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <artifactId>commons-lang</artifactId>
+            <groupId>commons-lang</groupId>
+            <type>jar</type>
+            <version>2.5</version>
+        </dependency>
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-api</artifactId>
+            <version>6.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <artifactId>SignServer-Common</artifactId>
+            <groupId>${project.groupId}</groupId>
+            <type>jar</type>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <artifactId>SignServer-Entities</artifactId>
+            <groupId>${project.groupId}</groupId>
+            <type>jar</type>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <artifactId>SignServer-Server</artifactId>
+            <groupId>${project.groupId}</groupId>
+            <type>jar</type>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.2</version>
+                <configuration>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                    <compilerArguments>
+                        <endorseddirs>${endorsed.dir}</endorseddirs>
+                    </compilerArguments>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-ejb-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <ejbVersion>3.1</ejbVersion>
+<!--                    <excludes>
+                        <exclude>**/package.html</exclude>
+                    </excludes>-->
+                </configuration>
+            </plugin>
+<!--            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>2.1</version>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${endorsed.dir}</outputDirectory>
+                            <silent>true</silent>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>javax</groupId>
+                                    <artifactId>javaee-endorsed-api</artifactId>
+                                    <version>6.0</version>
+                                    <type>jar</type>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                    
+                    <execution>
+                        <id>build-classpath-ext</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                          <goal>build-classpath</goal>
+                        </goals>
+                        <configuration>
+                            <outputFilterFile>true</outputFilterFile>
+                            <prefix>lib/ext</prefix>
+                            <outputFile>lib-ext-classpath.properties</outputFile>
+                            <excludeTransitive>true</excludeTransitive>
+                            <excludeGroupIds>${project.groupId}</excludeGroupIds>
+                            <excludeScope>compile</excludeScope>
+                            <includeScope>runtime</includeScope>
+                            <outputProperty>lib.ext</outputProperty>
+                            
+                            <regenerateFile>true</regenerateFile>
+                           configure the plugin here 
+                        </configuration>
+                    </execution>
+                    
+                    <execution>
+                        <id>build-classpath-local</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                          <goal>build-classpath</goal>
+                        </goals>
+                        <configuration>
+                            <outputFilterFile>true</outputFilterFile>
+                            <prefix>lib</prefix>
+                            <outputFile>lib-local-classpath.properties</outputFile>
+                            <excludeTransitive>true</excludeTransitive>
+                            <includeGroupIds>${project.groupId}</includeGroupIds>
+                            
+                            <regenerateFile>true</regenerateFile>
+                            
+                           configure the plugin here 
+                        </configuration>
+                    </execution>
+                    
+                    <execution>
+                        <id>copy-dependencies-local</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                          <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <excludeTransitive>true</excludeTransitive>
+                            <includeGroupIds>${project.groupId}</includeGroupIds>
+                            <outputDirectory>${basedir}/../lib/</outputDirectory>
+                            
+                           configure the plugin here 
+                        </configuration>
+                    </execution>
+                    
+                </executions>
+            </plugin>-->
+            <plugin>
+                <groupId>se.primekey.signserver.labs.signservermvn</groupId>
+                <artifactId>SignServerMVN-BuildTools-maven-plugin</artifactId>
+                <version>1.0-SNAPSHOT</version>
+                <executions>
+                    <execution>
+                        <id>module-desc</id>
+                        <goals>
+                            <goal>create-module-descriptor</goal>
+                        </goals>
+                        <configuration/>
+                    </execution>
+                    <execution>
+                        <id>dist-module</id>
+                        <goals>
+                            <goal>dist-module</goal>
+                        </goals>
+                        <configuration/>
+                    </execution>
+                </executions>
+            </plugin>
+<!--            <plugin>
+             NOTE: We don't need a groupId specification because the group is
+                 org.apache.maven.plugins ...which is assumed by default.
+             
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>2.4</version>
+            <configuration>
+              <descriptorRefs>
+                <descriptorRef>jar-with-dependencies</descriptorRef>
+              </descriptorRefs>
+            </configuration>
+            <executions>
+                <execution>
+                  <id>make-assembly</id>  this is used for inheritance merges 
+                  <phase>package</phase>  bind to the packaging phase 
+                  <goals>
+                    <goal>single</goal>
+                  </goals>
+                </execution>
+          </executions>
+        </plugin>-->
+        <!-- dependency:build-classpath  -->
+<!--        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>2.8</version>
+            <executions>
+              <execution>
+                <id>build-classpath</id>
+                <phase>generate-sources</phase>
+                <goals>
+                  <goal>build-classpath</goal>
+                </goals>
+                <configuration>
+                    <outputFile>mod.core-ejb.cp</outputFile>
+                   configure the plugin here 
+                </configuration>
+              </execution>
+            </executions>
+        </plugin>-->
+        
+<!--        <plugin>
+            <groupId>se.primekey.signserver.labs.signservermvn</groupId>
+            <artifactId>SignServerMVN-BuildTools-maven-plugin</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <executions>
+              <execution>
+                <phase>compile</phase>
+                <goals>
+                  <goal>sayhi</goal>
+                </goals>
+              </execution>
+            </executions>
+        </plugin>-->
+        
+        </plugins>
+<!--        <resources>
+            <resource>
+              <targetPath>${project.build.directory}/../../mods-available</targetPath>
+              <filtering>true</filtering>
+              <directory>${project.build.directory}/../src/main/resources</directory>
+              <includes><include>10_module.core.properties</include></includes>
+            </resource>
+          
+        </resources>-->
+    </build>
+    
+
+</project>
+
