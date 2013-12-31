@@ -19,6 +19,7 @@
     <module>SignServer-Module-Renewal-interface</module>
     <module>SignServer-war</module>
     <module>CESeCore-jars</module>
+    <module>SignServer-ejb-AdminWS</module>
   </modules>
   <dependencies>
     <dependency>
