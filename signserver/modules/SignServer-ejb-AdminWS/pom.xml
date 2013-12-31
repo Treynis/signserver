@@ -41,12 +41,12 @@
         <dependency>
             <groupId>se.primekey.signserver.labs.cesecoremvn</groupId>
             <artifactId>cesecore-client</artifactId>
-            <version>1.1.2-SNAPSHOT</version>
+            <version>1.1.2</version>
         </dependency>
         <dependency>
             <groupId>se.primekey.signserver.labs.cesecoremvn</groupId>
             <artifactId>cesecore-entity</artifactId>
-            <version>1.1.2-SNAPSHOT</version>
+            <version>1.1.2</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
