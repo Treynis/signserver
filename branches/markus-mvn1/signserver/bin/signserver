@@ -65,6 +65,7 @@ if [ ! -n "${SIGNSERVER_HOME}" ]; then
 else
   SIGNSRV_HOME=$SIGNSERVER_HOME
 fi 
+echo $SIGNSRV_HOME
 
 ADMINCLI_JAR=`find ${SIGNSRV_HOME}/lib -name "SignServer-AdminCLI-*.jar"`
 
