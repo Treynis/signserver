@@ -25,7 +25,6 @@ fi
 
 
 class_name=org.signserver.admin.cli.AdminCLI
-ADMINCLI_JAR=`find lib -name "SignServer-AdminCLI-*.jar"`
 
 # discard $1 from the command line args
 #shift
@@ -67,8 +66,10 @@ else
   SIGNSRV_HOME=$SIGNSERVER_HOME
 fi 
 
+ADMINCLI_JAR=`find ${SIGNSRV_HOME}/lib -name "SignServer-AdminCLI-*.jar"`
+
 # Check that classes exist
-if [ ! -f ${SIGNSRV_HOME}/${ADMINCLI_JAR} ]
+if [ ! -f ${ADMINCLI_JAR} ]
 then
 	echo "You must build SignServer before using the cli, use 'ant'."
         exit 1
@@ -78,7 +79,7 @@ fi
 OPTIONAL_CLASSPATH=
 
 # Construct the classpath
-CP="$SIGNSRV_HOME/${ADMINCLI_JAR}"
+CP="${ADMINCLI_JAR}"
 CP="${SIGNSRV_HOME}/conf":"$CP"
 CP="$CP:$SIGNSRV_HOME/res/cesecore"
 CP="$CP":${OPTIONAL_CLASSPATH}
