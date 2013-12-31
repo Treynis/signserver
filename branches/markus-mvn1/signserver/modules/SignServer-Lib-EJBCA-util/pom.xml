@@ -65,9 +65,9 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>se.primekey.signserver.labs.signservermvn</groupId>
-                <artifactId>SignServerMVN-BuildTools-maven-plugin</artifactId>
-                <version>1.0-SNAPSHOT</version>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>SignServer-BuildTools-maven-plugin</artifactId>
+                <version>${project.version}</version>
                 <executions>
                     <execution>
                         <id>module-desc</id>

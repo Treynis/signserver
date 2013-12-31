@@ -15,9 +15,6 @@
         <dist.jar>${project.build.finalName}.jar</dist.jar>
         <!--<dest.dist.jar>SignServer-ejb.jar</dest.dist.jar>-->
         <!--<module.name>admincli</module.name>-->
-        <classpath1>lib/ext/junit-3.8.1.jar,lib/ext/commons-lang-2.4.jar,lib/ext/log4j-1.2.14.jar,lib/SignServerMVN-Lib-EJBCA-Util-1.0-SNAPSHOT.jar,lib/ext/cert-cvc-1.2.11.jar,lib/ext/jline-0.9.94.jar,lib/ext/commons-cli-1.2.jar,lib/SignServerMVN-Common-1.0-SNAPSHOT.jar,lib/SignServerMVN-ejb-interf-1.0-SNAPSHOT.jar,lib/ext/cesecore-client-1.1.2-SNAPSHOT.jar,lib/SignServerMVN-CESeCore-jars-1.0-SNAPSHOT.jar,lib/ext/cesecore-entity-1.1.2-SNAPSHOT.jar,lib/SignServerMVN-Module-Renewal-interfaces-1.0-SNAPSHOT.jar,
-            SignServerMVN-CLI-Common-1.0-SNAPSHOT.jar,lib/ext/javaee-api-6.0.jar,lib/ext/bcpkix-jdk15on-1.47.jar,lib/ext/bcprov-jdk15on-1.47.jar,lib/SignServerMVN-AdminCLI-1.0-SNAPSHOT.jar</classpath1>
-        
         <!--  -->
         
     </properties>
