@@ -57,10 +57,10 @@ if [ ! -n "${SIGNSERVER_HOME}" ]; then
      SIGNSRV_HOME=/usr/local/signserver
   fi
   if [ -f ./signserver ]; then
-     SIGNSRV_HOME=..
+     SIGNSRV_HOME=`pwd`/..
   fi
   if [ -f bin/signserver ]; then
-     SIGNSRV_HOME=.
+     SIGNSRV_HOME=`pwd`
   fi
 else
   SIGNSRV_HOME=$SIGNSERVER_HOME
