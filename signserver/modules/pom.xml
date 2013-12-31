@@ -20,6 +20,7 @@
     <module>SignServer-war</module>
     <module>CESeCore-jars</module>
     <module>SignServer-ejb-AdminWS</module>
+    <module>SignServer-Test-AdminWS</module>
   </modules>
   <dependencies>
     <dependency>
