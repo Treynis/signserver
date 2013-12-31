@@ -595,7 +595,8 @@ Configuring EAR...
                 </resources> 
             </batchtest>
             <classpath>
-                <path path="${basedir}/lib/${systemtest.jar}"/>
+                <pathelement path="${basedir}/lib/${systemtest.jar}"/>
+                <pathelement path="${basedir}/lib/ext/ext/junit-4.11.jar"/>
             </classpath>
         </junit>
     </target>
