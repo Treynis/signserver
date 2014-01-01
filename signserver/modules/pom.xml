@@ -21,6 +21,7 @@
     <module>CESeCore-jars</module>
     <module>SignServer-ejb-AdminWS</module>
     <module>SignServer-Test-AdminWS</module>
+    <module>SignServer-Module-Log4j</module>
   </modules>
   <dependencies>
     <dependency>
