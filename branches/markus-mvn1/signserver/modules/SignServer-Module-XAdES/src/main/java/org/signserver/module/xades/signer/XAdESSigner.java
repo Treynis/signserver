@@ -45,6 +45,7 @@ import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GenericSignResponse;
 import org.signserver.common.ISignRequest;
 import org.signserver.common.WorkerConfig;
+import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
@@ -64,10 +65,13 @@ import xades4j.production.XadesSigner;
 import xades4j.production.XadesSigningProfile;
 import xades4j.production.XadesTSigningProfile;
 import xades4j.properties.AllDataObjsCommitmentTypeProperty;
+import xades4j.properties.SignerRoleProperty;
 import xades4j.providers.KeyingDataProvider;
+import xades4j.providers.SignaturePropertiesCollector;
 import xades4j.providers.TimeStampTokenProvider;
 import xades4j.utils.XadesProfileResolutionException;
 import xades4j.providers.impl.DefaultAlgorithmsProviderEx;
+import xades4j.providers.impl.DefaultSignaturePropertiesProvider;
 import xades4j.providers.impl.ExtendedTimeStampTokenProvider;
 
 /**
@@ -97,12 +101,15 @@ public class XAdESSigner extends BaseSigner {
     
     /** Worker property: COMMITMENT_TYPES. */
     public static final String PROPERTY_COMMITMENT_TYPES = "COMMITMENT_TYPES";
-    
+    public static final String COMMITMENT_TYPES_NONE = "NONE";
+
     /** Worker property: SIGNATUREALGORITHM */
     public static final String SIGNATUREALGORITHM = "SIGNATUREALGORITHM";
+   
+    /** Worker property: CLAIMED_ROLE */
+    public static final String CLAIMED_ROLE = "CLAIMED_ROLE";
+    public static final String CLAIMED_ROLE_FROM_USERNAME = "CLAIMED_ROLE_FROM_USERNAME";
 
-    public static final String COMMITMENT_TYPES_NONE = "NONE";
-    
     /** Default value use if the worker property XADESFORM has not been set. */
     private static final String DEFAULT_XADESFORM = "BES";
     
@@ -114,6 +121,9 @@ public class XAdESSigner extends BaseSigner {
     private Collection<AllDataObjsCommitmentTypeProperty> commitmentTypes;
     
     private String signatureAlgorithm;
+    
+    private String claimedRoleDefault;
+    private boolean claimedRoleFromUsername;
     
     /**
      * Addional signature methods not yet covered by
@@ -235,6 +245,10 @@ public class XAdESSigner extends BaseSigner {
         // Get the signature algorithm
         signatureAlgorithm = config.getProperty(SIGNATUREALGORITHM);
         
+        claimedRoleDefault = config.getProperty(CLAIMED_ROLE);
+        claimedRoleFromUsername =
+                Boolean.parseBoolean(config.getProperty(CLAIMED_ROLE_FROM_USERNAME, Boolean.FALSE.toString()));
+        
         if (LOG.isDebugEnabled()) {
             LOG.debug("Worker " + workerId + " configured: " + parameters);
             if (!configErrors.isEmpty()) {
@@ -267,9 +281,23 @@ public class XAdESSigner extends BaseSigner {
         final String archiveId = createArchiveId(data, (String) requestContext.get(RequestContext.TRANSACTION_ID));
         final byte[] signedbytes;
         
+        // take role from request user name in first hand when CLAIMED_ROLE_FROM_USERNAME
+        // is true, otherwise take it from the CLAIMED_ROLE property
+        final UsernamePasswordClientCredential cred =
+                (UsernamePasswordClientCredential) requestContext.get(RequestContext.CLIENT_CREDENTIAL);
+        final String username = cred != null ? cred.getUsername() : null;
+        final String claimedRole =
+                username != null && claimedRoleFromUsername ? username : claimedRoleDefault;
+       
+        // if CLAIMED_ROLE_FROM_USERNAME is true and there was no supplied user name
+        // and no value from CLAIMED_ROLE consider this a fatal error
+        if (claimedRoleFromUsername && claimedRoleDefault == null && username == null) {
+            throw new SignServerException("Received a request with no user name set, while configured to get claimed role from user name and no default value for claimed role is set.");
+        }
+        
         try {
             // Parse
-            final XadesSigner signer = createSigner(parameters);
+            final XadesSigner signer = createSigner(parameters, claimedRole);
             final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setNamespaceAware(true);
             final DocumentBuilder builder = factory.newDocumentBuilder();
@@ -278,10 +306,11 @@ public class XAdESSigner extends BaseSigner {
             // Sign
             final Node node = doc.getDocumentElement();
             SignedDataObjects dataObjs = new SignedDataObjects(new EnvelopedXmlObject(node));
-            
+
             for (final AllDataObjsCommitmentTypeProperty commitmentType : commitmentTypes) {
                 dataObjs = dataObjs.withCommitmentType(commitmentType);
             }
+
             signer.sign(dataObjs, doc);
             
             // Render result
@@ -325,7 +354,8 @@ public class XAdESSigner extends BaseSigner {
      * @throws XadesProfileResolutionException if the dependencies of the signer cannot be resolved
      * @throws CryptoTokenOfflineException If the private key is not available
      */
-    private XadesSigner createSigner(final XAdESSignerParameters params) throws SignServerException, XadesProfileResolutionException, CryptoTokenOfflineException {
+    private XadesSigner createSigner(final XAdESSignerParameters params, final String claimedRole)
+            throws SignServerException, XadesProfileResolutionException, CryptoTokenOfflineException {
         // Setup key and certificiates
         final List<X509Certificate> xchain = new LinkedList<X509Certificate>();
         for (Certificate cert : this.getSigningCertificateChain()) {
@@ -336,17 +366,17 @@ public class XAdESSigner extends BaseSigner {
         final KeyingDataProvider kdp = new CertificateAndChainKeyingDataProvider(xchain, this.getCryptoToken().getPrivateKey(ICryptoToken.PURPOSE_SIGN));
         
         // Signing profile
-        final XadesSigningProfile xsp;
+        XadesSigningProfile xsp;                   
+        
         switch (params.getXadesForm()) {
             case BES:
-                xsp = new XadesBesSigningProfile(kdp)
-                        .withAlgorithmsProviderEx(new AlgorithmsProvider());
+                xsp = new XadesBesSigningProfile(kdp);
                 break;
             case T:
+                // add timestamp token provider
                 xsp = new XadesTSigningProfile(kdp)
-                        .withTimeStampTokenProvider(timeStampTokenProviderImplementation)
-                        .withBinding(TSAParameters.class, params.getTsaParameters())
-                        .withAlgorithmsProviderEx(new AlgorithmsProvider());
+                            .withTimeStampTokenProvider(timeStampTokenProviderImplementation)
+                            .withBinding(TSAParameters.class, params.getTsaParameters());
                 break;
             case C:
             case EPES:
@@ -354,6 +384,12 @@ public class XAdESSigner extends BaseSigner {
                 throw new SignServerException("Unsupported XAdES profile configured");
         }
         
+        xsp = xsp.withAlgorithmsProviderEx(new AlgorithmsProvider());
+        
+        if (claimedRole != null) {
+            xsp = xsp.withSignaturePropertiesProvider(new SignaturePropertiesProvider(claimedRole));
+        }
+   
         return (XadesSigner) xsp.newSigner();
     }
 
@@ -417,6 +453,27 @@ public class XAdESSigner extends BaseSigner {
                 throw new UnsupportedAlgorithmException("Unsupported signature algorithm", signatureAlgorithm);
             }
         }
+    }
+    
+    /**
+     * SignaturePropertiesProvider adding signer role property.
+     *
+     */
+    private class SignaturePropertiesProvider extends DefaultSignaturePropertiesProvider {
+
+        private String claimedRole;
+        
+        public SignaturePropertiesProvider(final String claimedRole) {
+            this.claimedRole = claimedRole;
+        }
+        
+        @Override
+        public void provideProperties(
+                SignaturePropertiesCollector signaturePropsCol) {
+            super.provideProperties(signaturePropsCol);
+            signaturePropsCol.setSignerRole(new SignerRoleProperty(claimedRole));
+        }
+
     }
 
 }
