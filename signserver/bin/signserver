@@ -67,7 +67,7 @@ else
 fi 
 echo $SIGNSRV_HOME
 
-ADMINCLI_JAR=`find ${SIGNSRV_HOME}/lib -name "SignServer-AdminCLI-*.jar"`
+ADMINCLI_JAR=`find ${SIGNSRV_HOME}/lib -name "SignServer-AdminCLI*.jar"`
 
 # Check that classes exist
 if [ ! -f ${ADMINCLI_JAR} ]
