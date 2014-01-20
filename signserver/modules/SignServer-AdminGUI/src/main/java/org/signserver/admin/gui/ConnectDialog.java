@@ -32,14 +32,21 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Properties;
+import java.util.Vector;
+
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509KeyManager;
@@ -48,13 +55,16 @@ import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.PasswordCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListModel;
 import javax.swing.JFileChooser;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.xml.namespace.QName;
 import org.apache.log4j.Logger;
 import org.ejbca.util.CertTools;
 import org.signserver.admin.gui.adminws.gen.AdminWS;
 import org.signserver.admin.gui.adminws.gen.AdminWSService;
+
 
 /**
  * Dialog for connection and authentication settings.
@@ -93,6 +103,12 @@ public class ConnectDialog extends javax.swing.JDialog {
 
     private File connectFile;
     private File defaultConnectFile;
+    
+    private static HostnameVerifier defaultHostnameVerifier;
+    
+    static {
+        defaultHostnameVerifier = HttpsURLConnection.getDefaultHostnameVerifier();
+    }
 
     /** Creates new form ConnectDialog. */
     public ConnectDialog(final Frame parent, final boolean modal,
@@ -132,6 +148,16 @@ public class ConnectDialog extends javax.swing.JDialog {
         passwordPanel = new javax.swing.JPanel();
         passwordLabel = new javax.swing.JLabel();
         passwordField = new javax.swing.JPasswordField();
+        hostnameMismatchConfirmPanel = new javax.swing.JPanel();
+        hostnameLabel = new javax.swing.JLabel();
+        hostnameField = new javax.swing.JTextField();
+        commonNameLabel = new javax.swing.JLabel();
+        mismatchLabel = new javax.swing.JLabel();
+        commonNameField = new javax.swing.JTextField();
+        subjectAltNamesPanel = new javax.swing.JScrollPane();
+        subjectAltNamesList = new javax.swing.JList();
+        subjectAltNameLabel = new javax.swing.JLabel();
+        confirmationLabel = new javax.swing.JLabel();
         jPanel1 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         urlTextField = new javax.swing.JTextField();
@@ -176,6 +202,66 @@ public class ConnectDialog extends javax.swing.JDialog {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(passwordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        hostnameLabel.setText("Remote hostname used:");
+
+        hostnameField.setEditable(false);
+        hostnameField.setText("jTextField1");
+
+        commonNameLabel.setText("Subject common name in remote certificate:");
+
+        mismatchLabel.setText("Remote hostname doesn't match certificate");
+
+        commonNameField.setEditable(false);
+        commonNameField.setText("jTextField1");
+
+        subjectAltNamesList.setModel(new javax.swing.AbstractListModel() {
+            String[] strings = { "Name", "Value" };
+            public int getSize() { return strings.length; }
+            public Object getElementAt(int i) { return strings[i]; }
+        });
+        subjectAltNamesPanel.setViewportView(subjectAltNamesList);
+
+        subjectAltNameLabel.setText("Subject alternative names:");
+
+        confirmationLabel.setText("Do you want to connect anyway?");
+
+        javax.swing.GroupLayout hostnameMismatchConfirmPanelLayout = new javax.swing.GroupLayout(hostnameMismatchConfirmPanel);
+        hostnameMismatchConfirmPanel.setLayout(hostnameMismatchConfirmPanelLayout);
+        hostnameMismatchConfirmPanelLayout.setHorizontalGroup(
+            hostnameMismatchConfirmPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(hostnameMismatchConfirmPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(hostnameMismatchConfirmPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(mismatchLabel)
+                    .addComponent(hostnameLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 558, Short.MAX_VALUE)
+                    .addComponent(hostnameField, javax.swing.GroupLayout.DEFAULT_SIZE, 558, Short.MAX_VALUE)
+                    .addComponent(commonNameLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 558, Short.MAX_VALUE)
+                    .addComponent(commonNameField, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 558, Short.MAX_VALUE)
+                    .addComponent(subjectAltNamesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 558, Short.MAX_VALUE)
+                    .addComponent(subjectAltNameLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 558, Short.MAX_VALUE)
+                    .addComponent(confirmationLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 558, Short.MAX_VALUE))
+                .addContainerGap())
+        );
+        hostnameMismatchConfirmPanelLayout.setVerticalGroup(
+            hostnameMismatchConfirmPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(hostnameMismatchConfirmPanelLayout.createSequentialGroup()
+                .addComponent(mismatchLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(hostnameLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 21, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(hostnameField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(commonNameLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(commonNameField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(subjectAltNameLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(subjectAltNamesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 162, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(confirmationLabel))
         );
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
@@ -547,6 +633,74 @@ public class ConnectDialog extends javax.swing.JDialog {
                 SSLSocketFactory factory = context.getSocketFactory();
 
                 HttpsURLConnection.setDefaultSSLSocketFactory(factory);
+                
+                final ConnectDialog parent = this;
+                HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+
+                    private X509Certificate verifiedCert = null;
+                    
+                    @Override
+                    public boolean verify(String hostname, SSLSession session) {
+                        
+                        if (!defaultHostnameVerifier.verify(hostname, session)) {
+                            // don't show warning dialog more than once in a row for the same
+                            // host cert
+                            try {
+                                final X509Certificate cert = (X509Certificate) session.getPeerCertificates()[0];
+                            
+                                if (verifiedCert != null && verifiedCert.equals(cert)) {
+                                    return true;
+                                } else {
+                                    final String dn = cert.getSubjectX500Principal().getName();
+                                    final String cn = CertTools.getPartFromDN(dn, "CN");
+                                    
+                                    hostnameField.setText(hostname);
+                                    commonNameField.setText(cn);
+
+                                    final DefaultListModel listModel = new DefaultListModel();
+                                    
+                                    try {
+                                        final Collection<List<?>> altNames = cert.getSubjectAlternativeNames();
+                                    
+                                        if (altNames != null) {
+                                            for (final List<?> altName : altNames) {
+                                                final Integer type = (Integer) altName.get(0);
+                                                final Object value = altName.get(1);
+                                                final StringBuilder sb = new StringBuilder();
+                                                
+                                                if (type == 2) {
+                                                    sb.append("DNS name: ");
+                                                } else if (type == 7) {
+                                                    sb.append("IP address: ");
+                                                }
+                                                sb.append(value.toString());
+                                                listModel.addElement(sb.toString());
+                                            }
+                                        } else {
+                                            subjectAltNamesList.setEnabled(false);
+                                            listModel.addElement("No subject alternative names found in certificate");
+                                        }
+                                    } catch (CertificateParsingException e) {
+                                        listModel.addElement("Failed to parse subject alternative names from certificate");
+                                    }
+
+                                    subjectAltNamesList.setModel(listModel);
+                                    
+                                    final int result = JOptionPane.showConfirmDialog(parent, hostnameMismatchConfirmPanel,
+                                            "Hostname mismatch", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+                                    verifiedCert = cert;
+                                    return result == JOptionPane.OK_OPTION;
+                                }
+                            } catch (SSLPeerUnverifiedException e) {
+                                JOptionPane.showMessageDialog(parent, "Unable to verify peer",
+                                        "Error", JOptionPane.ERROR_MESSAGE);
+                                return false;
+                            }
+                        }
+                        
+                        return true;
+                    }
+                });
 
                 AdminWSService service = new AdminWSService(
                         new URL(urlstr), new QName("http://adminws.signserver.org/", "AdminWSService"));
@@ -742,8 +896,14 @@ public class ConnectDialog extends javax.swing.JDialog {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton cancelButton;
+    private javax.swing.JTextField commonNameField;
+    private javax.swing.JLabel commonNameLabel;
+    private javax.swing.JLabel confirmationLabel;
     private javax.swing.JButton connectButton;
     private javax.swing.JButton defaultsButton;
+    private javax.swing.JTextField hostnameField;
+    private javax.swing.JLabel hostnameLabel;
+    private javax.swing.JPanel hostnameMismatchConfirmPanel;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel8;
@@ -754,9 +914,13 @@ public class ConnectDialog extends javax.swing.JDialog {
     private javax.swing.JButton keystoreBrowseButton;
     private javax.swing.JTextField keystoreFilePathTextField;
     private javax.swing.JComboBox keystoreTypeComboBox;
+    private javax.swing.JLabel mismatchLabel;
     private javax.swing.JPasswordField passwordField;
     private javax.swing.JLabel passwordLabel;
     private javax.swing.JPanel passwordPanel;
+    private javax.swing.JLabel subjectAltNameLabel;
+    private javax.swing.JList subjectAltNamesList;
+    private javax.swing.JScrollPane subjectAltNamesPanel;
     private javax.swing.JButton truststoreBrowseButton;
     private javax.swing.JLabel truststoreFilePathLabel;
     private javax.swing.JTextField truststoreFilePathTextField;
