@@ -29,7 +29,7 @@ import org.apache.commons.io.IOUtils;
  * Servlet for downloading the AdminGUI.
  *
  * @author Markus Kilås
- * @version $Id: AdminGUIDistServlet.java 3966 2014-01-02 22:44:17Z netmackan $
+ * @version $Id$
  */
 public class AdminGUIDistServlet extends HttpServlet {
 
