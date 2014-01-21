@@ -25,7 +25,6 @@ fi
 
 
 class_name=org.signserver.admin.gui.SignServerAdminGUIApplication
-MAIN_JAR=SignServer-AdminGUI.jar
 
 # discard $1 from the command line args
 #shift
@@ -63,24 +62,27 @@ if [ ! -n "${SIGNSERVER_HOME}" ]; then
      SIGNSRV_HOME=/usr/local/signserver
   fi
   if [ -f ./signserver-gui ]; then
-     SIGNSRV_HOME=..
+     SIGNSRV_HOME=`pwd`/..
   fi
   if [ -f bin/signserver-gui ]; then
-     SIGNSRV_HOME=.
+     SIGNSRV_HOME=`pwd`
   fi
 else
   SIGNSRV_HOME=$SIGNSERVER_HOME
 fi 
+echo $SIGNSRV_HOME
+
+ADMINGUI_JAR=`find ${SIGNSRV_HOME}/lib -name "SignServer-AdminGUI*.jar"`
 
 # Check that classes exist
-if [ ! -f ${SIGNSRV_HOME}/lib/${MAIN_JAR} ]
+if [ ! -f ${ADMINGUI_JAR} ]
 then
-	echo "SignServer AdminGUI not available. Build it by running 'ant'."
+	echo "SignServer AdminGUI not available. Build it first."
         exit 1
 fi
 
 # Construct the classpath
-CP="$SIGNSRV_HOME/lib/${MAIN_JAR}"
+CP="${ADMINGUI_JAR}"
 CP="${SIGNSRV_HOME}/conf":"$CP"
 
 # Application server dependencies
@@ -93,6 +95,7 @@ if [ -f $APPSRV_HOME/client/jbossall-client.jar ]; then
     CP=$CP:"${SIGNSRV_HOME}/conf/jboss"
     CP=$CP:"$APPSRV_HOME/client/jbossall-client.jar"
 fi
+
 if [ -f $APPSRV_HOME/bin/standalone.sh ]; then
         echo JBoss7
     CP="$APPSRV_HOME/bin/client/jboss-client.jar":$CP
