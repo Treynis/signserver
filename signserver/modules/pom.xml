@@ -22,6 +22,14 @@
     <module>SignServer-ejb-AdminWS</module>
     <module>SignServer-Test-AdminWS</module>
     <module>SignServer-Module-Log4j</module>
+    <module>SignServer-Module-MRTDSODSigner</module>
+    <module>SignServer-Test-Utils</module>
+    <module>SignServer-Client-CLI</module>
+    <module>SignServer-Client-ClientWS</module>
+    <module>SignServer-Client-SignServerWS</module>
+    <module>SignServer-Client-SigningAndValidationAPI</module>
+    <module>SignServer-ejb-SignServerWS</module>
+    <module>SignServer-Lib-iText</module>
   </modules>
   <dependencies>
     <dependency>
