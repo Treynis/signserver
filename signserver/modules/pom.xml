@@ -43,6 +43,7 @@
     <module>SignServer-Module-XAdES</module>
     <module>SignServer-Lib-OpenXML4J</module>
     <module>SignServer-Lib-ODFDOM</module>
+    <module>SignServer-AdminGUI</module>
   </modules>
   <dependencies>
     <dependency>
