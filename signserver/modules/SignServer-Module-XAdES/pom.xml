@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
@@ -6,18 +7,19 @@
         <artifactId>SignServer-Modules</artifactId>
         <version>3.5.0-SNAPSHOT</version>
     </parent>
-    <artifactId>SignServer-Module-TSA</artifactId>
-    <name>SignServer-Module-TSA</name>
-    <url>http://maven.apache.org</url>
+    <artifactId>SignServer-Module-XAdES</artifactId>
+    <name>SignServer-Module-XAdES</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <dist.jar>${project.build.finalName}.jar</dist.jar>
+        <module.name>module.xades</module.name>
+        <module.priority>40</module.priority>
     </properties>
     <dependencies>
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.4</version>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.1.1</version>
         </dependency>
         <dependency>
             <groupId>log4j</groupId>
@@ -31,16 +33,6 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>SignServer-Common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>se.primekey.signserver.labs.cesecoremvn</groupId>
-            <artifactId>cesecore-client</artifactId>
-            <version>1.1.2</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>SignServer-Server</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -48,12 +40,32 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>SignServer-Test-Utils</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>se.primekey.signserver.labs.xades4j</groupId>
+            <artifactId>xades4j</artifactId>
+            <version>1.3.0-signserver</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+            <version>2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>1.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>javax</groupId>
-            <artifactId>javaee-api</artifactId>
-            <version>6.0</version>
+            <groupId>com.google.inject.extensions</groupId>
+            <artifactId>guice-multibindings</artifactId>
+            <version>2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.santuario</groupId>
+            <artifactId>xmlsec</artifactId>
+            <version>1.5.5</version>
         </dependency>
     </dependencies>
     <build>
@@ -82,4 +94,3 @@
         </plugins>
     </build>
 </project>
-

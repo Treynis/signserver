@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
@@ -6,14 +7,19 @@
         <artifactId>SignServer-Modules</artifactId>
         <version>3.5.0-SNAPSHOT</version>
     </parent>
-    <artifactId>SignServer-Module-TSA</artifactId>
-    <name>SignServer-Module-TSA</name>
-    <url>http://maven.apache.org</url>
+    <artifactId>SignServer-Lib-OpenXML4J</artifactId>
+    <name>SignServer-Lib-OpenXML4J</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <dist.jar>${project.build.finalName}.jar</dist.jar>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.1</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>commons-lang</groupId>
             <artifactId>commons-lang</artifactId>
@@ -25,30 +31,29 @@
             <version>1.2.14</version>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>SignServer-Lib-EJBCA-Util</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>1.47</version>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>SignServer-Common</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+            <version>1.47</version>
         </dependency>
         <dependency>
-            <groupId>se.primekey.signserver.labs.cesecoremvn</groupId>
-            <artifactId>cesecore-client</artifactId>
-            <version>1.1.2</version>
+            <groupId>jline</groupId>
+            <artifactId>jline</artifactId>
+            <version>0.9.94</version>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>SignServer-Server</artifactId>
-            <version>${project.version}</version>
+            <groupId>dom4j</groupId>
+            <artifactId>dom4j</artifactId>
+            <version>1.6.1</version>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>SignServer-Test-Utils</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
+            <groupId>org.apache.santuario</groupId>
+            <artifactId>xmlsec</artifactId>
+            <version>1.5.5</version>
         </dependency>
         <dependency>
             <groupId>javax</groupId>
