@@ -44,6 +44,8 @@
     <module>SignServer-Lib-OpenXML4J</module>
     <module>SignServer-Lib-ODFDOM</module>
     <module>SignServer-AdminGUI</module>
+    <module>SignServer-Client-ValidationCLI</module>
+    <module>SignServer-DatabaseCLI</module>
   </modules>
   <dependencies>
     <dependency>
