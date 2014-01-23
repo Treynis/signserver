@@ -181,7 +181,7 @@ public class ModuleDescriptorMojo extends BuildClasspathMojo {
         boolean first = true;
         for (Artifact a : artifacts) {
 //            System.out.println(a.getArtifactId() + " is of type " + a.getType());
-            if (!a.getScope().equals("provided")) {
+            if (!a.getScope().equals("provided") && !a.getScope().equals("test")) {
                 if ((includeRoot && !isTypeForLib(a.getType())) || (includeLib && isTypeForLib(a.getType()))) {
                     if (!first) {
                         result.append(separator);
