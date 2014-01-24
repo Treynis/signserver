@@ -28,6 +28,7 @@
     <module>SignServer-Client-SigningAndValidationAPI</module>
     <module>SignServer-ejb-SignServerWS</module>
     <module>SignServer-Lib-iText</module>
+    <module>SignServer-Module-CMSSigner</module>
     <module>SignServer-Module-MRTDSigner</module>
     <module>SignServer-Module-MRTDSODSigner</module>
     <module>SignServer-Module-ODFSigner</module>
@@ -46,6 +47,14 @@
     <module>SignServer-AdminGUI</module>
     <module>SignServer-Client-ValidationCLI</module>
     <module>SignServer-DatabaseCLI</module>
+    <module>SignServer-Test-DatabaseCLI</module>
+    <module>SignServer-Test-P11</module>
+    <module>SignServer-Test-Renewal</module>
+    <module>SignServer-Test-SignServerWS</module>
+    <module>SignServer-Test-System</module>
+    <module>SignServer-Test-ValidationWS</module>
+    <module>SignServer-ejb-ValidationWS</module>
+    <module>SignServer-ejb-ClientWS</module>
   </modules>
   <dependencies>
     <dependency>
