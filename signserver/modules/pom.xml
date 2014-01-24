@@ -55,6 +55,9 @@
     <module>SignServer-Test-ValidationWS</module>
     <module>SignServer-ejb-ValidationWS</module>
     <module>SignServer-ejb-ClientWS</module>
+    <module>SignServer-Test-Random</module>
+    <module>SignServer-Test-Performance</module>
+    <module>SignServer-war-Healthcheck</module>
   </modules>
   <dependencies>
     <dependency>
