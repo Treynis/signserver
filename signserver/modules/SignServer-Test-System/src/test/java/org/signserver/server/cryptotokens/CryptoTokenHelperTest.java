@@ -21,7 +21,7 @@ import junit.framework.TestCase;
  *
  * @version $Id$
  */
-public class CryptoTokenPropertiesTest extends TestCase {
+public class CryptoTokenHelperTest extends TestCase {
 
     @Override
     protected void setUp() throws Exception {
