@@ -280,15 +280,21 @@ public interface IWorkerSession {
             throws CryptoTokenOfflineException;
 
     /**
-     * Method used to remove a key from a signer.
+     * Attempt to remove the specified key with the key alias.
      *
-     * @param signerId id of the signer
-     * @param purpose on of ICryptoToken.PURPOSE_ constants
-     * @return true if removal was successful.
+     * @param signerId of worker
+     * @param alias of key to remove
+     * @return true if the key was removed or false if the removal failed or 
+     * the worker or crypto token does not support key removal
+     * @throws CryptoTokenOfflineException in case the token was not activated
+     * @throws InvalidWorkerIdException in case the worker could not be fined
+     * @throws KeyStoreException for keystore related errors
+     * @throws SignServerException in case the key alias could not be found etc
      */
-    boolean destroyKey(int signerId, int purpose)
-            throws InvalidWorkerIdException;
-
+    boolean removeKey(int signerId, String alias) 
+            throws CryptoTokenOfflineException, InvalidWorkerIdException, 
+            KeyStoreException, SignServerException;
+    
     /**
      * Generate a new keypair.
      * @param signerId Id of signer
@@ -316,7 +322,7 @@ public interface IWorkerSession {
     Collection<KeyTestResult> testKey(final int signerId, final String alias,
             char[] authCode) throws CryptoTokenOfflineException,
             InvalidWorkerIdException, KeyStoreException;
-
+    
     /**
      * Method used to upload a certificate to a signers active configuration.
      *
@@ -422,9 +428,13 @@ public interface IWorkerSession {
          * @param purpose on of ICryptoToken.PURPOSE_ constants
          * @return true if removal was successful.
          */
-        boolean destroyKey(final AdminInfo adminInfo, int signerId, int purpose)
-                throws InvalidWorkerIdException;
+//        boolean destroyKey(final AdminInfo adminInfo, int signerId, int purpose)
+//                throws InvalidWorkerIdException;
     
+        boolean removeKey(AdminInfo adminInfo, int signerId, String alias) 
+            throws CryptoTokenOfflineException, InvalidWorkerIdException, 
+            KeyStoreException, SignServerException;
+        
         /**
          * Generate a new keypair.
          * 

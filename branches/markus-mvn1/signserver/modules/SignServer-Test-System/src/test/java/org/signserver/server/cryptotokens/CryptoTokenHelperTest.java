@@ -18,6 +18,8 @@ import junit.framework.TestCase;
 
 /**
  * Tests that the hard token properties are set correctly for PKCS11 crypto tokens.
+ * 
+ * TODO: This is a unit test consider moving from SignServer Test-System to SignServer-Server project.
  *
  * @version $Id$
  */
