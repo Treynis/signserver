@@ -76,9 +76,9 @@ public class AdminWebServiceTest extends TestCase {
             home = path1;
         } else if (new File(path2, "res/compile.properties").exists()) {
             home = path2;
-        } else {
+            } else {
             throw new RuntimeException("Unable to detect SignServer path");
-        }
+            }
         
         File confFile = null;
         for (String file : CONF_FILES) {
@@ -103,7 +103,7 @@ public class AdminWebServiceTest extends TestCase {
             System.out.println("Truststore: " + truststore);
             System.setProperty("javax.net.ssl.trustStore", truststore);
             System.setProperty("javax.net.ssl.trustStorePassword",
-                    config.getProperty("java.trustpassword", "changeit"));
+                config.getProperty("java.trustpassword", "changeit"));
             //System.setProperty("javax.net.ssl.keyStore", "../../p12/testadmin.jks");
             //System.setProperty("javax.net.ssl.keyStorePassword", "foo123");
         }
