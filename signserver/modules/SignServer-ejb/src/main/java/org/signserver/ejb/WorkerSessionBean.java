@@ -50,6 +50,7 @@ import org.signserver.server.cesecore.AlwaysAllowLocalAuthenticationToken;
 import org.signserver.server.config.entities.FileBasedWorkerConfigDataService;
 import org.signserver.server.config.entities.IWorkerConfigDataService;
 import org.signserver.server.config.entities.WorkerConfigDataService;
+import org.signserver.server.cryptotokens.IKeyRemover;
 import org.signserver.server.entities.FileBasedKeyUsageCounterDataService;
 import org.signserver.server.entities.IKeyUsageCounterDataService;
 import org.signserver.server.entities.KeyUsageCounter;
@@ -1188,31 +1189,31 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
         }
         return res;
     }
-
-    /* (non-Javadoc)
-     * @see org.signserver.ejb.interfaces.IWorkerSession#destroyKey(int, int)
-     */
+    
     @Override
-    public boolean destroyKey(int signerId, int purpose) throws InvalidWorkerIdException {
-        return destroyKey(new AdminInfo("CLI user", null, null), signerId, purpose);
-    }
-
-    @Override
-    public boolean destroyKey(AdminInfo adminInfo, int signerId, int purpose)
-            throws InvalidWorkerIdException {
+    public boolean removeKey(final AdminInfo adminInfo, final int signerId, final String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException, SignServerException {
         IWorker worker = workerManagerSession.getWorker(signerId, globalConfigurationSession);
         if (worker == null) {
             throw new InvalidWorkerIdException("Given SignerId " + signerId
                     + " doesn't exist");
         }
-
-        if (!(worker instanceof IProcessable)) {
-            throw new InvalidWorkerIdException(
-                    "Worker exists but isn't a signer.");
+        final boolean result;
+        if (worker instanceof IKeyRemover) {
+            result = ((IKeyRemover) worker).removeKey(alias);
+        } else {
+            result = false;
         }
-        IProcessable signer = (IProcessable) worker;
-
-        return signer.destroyKey(purpose);
+        final HashMap<String, Object> auditMap = new HashMap<String, Object>();
+        auditMap.put("KEYALIAS", alias);
+        auditMap.put("SUCCESS", String.valueOf(result));
+        auditLog(adminInfo, SignServerEventTypes.KEYREMOVE, SignServerModuleTypes.KEY_MANAGEMENT, String.valueOf(signerId), auditMap);
+        
+        return result;
+    }
+    
+    @Override
+    public boolean removeKey(final int signerId, final String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException, SignServerException {
+        return removeKey(new AdminInfo("CLI user", null, null), signerId, alias);
     }
 
     @Override

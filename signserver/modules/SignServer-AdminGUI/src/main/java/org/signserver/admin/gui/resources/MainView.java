@@ -60,6 +60,7 @@ import org.signserver.admin.gui.adminws.gen.AuthorizedClient;
 import org.signserver.admin.gui.adminws.gen.CryptoTokenAuthenticationFailureException_Exception;
 import org.signserver.admin.gui.adminws.gen.CryptoTokenOfflineException_Exception;
 import org.signserver.admin.gui.adminws.gen.InvalidWorkerIdException_Exception;
+import org.signserver.admin.gui.adminws.gen.KeyStoreException_Exception;
 import org.signserver.admin.gui.adminws.gen.LogEntry;
 import org.signserver.admin.gui.adminws.gen.Order;
 import org.signserver.admin.gui.adminws.gen.QueryCondition;
@@ -139,7 +140,10 @@ public class MainView extends FrameView {
                     }
 
                     workerComboBox.setModel(new MyComboBoxModel(selectedWorkers));
-
+                    
+                    // removeKey should only be enabled iff one selected
+                    removeKeyMenu.setEnabled(selectedWorkers.size() == 1);
+                    
                     if (selectedWorkers.size() > 0) {
 
                         if (LOG.isDebugEnabled()) {
@@ -318,6 +322,7 @@ public class MainView extends FrameView {
 
         menuBar = new javax.swing.JMenuBar();
         javax.swing.JMenu fileMenu = new javax.swing.JMenu();
+        addWorkerItem = new javax.swing.JMenuItem();
         javax.swing.JMenuItem exitMenuItem = new javax.swing.JMenuItem();
         editMenu = new javax.swing.JMenu();
         activateMenu = new javax.swing.JMenuItem();
@@ -329,6 +334,7 @@ public class MainView extends FrameView {
         installCertificatesMenu = new javax.swing.JMenuItem();
         jSeparator5 = new javax.swing.JPopupMenu.Separator();
         renewSignerMenu = new javax.swing.JMenuItem();
+        removeKeyMenu = new javax.swing.JMenuItem();
         jSeparator8 = new javax.swing.JPopupMenu.Separator();
         removeWorkerMenu = new javax.swing.JMenuItem();
         jSeparator9 = new javax.swing.JPopupMenu.Separator();
@@ -427,6 +433,9 @@ public class MainView extends FrameView {
         auditlogErrorPanel = new javax.swing.JPanel();
         jScrollPane5 = new javax.swing.JScrollPane();
         auditlogErrorEditor = new javax.swing.JEditorPane();
+        removeKeyPanel = new javax.swing.JPanel();
+        jLabel7 = new javax.swing.JLabel();
+        aliasTextField = new javax.swing.JTextField();
 
         menuBar.setName("menuBar"); // NOI18N
 
@@ -434,6 +443,15 @@ public class MainView extends FrameView {
         org.jdesktop.application.ResourceMap resourceMap = org.jdesktop.application.Application.getInstance(org.signserver.admin.gui.SignServerAdminGUIApplication.class).getContext().getResourceMap(MainView.class);
         fileMenu.setText(resourceMap.getString("fileMenu.text")); // NOI18N
         fileMenu.setName("fileMenu"); // NOI18N
+
+        addWorkerItem.setText(resourceMap.getString("addWorkerItem.text")); // NOI18N
+        addWorkerItem.setName("addWorkerItem"); // NOI18N
+        addWorkerItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                addWorkerItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(addWorkerItem);
 
         javax.swing.ActionMap actionMap = org.jdesktop.application.Application.getInstance(org.signserver.admin.gui.SignServerAdminGUIApplication.class).getContext().getActionMap(MainView.class, this);
         exitMenuItem.setAction(actionMap.get("quit")); // NOI18N
@@ -486,6 +504,11 @@ public class MainView extends FrameView {
         renewSignerMenu.setText(resourceMap.getString("renewSignerMenu.text")); // NOI18N
         renewSignerMenu.setName("renewSignerMenu"); // NOI18N
         editMenu.add(renewSignerMenu);
+
+        removeKeyMenu.setAction(actionMap.get("removeKey")); // NOI18N
+        removeKeyMenu.setText(resourceMap.getString("removeKeyMenu.text")); // NOI18N
+        removeKeyMenu.setName("removeKeyMenu"); // NOI18N
+        editMenu.add(removeKeyMenu);
 
         jSeparator8.setName("jSeparator8"); // NOI18N
         editMenu.add(jSeparator8);
@@ -1453,6 +1476,28 @@ public class MainView extends FrameView {
 
         jTabbedPane1.addTab(resourceMap.getString("auditPanel.TabConstraints.tabTitle"), auditPanel); // NOI18N
 
+        removeKeyPanel.setName("removeKeyPanel"); // NOI18N
+
+        jLabel7.setText(resourceMap.getString("jLabel7.text")); // NOI18N
+        jLabel7.setName("jLabel7"); // NOI18N
+
+        aliasTextField.setName("aliasTextField"); // NOI18N
+
+        javax.swing.GroupLayout removeKeyPanelLayout = new javax.swing.GroupLayout(removeKeyPanel);
+        removeKeyPanel.setLayout(removeKeyPanelLayout);
+        removeKeyPanelLayout.setHorizontalGroup(
+            removeKeyPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, 394, Short.MAX_VALUE)
+            .addComponent(aliasTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 394, Short.MAX_VALUE)
+        );
+        removeKeyPanelLayout.setVerticalGroup(
+            removeKeyPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(removeKeyPanelLayout.createSequentialGroup()
+                .addComponent(jLabel7)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(aliasTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+        );
+
         setComponent(jTabbedPane1);
         setMenuBar(menuBar);
         setStatusBar(statusPanel);
@@ -1820,6 +1865,12 @@ private void loadFromCertificateButtonPerformed(java.awt.event.ActionEvent evt) 
     
     Utils.selectAndLoadFromCert(authEditPanel, editSerialNumberTextfield, editIssuerDNTextfield);
 }//GEN-LAST:event_loadFromCertificateButtonPerformed
+
+private void addWorkerItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addWorkerItemActionPerformed
+    final AddWorkerDialog addWorkerDialog = new AddWorkerDialog(getFrame(), true);
+    
+    addWorkerDialog.setVisible(true);
+}//GEN-LAST:event_addWorkerItemActionPerformed
 
 private void displayLogEntryAction() {
     final int sel = auditLogTable.getSelectedRow();
@@ -2616,12 +2667,92 @@ private void displayLogEntryAction() {
         }
     }
 
+    @Action(block = Task.BlockingScope.WINDOW)
+    public Task removeKey() {
+        return new RemoveKeyTask(getApplication());
+    }
+    
+    private class RemoveKeyTask extends Task<Boolean, Void> {
+        private final String alias;
+        private final boolean proceed;
+        private final int workerId;
+        private String errorMessage;
+        
+        public RemoveKeyTask(Application application) {
+            super(application);
+            Object selected = workersList.getSelectedValue();
+            if (selected instanceof Worker) {
+                workerId = ((Worker) selected).getWorkerId();
+
+                aliasTextField.setText("");
+                int res = JOptionPane.showConfirmDialog(getFrame(), removeKeyPanel,
+                        "Remove key", JOptionPane.OK_CANCEL_OPTION);
+                alias = aliasTextField.getText();
+                if (res == JOptionPane.OK_OPTION && !alias.isEmpty()) {
+                    res = JOptionPane.showConfirmDialog(getFrame(), 
+                            "WARNING: Will attempt to permantently remove the following key:\n" +
+                            alias + "\n" +
+                            "\n" +
+                            "Note: the key might be used by multiple workers.\n" +
+                            "Are you sure you want to try to destroy the key?",
+                        "Confirm key destruction", JOptionPane.YES_NO_CANCEL_OPTION);
+
+                    proceed = res == JOptionPane.YES_OPTION;
+                } else {
+                    proceed = false;
+                }
+            } else {
+                alias = null;
+                proceed = false;
+                workerId = 0;
+            }
+        }
+        
+        @Override
+        protected Boolean doInBackground() throws Exception {
+            if (!proceed) {
+                return null;
+            }
+            setMessage("Requesting key to be deleted");
+            boolean success = false;
+            try {
+                success = SignServerAdminGUIApplication.getAdminWS().removeKey(workerId, alias);
+            } catch (AdminNotAuthorizedException_Exception ex) {
+                errorMessage = "Authorization denied:\n" + ex.getLocalizedMessage();
+            } catch (CryptoTokenOfflineException_Exception ex) {
+                errorMessage = "Unable to remove key because token was not active:\n" + ex.getLocalizedMessage();
+            } catch (InvalidWorkerIdException_Exception ex) {
+                errorMessage = "Unable to remove key:\n" + ex.getLocalizedMessage();
+            } catch (KeyStoreException_Exception ex) {
+                errorMessage = "Unable to remove key:\n" + ex.getLocalizedMessage();
+            } catch (SignServerException_Exception ex) {
+                errorMessage = "Unable to remove key:\n" + ex.getLocalizedMessage();
+            }
+            return success;
+        }
+
+        @Override
+        protected void succeeded(Boolean success) {
+            if (success != null) {
+                if (errorMessage == null) {
+                    JOptionPane.showMessageDialog(MainView.this.getFrame(), 
+                            success ? "Removal succeeded" : "Removal failed", "Removal result", success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(MainView.this.getFrame(), 
+                            errorMessage, "Removal failed", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
+    }
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     javax.swing.JButton activateButton;
     javax.swing.JMenuItem activateMenu;
     javax.swing.JButton addButton;
+    javax.swing.JMenuItem addWorkerItem;
     javax.swing.JMenuItem administratorsMenu;
+    javax.swing.JTextField aliasTextField;
     javax.swing.JTable auditLogTable;
     javax.swing.JPanel auditPanel;
     javax.swing.JLabel auditlogDisplayingToIndex;
@@ -2670,6 +2801,7 @@ private void displayLogEntryAction() {
     javax.swing.JLabel jLabel4;
     javax.swing.JLabel jLabel5;
     javax.swing.JLabel jLabel6;
+    javax.swing.JLabel jLabel7;
     javax.swing.JLabel jLabel8;
     javax.swing.JPanel jPanel1;
     javax.swing.JPanel jPanel2;
@@ -2704,6 +2836,8 @@ private void displayLogEntryAction() {
     javax.swing.JButton refreshButton;
     javax.swing.JMenuItem refreshMenu;
     javax.swing.JButton removeButton;
+    javax.swing.JMenuItem removeKeyMenu;
+    javax.swing.JPanel removeKeyPanel;
     javax.swing.JMenuItem removeWorkerMenu;
     javax.swing.JButton renewKeyButton;
     javax.swing.JMenuItem renewKeyMenu;

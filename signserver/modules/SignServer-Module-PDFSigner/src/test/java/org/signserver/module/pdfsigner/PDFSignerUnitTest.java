@@ -90,13 +90,7 @@ public class PDFSignerUnitTest extends TestCase {
 
     public PDFSignerUnitTest() {
         SignServerUtil.installBCProvider();
-        String signserverHome = System.getenv("SIGNSERVER_HOME");
-        File home;
-        if (signserverHome == null) {
-            home = new File("../../");
-        } else {
-            home = new File(signserverHome);
-        }
+        File home = new File(System.getenv("SIGNSERVER_HOME"));
         assertTrue("Environment variable SIGNSERVER_HOME", home.exists());
         sampleOk = new File(home, "res/test/ok.pdf");
         sampleRestricted = new File(home, "res/test/sample-restricted.pdf");
