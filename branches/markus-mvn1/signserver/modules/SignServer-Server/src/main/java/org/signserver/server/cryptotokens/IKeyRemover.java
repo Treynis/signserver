@@ -10,36 +10,30 @@
  *  See terms of license at gnu.org.                                     *
  *                                                                       *
  *************************************************************************/
-package org.signserver.module.renewal.worker;
+package org.signserver.server.cryptotokens;
 
-import javax.xml.ws.Endpoint;
+import java.security.KeyStoreException;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.SignServerException;
 
 /**
- * Tool for running the mock stand-alone.
- *
- * Could be used for debugging purposes.
+ * Interface that should be implemented by CryptoTokenS supporting key
+ * removal.
  *
  * @author Markus Kilås
  * @version $Id$
  */
-public class RunMock {
+public interface IKeyRemover {
 
-    public static void main(String[] args) {
-        System.out.println("RunMock");
-
-        MockEjbcaWS ejbcaWs = new MockEjbcaWS();
-        Endpoint endpoint
-                = Endpoint.publish("http://localhost:8111/calculator", ejbcaWs);
-        System.out.println("Published endpoint: " + endpoint);
-        
-//        synchronized {
-//            try {
-//                new Object().wait();
-//            } catch (InterruptedException ex) {
-//                Logger.getLogger(RunMock.class.getName()).log(Level.SEVERE,
-//                  null, ex);
-//            }
-//        }
-    }
-
+    /**
+     * Remove a key from the token (if supported).
+     *
+     * @param alias of key to remove
+     * @return True if the key was successfully removed or false it failed or the token does not support key removal
+     * @throws CryptoTokenOfflineException if the token was not activated
+     * @throws KeyStoreException for keystore related errors
+     * @throws SignServerException if the keystore did not contain a key with the specified alias
+     */
+    boolean removeKey(String alias) throws CryptoTokenOfflineException, 
+            KeyStoreException, SignServerException;
 }
