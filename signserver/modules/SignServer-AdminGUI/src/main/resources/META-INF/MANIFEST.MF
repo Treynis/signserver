@@ -1,4 +1,4 @@
 Manifest-Version: 1.0
-X-COMMENT: Main-Class will be added automatically by build
+X-COMMENT: Main-Class will be added automatically by build :D
 SplashScreen-Image: splash.png
 Class-Path: ${jar.classpath}
