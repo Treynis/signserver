@@ -93,8 +93,6 @@
                     <archive>
                         <manifest>
                             <mainClass>org.signserver.admin.gui.SignServerAdminGUIApplication</mainClass>
-                            <!--                        <addClasspath>true</addClasspath>
-                            <classpathPrefix>ext/</classpathPrefix>-->
                         </manifest>
                         <manifestFile>
                             ${project.build.outputDirectory}/META-INF/MANIFEST.MF
