@@ -49,6 +49,7 @@ import xades4j.properties.data.SigAndDataObjsPropertiesData;
 import xades4j.providers.AlgorithmsProviderEx;
 import xades4j.providers.BasicSignatureOptionsProvider;
 import xades4j.providers.DataObjectPropertiesProvider;
+import xades4j.providers.KeyInfoCertificatesProvider;
 import xades4j.providers.KeyingDataProvider;
 import xades4j.providers.SignaturePropertiesProvider;
 import xades4j.providers.SigningCertChainException;
@@ -77,6 +78,7 @@ class SignerBES implements XadesSigner
     private final SignedPropertiesMarshaller signedPropsMarshaller;
     private final UnsignedPropertiesMarshaller unsignedPropsMarshaller;
     private final AlgorithmsParametersMarshallingProvider algorithmsParametersMarshaller;
+    private final KeyInfoCertificatesProvider keyInfoCertificatesProvider;
     /**/
     private final KeyInfoBuilder keyInfoBuilder;
     private final QualifyingPropertiesProcessor qualifPropsProcessor;
@@ -92,7 +94,8 @@ class SignerBES implements XadesSigner
             PropertiesDataObjectsGenerator propsDataObjectsGenerator,
             SignedPropertiesMarshaller signedPropsMarshaller,
             UnsignedPropertiesMarshaller unsignedPropsMarshaller,
-            AlgorithmsParametersMarshallingProvider algorithmsParametersMarshaller)
+            AlgorithmsParametersMarshallingProvider algorithmsParametersMarshaller,
+            KeyInfoCertificatesProvider keyInfoCertificatesProvider)
     {
         if (ObjectUtils.anyNull(
                 keyingProvider, algorithmsProvider,
@@ -108,6 +111,7 @@ class SignerBES implements XadesSigner
         this.signedPropsMarshaller = signedPropsMarshaller;
         this.unsignedPropsMarshaller = unsignedPropsMarshaller;
         this.algorithmsParametersMarshaller = algorithmsParametersMarshaller;
+        this.keyInfoCertificatesProvider = keyInfoCertificatesProvider;
 
         this.dataObjectDescsProcessor = dataObjectDescsProcessor;
         this.keyInfoBuilder = new KeyInfoBuilder(basicSignatureOptionsProvider, algorithmsProvider);
@@ -164,7 +168,7 @@ class SignerBES implements XadesSigner
         signature.setId(signatureId);
 
         /* ds:KeyInfo */
-        this.keyInfoBuilder.buildKeyInfo(signingCertificate, signature);
+        this.keyInfoBuilder.buildKeyInfo(this.keyInfoCertificatesProvider.getCertificates(signingCertificateChain), signature);
 
         /* References */
         // Process the data object descriptions to get the References and mappings.

@@ -44,6 +44,7 @@ import xades4j.providers.AlgorithmsProvider;
 import xades4j.providers.AlgorithmsProviderEx;
 import xades4j.providers.BasicSignatureOptionsProvider;
 import xades4j.providers.DataObjectPropertiesProvider;
+import xades4j.providers.KeyInfoCertificatesProvider;
 import xades4j.providers.MessageDigestEngineProvider;
 import xades4j.providers.SignaturePropertiesProvider;
 import xades4j.providers.TimeStampTokenProvider;
@@ -52,6 +53,7 @@ import xades4j.providers.impl.DefaultMessageDigestProvider;
 import xades4j.providers.impl.DefaultSignaturePropertiesProvider;
 import xades4j.providers.impl.DefaultTimeStampTokenProvider;
 import xades4j.providers.impl.DefaultBasicSignatureOptionsProvider;
+import xades4j.providers.impl.DefaultKeyInfoCertificatesProvider;
 
 /**
  * Contains the Guice bindings for the default components and the bindings for the
@@ -80,6 +82,7 @@ class DefaultProductionBindingsModule extends AbstractModule
         bind(BasicSignatureOptionsProvider.class).to(DefaultBasicSignatureOptionsProvider.class);
         bind(MessageDigestEngineProvider.class).to(DefaultMessageDigestProvider.class);
         bind(TimeStampTokenProvider.class).to(DefaultTimeStampTokenProvider.class);
+        bind(KeyInfoCertificatesProvider.class).to(DefaultKeyInfoCertificatesProvider.class);
 
         // PropertiesDataObjectsGenerator is not configurable but the individual
         // generators may have dependencies.

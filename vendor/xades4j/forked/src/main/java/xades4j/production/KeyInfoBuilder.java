@@ -18,6 +18,7 @@ package xades4j.production;
 
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.List;
 import org.apache.xml.security.exceptions.XMLSecurityException;
 import org.apache.xml.security.signature.XMLSignature;
 import org.apache.xml.security.signature.XMLSignatureException;
@@ -45,9 +46,11 @@ class KeyInfoBuilder
     }
 
     void buildKeyInfo(
-            X509Certificate signingCertificate,
+            List<X509Certificate> certificateChain,
             XMLSignature xmlSig) throws KeyingDataException, UnsupportedAlgorithmException
     {
+        X509Certificate signingCertificate = certificateChain.get(0);
+
         // Check key usage.
         // - KeyUsage[0] = digitalSignature
         // - KeyUsage[1] = nonRepudiation
@@ -70,7 +73,10 @@ class KeyInfoBuilder
         {
             try
             {
-                xmlSig.addKeyInfo(signingCertificate);
+                for (X509Certificate certificate : certificateChain)
+                {
+                    xmlSig.addKeyInfo(certificate);
+                }
 
                 if (this.basicSignatureOptionsProvider.signSigningCertificate())
                 {
