@@ -123,11 +123,15 @@ class SignatureUtils
 
             // Even if certificates are not used as selection criteria, they have
             // to be collected because they may be needed to build the cert path.
-            if (x509Data.containsCertificate())
+            for (int i = 0; i < keyInfo.lengthX509Data(); ++i)
             {
-                for (int j = 0; j < x509Data.lengthCertificate(); ++j)
+                x509Data = keyInfo.itemX509Data(i);
+                if (x509Data.containsCertificate())
                 {
-                    keyInfoCerts.add(x509Data.itemCertificate(j).getX509Certificate());
+                    for (int j = 0; j < x509Data.lengthCertificate(); ++j)
+                    {
+                        keyInfoCerts.add(x509Data.itemCertificate(j).getX509Certificate());
+                    }
                 }
             }
         } catch (XMLSecurityException ex)
