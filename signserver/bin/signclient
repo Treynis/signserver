@@ -77,5 +77,4 @@ if $cygwin; then
 fi
 
 # Execute the command
-#exec "$JAVACMD" -Djavax.net.debug=ssl -cp $CP $class_name "$@"
 exec "$JAVACMD" -cp $CP $class_name "$@"

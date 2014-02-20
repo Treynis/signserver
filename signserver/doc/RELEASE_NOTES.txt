@@ -1,34 +1,3 @@
-SignServer 3.5.0
-----------------
-
-New features and improvements:
- - Support for JBoss AS 7.1, JBoss EAP 6.1 and GlassFish 3.1.
- - Support for MariaDB.
- - Support for JDK 7.
- - All worker configuration can now be done from the Admin GUI.
- - Document signer for XAdES-BES and XAdES-T contributed by Luis Maia.
- - Document validator for XAdES-BES and XAdES-T.
- - Support for different signature algorithms in XML signers.
- - Various AdminGUI/remote administration improvements.
-
-Bug fixes:
- - An security issue in a bundled library has been resolved by upgrading it to a 
-   later version.
- - Regression: Test signing was not performed as part of getstatus command.
- - Empty certificate chain in setproperties call gave error.
-
-Notice:
- - The XML Security library has been updated to version 1.5.5. This version is 
-   not compatible with the version bundled with JBoss 5. For the XML support to 
-   work when running on JBoss 5 the XML Security library and its dependencies 
-   should be put in JBOSS_HOME/lib/endorsed. To help with that an Ant target 
-   can be run:
-   $ bin/ant j2ee:copy-xmlsec
- - Support for the group key framework has been discontinued.
-
-Read the full changelog for details (https://jira.primekey.se/browse/DSS?report=com.atlassian.jira.plugin.system.project:changelog-panel#selectedTab=com.atlassian.jira.plugin.system.project%3Achangelog-panel).
-
-
 SignServer 3.4.3
 ----------------
 
@@ -84,7 +53,6 @@ Read the full changelog for details (https://jira.primekey.se/browse/DSS?report=
 
 SignServer 3.4.0
 ----------------
-
 This is a major release - in total 27 features, options, bugs and stabilizations have been fixed or added. The most noteworthy changes can be seen below.
 
 Major changes:
@@ -108,7 +76,6 @@ Notice:
 
 SignServer 3.3.0
 ----------------
-
 This is a major release - in total 57 features, options, bugs and stabilizations have been fixed or added. The most noteworthy changes can be seen below.
 
 Major changes:
@@ -278,7 +245,6 @@ Read the full changelog for details (https://jira.primekey.se/browse/DSS?report=
 
 SignServer 3.2.0
 ----------------
-
 This is a major release - in total 49 features, options, bugs and stabilizations have been fixed or added. The most noteworthy changes can be seen below.
 
 Major new features and improvements:
@@ -301,7 +267,6 @@ Read the full changelog for details (https://jira.primekey.se/browse/DSS?report=
 
 SignServer 3.1.5
 ----------------
-
 This is just a minor maintenance release preparing for the upcoming 3.2 release - in total 7 features, options, bugs and stabilizations have been fixed or added. The most noteworthy changes can be seen below.
 
 New features and improvements:

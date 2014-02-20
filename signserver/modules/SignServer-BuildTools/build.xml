@@ -15,7 +15,7 @@
     
     <target name="-post-jar">
         <copy todir="../../lib/">
-            <fileset dir="${dist.dir}">
+            <fileset dir="dist">
                 <include name="*.jar"/>
             </fileset>
         </copy>

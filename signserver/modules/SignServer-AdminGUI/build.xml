@@ -18,20 +18,34 @@
 
     <!-- Copy to client-dist etc. -->
     <target name="dist-module" depends="jar,-do-client-dist"/>
-    
-    <!-- Update version number in resource bundles -->
-    <target name="-pre-jar">
+
+    <!--
+        ===================
+        RELEASE SECTION
+        ===================
+    -->
+
+    <target name="release:bin-zip" depends="clean, jar"
+        description="Creates binary release in ZIP format">
+
         <property file="../../res/compile.properties"/>
-        <filter token="APPVERSION" value="${app.version.number}"/>
-        <copy todir="target/classes/org/signserver/admin/gui/resources/" filtering="true" overwrite="true">
-            <fileset dir="${src.resources.dir}/org/signserver/admin/gui/resources/">
-                <include name="SignServerAdminGUIApplication.properties"/>
-                <include name="SignServerAdminGUIApplicationAboutBox.properties"/>
-            </fileset>
-        </copy>
-        
+
+        <property name="zipname" 
+            value="signserver-admingui-${app.version.number}"/>
+
+        <zip destfile="dist/${zipname}.zip">
+            <zipfileset dir="../../conf/" prefix="${zipname}" 
+                filemode="600" dirmode="700">
+                <include name="admingui_default.properties"/>
+            </zipfileset>
+            <zipfileset dir="./dist" prefix="${zipname}"
+                filemode="600" dirmode="700">
+                <include name="**/*.jar"/>
+            </zipfileset>
+        </zip>
     </target>
     
+
     <!--
         ===================
         JAX-WS WSIMPORT SECTION
@@ -50,7 +64,7 @@
     </target>
     <target name="wsimport-client-AdminWebServiceService" depends="wsimport-init">
         <mkdir dir="${build.generated.dir}/jax-wsCache/AdminWebServiceService"/>
-        <property name="wsdl-AdminWebServiceService" location="${src.resources.dir}/META-INF/wsdl/AdminWebServiceService.wsdl"/>
+        <property name="wsdl-AdminWebServiceService" location="${src.dir}/META-INF/wsdl/AdminWebServiceService.wsdl"/>
         <wsimport 
         	sourcedestdir="${build.generated.dir}/jax-wsCache/AdminWebServiceService" 
         	destdir="${build.generated.dir}/jax-wsCache/AdminWebServiceService" 

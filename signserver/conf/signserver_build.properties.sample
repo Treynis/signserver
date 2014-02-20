@@ -1,24 +1,24 @@
 #
 # $Id$
 #
-# Build configuration of SignServer. Modify at will before building and 
-# deploying.
+# Build configuration of SignServer. Modify at will before building.
+# Note: You might have to run "bin/ant clean" before building for some changes 
+# to take effect.
 # 
 
 
 # ------------ Application server configuration --------------------------------
 
-# Application server home folder
-# Default: $APPSRV_HOME or $JBOSS_HOME
-#appserver.home=/opt/jboss-as-7.1.1.Final
-#appserver.home=/opt/jboss-eap-6.1
-#appserver.home=/opt/glassfish3/glassfish/
-#appserver.home=${env.APPSRV_HOME}
-
 # Application server type
 # Possible values: jboss, glassfish
-# Default <auto-detect>
+# Default jboss
 #appserver.type=jboss
+
+# Application server home folder
+# Default: $APPSRV_HOME or $JBOSS_HOME
+#appserver.home=${basedir}/../../jboss-5.1.0
+#appserver.home=/usr/local/SUNWappserver/
+#appserver.home=${env.APPSRV_HOME}
 
 # JBoss configuration to deploy to
 # Available options are: all, default, minimal
@@ -88,7 +88,7 @@ j2ee.web-nohttps=true
 # Prefix for the jndi name of the datasource to use in deployment descriptors of ejbs. 
 # JBoss requires 'java:/' as prefix, while weblogic does not want anything ('') and
 # GlassFish uses jdbc/
-# Default: "java:/" for JBoss and "jndi/" for GlassFish
+# default: java:/
 #datasource.jndi-name-prefix=java:/
 #datasource.jndi-name-prefix=
 #datasource.jndi-name-prefix=jdbc/
@@ -96,7 +96,6 @@ j2ee.web-nohttps=true
 # The database name selected for deployment
 # Default: hsqldb
 # (use the nodb option to use a local file-based database instead of regular database, this needs further configuring of the database location).
-# For MariaDB use "mysql".
 #database.name=mysql
 #database.name=postgres
 #database.name=mssql2000
@@ -112,7 +111,7 @@ j2ee.web-nohttps=true
 # Database connection URL.
 # This is the URL used to connect to the database, used to configure a new datasource in JBoss.
 # Default: jdbc:hsqldb:${jboss.server.data.dir}${/}hypersonic${/}SignServerLocalDB
-# MySQL/MariaDB standard:
+# Mysql standard:
 #database.url=jdbc:mysql://127.0.0.1:3306/signserver?characterEncoding=UTF-8
 # Mysql Clusters should use something like:
 #database.url=jdbc:mysql://host1,host2/signserver
@@ -129,7 +128,6 @@ j2ee.web-nohttps=true
 # The JEE server needs to be configured with the appropriate JDBC driver for
 # the selected database
 # Default: org.hsqldb.jdbcDriver
-#database.driver=org.mariadb.jdbc.Driver
 #database.driver=com.mysql.jdbc.Driver
 #database.driver=org.postgresql.Driver
 #database.driver=com.microsoft.jdbc.sqlserver.SQLServerDriver
@@ -145,7 +143,9 @@ j2ee.web-nohttps=true
 #database.password=signserver
 
 
-# -------------- Web Services Configuration ------------------------------------
+# -------------- JAX-WS Web Service Configuration ------------------------------
+#
+# JAX-WS Web Service requires JAX-WS 2.1 to build.
 #
 # Set to false to disable Main WebService deployment. 
 # If set to false you must also disable the validationclient and signingandvalidationapi modules below.
@@ -191,10 +191,6 @@ j2ee.web-nohttps=true
 # Module XMLValidator
 # Default: true
 #module.xmlvalidator.enabled=true
-
-# Module XAdES
-# Default: true
-#module.xades.enabled=true
 
 # Module CMSSigner
 # Default: true
@@ -270,22 +266,12 @@ j2ee.web-nohttps=true
 # Default: true
 #databasecli.enabled=true
 
-# -------------- Additional Web Deployments -----------------------------------
+# -------------- Documentation Configuration -----------------------------------
 
 # Deploy the documentation.
 #
 # Default: true
 #webdoc.enabled=true
-
-# Offer the AdminGUI binary dist for download from the public web
-# 
-# Default: true
-#web.admingui.dist.enabled=true
-
-# Path to the AdminGUI binary dist file
-# Default: ${basedir}/lib/signserver-admingui.zip
-#web.admingui.dist.file=${basedir}/lib/signserver-admingui.zip
-#web.admingui.dist.file=/tmp/signserver-admingui.zip
 
 
 # -------------- Status And Health Check Configuration -------------------------

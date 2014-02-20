@@ -11,11 +11,9 @@
             <name>SignServer-Test-System</name>
             <source-roots>
                 <root id="src.dir"/>
-                <root id="src.resources.dir" name="Source Resources"/>
             </source-roots>
             <test-roots>
                 <root id="test.src.dir"/>
-                <root id="test.resources.dir" name="Test Resources"/>
             </test-roots>
         </data>
         <libraries xmlns="http://www.netbeans.org/ns/ant-project-libraries/1">
@@ -112,6 +110,14 @@
             </reference>
             <reference>
                 <foreign-project>SignServer-Module-CMSSigner</foreign-project>
+                <artifact-type>jar</artifact-type>
+                <script>build.xml</script>
+                <target>jar</target>
+                <clean-target>clean</clean-target>
+                <id>jar</id>
+            </reference>
+            <reference>
+                <foreign-project>SignServer-Module-Groupkeyservice</foreign-project>
                 <artifact-type>jar</artifact-type>
                 <script>build.xml</script>
                 <target>jar</target>

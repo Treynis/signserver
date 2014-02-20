@@ -12,9 +12,6 @@
     <import file="nbproject/build-impl.xml"/>
     <import file="../modules.xml"/>
     <import file="../tests.xml"/>
-    
-    <property name="dist-module.available" value="true"/>
-    <property name="clean.available" value="true"/>
 
 <!--
         ===================
@@ -33,27 +30,6 @@
         <taskdef name="wsimport" classname="org.signserver.anttasks.ws.WsImport">
             <classpath path="../../lib/SignServer-BuildTools.jar"/>
         </taskdef>
-    </target>
-    
-    <target name="dist-module" depends="jar, compile-test">
-        <copy todir="../../lib/">
-            <fileset dir="../SignServer-Test-Utils/target/" includes="SignServer-Test-Utils.jar"/>
-        </copy>
-        <property name="dist.tests.jar" value="${dist.dir}/${application.title}-tests.jar"/>
-        <echo level="verbose">
-            application.title:      ${application.title}
-            dist.dir:               ${dist.dir}
-            dist.jar:               ${dist.jar}
-            build.test.classes.dir: ${build.test.classes.dir}
-            dist.tests.jar:         ${dist.tests.jar}
-        </echo>
-        <jar destfile="${dist.tests.jar}">
-            <zipfileset src="${dist.jar}"/>
-            <zipfileset dir="${build.test.classes.dir}" includes="**/*"/>
-        </jar>
-        <antcall target="-do-client-dist">
-            <param name="dist.jar" value="${dist.tests.jar}"/>
-        </antcall>
     </target>
     
     <!-- 

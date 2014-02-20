@@ -93,10 +93,6 @@ if [ -f $APPSRV_HOME/client/jbossall-client.jar ]; then
     CP=$CP:"${SIGNSRV_HOME}/conf/jboss"
     CP=$CP:"$APPSRV_HOME/client/jbossall-client.jar"
 fi
-if [ -f $APPSRV_HOME/bin/standalone.sh ]; then
-    CP="$APPSRV_HOME/bin/client/jboss-client.jar":$CP
-    CP="${SIGNSRV_HOME}/conf/jboss7":$CP
-fi
 
 # For Cygwin, switch paths to Windows format before running java
 if $cygwin; then
@@ -104,7 +100,4 @@ if $cygwin; then
 fi
 
 # Execute the command
-#echo Class-Path: $CP
-#exec "$JAVACMD" -Djavax.net.debug=all -cp $CP -splash:$SIGNSRV_HOME/res/admingui-splash.png $class_name "$@" -connectfile $SIGNSRV_HOME/conf/admingui.properties -defaultconnectfile $SIGNSRV_HOME/conf/admingui_default.properties
-#exec "$JAVACMD" -Xrunjdwp:transport=dt_socket,address=8788,server=y,suspend=n -cp $CP -splash:$SIGNSRV_HOME/res/admingui-splash.png $class_name "$@" -connectfile $SIGNSRV_HOME/conf/admingui.properties -defaultconnectfile $SIGNSRV_HOME/conf/admingui_default.properties -basedir $SIGNSRV_HOME
-exec "$JAVACMD" -cp $CP -splash:$SIGNSRV_HOME/res/admingui-splash.png $class_name "$@" -connectfile $SIGNSRV_HOME/conf/admingui.properties -defaultconnectfile $SIGNSRV_HOME/conf/admingui_default.properties -basedir $SIGNSRV_HOME
+exec "$JAVACMD" -cp $CP -splash:$SIGNSRV_HOME/res/admingui-splash.png $class_name "$@" -connectfile $SIGNSRV_HOME/conf/admingui.properties -defaultconnectfile $SIGNSRV_HOME/conf/admingui_default.properties

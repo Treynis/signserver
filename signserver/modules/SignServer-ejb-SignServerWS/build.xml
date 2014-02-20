@@ -22,7 +22,7 @@
 
     <!-- Target for regenerating the WSDL. -->
     <target name="regenerate-wsdl" depends="wsgen-SignServerWS" description="Regenerates the WSDL from the source.">
-        <copy todir="${src.resources.dir}/META-INF/wsdl/" failonerror="true">
+        <copy todir="${src.dir}/META-INF/wsdl/" failonerror="true">
             <fileset dir="${build.dir}/generated-sources/jax-ws/resources/">
                 <include name="*.wsdl"/>
                 <include name="*.xsd"/>
@@ -36,14 +36,14 @@ Remember to update the soap:address location in the WSDL to start with
 
     <target name="dist-module" depends="init,-init-macrodef-convertclasspath,dist">
         <copy todir="../../lib/">
-            <fileset dir="${dist.dir}">
+            <fileset dir="dist">
                 <include name="*.jar"/>
             </fileset>
         </copy>
         
         <!-- Create the module descriptor file for this module -->
         <property name="distJar" value="SignServer-ejb-SignServerWS.jar"/>
-        <property name="defaultExcludes" value="modules/SignServer-BuildTools/,modules/SignServer-ejb/,lib/ext/ext/,lib/ext/hibernate/,lib/ext/javaee-*/*"/>
+        <property name="defaultExcludes" value="modules/SignServer-BuildTools/,modules/SignServer-ejb/,lib/ext/ext/ejb/,lib/ext/hibernate/,lib/ext/javaee-*/*,lib/ext/ext/servlet-*"/>
         <convertclasspath classpath="${javac.classpath}" id="libsToLib" excludes="${defaultExcludes},modules/"/>
         <convertclasspath classpath="${javac.classpath}" id="modsToLib" excludes="${defaultExcludes},lib/" mapperType="flatten" mapperTo="lib/*"/>
         <propertyfile file="../../mods-available/20_${modulename}.properties">

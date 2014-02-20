@@ -20,7 +20,7 @@
                 <items>
                     <source-folder style="tree">
                         <label>Sources</label>
-                        <location>src/site/xdoc</location>
+                        <location>src/xdocs</location>
                     </source-folder>
                 </items>
                 <context-menu>

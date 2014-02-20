@@ -27,14 +27,14 @@
     
     <target name="dist-module" depends="init,-init-macrodef-convertclasspath,dist">
     	<copy todir="../../lib/">
-            <fileset dir="${dist.dir}">
+            <fileset dir="dist">
                 <include name="*.jar"/>
             </fileset>
         </copy>
         
         <!-- Create the module descriptor file for this module -->
         <property name="distJar" value="SignServer-ejb.jar"/>
-        <property name="defaultExcludes" value="modules/SignServer-BuildTools/,modules/SignServer-ejb/,lib/ext/ext/,lib/ext/hibernate/,lib/ext/javaee-*/*"/>
+        <property name="defaultExcludes" value="modules/SignServer-BuildTools/,modules/SignServer-ejb/,lib/ext/ext/ejb/,lib/ext/hibernate/,lib/ext/javaee-*/*,lib/ext/servlet-*,lib/ext/jaxws/saaj-api.jar,lib/ext/jaxws/saaj-impl.jar"/>
         <convertclasspath classpath="${javac.classpath}" id="libsToLib" excludes="${defaultExcludes},modules/"/>
         <convertclasspath classpath="${javac.classpath}" id="modsToLib" excludes="${defaultExcludes},lib/" mapperType="flatten" mapperTo="lib/*"/>
         <propertyfile file="../../mods-available/10_${modulename}.properties">
