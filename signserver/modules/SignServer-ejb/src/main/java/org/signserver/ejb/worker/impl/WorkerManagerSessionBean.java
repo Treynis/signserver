@@ -108,7 +108,8 @@ public class WorkerManagerSessionBean implements IWorkerManagerSessionLocal {
         GlobalConfiguration gc = globalSession.getGlobalConfiguration();
         List<Integer> workers = getWorkers(GlobalConfiguration.WORKERTYPE_ALL, gc);
         for (Integer workerId : workers) {
-            if (workerName.equalsIgnoreCase(workerConfigService.getWorkerProperties(workerId).getProperty("NAME"))) {
+            WorkerConfig conf = workerConfigService.getWorkerProperties(workerId);
+            if (conf != null && workerName.equalsIgnoreCase(conf.getProperty("NAME"))) {
                 result = workerId;
                 break;
             }
