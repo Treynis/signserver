@@ -59,7 +59,7 @@ public class WorkerManagerSessionBean implements IWorkerManagerSessionLocal {
     private IWorkerConfigDataService workerConfigService;
     private IKeyUsageCounterDataService keyUsageCounterDataService;
     
-    private final WorkerFactory workerFactory = WorkerFactory.getInstance();
+    private final WorkerFactory workerFactory = new WorkerFactory();
     
     private SignServerContext workerContext;
     
@@ -86,20 +86,44 @@ public class WorkerManagerSessionBean implements IWorkerManagerSessionLocal {
 
     @Override
     public IWorker getWorker(final int workerId, final IGlobalConfigurationSession globalSession) {
+        return getWorker(workerId, globalSession.getGlobalConfiguration());
+    }
+    
+    private IWorker getWorker(final int workerId, final GlobalConfiguration gc) {
         return workerFactory.getWorker(workerId,
-                workerConfigService, globalSession, this, workerContext);
+                workerConfigService, gc, workerContext);
     }
 
+    /**
+     * XXX: Expensive
+     * @param workerName
+     * @param globalSession
+     * @return 
+     */
     @Override
     public int getIdFromName(final String workerName, final IGlobalConfigurationSession globalSession) {
-        return workerFactory.getWorkerIdFromName(workerName.
-                toUpperCase(), workerConfigService, globalSession, this, workerContext);
+        LOG.warn("Expensive call to getIdFromName");
+        int result = 0;
+        
+        GlobalConfiguration gc = globalSession.getGlobalConfiguration();
+        List<Integer> workers = getWorkers(GlobalConfiguration.WORKERTYPE_ALL, gc);
+        for (Integer workerId : workers) {
+            if (workerName.equalsIgnoreCase(workerConfigService.getWorkerProperties(workerId).getProperty("NAME"))) {
+                result = workerId;
+                break;
+            }
+        }
+        
+        if (result == 0) {
+            LOG.warn("No such workerName: " + workerName);
+        }
+        
+        return result;
     }
 
     @Override
     public void reloadWorker(int workerId, ILocal globalConfigurationSession) {
-        workerFactory.reloadWorker(workerId,
-                    workerConfigService, globalConfigurationSession, workerContext);
+        LOG.warn("reloadWorker is a no-op");
     }
 
     @Override
@@ -132,7 +156,7 @@ public class WorkerManagerSessionBean implements IWorkerManagerSessionLocal {
 
     @Override
     public void flush() {
-        workerFactory.flush();
+        LOG.warn("flush is a no-op");
     }
     
     /**
@@ -140,27 +164,25 @@ public class WorkerManagerSessionBean implements IWorkerManagerSessionLocal {
      */
     @Override
     public List<Integer> getWorkers(int workerType, IGlobalConfigurationSession globalConfigurationSession) {
-        ArrayList<Integer> retval = new ArrayList<Integer>();
-        GlobalConfiguration gc = globalConfigurationSession.getGlobalConfiguration();
-
+        return getWorkers(workerType, globalConfigurationSession.getGlobalConfiguration());
+    }
+    
+    private List<Integer> getWorkers(int workerType, GlobalConfiguration gc) {
+        ArrayList<Integer> result = new ArrayList<Integer>();
         Enumeration<String> en = gc.getKeyEnumeration();
         while (en.hasMoreElements()) {
             String key = en.nextElement();
             if (LOG.isTraceEnabled()) {
                 LOG.trace("getWorkers, processing key : " + key);
             }
-            if (key.startsWith("GLOB.WORKER")) {
-                retval = (ArrayList<Integer>) getWorkerHelper(retval, key, workerType, false, globalConfigurationSession);
-            }
-            if (key.startsWith("GLOB.SIGNER")) {
-                retval = (ArrayList<Integer>) getWorkerHelper(retval, key, workerType, true, globalConfigurationSession);
+            if (key.startsWith("GLOB.WORKER") || key.startsWith("GLOB.SIGNER")) {
+                getWorkerHelper(result, key, workerType, false, gc);
             }
         }
-        return retval;
+        return result;
     }
 
-    private List<Integer> getWorkerHelper(List<Integer> retval, String key, int workerType, boolean signersOnly, IGlobalConfigurationSession globalConfigurationSession) {
-
+    private void getWorkerHelper(List<Integer> retval, String key, int workerType, boolean signersOnly, GlobalConfiguration gc) {
         String unScopedKey = key.substring("GLOB.".length());
         if (LOG.isTraceEnabled()) {
             LOG.trace("unScopedKey : " + unScopedKey);
@@ -179,7 +201,7 @@ public class WorkerManagerSessionBean implements IWorkerManagerSessionLocal {
                 if (workerType == GlobalConfiguration.WORKERTYPE_ALL) {
                     retval.add(new Integer(id));
                 } else {
-                    IWorker obj = getWorker(id, globalConfigurationSession);
+                    IWorker obj = getWorker(id, gc);
                     if (workerType == GlobalConfiguration.WORKERTYPE_PROCESSABLE) {
                         if (obj instanceof IProcessable) {
                             if (LOG.isDebugEnabled()) {
@@ -200,7 +222,6 @@ public class WorkerManagerSessionBean implements IWorkerManagerSessionLocal {
                 }
             }
         }
-        return retval;
     }
     
     private Map<Class<?>, Object> getEjbs() {
