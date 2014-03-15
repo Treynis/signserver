@@ -19,8 +19,8 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
+import javax.naming.NamingException;
 import javax.security.auth.x500.X500Principal;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -37,6 +37,7 @@ import org.ejbca.util.Base64;
 import org.ejbca.util.CertTools;
 import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.*;
+import org.signserver.ejb.interfaces.SoftCryptoTokenPasswordCacheSessionLocal;
 
 /**
  * Class that uses a PKCS12 or JKS file on the file system for signing.
@@ -72,6 +73,8 @@ public class KeystoreCryptoToken implements ICryptoToken,
 
     private static final String SUBJECT_DUMMY = "L=_SignServer_DUMMY_CERT_";
 
+    private int workerId;
+    
     private String keystorepath = null;
     private String keystorepassword = null;
 
@@ -82,13 +85,29 @@ public class KeystoreCryptoToken implements ICryptoToken,
 
     private Map<Integer, KeyEntry> entries;
 
-    private char[] authenticationCode;
+    private SoftCryptoTokenPasswordCacheSessionLocal passwordCacheSession;
 
+    /**
+     * @return The global configuration session.
+     */
+    protected SoftCryptoTokenPasswordCacheSessionLocal getPasswordCacheSession() { // FIXME: Better to somehow inject this
+        if (passwordCacheSession == null) {
+            try {
+                passwordCacheSession = ServiceLocator.getInstance().lookupLocal(
+                        SoftCryptoTokenPasswordCacheSessionLocal.class);
+            } catch (NamingException e) {
+                LOG.error(e);
+            }
+        }
+        return passwordCacheSession;
+    }
+    
     /**
      * @see org.signserver.server.cryptotokens.ICryptoToken#init(int, java.util.Properties)
      */
     @Override
     public void init(int workerId, Properties properties) {
+        this.workerId = workerId;
         this.properties = properties;
         keystorepath = properties.getProperty(KEYSTOREPATH);
         keystorepassword = properties.getProperty(KEYSTOREPASSWORD);
@@ -131,7 +150,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
             this.ks = getKeystore(keystoretype, keystorepath,
                     authenticationcode.toCharArray());
             this.provider = ks.getProvider().getName();
-            this.authenticationCode = authenticationcode.toCharArray();
+            getPasswordCacheSession().cachePassword(workerId, authenticationcode.toCharArray());
 
             entries = new HashMap<Integer, KeyEntry>();
 
@@ -196,7 +215,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
                     LOG.error("Not a private key for alias " + defaultKey);
                 }
             }
-            
+             
         } catch (KeyStoreException e1) {
             LOG.error("Error :", e1);
             throw new CryptoTokenAuthenticationFailureException("KeyStoreException " + e1.getMessage());
@@ -230,10 +249,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
     public boolean deactivate() {
         entries = null;
         ks = null;
-        if (authenticationCode != null) {
-            Arrays.fill(authenticationCode, '\0');
-        }
-        this.authenticationCode = null;
+        getPasswordCacheSession().removeCachedPassword(workerId);
         return true;
     }
 
@@ -428,7 +444,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
         try {
 
             final KeyStore keystore = getKeystore(keystoretype, keystorepath,
-                    authCode == null ? authenticationCode : authCode);
+                    authCode == null ? getPasswordCacheSession().getCachedPassword(workerId) : authCode);
 
             final Enumeration<String> e = keystore.aliases();
             while( e.hasMoreElements() ) {
@@ -517,7 +533,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
         try {
 
             final KeyStore keystore = getKeystore(keystoretype, keystorepath, 
-                    authenticationCode);
+                    authCode == null ? getPasswordCacheSession().getCachedPassword(workerId) : authCode);
             final Provider prov = keystore.getProvider();
             if (LOG.isDebugEnabled()) {
                 LOG.debug("provider: " + prov);
@@ -543,10 +559,10 @@ public class KeystoreCryptoToken implements ICryptoToken,
                                       (long)30*24*60*60*365, sigAlgName, keyPair);
             LOG.debug("Creating certificate with entry "+alias+'.');
 
-            keystore.setKeyEntry(alias, keyPair.getPrivate(), authCode, chain);
+            keystore.setKeyEntry(alias, keyPair.getPrivate(), authCode == null ? getPasswordCacheSession().getCachedPassword(workerId) : authCode, chain);
 
             keystore.store(new FileOutputStream(new File(keystorepath)), 
-                    authenticationCode);
+                    authCode == null ? getPasswordCacheSession().getCachedPassword(workerId) : authCode);
 
         } catch (Exception ex) {
             LOG.error(ex, ex);
@@ -621,7 +637,7 @@ public class KeystoreCryptoToken implements ICryptoToken,
             OutputStream out = null;
             try {
                 out = new FileOutputStream(new File(keystorepath));
-                keyStore.store(out, authenticationCode);
+                keyStore.store(out, getPasswordCacheSession().getCachedPassword(workerId));
             } catch (IOException ex) {
                 LOG.error("Unable to persist new keystore after key removal: " + ex.getMessage(), ex);
                 throw new SignServerException("Unable to persist key removal");
