@@ -38,8 +38,9 @@ import org.signserver.common.SODSignResponse;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.ISoftCryptoTokenPasswordCacheSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
-import org.signserver.ejb.interfaces.SoftCryptoTokenPasswordCacheSessionLocal;
+import org.signserver.ejb.interfaces.ISoftCryptoTokenPasswordCacheSession.ILocal;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
 import org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases;
 import org.signserver.server.cryptotokens.P12CryptoToken;
@@ -63,7 +64,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
 
     public static class MockedP12CryptoToken extends P12CryptoToken {
 
-        private final SoftCryptoTokenPasswordCacheSessionLocal passwordCache = new SoftCryptoTokenPasswordCacheSessionLocal() {
+        private final ISoftCryptoTokenPasswordCacheSession.ILocal passwordCache = new ISoftCryptoTokenPasswordCacheSession.ILocal() {
             
             private final HashMap<Integer, char[]> passwords = new HashMap<Integer, char[]>();
 
@@ -84,7 +85,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
         };
         
         @Override
-        protected SoftCryptoTokenPasswordCacheSessionLocal getPasswordCacheSession() {
+        protected ISoftCryptoTokenPasswordCacheSession.ILocal getPasswordCacheSession() {
             return passwordCache;
         }
     }

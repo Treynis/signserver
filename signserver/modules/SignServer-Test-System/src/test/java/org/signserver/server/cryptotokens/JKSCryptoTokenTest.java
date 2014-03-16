@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Properties;
 
 import junit.framework.TestCase;
-import org.signserver.ejb.interfaces.SoftCryptoTokenPasswordCacheSessionLocal;
+import org.signserver.ejb.interfaces.ISoftCryptoTokenPasswordCacheSession;
 
 /**
  * Tests for a crypto token that uses a Java Keystore (JKS) file.
@@ -100,7 +100,7 @@ public class JKSCryptoTokenTest extends TestCase {
     
     public static class MockedJKSCryptoToken extends JKSCryptoToken {
 
-        private final SoftCryptoTokenPasswordCacheSessionLocal passwordCache = new SoftCryptoTokenPasswordCacheSessionLocal() {
+        private final ISoftCryptoTokenPasswordCacheSession.ILocal passwordCache = new ISoftCryptoTokenPasswordCacheSession.ILocal() {
             
             private final HashMap<Integer, char[]> passwords = new HashMap<Integer, char[]>();
 
@@ -121,7 +121,7 @@ public class JKSCryptoTokenTest extends TestCase {
         };
         
         @Override
-        protected SoftCryptoTokenPasswordCacheSessionLocal getPasswordCacheSession() {
+        protected ISoftCryptoTokenPasswordCacheSession.ILocal getPasswordCacheSession() {
             return passwordCache;
         }
     }
