@@ -15,11 +15,13 @@ package org.signserver.server.cryptotokens;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import java.security.Signature;
+import java.util.HashMap;
 import java.util.Properties;
 
 import junit.framework.TestCase;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.signserver.ejb.interfaces.SoftCryptoTokenPasswordCacheSessionLocal;
 
 /**
  * TODO: Document me!
@@ -47,7 +49,7 @@ public class P12CryptoTokenTest extends TestCase {
         Signature sig = null;
         String signatureAlgorithm = "SHA256WITHRSAANDMGF1";
 
-        P12CryptoToken signToken = new P12CryptoToken();
+        P12CryptoToken signToken = new MockedP12CryptoToken();
         Properties props = new Properties();
         String signserverhome = System.getenv("SIGNSERVER_HOME");
         assertNotNull(signserverhome);
@@ -78,5 +80,33 @@ public class P12CryptoTokenTest extends TestCase {
         assertTrue(sig.verify(result));
 
         assertTrue(signToken.deactivate());
+    }
+    
+    public static class MockedP12CryptoToken extends P12CryptoToken {
+
+        private final SoftCryptoTokenPasswordCacheSessionLocal passwordCache = new SoftCryptoTokenPasswordCacheSessionLocal() {
+            
+            private final HashMap<Integer, char[]> passwords = new HashMap<Integer, char[]>();
+
+            @Override
+            public void cachePassword(int workerId, char[] password) {
+                passwords.put(workerId, password);
+            }
+
+            @Override
+            public char[] getCachedPassword(int workerId) {
+                return passwords.get(workerId);
+            }
+
+            @Override
+            public void removeCachedPassword(int workerId) {
+                passwords.remove(workerId);
+            }
+        };
+        
+        @Override
+        protected SoftCryptoTokenPasswordCacheSessionLocal getPasswordCacheSession() {
+            return passwordCache;
+        }
     }
 }

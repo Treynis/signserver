@@ -15,9 +15,11 @@ package org.signserver.server.cryptotokens;
 import java.io.File;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
+import java.util.HashMap;
 import java.util.Properties;
 
 import junit.framework.TestCase;
+import org.signserver.ejb.interfaces.SoftCryptoTokenPasswordCacheSessionLocal;
 
 /**
  * Tests for a crypto token that uses a Java Keystore (JKS) file.
@@ -62,7 +64,7 @@ public class JKSCryptoTokenTest extends TestCase {
             throws Exception {
 
         // Create crypto token
-        final JKSCryptoToken signToken = new JKSCryptoToken();
+        final JKSCryptoToken signToken = new MockedJKSCryptoToken();
         final Properties props = new Properties();
 
         props.setProperty("KEYSTOREPATH",
@@ -94,5 +96,33 @@ public class JKSCryptoTokenTest extends TestCase {
         assertTrue("verify signature", sig.verify(result));
 
         assertTrue("deactivate token", signToken.deactivate());
+    }
+    
+    public static class MockedJKSCryptoToken extends JKSCryptoToken {
+
+        private final SoftCryptoTokenPasswordCacheSessionLocal passwordCache = new SoftCryptoTokenPasswordCacheSessionLocal() {
+            
+            private final HashMap<Integer, char[]> passwords = new HashMap<Integer, char[]>();
+
+            @Override
+            public void cachePassword(int workerId, char[] password) {
+                passwords.put(workerId, password);
+            }
+
+            @Override
+            public char[] getCachedPassword(int workerId) {
+                return passwords.get(workerId);
+            }
+
+            @Override
+            public void removeCachedPassword(int workerId) {
+                passwords.remove(workerId);
+            }
+        };
+        
+        @Override
+        protected SoftCryptoTokenPasswordCacheSessionLocal getPasswordCacheSession() {
+            return passwordCache;
+        }
     }
 }
