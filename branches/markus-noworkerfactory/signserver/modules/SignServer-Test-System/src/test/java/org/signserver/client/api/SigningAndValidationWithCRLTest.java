@@ -48,7 +48,7 @@ public class SigningAndValidationWithCRLTest extends ModulesTestCase {
     private static final int SIGNER1_WORKERID = 5676;
     private static final int CERTVALIDATION_WORKERID = 105;
     private static final int XMLVALIDATOR_WORKERID = 5677;
-    private static final int[] WORKERS = new int[] {5676, 5679, 5681, 5682, 5683, 5802, 5803};
+    private static final int[] WORKERS = new int[] {5676, 5679, 5681, 5682, 5683, 5802, 5803, 5804};
     
     private static final String SIGNER1_WORKER = "TestXMLSigner";
     private static final String CERTVALIDATION_WORKER = "CRLValidationWorker2";
