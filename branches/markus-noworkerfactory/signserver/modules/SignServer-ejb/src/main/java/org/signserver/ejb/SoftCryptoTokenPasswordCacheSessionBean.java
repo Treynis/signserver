@@ -13,7 +13,7 @@
 package org.signserver.ejb;
 
 
-import org.signserver.ejb.interfaces.SoftCryptoTokenPasswordCacheSessionLocal;
+import org.signserver.ejb.interfaces.ISoftCryptoTokenPasswordCacheSession;
 import java.util.Arrays;
 import java.util.HashMap;
 import javax.ejb.Stateless;
@@ -26,7 +26,7 @@ import javax.ejb.Stateless;
  */
 @Stateless
 //@Singleton
-public class SoftCryptoTokenPasswordCacheSessionBean implements SoftCryptoTokenPasswordCacheSessionLocal {
+public class SoftCryptoTokenPasswordCacheSessionBean implements ISoftCryptoTokenPasswordCacheSession.ILocal {
 
     // Add business logic below. (Right-click in editor and choose
     // "Insert Code > Add Business Method")

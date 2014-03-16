@@ -13,12 +13,17 @@ import javax.ejb.Local;
  * @author markus
  */
 @Local
-public interface SoftCryptoTokenPasswordCacheSessionLocal {
+public interface ISoftCryptoTokenPasswordCacheSession {
 
     void cachePassword(final int workerId, final char[] password);
 
     char[] getCachedPassword(final int workerId);
 
     void removeCachedPassword(final int workerId);
+    
+    @Local
+    public interface ILocal extends ISoftCryptoTokenPasswordCacheSession {
+        String JNDI_NAME = "signserver/SoftCryptoTokenPasswordCacheSessionBean/local";
+    }
     
 }

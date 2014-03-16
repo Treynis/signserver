@@ -21,7 +21,7 @@ import java.util.Properties;
 import junit.framework.TestCase;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.signserver.ejb.interfaces.SoftCryptoTokenPasswordCacheSessionLocal;
+import org.signserver.ejb.interfaces.ISoftCryptoTokenPasswordCacheSession;
 
 /**
  * TODO: Document me!
@@ -84,7 +84,7 @@ public class P12CryptoTokenTest extends TestCase {
     
     public static class MockedP12CryptoToken extends P12CryptoToken {
 
-        private final SoftCryptoTokenPasswordCacheSessionLocal passwordCache = new SoftCryptoTokenPasswordCacheSessionLocal() {
+        private final ISoftCryptoTokenPasswordCacheSession.ILocal passwordCache = new ISoftCryptoTokenPasswordCacheSession.ILocal() {
             
             private final HashMap<Integer, char[]> passwords = new HashMap<Integer, char[]>();
 
@@ -105,7 +105,7 @@ public class P12CryptoTokenTest extends TestCase {
         };
         
         @Override
-        protected SoftCryptoTokenPasswordCacheSessionLocal getPasswordCacheSession() {
+        protected ISoftCryptoTokenPasswordCacheSession.ILocal getPasswordCacheSession() {
             return passwordCache;
         }
     }

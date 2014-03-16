@@ -37,7 +37,7 @@ import org.ejbca.util.Base64;
 import org.ejbca.util.CertTools;
 import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.SoftCryptoTokenPasswordCacheSessionLocal;
+import org.signserver.ejb.interfaces.ISoftCryptoTokenPasswordCacheSession;
 
 /**
  * Class that uses a PKCS12 or JKS file on the file system for signing.
@@ -85,16 +85,16 @@ public class KeystoreCryptoToken implements ICryptoToken,
 
     private Map<Integer, KeyEntry> entries;
 
-    private SoftCryptoTokenPasswordCacheSessionLocal passwordCacheSession;
+    private ISoftCryptoTokenPasswordCacheSession.ILocal passwordCacheSession;
 
     /**
      * @return The global configuration session.
      */
-    protected SoftCryptoTokenPasswordCacheSessionLocal getPasswordCacheSession() { // FIXME: Better to somehow inject this
+    protected ISoftCryptoTokenPasswordCacheSession.ILocal getPasswordCacheSession() { // FIXME: Better to somehow inject this
         if (passwordCacheSession == null) {
             try {
                 passwordCacheSession = ServiceLocator.getInstance().lookupLocal(
-                        SoftCryptoTokenPasswordCacheSessionLocal.class);
+                        ISoftCryptoTokenPasswordCacheSession.ILocal.class);
             } catch (NamingException e) {
                 LOG.error(e);
             }
