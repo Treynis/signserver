@@ -534,14 +534,14 @@ public class KeystoreCryptoToken implements ICryptoToken,
 
             final KeyStore keystore = getKeystore(keystoretype, keystorepath, 
                     authCode == null ? getPasswordCacheSession().getCachedPassword(workerId) : authCode);
-            final Provider prov = keystore.getProvider();
+            this.provider = keystore.getProvider().getName();
             if (LOG.isDebugEnabled()) {
-                LOG.debug("provider: " + prov);
+                LOG.debug("provider: " + provider);
             }
 
             // Generate the key pair
             final KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                        keyAlgorithm, prov);
+                        keyAlgorithm, provider);
             
             if ("ECDSA".equals(keyAlgorithm)) {
                 kpg.initialize(ECNamedCurveTable.getParameterSpec(keySpec));
@@ -631,7 +631,14 @@ public class KeystoreCryptoToken implements ICryptoToken,
 
     @Override
     public boolean removeKey(String alias) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
-        final KeyStore keyStore = getKeyStore();
+        final KeyStore keyStore;
+        try {
+            keyStore = getKeystore(keystoretype, keystorepath, 
+                        getPasswordCacheSession().getCachedPassword(workerId));
+        } catch (Exception ex) {
+            LOG.error("Unable to activate token: " + ex.getMessage(), ex);
+            throw new SignServerException("Unable to activate token");
+        }
         boolean result = CryptoTokenHelper.removeKey(keyStore, alias);
         if (result) {
             OutputStream out = null;
