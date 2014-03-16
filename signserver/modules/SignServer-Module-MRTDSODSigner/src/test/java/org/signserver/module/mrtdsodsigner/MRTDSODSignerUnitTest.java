@@ -39,8 +39,10 @@ import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.ejb.interfaces.SoftCryptoTokenPasswordCacheSessionLocal;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
 import org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases;
+import org.signserver.server.cryptotokens.P12CryptoToken;
 import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
 import org.signserver.test.utils.mock.WorkerSessionMock;
 
@@ -59,9 +61,38 @@ public class MRTDSODSignerUnitTest extends TestCase {
     private static final Logger LOG = Logger.getLogger(
             MRTDSODSignerUnitTest.class.getName());
 
+    public static class MockedP12CryptoToken extends P12CryptoToken {
+
+        private final SoftCryptoTokenPasswordCacheSessionLocal passwordCache = new SoftCryptoTokenPasswordCacheSessionLocal() {
+            
+            private final HashMap<Integer, char[]> passwords = new HashMap<Integer, char[]>();
+
+            @Override
+            public void cachePassword(int workerId, char[] password) {
+                passwords.put(workerId, password);
+            }
+
+            @Override
+            public char[] getCachedPassword(int workerId) {
+                return passwords.get(workerId);
+            }
+
+            @Override
+            public void removeCachedPassword(int workerId) {
+                passwords.remove(workerId);
+            }
+        };
+        
+        @Override
+        protected SoftCryptoTokenPasswordCacheSessionLocal getPasswordCacheSession() {
+            return passwordCache;
+        }
+    }
+    
+    
     private static final String AUTHTYPE = "AUTHTYPE";
     private static final String CRYPTOTOKEN_CLASSNAME
-            = "org.signserver.server.cryptotokens.P12CryptoToken";
+            = MockedP12CryptoToken.class.getName();
     private static final String NAME = "NAME";
 
     /** Worker7897: Default algorithms, default hashing setting. */
