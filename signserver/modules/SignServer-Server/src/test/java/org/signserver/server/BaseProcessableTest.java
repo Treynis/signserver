@@ -45,7 +45,7 @@ public class BaseProcessableTest extends TestCase {
     
     private final int workerId = 100;
     private final WorkerContext anyContext = new SignServerContext(null, null);
-
+    
     private static final String SAMPLE_ATTRIBUTES = 
             "attributes(generate,CKO_PUBLIC_KEY,*) = {\n" +
             "        CKA_TOKEN = false\n" +

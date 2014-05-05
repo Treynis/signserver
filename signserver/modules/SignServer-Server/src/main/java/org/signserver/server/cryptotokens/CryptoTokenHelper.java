@@ -15,7 +15,6 @@ package org.signserver.server.cryptotokens;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.util.Properties;
-import org.cesecore.keys.token.p11.Pkcs11SlotLabelType;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.SignServerException;
 
@@ -35,7 +34,6 @@ public class CryptoTokenHelper {
     public static final String PROPERTY_PIN = "PIN";
     public static final String PROPERTY_DEFAULTKEY = "DEFAULTKEY";
     public static final String PROPERTY_AUTHCODE = "AUTHCODE";
-    public static final String PROPERTY_SLOTLABELTYPE = "SLOTLABELTYPE";
     
     /** A workaround for the feature in SignServer 2.0 that property keys are 
      * always converted to upper case. The EJBCA CA Tokens usually use mixed case properties
@@ -60,12 +58,10 @@ public class CryptoTokenHelper {
         prop = props.getProperty(PROPERTY_SLOT);
         if (prop != null) {
             props.setProperty("slot", prop);
-            props.setProperty(org.cesecore.keys.token.PKCS11CryptoToken.SLOT_LABEL_VALUE, prop);
         }
         prop = props.getProperty(PROPERTY_SLOTLISTINDEX);
         if (prop != null) {
             props.setProperty("slotListIndex", prop);
-            props.setProperty(org.cesecore.keys.token.PKCS11CryptoToken.SLOT_LABEL_VALUE, prop);
         }
         prop = props.getProperty(PROPERTY_ATTRIBUTESFILE);
         if (prop != null) {
@@ -74,16 +70,6 @@ public class CryptoTokenHelper {
         prop = props.getProperty(PROPERTY_NEXTCERTSIGNKEY);
         if (prop != null) {
             props.setProperty("nextCertSignKey", prop);
-        }
-        prop = props.getProperty(PROPERTY_SLOTLABELTYPE);
-        if (prop == null) {
-            if (props.getProperty(PROPERTY_SLOT) != null) {
-                props.setProperty(org.cesecore.keys.token.PKCS11CryptoToken.SLOT_LABEL_TYPE, Pkcs11SlotLabelType.SLOT_NUMBER.getKey());
-            } else {
-                props.setProperty(org.cesecore.keys.token.PKCS11CryptoToken.SLOT_LABEL_TYPE, Pkcs11SlotLabelType.SLOT_INDEX.getKey());
-            }
-        } else {
-            props.setProperty(org.cesecore.keys.token.PKCS11CryptoToken.SLOT_LABEL_TYPE, prop);
         }
         return props;
     }

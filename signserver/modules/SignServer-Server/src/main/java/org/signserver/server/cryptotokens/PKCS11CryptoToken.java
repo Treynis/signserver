@@ -42,7 +42,6 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
 import org.bouncycastle.util.encoders.Hex;
 import org.cesecore.keys.token.CryptoTokenAuthenticationFailedException;
-import org.cesecore.keys.token.p11.exception.NoSuchSlotException;
 import org.ejbca.core.model.util.AlgorithmTools;
 import org.ejbca.util.Base64;
 import org.ejbca.util.CertTools;
@@ -77,7 +76,6 @@ public class PKCS11CryptoToken implements ICryptoToken, IKeyGenerator, IKeyRemov
     private static final Logger LOG = Logger.getLogger(PKCS11CryptoToken.class);
 
     private static final String PROPERTY_CACHE_PRIVATEKEY = "CACHE_PRIVATEKEY";
-    
     
     private final KeyStorePKCS11CryptoToken delegate;
 
@@ -120,16 +118,11 @@ public class PKCS11CryptoToken implements ICryptoToken, IKeyGenerator, IKeyRemov
             }
 
             props = CryptoTokenHelper.fixP11Properties(props);
-
-            final String sharedLibraryProperty = props.getProperty("sharedLibrary");
-            if (sharedLibraryProperty == null) {
+            
+            if (props.getProperty("sharedLibrary") == null) {
                 throw new CryptoTokenInitializationFailureException("Missing SHAREDLIBRARY property");
             }
-            final File sharedLibrary = new File(sharedLibraryProperty);
-            if (!sharedLibrary.isFile() || !sharedLibrary.canRead()) {
-                throw new CryptoTokenInitializationFailureException("The shared library file can't be read: " + sharedLibrary.getAbsolutePath());
-            }
-
+            
             delegate.init(props, null, workerId);
             
             keyAlias = props.getProperty("defaultKey");
@@ -146,10 +139,7 @@ public class PKCS11CryptoToken implements ICryptoToken, IKeyGenerator, IKeyRemov
             }
         } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
             LOG.error("Init failed", ex);
-            throw new CryptoTokenInitializationFailureException(ex.getMessage());
-        } catch (NoSuchSlotException ex) {
-            LOG.error("Slot not found", ex);
-            throw new CryptoTokenInitializationFailureException(ex.getMessage());
+            throw new CryptoTokenInitializationFailureException(ex.getMessage(), ex);
         }
     }
 
