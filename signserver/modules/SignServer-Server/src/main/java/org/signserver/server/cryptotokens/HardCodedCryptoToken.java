@@ -37,7 +37,7 @@ import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.KeyTestResult;
-import org.signserver.common.WorkerStatus;
+import org.signserver.common.SignerStatus;
 import static org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases.KEY_ALIAS_1;
 import static org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases.KEY_ALIAS_2;
 import static org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases.KEY_ALIAS_3;
@@ -323,7 +323,7 @@ public class HardCodedCryptoToken implements ICryptoToken {
      */
     @Override
     public int getCryptoTokenStatus() {
-        return WorkerStatus.STATUS_ACTIVE;
+        return SignerStatus.STATUS_ACTIVE;
     }
 
     /**

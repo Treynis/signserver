@@ -186,8 +186,8 @@ public class XMLSignerTest extends ModulesTestCase {
     
     @Test
     public void test07GetStatus() throws Exception {
-        final StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(WORKERID);
-        assertSame("Status", stat.getTokenStatus(), WorkerStatus.STATUS_ACTIVE);
+        final SignerStatus stat = (SignerStatus) workerSession.getStatus(WORKERID);
+        assertSame("Status", stat.getTokenStatus(), SignerStatus.STATUS_ACTIVE);
     }
 
     @Test

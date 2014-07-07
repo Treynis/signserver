@@ -135,9 +135,7 @@ public class MainView extends FrameView {
         super(app);
 
         initComponents();
-
-        statusSummaryTextPane.setContentType("text/html");
-
+        
         conditionsModel.addCondition(AuditRecordData.FIELD_EVENTTYPE, RelationalOperator.NEQ, "ACCESS_CONTROL");
         auditLogTable.setModel(auditlogModel);
         conditionsTable.setModel(conditionsModel);
@@ -198,7 +196,8 @@ public class MainView extends FrameView {
             }
         });
 
-        workerComboBox.setRenderer(new SmallWorkerListCellRenderer());
+        workerComboBox.setRenderer(new SmallWorkerListCellRenderer(
+                getResourceMap().getIcon("worker.smallIcon")));
 
         workerComboBox.addActionListener(new ActionListener() {
 
@@ -2115,7 +2114,7 @@ private void displayLogEntryAction() {
 
             });
         } else {
-            statusSummaryTextPane.setText("<html><body><pre>\n" + worker.getStatusSummary() + "\n</pre></body></html>");
+            statusSummaryTextPane.setText(worker.getStatusSummary());
             statusSummaryTextPane.setCaretPosition(0);
 
             propertiesTable.setModel(new DefaultTableModel(
@@ -2185,7 +2184,6 @@ private void displayLogEntryAction() {
             List<Worker> newSigners = new ArrayList<Worker>();
 
             try {
-                Properties globalConfig = toProperties(SignServerAdminGUIApplication.getAdminWS().getGlobalConfiguration());
                 List<Integer> workerIds = SignServerAdminGUIApplication
                         .getAdminWS()
                         .getWorkers(GlobalConfiguration.WORKERTYPE_ALL);
@@ -2196,23 +2194,12 @@ private void displayLogEntryAction() {
                     final WsWorkerConfig config = SignServerAdminGUIApplication.getAdminWS().getCurrentWorkerConfig(workerId);
                     final Properties properties = asProperties(config);
                     final String name = properties.getProperty("NAME");
-                    // Status
-                    String statusSummary;
-                    String tokenStatus;
-                    boolean active = false;
                     try {
                         final WsWorkerStatus status = SignServerAdminGUIApplication.getAdminWS().getStatus(workerId);
-                        statusSummary = status.getCompleteStatusText();
-                        tokenStatus = status.getOk() == null ? "ACTIVE" : "OFFLINE";
-                        active = status.getOk() == null;
                         workerInfo.add(status.getOk() == null ? "OK" : status.getOk());
                     } catch (InvalidWorkerIdException_Exception ex) {
                         workerInfo.add("Invalid");
-                        statusSummary = "No such worker";
-                        tokenStatus = "Unknown";
                     } catch (Exception ex) {
-                        statusSummary = "Error getting status";
-                        tokenStatus = "Unknown";
                         workerInfo.add("Error");
                         LOG.error("Error getting status for worker " + workerId, ex);
                     }
@@ -2231,6 +2218,24 @@ private void displayLogEntryAction() {
                         configProperties[j][0] = key;
                         configProperties[j][1] = properties.getProperty(key);
                         j++;
+                    }
+                    // Status
+                    String statusSummary;
+                    String tokenStatus;
+                    WsWorkerStatus status = null;
+                    boolean active = false;
+                    try {
+                        status = SignServerAdminGUIApplication.getAdminWS().getStatus(workerId);
+                        statusSummary = status.getCompleteStatusText();
+                        tokenStatus = status.getOk() == null ? "ACTIVE" : "OFFLINE";
+                        active = status.getOk() == null;
+                    } catch (InvalidWorkerIdException_Exception ex) {
+                        statusSummary = "No such worker";
+                        tokenStatus = "Unknown";
+                    } catch (Exception ex) {
+                        statusSummary = "Error getting status";
+                        tokenStatus = "Unknown";
+                        LOG.error("Error getting status for worker " + workerId, ex);
                     }
                     XMLGregorianCalendar notBefore = null;
                     XMLGregorianCalendar notAfter = null;
@@ -2262,9 +2267,7 @@ private void displayLogEntryAction() {
                         LOG.error("Error in certificate", ex);
                     }
                     final Collection<AuthorizedClient> authClients = SignServerAdminGUIApplication.getAdminWS().getAuthorizedClients(workerId);
-                    final boolean isCryptoWorker = "org.signserver.server.signers.CryptoWorker".equals(globalConfig.getProperty("GLOB.WORKER" + workerId + ".CLASSPATH"));
-                    final boolean hasCrypto = globalConfig.containsKey("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH");
-                    newSigners.add(new Worker(workerId, name, statusSummary, statusProperties, configProperties, properties, active, authClients, isCryptoWorker, hasCrypto));
+                    newSigners.add(new Worker(workerId, name, statusSummary, statusProperties, configProperties, properties, active, authClients));
                     workers++;
                 }
 
@@ -3179,6 +3182,14 @@ private void displayLogEntryAction() {
             }
         }
 
+        private Properties toProperties(WsGlobalConfiguration wsgc) {
+            final Properties result = new Properties();
+            for (WsGlobalConfiguration.Config.Entry entry : wsgc.getConfig().getEntry()) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+            return result;
+        }
+        
         private Collection<org.signserver.common.AuthorizedClient> convert(Collection<AuthorizedClient> wsList) {
             Collection<org.signserver.common.AuthorizedClient> result = new LinkedList<org.signserver.common.AuthorizedClient>();
             for (AuthorizedClient client : wsList) {
@@ -3188,13 +3199,7 @@ private void displayLogEntryAction() {
         }
     }
 
-private Properties toProperties(WsGlobalConfiguration wsgc) {
-    final Properties result = new Properties();
-    for (WsGlobalConfiguration.Config.Entry entry : wsgc.getConfig().getEntry()) {
-        result.put(entry.getKey(), entry.getValue());
-    }
-    return result;
-}
+
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

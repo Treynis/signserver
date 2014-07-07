@@ -157,7 +157,7 @@ public class PDFSigner extends BaseSigner {
 
     private String digestAlgorithm = DEFAULTDIGESTALGORITHM;
     private int minimumPdfVersion;
-    
+
     @Override
     public void init(int signerId, WorkerConfig config,
             WorkerContext workerContext, EntityManager workerEntityManager) {
@@ -183,16 +183,16 @@ public class PDFSigner extends BaseSigner {
             }
         }
         archivetodiskPattern = Pattern.compile(ARCHIVETODISK_PATTERN_REGEX);
-        
+
         digestAlgorithm = config.getProperty(DIGESTALGORITHM, DEFAULTDIGESTALGORITHM);
-        
+
         try {
             // calculate minimum PDF version based on digest algorithm
             minimumPdfVersion = getMinimumPdfVersion();
         } catch (IllegalArgumentException e) {
             configErrors.add("Illegal digest algorithm: " + digestAlgorithm);
         }
-        
+
         // additionally check that at least one certificate is included, assumed by iText
         // (initIncludeCertificateLevels already checks non-negative values)
         if (hasSetIncludeCertificateLevels && includeCertificateLevels == 0) {
@@ -494,6 +494,7 @@ public class PDFSigner extends BaseSigner {
         return encodedSig;
     }
     
+
     /**
      * Get the minimum PDF version (x in 1.x)
      * given the configured digest algorithm.
@@ -548,7 +549,7 @@ public class PDFSigner extends BaseSigner {
         if (LOG.isDebugEnabled()) {
             LOG.debug("PDF version: " + pdfVersion);
         }
-
+        
         // Don't certify already certified documents
         if (reader.getCertificationLevel() != PdfSignatureAppearance.NOT_CERTIFIED 
                 && params.getCertification_level() != PdfSignatureAppearance.NOT_CERTIFIED) {
@@ -626,10 +627,9 @@ public class PDFSigner extends BaseSigner {
         } else {
             updatedPdfVersion = '\0';
         }
-        
-        PdfStamper stp =
-                PdfStamper.createSignature(reader, fout, updatedPdfVersion, null,
-                        appendMode);
+
+        PdfStamper stp = PdfStamper.createSignature(reader, fout, updatedPdfVersion, null,
+                appendMode);
         PdfSignatureAppearance sap = stp.getSignatureAppearance();
         
         // Set the new permissions

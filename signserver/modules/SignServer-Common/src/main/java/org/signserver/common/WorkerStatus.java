@@ -32,16 +32,10 @@ import java.util.List;
 public abstract class WorkerStatus implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
+    
     public static final String INDENT1 = "          ";
     public static final String INDENT2 = "   ";
-
-    /** Status value for a token or worker that is active. */
-    public static final int STATUS_ACTIVE = 1;
-
-    /** Status value for a token or worker that is offline. */
-    public static final int STATUS_OFFLINE = 2;
-
+    
     protected static final String[] signTokenStatuses = {"", "Active", "Offline"};
     protected String hostname = null;
     protected WorkerConfig activeconfig = null;

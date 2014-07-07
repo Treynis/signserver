@@ -269,13 +269,15 @@ public class SignServerWS implements ISignServerWS {
         ArrayList<Certificate> retval = null;
         try {
             WorkerStatus ws = getWorkerSession().getStatus(workerId);
-            ProcessableConfig sc = new ProcessableConfig(ws.getActiveSignerConfig());
-            Collection<java.security.cert.Certificate> signerCertificateChain = sc.getSignerCertificateChain();
+            if (ws instanceof SignerStatus) {
+                ProcessableConfig sc = new ProcessableConfig(((SignerStatus) ws).getActiveSignerConfig());
+                Collection<java.security.cert.Certificate> signerCertificateChain = sc.getSignerCertificateChain();
 
-            if (signerCertificateChain != null) {
-                retval = new ArrayList<Certificate>();
-                for (Iterator<java.security.cert.Certificate> iterator = signerCertificateChain.iterator(); iterator.hasNext();) {
-                    retval.add(new Certificate(iterator.next()));
+                if (signerCertificateChain != null) {
+                    retval = new ArrayList<Certificate>();
+                    for (Iterator<java.security.cert.Certificate> iterator = signerCertificateChain.iterator(); iterator.hasNext();) {
+                        retval.add(new Certificate(iterator.next()));
+                    }
                 }
             }
         } catch (CertificateEncodingException e) {

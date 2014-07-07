@@ -266,8 +266,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test02GetStatus() throws Exception {
-        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(8901);
-        assertEquals("token status", WorkerStatus.STATUS_ACTIVE, stat.getTokenStatus());
+        SignerStatus stat = (SignerStatus) workerSession.getStatus(8901);
+        assertEquals("token status", SignerStatus.STATUS_ACTIVE, stat.getTokenStatus());
         assertEquals("ALLOK: " + stat.getFatalErrors(), 0, stat.getFatalErrors().size());
     }
 

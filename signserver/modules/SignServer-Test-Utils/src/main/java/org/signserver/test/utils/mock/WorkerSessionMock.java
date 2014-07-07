@@ -18,13 +18,11 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.util.*;
 
-import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.cesecore.audit.AuditLogEntry;
 import org.cesecore.authorization.AuthorizationDeniedException;
 import org.cesecore.util.query.QueryCriteria;
 import org.signserver.common.ArchiveDataVO;
-import org.signserver.common.ArchiveMetadata;
 import org.signserver.common.AuthorizedClient;
 import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
@@ -42,8 +40,6 @@ import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.IProcessable;
-import org.signserver.server.SignServerContext;
-import org.signserver.server.WorkerContext;
 import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.LogMap;
 
@@ -193,7 +189,7 @@ public class WorkerSessionMock implements IWorkerSession.ILocal,
             LOG.error("No such worker: " + workerId);
         } else {
             worker.getProcessable().init(workerId, worker.getConfig(),
-                    new SignServerContext(), null);
+                    null, null);
         }
     }
 
@@ -381,22 +377,6 @@ public class WorkerSessionMock implements IWorkerSession.ILocal,
     public List<? extends AuditLogEntry> selectAuditLogs(int startIndex, int max, QueryCriteria criteria, String logDeviceId) throws AuthorizationDeniedException {
         throw new UnsupportedOperationException("Not supported yet.");
     }
-
-    @Override
-    public List<ArchiveMetadata> searchArchive(int startIndex, int max,
-            QueryCriteria criteria) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public List<ArchiveMetadata> searchArchive(AdminInfo adminInfo,
-            int startIndex, int max, QueryCriteria criteria) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-
 
     private static class Worker {
         private IProcessable processable;

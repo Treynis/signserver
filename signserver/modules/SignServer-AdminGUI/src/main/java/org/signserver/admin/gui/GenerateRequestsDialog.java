@@ -181,7 +181,8 @@ public class GenerateRequestsDialog extends JDialog {
         aliasComboBoxFieldEditor.setClickCountToStart(1);
         jTable1.getColumn("Key").setCellEditor(aliasComboBoxFieldEditor);
 
-        signersComboBox.setRenderer(new SmallWorkerListCellRenderer());
+        signersComboBox.setRenderer(new SmallWorkerListCellRenderer(
+                resourceMap.getIcon("worker.smallIcon")));
         signersComboBox.setModel(new SignersComboBoxModel(signers));
 
         // Find and select first matching REQUESTSIGNER

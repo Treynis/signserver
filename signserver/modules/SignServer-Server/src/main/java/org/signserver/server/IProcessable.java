@@ -16,6 +16,7 @@ import java.security.KeyStoreException;
 import java.util.Collection;
 import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.CryptoTokenStatus;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.ICertReqData;
@@ -111,8 +112,8 @@ public interface IProcessable extends IWorker {
  
     /**
      * @return The status of the crypto token
-     * @see WorkerStatus#STATUS_ACTIVE
-     * @see WorkerStatus#STATUS_OFFLINE
+     * @see CryptoTokenStatus#STATUS_ACTIVE
+     * @see CryptoTokenStatus#STATUS_OFFLINE
      */
     int getCryptoTokenStatus();
 }

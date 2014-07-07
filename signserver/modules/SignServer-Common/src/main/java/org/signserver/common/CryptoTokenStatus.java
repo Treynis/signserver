@@ -12,15 +12,51 @@
  *************************************************************************/
 package org.signserver.common;
 
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Abstract Status class containing token status.
- *
- * @deprecated This class is only kept for backwards compatibility. Use
- * WorkerStatus instead.
- *
+ * 
  * @author Philip Vendil 23 nov 2007
  * @version $Id$
  */
-@Deprecated
-public abstract class CryptoTokenStatus extends WorkerStatus {}
+public abstract class CryptoTokenStatus extends WorkerStatus {
+
+    private static final long serialVersionUID = 1L;
+    
+    public static final int STATUS_ACTIVE = 1;
+    public static final int STATUS_OFFLINE = 2;
+    private int tokenStatus = 0;
+    
+    /** 
+     * @deprecated Use the constructor taking an list of errors
+     */
+    @Deprecated
+    public CryptoTokenStatus(int workerId, int tokenStatus, WorkerConfig config) {
+        this(workerId, tokenStatus, Collections.<String>emptyList(), config);
+    }
+    
+    public CryptoTokenStatus(int workerId, int tokenStatus, List<String> errors, WorkerConfig config) {
+        super(workerId, addCryptoTokenError(tokenStatus, workerId, errors), config);
+        this.tokenStatus = tokenStatus;
+    }
+    
+    private static List<String> addCryptoTokenError(int tokenStatus, int workerId, List<String> errors) {
+        if (tokenStatus == SignerStatus.STATUS_OFFLINE) {
+            List<String> moreErrors = new LinkedList<String>(errors);
+            moreErrors.add("Error Crypto Token is disconnected");
+            return moreErrors;
+        }
+        return errors;
+    }
+
+    /**
+     * @return Returns the tokenStatus.
+     */
+    public int getTokenStatus() {
+        return tokenStatus;
+    }
+
+}

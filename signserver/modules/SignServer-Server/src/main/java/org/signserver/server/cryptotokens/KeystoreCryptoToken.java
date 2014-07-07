@@ -22,12 +22,18 @@ import java.util.*;
 import javax.security.auth.x500.X500Principal;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
+import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.ECKeyUtil;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
+import org.ejbca.util.Base64;
+import org.ejbca.util.CertTools;
 import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.*;
 
@@ -48,7 +54,8 @@ import org.signserver.common.*;
  * @author Philip Vendil, Markus Kilas
  * @version $Id$
  */
-public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
+public class KeystoreCryptoToken implements ICryptoToken,
+    IKeyGenerator, IKeyRemover {
 
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(KeystoreCryptoToken.class);
@@ -71,52 +78,64 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
     private String keystoretype;
     private Properties properties;
 
-    /** Mapping from alias or key purpose to KeyEntry. */
-    private Map<Object, KeyEntry> entries;
+    private Map<Integer, KeyEntry> entries;
 
     private char[] authenticationCode;
 
-
+    /**
+     * @see org.signserver.server.cryptotokens.ICryptoToken#init(int, java.util.Properties)
+     */
     @Override
     public void init(int workerId, Properties properties) throws CryptoTokenInitializationFailureException {
         this.properties = properties;
         keystorepath = properties.getProperty(KEYSTOREPATH);
         keystorepassword = properties.getProperty(KEYSTOREPASSWORD);
         keystoretype = properties.getProperty(KEYSTORETYPE);
-
+        
         // check keystore type
         if (keystoretype == null) {
             throw new CryptoTokenInitializationFailureException("Missing KEYSTORETYPE property");
         }
-
+        
         if (!TYPE_PKCS12.equals(keystoretype) &&
             !TYPE_JKS.equals(keystoretype)) {
             throw new CryptoTokenInitializationFailureException("KEYSTORETYPE should be either PKCS12 or JKS");
         }
-
+        
         // check keystore file
         if (keystorepath == null) {
             throw new CryptoTokenInitializationFailureException("Missing KEYSTOREPATH property");
         } else {
             final File keystoreFile = new File(keystorepath);
-
+            
             if (!keystoreFile.isFile()) {
                 throw new CryptoTokenInitializationFailureException("File not found: " + keystorepath);
             }
         }
     }
 
+    /**
+     * Returns true if the key store was properly loaded.
+     *
+     * @see org.signserver.server.cryptotokens.ICryptoToken#getCryptoTokenStatus()
+     *
+     */
     @Override
     public int getCryptoTokenStatus() {
         if (entries != null && entries.get(PURPOSE_SIGN) != null
                 && (!properties.containsKey(NEXTKEY)
                     || entries.get(PURPOSE_NEXTKEY) != null)) {
-            return WorkerStatus.STATUS_ACTIVE;
+            return SignerStatus.STATUS_ACTIVE;
         }
 
-        return WorkerStatus.STATUS_OFFLINE;
+        return SignerStatus.STATUS_OFFLINE;
     }
 
+    /**
+     * Loads the key store into memory
+     *
+     * @see org.signserver.server.cryptotokens.ICryptoToken#activate(java.lang.String)
+     */
     @Override
     public void activate(String authenticationcode)
             throws CryptoTokenAuthenticationFailureException,
@@ -130,40 +149,14 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         try {
             this.ks = getKeystore(keystoretype, keystorepath,
                     authenticationcode.toCharArray());
-
+            
             this.authenticationCode = authenticationcode.toCharArray();
 
-            entries = new HashMap<Object, KeyEntry>();
-
-            Enumeration<String> e = ks.aliases();
-            while (e.hasMoreElements()) {
-                final String alias = e.nextElement();
-                if (ks.isKeyEntry(alias)) {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Alias " + alias + " is KeyEntry.");
-                    }
-                    final Key key = ks.getKey(alias, authenticationcode.toCharArray());
-                    if (key instanceof PrivateKey) {
-                        final Certificate[] chain = KeyTools.getCertChain(ks,
-                                alias);
-                        if (LOG.isDebugEnabled()) {
-                            LOG.debug("Loaded certificate chain with length "
-                                    + chain.length + " from keystore.");
-                        }
-
-                        final KeyEntry entry = new KeyEntry((PrivateKey) key, 
-                                chain[0], Arrays.asList(chain));
-
-                        entries.put(alias, entry);
-                    } else {
-                        LOG.error("Not a private key for alias " + alias);
-                    }
-                }
-            }
+            entries = new HashMap<Integer, KeyEntry>();
 
             // Use the first entry as default key if none specified
             if (properties.getProperty(DEFAULTKEY) == null) {
-                e = ks.aliases();
+                Enumeration<String> e = ks.aliases();
 
                 while (e.hasMoreElements()) {
                     final String alias = e.nextElement();
@@ -180,8 +173,20 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
 
             final String defaultKey = properties.getProperty(DEFAULTKEY);
             if (defaultKey != null) {
-                final KeyEntry entry = entries.get(defaultKey);
-                if (entry != null) {
+                final Key key = ks.getKey(defaultKey,
+                        authenticationcode.toCharArray());
+                if (key instanceof PrivateKey) {
+
+                    final Certificate[] chain = KeyTools.getCertChain(ks,
+                            defaultKey);
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Loaded certificate chain with length "
+                                + chain.length + " from keystore.");
+                    }
+
+                    final KeyEntry entry = new KeyEntry((PrivateKey) key, 
+                            chain[0], Arrays.asList(chain));
+
                     entries.put(ICryptoToken.PURPOSE_SIGN, entry);
                     entries.put(ICryptoToken.PURPOSE_DECRYPT, entry);
                 } else {
@@ -191,14 +196,26 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
 
             final String nextKey = properties.getProperty(NEXTKEY);
             if (nextKey != null) {
-                final KeyEntry entry = entries.get(nextKey);
-                if (entry != null) {
+                final Key key = ks.getKey(nextKey,
+                        authenticationcode.toCharArray());
+                if (key instanceof PrivateKey) {
+
+                    final Certificate[] chain = KeyTools.getCertChain(ks,
+                            nextKey);
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Loaded certificate chain with length "
+                                + chain.length + " from keystore.");
+                    }
+
+                    final KeyEntry entry = new KeyEntry((PrivateKey) key,
+                            chain[0], Arrays.asList(chain));
+
                     entries.put(ICryptoToken.PURPOSE_NEXTKEY, entry);
                 } else {
                     LOG.error("Not a private key for alias " + defaultKey);
                 }
             }
-
+            
         } catch (KeyStoreException e1) {
             LOG.error("Error :", e1);
             throw new CryptoTokenAuthenticationFailureException("KeyStoreException " + e1.getMessage());
@@ -223,6 +240,11 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         }
     }
 
+    /**
+     * Method that clear the key data from memory.
+     *
+     * @see org.signserver.server.cryptotokens.ICryptoToken#deactivate()
+     */
     @Override
     public boolean deactivate() {
         entries = null;
@@ -234,6 +256,10 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         return true;
     }
 
+    /**
+     * 
+     * @see org.signserver.server.cryptotokens.ICryptoToken#getPrivateKey(int)
+     */
     @Override
     public PrivateKey getPrivateKey(int purpose)
             throws CryptoTokenOfflineException {
@@ -263,6 +289,10 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         return entry.getPrivateKey();
     }
 
+    /**
+     * 
+     * @see org.signserver.server.cryptotokens.ICryptoToken#getPublicKey(int)
+     */
     @Override
     public PublicKey getPublicKey(int purpose) throws
             CryptoTokenOfflineException {
@@ -270,12 +300,16 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         return cert.getPublicKey();
     }
 
+    /**
+     * Always returns BC.
+     * @see org.signserver.server.cryptotokens.ICryptoToken#getProvider(int)
+     */
     @Override
     public String getProvider(int providerUsage) {
         return "BC";
     }
 
-    private KeyEntry getKeyEntry(final Object purpose) throws CryptoTokenOfflineException {
+    private KeyEntry getKeyEntry(final int purpose) throws CryptoTokenOfflineException {
         if (entries == null) {
             if (keystorepassword != null) {
                 try {
@@ -305,17 +339,8 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
 
     @Override
     public Certificate getCertificate(int purpose) throws CryptoTokenOfflineException {
-        return getCertificateFromEntries(purpose);
-    }
-
-    @Override
-    public List<Certificate> getCertificateChain(int purpose) throws CryptoTokenOfflineException {
-        return getCertificateChainFromEntries(purpose);
-    }
-
-    private Certificate getCertificateFromEntries(Object purposeOrAlias) throws CryptoTokenOfflineException {
         try {
-            final KeyEntry entry = getKeyEntry(purposeOrAlias);
+            final KeyEntry entry = getKeyEntry(purpose);
             Certificate result = entry.getCertificate();
 
             // Do not return the dummy certificate
@@ -331,8 +356,9 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         }
     }
 
-    private List<Certificate> getCertificateChainFromEntries(Object purposeOrAlias) throws CryptoTokenOfflineException {
-        final KeyEntry entry = getKeyEntry(purposeOrAlias);
+    @Override
+    public List<Certificate> getCertificateChain(int purpose) throws CryptoTokenOfflineException {
+        final KeyEntry entry = getKeyEntry(purpose);
         List<Certificate> result = entry.getCertificateChain();
         // Do not return the dummy certificate
         if (result.size() == 1) {
@@ -346,30 +372,58 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         return result;
     }
 
+    // TODO: The genCertificateRequest method is mostly a duplicate of the one in CryptoTokenBase, PKCS11CryptoTooken, KeyStoreCryptoToken and SoftCryptoToken.
+    /**
+     * @see ICryptoToken#genCertificateRequest(org.signserver.common.ISignerCertReqInfo, boolean, boolean)
+     */
     @Override
-    public Certificate getCertificate(String alias) throws CryptoTokenOfflineException {
-        return getCertificateFromEntries(alias);
-    }
-
-    @Override
-    public List<Certificate> getCertificateChain(String alias) throws CryptoTokenOfflineException {
-        return getCertificateChainFromEntries(alias);
-    }
-
-    @Override
-    public ICertReqData genCertificateRequest(ISignerCertReqInfo info,
+    public ICertReqData genCertificateRequest(ISignerCertReqInfo info, 
             final boolean explicitEccParameters, final boolean defaultKey)
             throws CryptoTokenOfflineException {
-        final int purpose = defaultKey ? PURPOSE_SIGN : PURPOSE_NEXTKEY;
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Purpose: " + purpose);
+        LOG.debug(">genCertificateRequest");
+        Base64SignerCertReqData retval = null;
+        if (info instanceof PKCS10CertReqInfo) {
+            PKCS10CertReqInfo reqInfo = (PKCS10CertReqInfo) info;
+            org.bouncycastle.pkcs.PKCS10CertificationRequest pkcs10;
+            final int purpose = defaultKey
+                    ? PURPOSE_SIGN : PURPOSE_NEXTKEY;
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Purpose: " + purpose);
+                LOG.debug("signatureAlgorithm: "
+                        + reqInfo.getSignatureAlgorithm());
+                LOG.debug("subjectDN: " + reqInfo.getSubjectDN());
+                LOG.debug("explicitEccParameters: " + explicitEccParameters);
+            }
+
+            try {
+                PublicKey publicKey = getPublicKey(purpose);
+
+                // Handle ECDSA key with explicit parameters
+                if (explicitEccParameters
+                        && publicKey.getAlgorithm().contains("EC")) {
+                    publicKey = ECKeyUtil.publicToExplicitParameters(publicKey,
+                            "BC");
+                }
+                // Generate request
+                final JcaPKCS10CertificationRequestBuilder builder = new JcaPKCS10CertificationRequestBuilder(new X500Name(CertTools.stringToBCDNString(reqInfo.getSubjectDN())), publicKey);
+                final ContentSigner contentSigner = new JcaContentSignerBuilder(reqInfo.getSignatureAlgorithm()).setProvider(getProvider(ICryptoToken.PROVIDERUSAGE_SIGN)).build(getPrivateKey(purpose));
+                pkcs10 = builder.build(contentSigner);
+                retval = new Base64SignerCertReqData(Base64.encode(pkcs10.getEncoded()));
+            } catch (IOException e) {
+                LOG.error("Certificate request error: " + e.getMessage(), e);
+            } catch (OperatorCreationException e) {
+                LOG.error("Certificate request error: signer could not be initialized", e);
+            } catch (NoSuchAlgorithmException e) {
+                LOG.error("Certificate request error: " + e.getMessage(), e);
+            } catch (NoSuchProviderException e) {
+                LOG.error("Certificate request error: " + e.getMessage(), e);
+            }
+
         }
-        try {
-            return CryptoTokenHelper.genCertificateRequest(info, getPrivateKey(purpose), getProvider(ICryptoToken.PROVIDERUSAGE_SIGN), getPublicKey(purpose), explicitEccParameters);
-        } catch (IllegalArgumentException ex) {
-            throw new CryptoTokenOfflineException(ex.getMessage(), ex);
-        }
+        LOG.debug("<genCertificateRequest");
+        return retval;
     }
+
 
     /**
      * Method not supported
@@ -383,7 +437,93 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
     public Collection<KeyTestResult> testKey(final String alias,
             final char[] authCode) throws CryptoTokenOfflineException,
             KeyStoreException {
-        return CryptoTokenHelper.testKey(getKeyStore(), alias, authCode, "BC");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("testKey for alias: " + alias);
+        }
+
+        final Collection<KeyTestResult> result
+                = new LinkedList<KeyTestResult>();
+
+        final byte signInput[] = "Lillan gick on the roaden ut.".getBytes();
+
+        try {
+
+            final KeyStore keystore = getKeystore(keystoretype, keystorepath,
+                    authCode == null ? authenticationCode : authCode);
+
+            final Enumeration<String> e = keystore.aliases();
+            while( e.hasMoreElements() ) {
+                final String keyAlias = e.nextElement();
+                if (alias.equalsIgnoreCase(ICryptoToken.ALL_KEYS)
+                        || alias.equals(keyAlias)) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("checking keyAlias: " + keyAlias);
+                    }
+
+                    if (keystore.isKeyEntry(keyAlias)) {
+                        LOG.debug("--keyEntry: " + keyAlias);
+                        String status;
+                        String publicKeyHash = null;
+                        boolean success = false;
+                        try {
+                            final PrivateKey privateKey = (PrivateKey)
+                                    keystore.getKey(keyAlias, authCode);
+                            final Certificate entryCert =
+                                    keystore.getCertificate(keyAlias);
+                            if (entryCert != null) {
+                                final KeyPair keyPair = new KeyPair(
+                                        entryCert.getPublicKey(), privateKey);
+                                publicKeyHash = CryptoTokenBase
+                                        .createKeyHash(keyPair.getPublic());
+                                final String sigAlg = CryptoTokenBase
+                                        .suggestSigAlg(keyPair.getPublic());
+                                if (sigAlg == null) {
+                                    status = "Unknown key algorithm: "
+                                        + keyPair.getPublic().getAlgorithm();
+                                } else {
+                                    Signature signature = Signature.getInstance(sigAlg, "BC");
+                                    signature.initSign(keyPair.getPrivate());
+                                    signature.update(signInput);
+                                    byte[] signBA = signature.sign();
+
+                                    Signature verifySignature = Signature.getInstance(sigAlg);
+                                    verifySignature.initVerify(keyPair.getPublic());
+                                    verifySignature.update(signInput);
+                                    success = verifySignature.verify(signBA);
+                                    status = success
+                                            ? "" : "Test signature inconsistent";
+                                }
+                            } else {
+                                status = "Not testing keys with alias "
+                                        + keyAlias + ". No certificate exists.";
+                            }
+                        } catch (ClassCastException ce) {
+                            status = "Not testing keys with alias "
+                                    + keyAlias + ". Not a private key.";
+                        } catch (Exception ex) {
+                            LOG.error("Error testing key: " + keyAlias, ex);
+                            status = ex.getMessage();
+                        }
+                        result.add(new KeyTestResult(keyAlias, success, status,
+                                publicKeyHash));
+                    }
+                }
+            }
+        } catch (CertificateException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        } catch (NoSuchProviderException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        } catch (FileNotFoundException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        } catch (IOException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        } catch (KeyStoreException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        }
+
+        return result;
     }
 
     @Override
@@ -400,7 +540,8 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         }
         try {
 
-            final KeyStore keystore = getKeyStore();
+            final KeyStore keystore = getKeystore(keystoretype, keystorepath, 
+                    authenticationCode);
 
             final KeyPairGenerator kpg = KeyPairGenerator.getInstance(keyAlgorithm, "BC");
 
@@ -409,7 +550,7 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
             } else {
                 kpg.initialize(Integer.valueOf(keySpec));
             }
-
+        
             final String sigAlgName = "SHA1With" + keyAlgorithm;
 
             LOG.debug("generating...");
@@ -433,10 +574,7 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
     @Override
     public KeyStore getKeyStore() throws UnsupportedOperationException,
             CryptoTokenOfflineException, KeyStoreException {
-        if (ks == null) {
-            throw new CryptoTokenOfflineException("Not activated");
-        }
-        return ks;
+        return ks; // TODO: Should we load it first
     }
 
     private X509Certificate getSelfCertificate (String myname,
@@ -446,21 +584,21 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         final long currentTime = new Date().getTime();
         final Date firstDate = new Date(currentTime-24*60*60*1000);
         final Date lastDate = new Date(currentTime + validity * 1000);
-
+        
         // Add all mandatory attributes
         LOG.debug("keystore signing algorithm " + sigAlg);
-
+        
         final PublicKey publicKey = keyPair.getPublic();
         if (publicKey == null) {
             throw new Exception("Public key is null");
         }
-
+        
         X509v3CertificateBuilder cg = new JcaX509v3CertificateBuilder(new X500Principal(myname), BigInteger.valueOf(firstDate.getTime()), firstDate, lastDate, new X500Principal(myname), publicKey);
         final JcaContentSignerBuilder contentSignerBuilder = new JcaContentSignerBuilder(sigAlg);
         contentSignerBuilder.setProvider(getProvider(PROVIDERUSAGE_SIGN));
 
         final ContentSigner contentSigner = contentSignerBuilder.build(keyPair.getPrivate());
-
+        
         return new JcaX509CertificateConverter().getCertificate(cg.build(contentSigner));
     }
 
@@ -520,31 +658,6 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
         return result;
     }
 
-    @Override
-    public PrivateKey getPrivateKey(String alias) throws CryptoTokenOfflineException {
-        return getKeyEntry(alias).getPrivateKey();
-    }
-
-    @Override
-    public PublicKey getPublicKey(String alias) throws CryptoTokenOfflineException {
-        return getKeyEntry(alias).getCertificate().getPublicKey();
-    }
-
-    @Override
-    public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Alias: " + keyAlias);
-        }
-        try {
-            return CryptoTokenHelper.genCertificateRequest(info, getPrivateKey(keyAlias), getProvider(ICryptoToken.PROVIDERUSAGE_SIGN), getPublicKey(keyAlias), explicitEccParameters);
-        } catch (IllegalArgumentException ex) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("Certificate request error", ex);
-            }
-            throw new CryptoTokenOfflineException(ex.getMessage(), ex);
-        }
-    }
-
     private static class KeyEntry {
         private final PrivateKey privateKey;
         private final Certificate certificate;
@@ -568,6 +681,6 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
 
         public PrivateKey getPrivateKey() {
             return privateKey;
-        }
+        }        
     }
 }

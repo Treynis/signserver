@@ -239,11 +239,11 @@ public class XAdESSigner extends BaseSigner {
                         internalTimeStampTokenProvider = new InternalTimeStampTokenProvider(new DefaultMessageDigestProvider("BC"), getWorkerSession(), tsaWorker, tsaUsername, tsaPassword);
                     } catch (NoSuchProviderException ex) {
                         configErrors.add("No such message digest provider: " + ex.getMessage());
+                    }
+                }
             }
         }
-            }
-        }
-        
+
         // check that TSA_URL and TSA_WORKER is not set at the same time
         if (config.getProperty(PROPERTY_TSA_URL) != null && config.getProperty(PROPERTY_TSA_WORKER) != null) {
             configErrors.add("Can not specify " + PROPERTY_TSA_URL + " and " + PROPERTY_TSA_WORKER + " at the same time.");

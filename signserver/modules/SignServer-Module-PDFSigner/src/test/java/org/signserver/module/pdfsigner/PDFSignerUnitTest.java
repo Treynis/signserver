@@ -1200,7 +1200,7 @@ public class PDFSignerUnitTest extends TestCase {
         workerConfig.setProperty("NAME", "TestSigner100");
         workerConfig.setProperty("TSA_URL", "http://localhost:8080/signserver/tsa?workerName=TimeStampSigner");
         workerConfig.setProperty("TSA_WORKER", "TimeStampSigner2");
-
+        
         final PDFSigner instance = new PDFSigner() {
             @Override
             public ICryptoToken getCryptoToken() throws SignServerException {
@@ -1385,7 +1385,7 @@ public class PDFSignerUnitTest extends TestCase {
             }
 
             @Override
-            public ICryptoToken getCryptoToken() {
+            protected ICryptoToken getCryptoToken() {
                 return token;
             }
             
@@ -1480,6 +1480,7 @@ public class PDFSignerUnitTest extends TestCase {
             });
             workerSession.reloadConfiguration(workerId);
         }
+        
     }
 
     private byte[] readFile(File file) throws IOException {

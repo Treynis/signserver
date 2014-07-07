@@ -492,7 +492,7 @@
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jRadioButtonLocalRemoteActionPerformed"/>
           </Events>
         </Component>
-      </SubComponents>
+  </SubComponents>
     </Container>
   </SubComponents>
 </Form>

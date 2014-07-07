@@ -19,6 +19,7 @@ import org.apache.log4j.Logger;
 import org.junit.Test;
 import org.signserver.common.CryptoTokenInitializationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.CryptoTokenStatus;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
@@ -27,7 +28,6 @@ import org.signserver.common.RequestContext;
 import org.signserver.common.ResyncException;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerStatus;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.server.cryptotokens.NullCryptoToken;
 import org.signserver.server.signers.BaseSigner;
@@ -45,7 +45,7 @@ public class BaseProcessableTest extends TestCase {
     
     private final int workerId = 100;
     private final WorkerContext anyContext = new SignServerContext(null, null);
-
+    
     private static final String SAMPLE_ATTRIBUTES = 
             "attributes(generate,CKO_PUBLIC_KEY,*) = {\n" +
             "        CKA_TOKEN = false\n" +
@@ -246,7 +246,7 @@ public class BaseProcessableTest extends TestCase {
         private Properties props;
         
         public MockedCryptoToken() {
-            super(WorkerStatus.STATUS_ACTIVE);
+            super(CryptoTokenStatus.STATUS_ACTIVE);
         }
 
         @Override

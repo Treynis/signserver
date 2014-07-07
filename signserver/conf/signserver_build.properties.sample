@@ -266,13 +266,9 @@ j2ee.web-nohttps=true
 # Default: true
 #clientcli.enabled=true
 
-# Set to enable build of the Database CLI (Enterprise Edition only)
+# Set to enable build of the Database CLI
 # Default: true
 #databasecli.enabled=true
-
-# Set to enable build of the TimeMonitor (Enterprise Edition only)
-# Default: false
-#timemonitor.enabled=false
 
 # -------------- Additional Web Deployments -----------------------------------
 

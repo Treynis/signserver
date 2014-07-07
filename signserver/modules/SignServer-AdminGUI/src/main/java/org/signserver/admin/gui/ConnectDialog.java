@@ -147,7 +147,7 @@ public class ConnectDialog extends javax.swing.JDialog {
         if (wsFlag) {
             jRadioButtonRemote.setSelected(true);
             jRadioButtonLocalRemoteActionPerformed(null);
-        }
+    }
         getRootPane().setDefaultButton(connectButton);
     }
 
@@ -469,7 +469,7 @@ public class ConnectDialog extends javax.swing.JDialog {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
+                    .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jPanelButtons, javax.swing.GroupLayout.DEFAULT_SIZE, 514, Short.MAX_VALUE)
@@ -519,36 +519,36 @@ public class ConnectDialog extends javax.swing.JDialog {
 
     private void saveSettings() {
         if (getProtocol() == Protocol.WS) {
-            settings.setUrl(urlTextField.getText());
-            settings.setTruststoreType((String) truststoreTypeComboBox.getSelectedItem());
-            settings.setTruststoreFile(truststoreFilePathTextField.getText());
-            settings.setTruststorePassword(truststorePasswordField.getPassword());
-            settings.setKeystoreType((String) keystoreTypeComboBox.getSelectedItem());
-            settings.setKeystoreFile(keystoreFilePathTextField.getText());
+        settings.setUrl(urlTextField.getText());
+        settings.setTruststoreType((String) truststoreTypeComboBox.getSelectedItem());
+        settings.setTruststoreFile(truststoreFilePathTextField.getText());
+        settings.setTruststorePassword(truststorePasswordField.getPassword());
+        settings.setKeystoreType((String) keystoreTypeComboBox.getSelectedItem());
+        settings.setKeystoreFile(keystoreFilePathTextField.getText());
         }
-        
+
         OutputStream out = null;
         try {
             out = new FileOutputStream(connectFile);
             Properties properties = new Properties();
             properties.put("protocol", getProtocol().name());
             if (settings.getUrl() != null) {
-                properties.put("url", settings.getUrl());
+            properties.put("url", settings.getUrl());
             }
             if (settings.getTruststoreType() != null) {
-                properties.put("truststoreType", settings.getTruststoreType());
+            properties.put("truststoreType", settings.getTruststoreType());
             }
             if (settings.getTruststoreFile() != null) {
-                properties.put("truststoreFile", settings.getTruststoreFile());
+            properties.put("truststoreFile", settings.getTruststoreFile());
             }
             if (settings.getTruststorePassword() != null) {
-                properties.put("truststorePassword", new String(settings.getTruststorePassword()));
+            properties.put("truststorePassword", new String(settings.getTruststorePassword()));
             }
             if (settings.getKeystoreType() != null) {
-                properties.put("keystoreType", settings.getKeystoreType());
+            properties.put("keystoreType", settings.getKeystoreType());
             }
             if (settings.getKeystoreFile() != null) {
-                properties.put("keystoreFile", settings.getKeystoreFile());
+            properties.put("keystoreFile", settings.getKeystoreFile());
             }
             properties.store(out,
                     "Connect settings");
@@ -560,10 +560,10 @@ public class ConnectDialog extends javax.swing.JDialog {
                 try {
                     out.close();
                 } catch (IOException ignored) {} // NOPMD
-            }
+        }
         }
     }
-    
+
     private void connectButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_connectButtonActionPerformed
         saveSettings();
         if (jRadioButtonRemote.isSelected()) {
@@ -572,7 +572,7 @@ public class ConnectDialog extends javax.swing.JDialog {
             dispose();
         }
     }
-    
+
     private void connectOverWS() {
         try {
             final String urlstr = settings.getUrl() + WS_PATH;
@@ -808,12 +808,10 @@ public class ConnectDialog extends javax.swing.JDialog {
             dispose();
         } catch (Exception ex) {
             LOG.error("Error connecting", ex);
-
-            
             JOptionPane.showMessageDialog(this, ExceptionUtils.catCauses(ex, "\n"), "Connect", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_connectButtonActionPerformed
-    
+
     private void truststoreBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_truststoreBrowseButtonActionPerformed
         final JFileChooser chooser = new JFileChooser();
         final File file = getResolvedPath(truststoreFilePathTextField.getText());
@@ -907,8 +905,8 @@ public class ConnectDialog extends javax.swing.JDialog {
                 try {
                     in.close();
                 } catch (IOException ignored) {} // NOPMD
-            }
         }
+    }
         return sett;
     }
 
@@ -925,7 +923,7 @@ public class ConnectDialog extends javax.swing.JDialog {
             jRadioButtonRemote.setSelected(true);
         } else {
             jRadioButtonLocal.setSelected(true);
-        }
+    }
         jRadioButtonLocalRemoteActionPerformed(null);
     }
 
@@ -1142,7 +1140,7 @@ public class ConnectDialog extends javax.swing.JDialog {
             result = Protocol.EJB;
         } else {
             result = Protocol.WS;
-        }
+}
         return result;
     }
 

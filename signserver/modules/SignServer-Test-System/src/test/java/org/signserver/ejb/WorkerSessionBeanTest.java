@@ -107,8 +107,8 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
      */
     @Test
     public void test02GetStatus() throws Exception {
-        assertTrue(((StaticWorkerStatus) workerSession.getStatus(3)).getTokenStatus() == WorkerStatus.STATUS_ACTIVE
-                || ((StaticWorkerStatus) workerSession.getStatus(3)).getTokenStatus() == WorkerStatus.STATUS_OFFLINE);
+        assertTrue(((SignerStatus) workerSession.getStatus(3)).getTokenStatus() == SignerStatus.STATUS_ACTIVE
+                || ((SignerStatus) workerSession.getStatus(3)).getTokenStatus() == SignerStatus.STATUS_OFFLINE);
     }
 
     @Test

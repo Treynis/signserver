@@ -197,11 +197,11 @@ public class SignServerAdminGUIApplication extends SingleFrameApplication {
      */
     public static AdminWS getAdminWS() {
         if (adminWS == null) {
-            CertTools.installBCProvider();
+                CertTools.installBCProvider();
 
-            final ConnectDialog dlg = new ConnectDialog(null, true,
+                final ConnectDialog dlg = new ConnectDialog(null, true,
                     connectFile, defaultConnectFile, baseDir, Protocol.WS == protocol);
-            dlg.setVisible(true);
+                dlg.setVisible(true);
             protocol = dlg.getProtocol();
 
             if (Protocol.WS == protocol) {

@@ -41,7 +41,7 @@ public class MockedXAdESSigner extends XAdESSigner {
     }
 
     @Override
-    public ICryptoToken getCryptoToken() {
+    protected ICryptoToken getCryptoToken() {
         return mockedToken;
     }
     

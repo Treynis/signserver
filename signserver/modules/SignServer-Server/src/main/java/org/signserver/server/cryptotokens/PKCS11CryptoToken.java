@@ -16,31 +16,48 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SignatureException;
+import java.security.Signature;
 import java.security.cert.Certificate;
 import java.util.Collection;
+import java.util.Enumeration;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.jce.ECKeyUtil;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.pkcs.PKCS10CertificationRequest;
+import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
+import org.bouncycastle.util.encoders.Hex;
 import org.cesecore.keys.token.CryptoTokenAuthenticationFailedException;
-import org.cesecore.keys.token.p11.exception.NoSuchSlotException;
+import org.ejbca.core.model.util.AlgorithmTools;
+import org.ejbca.util.Base64;
+import org.ejbca.util.CertTools;
+import org.signserver.common.Base64SignerCertReqData;
 import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenInitializationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.CryptoTokenStatus;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.KeyTestResult;
+import org.signserver.common.PKCS10CertReqInfo;
 import org.signserver.common.SignServerException;
-import org.signserver.common.WorkerStatus;
+import org.signserver.server.KeyUsageCounterHash;
+import static org.signserver.server.cryptotokens.CryptoTokenBase.createKeyHash;
+import static org.signserver.server.cryptotokens.CryptoTokenBase.suggestSigAlg;
 
 /**
  * CryptoToken implementation wrapping the new PKCS11CryptoToken from CESeCore.
@@ -54,24 +71,24 @@ import org.signserver.common.WorkerStatus;
  * @author Markus Kilås
  * @version $Id$
  */
-public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
-
+public class PKCS11CryptoToken implements ICryptoToken, IKeyGenerator, IKeyRemover {
+    
     private static final Logger LOG = Logger.getLogger(PKCS11CryptoToken.class);
 
     private static final String PROPERTY_CACHE_PRIVATEKEY = "CACHE_PRIVATEKEY";
-
+    
     private final KeyStorePKCS11CryptoToken delegate;
 
     public PKCS11CryptoToken() throws InstantiationException {
         delegate = new KeyStorePKCS11CryptoToken();
     }
-
+    
     private String keyAlias;
     private String nextKeyAlias;
 
     private boolean cachePrivateKey;
     private PrivateKey cachedPrivateKey;
-
+    
     @Override
     public void init(int workerId, Properties props) throws CryptoTokenInitializationFailureException {
         try {
@@ -100,41 +117,19 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
                 }
             }
 
-            // Check that both the new or the legacy properties are specified at the same time
-            if (props.getProperty(CryptoTokenHelper.PROPERTY_SLOT) != null && props.getProperty(CryptoTokenHelper.PROPERTY_SLOTLABELVALUE) != null) {
-                throw new CryptoTokenInitializationFailureException("Can not specify both " + CryptoTokenHelper.PROPERTY_SLOT + " and  " + CryptoTokenHelper.PROPERTY_SLOTLABELVALUE);
-            }
-            if (props.getProperty(CryptoTokenHelper.PROPERTY_SLOTLISTINDEX) != null && props.getProperty(CryptoTokenHelper.PROPERTY_SLOTLABELVALUE) != null) {
-                throw new CryptoTokenInitializationFailureException("Can not specify both " + CryptoTokenHelper.PROPERTY_SLOTLISTINDEX + " and  " + CryptoTokenHelper.PROPERTY_SLOTLABELVALUE);
-            }
-
             props = CryptoTokenHelper.fixP11Properties(props);
-
-            final String sharedLibraryProperty = props.getProperty("sharedLibrary");
-            if (sharedLibraryProperty == null) {
+            
+            if (props.getProperty("sharedLibrary") == null) {
                 throw new CryptoTokenInitializationFailureException("Missing SHAREDLIBRARY property");
-            }
-            final File sharedLibrary = new File(sharedLibraryProperty);
-            if (!sharedLibrary.isFile() || !sharedLibrary.canRead()) {
-                throw new CryptoTokenInitializationFailureException("The shared library file can't be read: " + sharedLibrary.getAbsolutePath());
-            }
-
-            final String slotLabelType = props.getProperty(CryptoTokenHelper.PROPERTY_SLOTLABELTYPE);
-            if (slotLabelType == null) {
-                throw new CryptoTokenInitializationFailureException("Missing " + CryptoTokenHelper.PROPERTY_SLOTLABELTYPE + " property");
-            }
-            final String slotLabelValue = props.getProperty(CryptoTokenHelper.PROPERTY_SLOTLABELVALUE);
-            if (slotLabelValue == null) {
-                throw new CryptoTokenInitializationFailureException("Missing " + CryptoTokenHelper.PROPERTY_SLOTLABELVALUE + " property");
             }
             
             delegate.init(props, null, workerId);
-
+            
             keyAlias = props.getProperty("defaultKey");
             nextKeyAlias = props.getProperty("nextCertSignKey");
-
+            
             cachePrivateKey = Boolean.parseBoolean(props.getProperty(PROPERTY_CACHE_PRIVATEKEY, Boolean.FALSE.toString()));
-
+            
             if (LOG.isDebugEnabled()) { 
                 final StringBuilder sb = new StringBuilder();
                 sb.append("keyAlias: ").append(keyAlias).append("\n");
@@ -144,22 +139,16 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
             }
         } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
             LOG.error("Init failed", ex);
-            throw new CryptoTokenInitializationFailureException(ex.getMessage());
-        } catch (NoSuchSlotException ex) {
-            LOG.error("Slot not found", ex);
-            throw new CryptoTokenInitializationFailureException(ex.getMessage());
-        } catch (NumberFormatException ex) {
-            LOG.error("Init failed", ex);
-            throw new CryptoTokenInitializationFailureException(ex.getMessage());
+            throw new CryptoTokenInitializationFailureException(ex.getMessage(), ex);
         }
     }
 
     @Override
     public int getCryptoTokenStatus() {
         int result = delegate.getTokenStatus();
-
-        if (result == WorkerStatus.STATUS_ACTIVE) {
-            result = WorkerStatus.STATUS_OFFLINE;
+        
+        if (result == CryptoTokenStatus.STATUS_ACTIVE) {
+            result = CryptoTokenStatus.STATUS_OFFLINE;
             try {
                 if (LOG.isDebugEnabled()) { 
                     final StringBuilder sb = new StringBuilder();
@@ -172,25 +161,55 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
                         PrivateKey privateKey = delegate.getPrivateKey(testKey);
                         if (privateKey != null) {
                             PublicKey publicKey = delegate.getPublicKey(testKey);
-                            CryptoTokenHelper.testSignAndVerify(privateKey, publicKey, delegate.getSignProviderName());
-                            result = WorkerStatus.STATUS_ACTIVE;
+                            testKey(privateKey, publicKey);
+                            result = CryptoTokenStatus.STATUS_ACTIVE;
                         }
                     }
                 }
-            } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
-                LOG.error("Error testing activation", ex);
-            } catch (NoSuchAlgorithmException ex) {
-                LOG.error("Error testing activation", ex);
-            } catch (NoSuchProviderException ex) {
-                LOG.error("Error testing activation", ex);
-            } catch (InvalidKeyException ex) {
-                LOG.error("Error testing activation", ex);
-            } catch (SignatureException ex) {
-                LOG.error("Error testing activation", ex);
+            } catch (Throwable th) {
+                LOG.error("Error testing activation", th);
             }
         }
 
         return result;
+    }
+    
+    private void testKey(PrivateKey privateKey, PublicKey publicKey) throws Exception {
+        final byte input[] = "Lillan gick pa vagen ut, motte dar en katt...".getBytes();
+        final byte signBV[];
+        String testSigAlg = (String) AlgorithmTools.getSignatureAlgorithms(publicKey).iterator().next();
+        if (testSigAlg == null) {
+            testSigAlg = "SHA1WithRSA";
+        }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Testing keys with algorithm: " + publicKey.getAlgorithm());
+            LOG.debug("testSigAlg: " + testSigAlg);
+            LOG.debug("provider: " + delegate.getSignProviderName());
+            LOG.trace("privateKey: " + privateKey);
+            LOG.trace("privateKey class: " + privateKey.getClass().getName());
+            LOG.trace("publicKey: " + publicKey);
+            LOG.trace("publicKey class: " + publicKey.getClass().getName());
+        }
+
+        final Signature signSignature = Signature.getInstance(testSigAlg, delegate.getSignProviderName());
+        signSignature.initSign(privateKey);
+        signSignature.update(input);
+        signBV = signSignature.sign();
+        if (LOG.isDebugEnabled()) {
+            if (signBV != null) {
+                LOG.trace("Created signature of size: " + signBV.length);
+                LOG.trace("Created signature: " + new String(Hex.encode(signBV)));
+            } else {
+                LOG.warn("Test signature is null?");
+            }
+        }
+
+        final Signature verifySignatre = Signature.getInstance(testSigAlg, "BC");
+        verifySignatre.initVerify(publicKey);
+        verifySignatre.update(input);
+        if (!verifySignatre.verify(signBV)) {
+            throw new InvalidKeyException("Not possible to sign and then verify with key pair.");
+        }
     }
 
     @Override
@@ -214,39 +233,29 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
 
     @Override
     public PrivateKey getPrivateKey(int purpose) throws CryptoTokenOfflineException {
-        final PrivateKey result;
-        if (purpose == ICryptoToken.PURPOSE_NEXTKEY) {
-            result = getPrivateKey(nextKeyAlias);
-        } else {
-            if (cachePrivateKey && cachedPrivateKey != null) {
-                result = cachedPrivateKey;
+        try {
+            final PrivateKey result;
+            if (purpose == ICryptoToken.PURPOSE_NEXTKEY) {
+                result = delegate.getPrivateKey(nextKeyAlias);
             } else {
-                result = getPrivateKey(keyAlias);
-                if (cachePrivateKey) {
-                    cachedPrivateKey = result;
+                if (cachePrivateKey && cachedPrivateKey != null) {
+                    result = cachedPrivateKey;
+                } else {
+                    result = delegate.getPrivateKey(keyAlias);
+                    if (cachePrivateKey) {
+                        cachedPrivateKey = result;
+                    }
                 }
             }
-        }
-        return result;
-    }
-
-    @Override
-    public PublicKey getPublicKey(int purpose) throws CryptoTokenOfflineException {
-        final String alias = purpose == ICryptoToken.PURPOSE_NEXTKEY ? nextKeyAlias : keyAlias;
-        return getPublicKey(alias);
-    }
-
-    @Override
-    public PrivateKey getPrivateKey(String alias) throws CryptoTokenOfflineException {
-        try {
-            return delegate.getPrivateKey(alias);
+            return result;
         } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
             throw new CryptoTokenOfflineException(ex);
         }
     }
 
     @Override
-    public PublicKey getPublicKey(String alias) throws CryptoTokenOfflineException {
+    public PublicKey getPublicKey(int purpose) throws CryptoTokenOfflineException {
+        final String alias = purpose == ICryptoToken.PURPOSE_NEXTKEY ? nextKeyAlias : keyAlias;
         try {
             return delegate.getPublicKey(alias);
         } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
@@ -269,51 +278,75 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
         return null;
     }
 
-    @Override
-    public Certificate getCertificate(String alias) throws CryptoTokenOfflineException {
-        return null;
-    }
-
-    @Override
-    public List<Certificate> getCertificateChain(String alias) throws CryptoTokenOfflineException {
-        return null;
-    }
-
+    // TODO: The genCertificateRequest method is mostly a duplicate of the one in CryptoTokenBase, PKCS11CryptoTooken, KeyStoreCryptoToken and SoftCryptoToken.
     @Override
     public ICertReqData genCertificateRequest(ISignerCertReqInfo info,
             final boolean explicitEccParameters, boolean defaultKey)
             throws CryptoTokenOfflineException {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("defaultKey: " + defaultKey);
-        }
-        final String alias;
-        if (defaultKey) {
-            alias = keyAlias;
-        } else {
-            alias = nextKeyAlias;
-        }
-        return genCertificateRequest(info, explicitEccParameters, alias);
-    }
-
-    @Override
-    public ICertReqData genCertificateRequest(ISignerCertReqInfo info,
-            final boolean explicitEccParameters, String alias)
-            throws CryptoTokenOfflineException {
-        if (LOG.isDebugEnabled()) {
             LOG.debug(">genCertificateRequest CESeCorePKCS11CryptoToken");
-            LOG.debug("alias: " + alias);
         }
-        try {
-            return CryptoTokenHelper.genCertificateRequest(info, delegate.getPrivateKey(alias), getProvider(ICryptoToken.PROVIDERUSAGE_SIGN), delegate.getPublicKey(alias), explicitEccParameters);
-        } catch (org.cesecore.keys.token.CryptoTokenOfflineException e) {
-            LOG.error("Certificate request error: " + e.getMessage(), e);
-            throw new CryptoTokenOfflineException(e);
-        } catch (IllegalArgumentException ex) {
-            if (LOG.isDebugEnabled()) {
-                LOG.error("Certificate request error", ex);
+        Base64SignerCertReqData retval = null;
+        if (info instanceof PKCS10CertReqInfo) {
+            PKCS10CertReqInfo reqInfo = (PKCS10CertReqInfo) info;
+            PKCS10CertificationRequest pkcs10;
+
+            final String alias;
+            if (defaultKey) {
+                alias = keyAlias;
+            } else {
+                alias = nextKeyAlias;
             }
-            throw new CryptoTokenOfflineException(ex.getMessage(), ex);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("defaultKey: " + defaultKey);
+                LOG.debug("alias: " + alias);
+                LOG.debug("signatureAlgorithm: "
+                        + reqInfo.getSignatureAlgorithm());
+                LOG.debug("subjectDN: " + reqInfo.getSubjectDN());
+                LOG.debug("explicitEccParameters: " + explicitEccParameters);
+            }
+
+            try {
+                final PrivateKey privateKey = delegate.getPrivateKey(alias);
+                PublicKey publicKey = delegate.getPublicKey(alias);
+
+                // Handle ECDSA key with explicit parameters
+                if (explicitEccParameters
+                        && publicKey.getAlgorithm().contains("EC")) {
+                    publicKey = ECKeyUtil.publicToExplicitParameters(publicKey,
+                            "BC");
+                }
+
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Public key SHA1: " + CryptoTokenBase.createKeyHash(
+                            publicKey));
+                    LOG.debug("Public key SHA256: "
+                            + KeyUsageCounterHash.create(publicKey));
+                }
+
+                // Generate request
+                final JcaPKCS10CertificationRequestBuilder builder = new JcaPKCS10CertificationRequestBuilder(new X500Name(CertTools.stringToBCDNString(reqInfo.getSubjectDN())), publicKey);
+                final ContentSigner contentSigner = new JcaContentSignerBuilder(reqInfo.getSignatureAlgorithm()).setProvider(getProvider(ICryptoToken.PROVIDERUSAGE_SIGN)).build(privateKey);
+                pkcs10 = builder.build(contentSigner);
+                retval = new Base64SignerCertReqData(Base64.encode(pkcs10.getEncoded()));
+            } catch (IOException e) {
+                LOG.error("Certificate request error: " + e.getMessage(), e);
+            } catch (OperatorCreationException e) {
+                LOG.error("Certificate request error: signer could not be initialized", e);
+            } catch (NoSuchAlgorithmException e) {
+                LOG.error("Certificate request error: " + e.getMessage(), e);
+            } catch (NoSuchProviderException e) {
+                LOG.error("Certificate request error: " + e.getMessage(), e);
+            } catch (org.cesecore.keys.token.CryptoTokenOfflineException e) {
+                LOG.error("Certificate request error: " + e.getMessage(), e);
+                throw new CryptoTokenOfflineException(e);
+            }
+
         }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("<genCertificateRequest CESeCorePKCS11CryptoToken");
+        }
+        return retval;
     }
 
     /**
@@ -323,7 +356,7 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
     public boolean destroyKey(int purpose) {
         return false;
     }
-
+    
     @Override
     public boolean removeKey(String alias) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
         return CryptoTokenHelper.removeKey(getKeyStore(), alias);
@@ -331,8 +364,72 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
 
     @Override
     public Collection<KeyTestResult> testKey(String alias, char[] authCode) throws CryptoTokenOfflineException, KeyStoreException {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(">testKey");
+        }
+        final Collection<KeyTestResult> result = new LinkedList<KeyTestResult>();
+
+        final byte signInput[] = "Lillan gick on the roaden ut.".getBytes();
+
+        //final KeyStore keyStore = getKeyStore(authCode);
         final KeyStore keyStore = delegate.getActivatedKeyStore();
-        return CryptoTokenHelper.testKey(keyStore, alias, authCode, keyStore.getProvider().getName());
+
+        try {
+            final Enumeration<String> e = keyStore.aliases();
+            while (e.hasMoreElements()) {
+                final String a = e.nextElement();
+                if (alias.equalsIgnoreCase(ICryptoToken.ALL_KEYS)
+                        || alias.equals(a)) {
+                    if (keyStore.isKeyEntry(a)) {
+                        String status;
+                        String publicKeyHash = null;
+                        boolean success = false;
+                        try {
+                            final PrivateKey privateKey = (PrivateKey) keyStore.getKey(a, authCode);
+                            final Certificate cert = keyStore.getCertificate(a);
+                            if (cert != null) {
+                                final KeyPair keyPair = new KeyPair(cert.getPublicKey(), privateKey);
+                                publicKeyHash = createKeyHash(keyPair.getPublic());
+                                final String sigAlg = suggestSigAlg(keyPair.getPublic());
+                                if (sigAlg == null) {
+                                    status = "Unknown key algorithm: "
+                                            + keyPair.getPublic().getAlgorithm();
+                                } else {
+                                    Signature signature = Signature.getInstance(sigAlg, keyStore.getProvider());
+                                    signature.initSign(keyPair.getPrivate());
+                                    signature.update(signInput);
+                                    byte[] signBA = signature.sign();
+
+                                    Signature verifySignature = Signature.getInstance(sigAlg);
+                                    verifySignature.initVerify(keyPair.getPublic());
+                                    verifySignature.update(signInput);
+                                    success = verifySignature.verify(signBA);
+                                    status = success ? "" : "Test signature inconsistent";
+                                }
+                            } else {
+                                status = "Not testing keys with alias "
+                                        + a + ". No certificate exists.";
+                            }
+                        } catch (ClassCastException ce) {
+                            status = "Not testing keys with alias "
+                                    + a + ". Not a private key.";
+                        } catch (Exception ex) {
+                            LOG.error("Error testing key: " + a, ex);
+                            status = ex.getMessage();
+                        }
+                        result.add(new KeyTestResult(a, success, status,
+                                publicKeyHash));
+                    }
+                }
+            }
+        } catch (KeyStoreException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("<testKey");
+        }
+        return result;
     }
 
     @Override
@@ -359,21 +456,18 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
         }
         try {
             delegate.generateKeyPair(keySpec, alias);
-        } catch (InvalidAlgorithmParameterException ex) {
-            LOG.error(ex, ex);
-            throw new CryptoTokenOfflineException(ex);
-        } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
+        } catch (Exception ex) {
             LOG.error(ex, ex);
             throw new CryptoTokenOfflineException(ex);
         }
     }
-
+    
     private static class KeyStorePKCS11CryptoToken extends org.cesecore.keys.token.PKCS11CryptoToken {
 
         public KeyStorePKCS11CryptoToken() throws InstantiationException {
             super();
         }
-
+        
         public KeyStore getActivatedKeyStore() throws CryptoTokenOfflineException {
             try {
                 return getKeyStore();
@@ -382,5 +476,5 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
             }
         }
     }
-
+    
 }
