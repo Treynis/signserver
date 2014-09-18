@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document>
+
+  <properties>
+    <title>Home</title>
+  </properties>
+
+<body>
+  <section name="News and Info">
+<table class="promotion"><!--AC table for twitterwidget and Note area-->
+
+<tr>
+<td valign="top"><!--TWITTER WIDGET-->
+<div class="frame note" id="twitter" style="border:0;">
+
+<a class="twitter-timeline" width="360" height="390" data-dnt="true" href="https://twitter.com/primekeyPKI"  data-widget-id="344774465936306176">Tweets by @primekeyPKI</a>
+<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+
+</div>
+</td>
+
+<td colspan="1" rowspan="1" valign="top" align="left">
+<div class="frame note">
+<div class="label" style="font-size:120%; padding:1em; font-family: Georgia, new york;"><!--a style=" padding:1em 0.2em; color:white;" href="http://www.primekey.se/PKI+shop/">PKI SHOP</a> | --><a style="color:white; padding:1.0em 0.2em; " href="http://www.primekey.se/services/training" target="primekey">World-wide PKI Training</a>  |  <a style=" padding:1.0em 0.2em; color:white;" href="http://www.primekey.se/Services/Consulting/" target="primekey">Hire an expert to do the job for you!</a>
+</div>
+<div class="content first">
+<p style="font-size:1.4em; font-weight:bold; margin:0; color:#015a9c;">SignServer 3.6.0 is now out!</p>
+    <p style="margin-top:0.2em;">
+        <a href="download.html">Visit the download section to get SignServer.</a> <!-- There is also a LiveCD! --><br/>
+  <span class="date"> Date: 2014-09-xx</span> 
+ </p>
+
+<p style="font-size:1.4em; font-weight:bold; margin:0; color:#015a9c;">Featured features</p>
+    <p style="margin-top:0.2em;">
+        <ul>
+            <li>Signers for different signature types</li>
+            <li>Multiple administration interfaces</li>
+            <li>Plug-in functionality</li>
+            <li>HSM support</li>
+        </ul>
+        See complete <a href="features.html">list of features</a>.
+    </p>
+
+
+     <p style="font-size:1.4em; font-weight:bold; margin:0; color:#015a9c;">Said about PrimeKey</p> 
+ <p class="imp"><a href="http://www.primekey.se/" target="primekey"><q>In fact you probably have the most popular PKI in the world, and I have never met a company where the employees are so proud being part of this, and convinced doing the right thing[...] Such a great company culture is nothing you can buy, and there are companies which are spending millions
+to keep their employees happy without any success. Because this you can't buy!</q>
+</a><br/>
+  <span class="date"> - Martin Oczko, new staff member at PrimeKey. Date: 2012-08-21</span></p>
+</div>
+<div class="label" style="margin:0; font-size:100%; padding:0.07em 0 0.1em 0;">
+<p id="services" align="center"><a href="http://www.primekey.se/" target="primekey">PrimeKey Support, Development and Maintenance services</a></p>
+</div>
+</div>
+</td>
+</tr>
+</table>
+   </section>
+
+<section name="What is SignServer?">
+<p>
+SignServer is an application framework performing cryptographic operations for
+other applications. It's intended to be used in environments where keys are
+supposed to be protected in hardware but it isn't possible to connect such
+hardware to existing enterprise applications or where the operations are
+considered extra sensitive so the hardware has to be protected more carefully.
+Another usage is to provide a simplified method to provide signatures in
+different application managed from one location in the company.
+</p>
+<p> 
+SignServer is based on loadable modules that perform various operations.
+SignServer has ready to use modules for:
+</p>
+<ul>
+<li>TimeStamp Authority (RFC 3161 compliant and MS authenticode)</li>
+<li>Signers for different documents: PDF, XML, XAdES (BES and T), ODF, OOXML, MRTD (ePassport
+    document signer)</li>
+<li>General purpose signers: CMS</li>
+<li>Validators for documents: XML, XAdES-BES, XAdES-T</li>
+</ul>
+<p>The modules can be used using HTTP or web services interfaces. SignServer
+also contains functions for:</p>
+<ul>
+<li>Certificate Validation Service Framework for validating certificates using
+    CRLs or OCSP</li>
+</ul> 
+<p>
+SignServer has been designed for high-availability and can be clustered for
+maximum reliability.
+</p>
+<p>
+Different kinds of tokens can be used to perform sign and crypto operations:
+</p>
+<ul>
+<li>Soft token using JKS or PKCS12 files.</li>
+<li>PKCS#11 HSM tokens, such as the Utimaco CryptoServer, SafeNet ProtectServer
+    and Luna, nCipher nShield or AEP KeyPer.</li>
+</ul>
+</section>
+
+<section name="What's new in SignServer 3.6?">
+<p>
+Some of the major new features in version 3.6 are:
+</p>
+<ul>
+    <li>Independent worker and crypto token configuration</li>
+    <li>Underlying CESeCore library upgraded</li>
+    <li>Separation between community and enterprise editions</li>                    
+    <li>New application: SignServer TimeMonitor (enterprise edition)</li>
+    <li>Querying of database archive from WS and GUI</li>    
+    <li>Support for specifying HSM slot by label</li>
+    <li>HSM keep alive service</li>
+</ul>
+<p>
+More information can be found in the <a href="manual.html">manual</a> or in the
+<a href="http://jira.primekey.se/browse/DSS?report=com.atlassian.jira.plugin.system.project:changelog-panel">changelog</a>.
+</p>
+</section>
+
+<section name="Open Source Software">
+<p>
+SignServer is OSI Certified Open Source Software.
+OSI Certified is a certification mark of the Open Source Initiative.
+</p>
+<p>
+The source code of SignServer is hosted in a (mostly) public <a href="repositories.html">Subversion repository</a> and downloads including ones with the complete source code can be downloaded from <a href="https://sourceforge.net/projects/signserver/">SourceForge</a>.
+</p>
+</section>
+
+</body>
+</document>
+
