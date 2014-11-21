@@ -26,6 +26,7 @@ import xades4j.XAdES4jException;
 import xades4j.providers.AlgorithmsProviderEx;
 import xades4j.providers.BasicSignatureOptionsProvider;
 import xades4j.providers.DataObjectPropertiesProvider;
+import xades4j.providers.KeyInfoCertificatesProvider;
 import xades4j.providers.KeyingDataProvider;
 import xades4j.providers.SignaturePolicyInfoProvider;
 import xades4j.providers.SignaturePropertiesProvider;
@@ -55,9 +56,10 @@ class SignerEPES extends SignerBES
             PropertiesDataObjectsGenerator propsDataObjectsGenerator,
             SignedPropertiesMarshaller signedPropsMarshaller,
             UnsignedPropertiesMarshaller unsignedPropsMarshaller,
-            AlgorithmsParametersMarshallingProvider algorithmsParametersMarshaller)
+            AlgorithmsParametersMarshallingProvider algorithmsParametersMarshaller,
+            KeyInfoCertificatesProvider keyInfoCertificatesProvider)
     {
-        super(keyingProvider, algorithmsProvider, basicSignatureOptionsProvider, dataObjectDescsProcessor, signaturePropsProvider, dataObjPropsProvider, propsDataObjectsGenerator, signedPropsMarshaller, unsignedPropsMarshaller, algorithmsParametersMarshaller);
+        super(keyingProvider, algorithmsProvider, basicSignatureOptionsProvider, dataObjectDescsProcessor, signaturePropsProvider, dataObjPropsProvider, propsDataObjectsGenerator, signedPropsMarshaller, unsignedPropsMarshaller, algorithmsParametersMarshaller, keyInfoCertificatesProvider);
         this.policyInfoProvider = policyInfoProvider;
     }
 

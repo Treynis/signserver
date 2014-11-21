@@ -24,6 +24,7 @@ import xades4j.providers.AlgorithmsProvider;
 import xades4j.providers.AlgorithmsProviderEx;
 import xades4j.providers.BasicSignatureOptionsProvider;
 import xades4j.providers.DataObjectPropertiesProvider;
+import xades4j.providers.KeyInfoCertificatesProvider;
 import xades4j.providers.KeyingDataProvider;
 import xades4j.providers.MessageDigestEngineProvider;
 import xades4j.providers.SignaturePropertiesProvider;
@@ -279,6 +280,12 @@ public abstract class XadesSigningProfile
             Class<? extends UnsignedPropertiesMarshaller> uPropsMarshallerClass)
     {
         return withBinding(UnsignedPropertiesMarshaller.class, uPropsMarshallerClass);
+    }
+    
+    public XadesSigningProfile withKeyInfoCertificatesProvider(
+            KeyInfoCertificatesProvider keyInfoCertificatesProvider)
+    {
+        return withBinding(KeyInfoCertificatesProvider.class, keyInfoCertificatesProvider);
     }
 
     /*******************************************/

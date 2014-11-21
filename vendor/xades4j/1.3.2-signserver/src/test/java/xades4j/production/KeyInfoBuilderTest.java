@@ -19,6 +19,7 @@ package xades4j.production;
 import java.io.FileInputStream;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Collections;
 import junit.framework.Assert;
 import org.apache.xml.security.keys.content.KeyValue;
 import org.apache.xml.security.keys.content.x509.XMLX509Certificate;
@@ -92,7 +93,7 @@ public class KeyInfoBuilderTest extends SignatureServicesTestBase
                 new TestAlgorithmsProvider());
         XMLSignature xmlSignature = getTestSignature();
 
-        keyInfoBuilder.buildKeyInfo(testCertificate, xmlSignature);
+        keyInfoBuilder.buildKeyInfo(Collections.singletonList(testCertificate), xmlSignature);
 
         Assert.assertEquals(0, xmlSignature.getSignedInfo().getLength());
 
@@ -113,7 +114,7 @@ public class KeyInfoBuilderTest extends SignatureServicesTestBase
                 new TestAlgorithmsProvider());
         XMLSignature xmlSignature = getTestSignature();
 
-        keyInfoBuilder.buildKeyInfo(testCertificate, xmlSignature);
+        keyInfoBuilder.buildKeyInfo(Collections.singletonList(testCertificate), xmlSignature);
 
         Assert.assertEquals(0, xmlSignature.getSignedInfo().getLength());
 
@@ -133,7 +134,7 @@ public class KeyInfoBuilderTest extends SignatureServicesTestBase
                 new TestAlgorithmsProvider());
         XMLSignature xmlSignature = getTestSignature();
 
-        keyInfoBuilder.buildKeyInfo(testCertificate, xmlSignature);
+        keyInfoBuilder.buildKeyInfo(Collections.singletonList(testCertificate), xmlSignature);
 
         SignedInfo signedInfo = xmlSignature.getSignedInfo();
         Assert.assertEquals(1, signedInfo.getLength());
