@@ -5,7 +5,7 @@
   <groupId>net.jsign</groupId>
   <artifactId>jsign</artifactId>
   <name>Jsign - Code signing for Windows executables</name>
-  <version>1.2</version>
+  <version>1.2-signserver</version>
   <packaging>jar</packaging>
 
   <inceptionYear>2012</inceptionYear>
@@ -45,13 +45,13 @@
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcprov-jdk15on</artifactId>
-      <version>1.47</version>
+      <version>1.49</version>
     </dependency>
 
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcpkix-jdk15on</artifactId>
-      <version>1.47</version>
+      <version>1.49</version>
     </dependency>
 
     <dependency>
@@ -85,7 +85,7 @@
           <target>1.5</target>
         </configuration>
       </plugin>
-      <plugin>
+      <!-- <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <version>1.6</version>
@@ -114,7 +114,7 @@
             </configuration>
           </execution>
         </executions>
-      </plugin>
+      </plugin> -->
       <plugin>
         <artifactId>jdeb</artifactId>
         <groupId>org.vafer</groupId>

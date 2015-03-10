@@ -142,19 +142,27 @@ public class PESigner {
      * @throws Exception
      */
     public void sign(PEFile file) throws Exception {
+        sign(file, new AlgorithmIdentifier(X509ObjectIdentifiers.id_SHA1, DERNull.INSTANCE), "SHA1with" + privateKey.getAlgorithm());
+    }
+    
+    /**
+     * Sign the specified executable file.
+     * @throws Exception
+     */
+    public void sign(PEFile file, AlgorithmIdentifier fileDigestAlgorithm, String signatureAlgorithm) throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
         // pad the file on a 8 byte boundary
         // todo only if there was no previous certificate table
         file.pad(8);
         
         // compute the signature
-        byte[] certificateTable = createCertificateTable(file);
+        byte[] certificateTable = createCertificateTable(file, fileDigestAlgorithm, signatureAlgorithm);
         
         file.writeDataDirectory(DataDirectoryType.CERTIFICATE_TABLE, certificateTable);
         file.close();
     }
 
-    private byte[] createCertificateTable(PEFile file) throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
-        CMSSignedData sigData = createSignature(file);
+    private byte[] createCertificateTable(PEFile file, AlgorithmIdentifier fileDigestAlgorithm, String signatureAlgorithm) throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
+        CMSSignedData sigData = createSignature(file, fileDigestAlgorithm, signatureAlgorithm);
         
         if (timestamping) {
             sigData = timestamp(sigData);
@@ -185,14 +193,13 @@ public class PESigner {
         }
     }
 
-    private CMSSignedData createSignature(PEFile file) throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
-        byte[] sha1 = file.computeDigest("SHA1");
-        
-        AlgorithmIdentifier algorithmIdentifier = new AlgorithmIdentifier(X509ObjectIdentifiers.id_SHA1, DERNull.INSTANCE);
-        DigestInfo digestInfo = new DigestInfo(algorithmIdentifier, sha1);
+    private CMSSignedData createSignature(PEFile file, AlgorithmIdentifier fileDigestAlgorithm, String signatureAlgorithm) throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
+        byte[] sha1 = file.computeDigest(fileDigestAlgorithm.getAlgorithm().getId());
+
+        DigestInfo digestInfo = new DigestInfo(fileDigestAlgorithm, sha1);
         SpcIndirectDataContent spcIndirectDataContent = new SpcIndirectDataContent(digestInfo);
         
-        ContentSigner sha1Signer = new JcaContentSignerBuilder("SHA1with" + privateKey.getAlgorithm()).build(privateKey);
+        ContentSigner sha1Signer = new JcaContentSignerBuilder(signatureAlgorithm).build(privateKey);
         DigestCalculatorProvider digestCalculatorProvider = new JcaDigestCalculatorProviderBuilder().build();
         
         // prepare the authenticated attributes
@@ -283,7 +290,7 @@ public class PESigner {
         return generator.generate(contentType, content);
     }
 
-    private CMSSignedData timestamp(byte[] encryptedDigest, URL tsaurl) throws IOException, CMSException {
+    protected CMSSignedData timestamp(byte[] encryptedDigest, URL tsaurl) throws IOException, CMSException {
         AuthenticodeTimeStampRequest timestampRequest = new AuthenticodeTimeStampRequest(encryptedDigest);
         
         byte[] request = Base64.encode(timestampRequest.getEncoded("DER"));
