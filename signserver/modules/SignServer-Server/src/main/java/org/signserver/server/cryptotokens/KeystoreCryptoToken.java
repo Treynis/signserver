@@ -13,21 +13,23 @@
 package org.signserver.server.cryptotokens;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.*;
-import javax.naming.NamingException;
+import javax.security.auth.x500.X500Principal;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.ECNamedCurveTable;
-import org.cesecore.util.query.QueryCriteria;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.IWorkerSession;
-import org.signserver.server.IServices;
-import org.signserver.server.ServicesImpl;
-import org.signserver.server.log.AdminInfo;
 
 /**
  * Class that uses a PKCS12 or JKS file on the file system for signing.
@@ -46,8 +48,7 @@ import org.signserver.server.log.AdminInfo;
  * @author Philip Vendil, Markus Kilas
  * @version $Id$
  */
-public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
-        ICryptoTokenV3 {
+public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2 {
 
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(KeystoreCryptoToken.class);
@@ -60,7 +61,8 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
 
     public static final String TYPE_PKCS12 = "PKCS12";
     public static final String TYPE_JKS = "JKS";
-    public static final String TYPE_INTERNAL = "INTERNAL";
+
+    private static final String SUBJECT_DUMMY = "L=_SignServer_DUMMY_CERT_";
 
     private String keystorepath = null;
     private String keystorepassword = null;
@@ -74,13 +76,10 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
 
     private char[] authenticationCode;
 
-    private IWorkerSession.ILocal workerSession;
-    private int workerId;
-    
+
     @Override
     public void init(int workerId, Properties properties) throws CryptoTokenInitializationFailureException {
         this.properties = properties;
-        this.workerId = workerId;
         keystorepath = properties.getProperty(KEYSTOREPATH);
         keystorepassword = properties.getProperty(KEYSTOREPASSWORD);
         keystoretype = properties.getProperty(KEYSTORETYPE);
@@ -91,21 +90,18 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
         }
 
         if (!TYPE_PKCS12.equals(keystoretype) &&
-            !TYPE_JKS.equals(keystoretype) &&
-            !TYPE_INTERNAL.equals(keystoretype)) {
-            throw new CryptoTokenInitializationFailureException("KEYSTORETYPE should be either PKCS12, JKS, or INTERNAL");
+            !TYPE_JKS.equals(keystoretype)) {
+            throw new CryptoTokenInitializationFailureException("KEYSTORETYPE should be either PKCS12 or JKS");
         }
 
         // check keystore file
-        if (TYPE_PKCS12.equals(keystoretype) || TYPE_JKS.equals(keystoretype)) {
-            if (keystorepath == null) {
-                throw new CryptoTokenInitializationFailureException("Missing KEYSTOREPATH property");
-            } else {
-                final File keystoreFile = new File(keystorepath);
+        if (keystorepath == null) {
+            throw new CryptoTokenInitializationFailureException("Missing KEYSTOREPATH property");
+        } else {
+            final File keystoreFile = new File(keystorepath);
 
-                if (!keystoreFile.isFile()) {
-                    throw new CryptoTokenInitializationFailureException("File not found: " + keystorepath);
-                }
+            if (!keystoreFile.isFile()) {
+                throw new CryptoTokenInitializationFailureException("File not found: " + keystorepath);
             }
         }
     }
@@ -119,11 +115,6 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
         }
 
         return WorkerStatus.STATUS_OFFLINE;
-    }
-
-    @Override
-    public int getCryptoTokenStatus(final IServices services) {
-        return getCryptoTokenStatus();
     }
 
     /**
@@ -293,7 +284,7 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
         return "BC";
     }
 
-    private KeyEntry getKeyEntry(final Object purposeOrAlias) throws CryptoTokenOfflineException {
+    private KeyEntry getKeyEntry(final Object purpose) throws CryptoTokenOfflineException {
         if (entries == null) {
             if (keystorepassword != null) {
                 try {
@@ -307,10 +298,16 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
                 throw new CryptoTokenOfflineException("Signtoken isn't active.");
             }
         }
-        KeyEntry entry = entries.get(purposeOrAlias);
+        KeyEntry entry = entries.get(purpose);
+        // If key for 'purpose' not available and no nextKey defined, try with
+        // default
+        if ((entry == null || entry.getCertificate() == null)
+                && !properties.containsKey(NEXTKEY)) {
+            entry = entries.get(PURPOSE_SIGN);
+        }
         if (entry == null || entry.getCertificate() == null) {
             throw new CryptoTokenOfflineException(
-                    "No key available for purpose: " + purposeOrAlias);
+                    "No key available for purpose: " + purpose);
         }
         return entry;
     }
@@ -331,8 +328,11 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
             Certificate result = entry.getCertificate();
 
             // Do not return the dummy certificate
-            if (CryptoTokenHelper.isDummyCertificate(result)) {
-                result = null;
+            if (result instanceof X509Certificate) {
+                if (((X509Certificate) result).getSubjectDN().getName()
+                        .contains(SUBJECT_DUMMY)) {
+                    result = null;
+                }
             }
             return result;
         } catch (CryptoTokenOfflineException ex) {
@@ -345,8 +345,11 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
         List<Certificate> result = entry.getCertificateChain();
         // Do not return the dummy certificate
         if (result.size() == 1) {
-            if (CryptoTokenHelper.isDummyCertificate(result.get(0))) {
-                result = null;
+            if (result.get(0) instanceof X509Certificate) {
+                if (((X509Certificate) result.get(0)).getSubjectDN().getName()
+                        .contains(SUBJECT_DUMMY)) {
+                    result = null;
+                }
             }
         }
         return result;
@@ -393,31 +396,7 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
     }
 
     @Override
-    public Collection<KeyTestResult> testKey(final String alias,
-            final char[] authCode,
-            final IServices services) throws CryptoTokenOfflineException,
-            KeyStoreException {
-        return testKey(alias, authCode);
-    }
-
-    @Override
-    public TokenSearchResults searchTokenEntries(final int startIndex, final int max, QueryCriteria qc, boolean includeData, IServices services) 
-            throws CryptoTokenOfflineException, QueryException {
-        try {
-            KeyStore keyStore = getKeyStore();
-            return CryptoTokenHelper.searchTokenEntries(keyStore, startIndex, max, qc, includeData);
-        } catch (KeyStoreException ex) {
-            throw new CryptoTokenOfflineException(ex);
-        }
-    }
-
-    @Override
     public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode) throws CryptoTokenOfflineException, IllegalArgumentException {
-        throw new UnsupportedOperationException("Old method not supported, use V3 or later");
-    }
-
-    @Override
-    public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
         if (keySpec == null) {
             throw new IllegalArgumentException("Missing keyspec parameter");
         }
@@ -444,43 +423,15 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
 
             LOG.debug("generating...");
             final KeyPair keyPair = kpg.generateKeyPair();
-            Certificate[] chain = new Certificate[1];
-            chain[0] = CryptoTokenHelper.createDummyCertificate(alias, sigAlgName, keyPair, getProvider(PROVIDERUSAGE_SIGN));
+            X509Certificate[] chain = new X509Certificate[1];
+            chain[0] = getSelfCertificate("CN=" + alias + ", " + SUBJECT_DUMMY
+                + ", C=SE",
+                                  (long)30*24*60*60*365, sigAlgName, keyPair);
             LOG.debug("Creating certificate with entry "+alias+'.');
 
             keystore.setKeyEntry(alias, keyPair.getPrivate(), authCode, chain);
-            
-            final OutputStream os;
-            
-            if (TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
-                os = new ByteArrayOutputStream();
-            } else {
-                os = new FileOutputStream(new File(keystorepath));
-            }
-            
-            keystore.store(os, authenticationCode);
-            
-            if (TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
-                final ByteArrayOutputStream baos = (ByteArrayOutputStream) os;
-                
-                final IWorkerSession.ILocal workerSessionLocal = services.get(IWorkerSession.ILocal.class);
-                if (workerSessionLocal == null) {
-                    throw new IllegalStateException("No WorkerSession available");
-                }
-                workerSessionLocal.setKeystoreData(new AdminInfo("Internal", null, null),
-                        workerId, baos.toByteArray());
-            }
-
-            final KeyEntry entry = new KeyEntry((PrivateKey) keyPair.getPrivate(), 
-                                chain[0], Arrays.asList(chain));
-
-            // If this is the first entry
-            entries.put(alias, entry);
-            if (properties.getProperty(DEFAULTKEY) == null) {
-                properties.setProperty(DEFAULTKEY, alias);
-                entries.put(ICryptoToken.PURPOSE_SIGN, entry);
-                entries.put(ICryptoToken.PURPOSE_DECRYPT, entry);
-            }
+            keystore.store(new FileOutputStream(new File(keystorepath)), 
+                    authenticationCode);
 
         } catch (Exception ex) {
             LOG.error(ex, ex);
@@ -497,41 +448,50 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
         return ks;
     }
 
-    private KeyStore getKeystore(final String type, final String path,
+    private X509Certificate getSelfCertificate (String myname,
+                                                long validity,
+                                                String sigAlg,
+                                                KeyPair keyPair) throws Exception {
+        final long currentTime = new Date().getTime();
+        final Date firstDate = new Date(currentTime-24*60*60*1000);
+        final Date lastDate = new Date(currentTime + validity * 1000);
+
+        // Add all mandatory attributes
+        LOG.debug("keystore signing algorithm " + sigAlg);
+
+        final PublicKey publicKey = keyPair.getPublic();
+        if (publicKey == null) {
+            throw new Exception("Public key is null");
+        }
+
+        X509v3CertificateBuilder cg = new JcaX509v3CertificateBuilder(new X500Principal(myname), BigInteger.valueOf(firstDate.getTime()), firstDate, lastDate, new X500Principal(myname), publicKey);
+        final JcaContentSignerBuilder contentSignerBuilder = new JcaContentSignerBuilder(sigAlg);
+        contentSignerBuilder.setProvider(getProvider(PROVIDERUSAGE_SIGN));
+
+        final ContentSigner contentSigner = contentSignerBuilder.build(keyPair.getPrivate());
+
+        return new JcaX509CertificateConverter().getCertificate(cg.build(contentSigner));
+    }
+
+    private static KeyStore getKeystore(final String type, final String path,
             final char[] authCode) throws
             KeyStoreException, CertificateException, NoSuchProviderException,
             NoSuchAlgorithmException, FileNotFoundException, IOException {
         final KeyStore result;
-        if (TYPE_PKCS12.equalsIgnoreCase(type) ||
-            TYPE_INTERNAL.equalsIgnoreCase(type)) {
+        if (TYPE_PKCS12.equalsIgnoreCase(type)) {
             result = KeyStore.getInstance("PKCS12", "BC");
         } else {
             result = KeyStore.getInstance("JKS");
         }
 
+        if (path == null) {
+            throw new FileNotFoundException("Missing property "
+                    + KeystoreCryptoToken.KEYSTOREPATH + ".");
+        }
         InputStream in = null;
-        
         try {
-            if (!TYPE_INTERNAL.equalsIgnoreCase(type)) {
-                if (path == null) {
-                    throw new FileNotFoundException("Missing property "
-                            + KeystoreCryptoToken.KEYSTOREPATH + ".");
-                }
-            
-                in = new FileInputStream(path);
-            } else {
-                // load data from internal worker data...
-                final byte[] keystoreData =
-                        getWorkerSession().getKeystoreData(new AdminInfo("Internal", null, null),
-                                        this.workerId);
-                if (keystoreData != null) {
-                    in = new ByteArrayInputStream(keystoreData);
-                }
-            }
-
+            in = new FileInputStream(path);
             result.load(in, authCode);
-        } catch (NamingException e) {
-            throw new KeyStoreException("Failed to get worker session: " + e.getMessage());
         } finally {
             if (in != null) {
                 try {
@@ -551,26 +511,9 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
         if (result) {
             OutputStream out = null;
             try {
-                if (!TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
-                    out = new FileOutputStream(new File(keystorepath));
-                } else {
-                    // use internal worker data
-                    out = new ByteArrayOutputStream();
-                }
+                out = new FileOutputStream(new File(keystorepath));
                 keyStore.store(out, authenticationCode);
-                
-                if (TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
-                    final byte[] data = ((ByteArrayOutputStream) out).toByteArray();
-                    
-                    getWorkerSession().setKeystoreData(new AdminInfo("Internal", null, null), 
-                                                       this.workerId, data);
-                }
-                
                 readFromKeystore(null);
-            } catch (NamingException ex) {
-                LOG.error("Unable to lookup worker session: " + ex.getMessage(),
-                          ex);
-                throw new SignServerException("Unable to persist key removal");
             } catch (IOException ex) {
                 LOG.error("Unable to persist new keystore after key removal: " + ex.getMessage(), ex);
                 throw new SignServerException("Unable to persist key removal");
@@ -605,11 +548,6 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
 
     @Override
     public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException {
-        return genCertificateRequest(info, explicitEccParameters, keyAlias, new ServicesImpl());
-    }
-    
-    @Override
-    public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias, IServices services) throws CryptoTokenOfflineException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Alias: " + keyAlias);
         }
@@ -623,87 +561,11 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
         }
     }
 
-    @Override
-    public void importCertificateChain(final List<Certificate> certChain,
-                                       final String alias,
-                                       final char[] authCode,
-                                       final IServices services)
-        throws CryptoTokenOfflineException, IllegalArgumentException {
-        if (certChain.size() < 1) {
-            throw new IllegalArgumentException("Certificate chain can not be empty");
-        }
-        
-        try {
-            final KeyStore keyStore = getKeyStore();
-            final Key key =
-                    keyStore.getKey(alias, authCode != null ? authCode : authenticationCode);
-            
-            keyStore.setKeyEntry(alias, key,
-                                 authCode != null ? authCode : authenticationCode,
-                                 certChain.toArray(new Certificate[0]));
-            
-            // persist keystore
-            OutputStream out = null;
-            
-            if (!TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
-                out = new FileOutputStream(new File(keystorepath));
-            } else {
-                // use internal worker data
-                out = new ByteArrayOutputStream();
-            }
-            keyStore.store(out, authenticationCode);
-
-            if (TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
-                final byte[] data = ((ByteArrayOutputStream) out).toByteArray();
-
-                getWorkerSession().setKeystoreData(new AdminInfo("Internal", null, null), 
-                                                   this.workerId, data);
-            }
-                
-            // update in-memory representation
-            KeyEntry entry = getKeyEntry(alias);
-            final Certificate signingCert = certChain.get(0);
-            
-            if (entry == null) {
-                entry = new KeyEntry();
-            }
-            
-            entry.setCertificate(signingCert);
-            entry.setCertificateChain(certChain);
-        } catch (Exception e) {
-            throw new CryptoTokenOfflineException(e);
-        }   
-    }
-    
-    
-    
-    protected IWorkerSession.ILocal getWorkerSession() throws NamingException {
-        if (workerSession == null) {
-            workerSession = ServiceLocator.getInstance().lookupLocal(
-                    IWorkerSession.ILocal.class);
-        }
-        return workerSession;
-    }
-
-    @Override
-    public ICryptoInstance aquireCryptoInstance(String alias, RequestContext context) throws CryptoTokenOfflineException, IllegalRequestException, SignServerException {
-        final KeyEntry entry = getKeyEntry(alias);
-        return new DefaultCryptoInstance(alias, context, ks.getProvider(), entry.getPrivateKey(), entry.getCertificateChain());
-    }
-
-    @Override
-    public void releaseCryptoInstance(ICryptoInstance instance) {
-        // NOP
-    }
-
     private static class KeyEntry {
-        private PrivateKey privateKey;
-        private Certificate certificate;
-        private List<Certificate> certificateChain;
+        private final PrivateKey privateKey;
+        private final Certificate certificate;
+        private final List<Certificate> certificateChain;
 
-        public KeyEntry() {
-        }
-        
         public KeyEntry(final PrivateKey privateKey,
                 final Certificate certificate,
                 final List<Certificate> certificateChain) {
@@ -722,18 +584,6 @@ public class KeystoreCryptoToken implements ICryptoToken, ICryptoTokenV2,
 
         public PrivateKey getPrivateKey() {
             return privateKey;
-        }
-        
-        public void setCertificate(final Certificate cert) {
-            certificate = cert;
-        }
-        
-        public void setCertificateChain(final List<Certificate> certChain) {
-            certificateChain = certChain;
-        }
-        
-        public void setPrivateKey(final PrivateKey privKey) {
-            privateKey = privKey;
         }
     }
 }

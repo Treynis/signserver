@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import javax.persistence.EntityManager;
-import org.signserver.server.IServices;
 
 /**
  * Object containing extra information about a request not sent by the client
@@ -129,9 +128,6 @@ public class RequestContext implements Serializable {
      */
     public static final String EM = "EM";
     
-    
-    private transient IServices services;
-    
     /**
      * Default constructor creating an empty context.
      */
@@ -219,13 +215,5 @@ public class RequestContext implements Serializable {
      */
     public boolean isRequestFulfilledByWorker() {
         return Boolean.TRUE.equals(context.get(RequestContext.WORKER_FULFILLED_REQUEST));
-    }
-
-    public IServices getServices() {
-        return services;
-    }
-    
-    public void setServices(IServices services) {
-        this.services = services;
     }
 }

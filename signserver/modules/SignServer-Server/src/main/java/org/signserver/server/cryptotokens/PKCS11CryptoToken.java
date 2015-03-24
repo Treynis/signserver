@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -26,9 +25,7 @@ import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
-import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
@@ -36,21 +33,14 @@ import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.cesecore.keys.token.CryptoTokenAuthenticationFailedException;
 import org.cesecore.keys.token.p11.exception.NoSuchSlotException;
-import org.cesecore.util.query.QueryCriteria;
 import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenInitializationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
-import org.signserver.common.PKCS11Settings;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
-import org.signserver.common.IllegalRequestException;
 import org.signserver.common.KeyTestResult;
-import org.signserver.common.QueryException;
-import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerStatus;
-import static org.signserver.server.BaseProcessable.PROPERTY_CACHE_PRIVATEKEY;
-import org.signserver.server.IServices;
 
 /**
  * CryptoToken implementation wrapping the new PKCS11CryptoToken from CESeCore.
@@ -64,10 +54,11 @@ import org.signserver.server.IServices;
  * @author Markus Kilås
  * @version $Id$
  */
-public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2,
-                                          ICryptoTokenV3 {
+public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2 {
 
     private static final Logger LOG = Logger.getLogger(PKCS11CryptoToken.class);
+
+    private static final String PROPERTY_CACHE_PRIVATEKEY = "CACHE_PRIVATEKEY";
 
     private final KeyStorePKCS11CryptoToken delegate;
 
@@ -80,9 +71,6 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2,
 
     private boolean cachePrivateKey;
     private PrivateKey cachedPrivateKey;
-    
-    // cached P11 library definitions (defined at deploy-time)
-    private PKCS11Settings settings;
 
     @Override
     public void init(int workerId, Properties props) throws CryptoTokenInitializationFailureException {
@@ -121,85 +109,14 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2,
             }
 
             props = CryptoTokenHelper.fixP11Properties(props);
-            
-            final String sharedLibraryName = props.getProperty("sharedLibraryName");
+
             final String sharedLibraryProperty = props.getProperty("sharedLibrary");
-            
-            settings = PKCS11Settings.getInstance();
-
-            // at least one the SHAREDLIBRARYNAME or SHAREDLIBRAY
-            // (for backwards compatability) properties must be defined
-            if (sharedLibraryName == null && sharedLibraryProperty == null) {
-                final StringBuilder sb = new StringBuilder();
-                
-                sb.append("Missing SHAREDLIBRARYNAME property\n");
-                settings.listAvailableLibraryNames(sb);
-                
-                throw new CryptoTokenInitializationFailureException(sb.toString());
+            if (sharedLibraryProperty == null) {
+                throw new CryptoTokenInitializationFailureException("Missing SHAREDLIBRARY property");
             }
-
-            // if only the old SHAREDLIBRARY property is given, it must point
-            // to one of the libraries defined at deploy-time
-            if (sharedLibraryProperty != null && sharedLibraryName == null) {
-                // check if the library was defined at deploy-time
-                if (!settings.isP11LibraryExisting(sharedLibraryProperty)) {
-                    throw new CryptoTokenInitializationFailureException("SHAREDLIBRARY is not permitted when pointing to a library not defined at deploy-time");
-                }
-            }
-            
-            // lookup the library defined by SHAREDLIBRARYNAME among the
-            // deploy-time-defined values
-            final String sharedLibraryFile =
-                    sharedLibraryName == null ?
-                    null :
-                    settings.getP11SharedLibraryFileForName(sharedLibraryName);
-            
-            // both the old and new properties are allowed at the same time
-            // to ease migration, given that they point to the same library
-            if (sharedLibraryProperty != null && sharedLibraryName != null) {
-                if (sharedLibraryFile != null) {
-                    final File byPath = new File(sharedLibraryProperty);
-                    final File byName = new File(sharedLibraryFile);
-
-                    try {
-                        if (!byPath.getCanonicalPath().equals(byName.getCanonicalPath())) {
-                            // the properties pointed to different libraries
-                            throw new CryptoTokenInitializationFailureException("Can not specify both SHAREDLIBRARY and SHAREDLIBRARYNAME at the same time");
-                        }
-                    } catch (IOException e) {
-                        // failed to determine canonical paths, treat this as conflicting properties
-                        throw new CryptoTokenInitializationFailureException("Can not specify both SHAREDLIBRARY and SHAREDLIBRARYNAME at the same time");
-                    }
-                } else {
-                    // could not associate SHAREDLIBRARYNAME with a path, treat this as conflicting properties
-                    throw new CryptoTokenInitializationFailureException("Can not specify both SHAREDLIBRARY and SHAREDLIBRARYNAME at the same time");
-                }
-            }
-            
-            // if only SHAREDLIBRARYNAME was given and the value couldn't be
-            // found, include a list of available values in the token error
-            // message
-            if (sharedLibraryFile == null && sharedLibraryProperty == null) {
-                final StringBuilder sb = new StringBuilder();
-                
-                sb.append("SHAREDLIBRARYNAME ");
-                sb.append(sharedLibraryName);
-                sb.append(" is not referring to a defined value");
-                sb.append("\n");
-                settings.listAvailableLibraryNames(sb);
-
-                throw new CryptoTokenInitializationFailureException(sb.toString());
-            }
-            
-            // check the file (again) and pass it on to the underlaying implementation
-            if (sharedLibraryFile != null) {
-                final File sharedLibrary = new File(sharedLibraryFile);
-                if (!sharedLibrary.isFile() || !sharedLibrary.canRead()) {
-                    throw new CryptoTokenInitializationFailureException("The shared library file can't be read: " + sharedLibrary.getAbsolutePath());
-                }
-
-                // propagate the shared library property to the delegate
-                props.setProperty("sharedLibrary", sharedLibraryFile);
+            final File sharedLibrary = new File(sharedLibraryProperty);
+            if (!sharedLibrary.isFile() || !sharedLibrary.canRead()) {
+                throw new CryptoTokenInitializationFailureException("The shared library file can't be read: " + sharedLibrary.getAbsolutePath());
             }
 
             final String slotLabelType = props.getProperty(CryptoTokenHelper.PROPERTY_SLOTLABELTYPE);
@@ -235,11 +152,6 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2,
             LOG.error("Init failed", ex);
             throw new CryptoTokenInitializationFailureException(ex.getMessage());
         }
-    }
-
-    @Override
-    public int getCryptoTokenStatus(IServices services) {
-        return getCryptoTokenStatus();
     }
 
     @Override
@@ -349,45 +261,22 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2,
 
     @Override
     public Certificate getCertificate(int purpose) throws CryptoTokenOfflineException {
-        final String alias = purpose == ICryptoToken.PURPOSE_NEXTKEY ? nextKeyAlias : keyAlias;
-        return getCertificate(alias);
+        return null;
     }
 
     @Override
     public List<Certificate> getCertificateChain(int purpose) throws CryptoTokenOfflineException {
-        final String alias = purpose == ICryptoToken.PURPOSE_NEXTKEY ? nextKeyAlias : keyAlias;
-        return getCertificateChain(alias);
+        return null;
     }
 
     @Override
     public Certificate getCertificate(String alias) throws CryptoTokenOfflineException {
-        try {
-            Certificate result = delegate.getActivatedKeyStore().getCertificate(alias);
-            
-            // Do not return the dummy certificate
-            if (CryptoTokenHelper.isDummyCertificate(result)) {
-                result = null;
-            }
-            return result;
-        } catch (KeyStoreException ex) {
-            throw new CryptoTokenOfflineException(ex);
-        }
+        return null;
     }
 
     @Override
     public List<Certificate> getCertificateChain(String alias) throws CryptoTokenOfflineException {
-        try {
-            final List<Certificate> result;
-            final Certificate[] certChain = delegate.getActivatedKeyStore().getCertificateChain(alias);
-            if (certChain == null || (certChain.length == 1 && CryptoTokenHelper.isDummyCertificate(certChain[0]))) {
-                result = null;
-            } else {
-                result = Arrays.asList(certChain);
-            }
-            return result;
-        } catch (KeyStoreException ex) {
-            throw new CryptoTokenOfflineException(ex);
-        }
+        return null;
     }
 
     @Override
@@ -445,11 +334,6 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2,
         final KeyStore keyStore = delegate.getActivatedKeyStore();
         return CryptoTokenHelper.testKey(keyStore, alias, authCode, keyStore.getProvider().getName());
     }
-    
-    @Override
-    public Collection<KeyTestResult> testKey(String alias, char[] authCode, IServices services) throws CryptoTokenOfflineException, KeyStoreException {
-        return testKey(alias, authCode);
-    }
 
     @Override
     public KeyStore getKeyStore() throws UnsupportedOperationException, CryptoTokenOfflineException, KeyStoreException {
@@ -482,61 +366,6 @@ public class PKCS11CryptoToken implements ICryptoToken, ICryptoTokenV2,
             LOG.error(ex, ex);
             throw new CryptoTokenOfflineException(ex);
         }
-    }
-    
-    @Override
-    public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
-        generateKey(keyAlgorithm, keySpec, alias, authCode);
-    }
-
-    @Override
-    public void importCertificateChain(final List<Certificate> certChain,
-                                       final String alias,
-                                       final char[] athenticationCode,
-                                       final IServices services)
-            throws CryptoTokenOfflineException, IllegalArgumentException {
-        try {
-            final KeyStore keyStore = delegate.getActivatedKeyStore();
-            final Key key = keyStore.getKey(alias, athenticationCode);
-            
-            keyStore.setKeyEntry(alias, key, athenticationCode,
-                                 certChain.toArray(new Certificate[0]));
-        } catch (KeyStoreException ex) {
-            LOG.error(ex, ex);
-            throw new CryptoTokenOfflineException(ex);
-        } catch (NoSuchAlgorithmException ex) {
-            LOG.error(ex, ex);
-            throw new CryptoTokenOfflineException(ex);
-        } catch (UnrecoverableKeyException ex) {
-            LOG.error(ex, ex);
-            throw new CryptoTokenOfflineException(ex);
-        }
-    }
-
-    @Override
-    public TokenSearchResults searchTokenEntries(final int startIndex, final int max, final QueryCriteria qc, final boolean includeData, final IServices services) throws CryptoTokenOfflineException, QueryException {
-        try {
-            return CryptoTokenHelper.searchTokenEntries(getKeyStore(), startIndex, max, qc, includeData);
-        } catch (KeyStoreException ex) {
-            throw new CryptoTokenOfflineException(ex);
-        }
-    }
-
-    @Override
-    public ICryptoInstance aquireCryptoInstance(String alias, RequestContext context) throws CryptoTokenOfflineException, IllegalRequestException, SignServerException {
-        final PrivateKey privateKey = getPrivateKey(alias);
-        final List<Certificate> certificateChain = getCertificateChain(alias);
-        return new DefaultCryptoInstance(alias, context, delegate.getActivatedKeyStore().getProvider(), privateKey, certificateChain);
-    }
-
-    @Override
-    public void releaseCryptoInstance(ICryptoInstance instance) {
-        // NOP
-    }
-
-    @Override
-    public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias, IServices services) throws CryptoTokenOfflineException {
-        return genCertificateRequest(info, explicitEccParameters, keyAlias);
     }
 
     private static class KeyStorePKCS11CryptoToken extends org.cesecore.keys.token.PKCS11CryptoToken {

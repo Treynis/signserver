@@ -134,11 +134,10 @@ public abstract class BaseWorker implements IWorker {
      * Default status information implementation for Workers.
      * This method can be overridden to provide a more customized status page.
      * @param additionalFatalErrors discovered at a different level
-     * @param services available to query status
      * @return the status information
      */
     @Override
-    public WorkerStatus getStatus(List<String> additionalFatalErrors, final IServices services) {
+    public WorkerStatus getStatus(List<String> additionalFatalErrors) {
         final List<String> fatalErrors = new LinkedList<String>(additionalFatalErrors);
         fatalErrors.addAll(getFatalErrors());
 
@@ -180,5 +179,4 @@ public abstract class BaseWorker implements IWorker {
                 completeEntries, 
                 config));
     }
-
 }

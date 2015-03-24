@@ -25,7 +25,6 @@ import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 import org.signserver.server.BaseProcessable;
-import org.signserver.server.IServices;
 import org.signserver.server.WorkerContext;
 import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidationServiceConstants;
@@ -120,8 +119,8 @@ public class ValidationServiceWorker extends BaseProcessable {
      * @see org.signserver.server.BaseProcessable#getStatus()
      */
     @Override
-    public WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services) {
-        return validationService.getStatus(services);
+    public WorkerStatus getStatus(final List<String> additionalFatalErrors) {
+        return validationService.getStatus();
     }
 
     @Override

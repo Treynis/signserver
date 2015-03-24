@@ -30,7 +30,6 @@ import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.KeyTestResult;
-import org.signserver.common.OperationUnsupportedException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
@@ -129,11 +128,6 @@ public class MockedWorkerSession implements IWorkerSession {
     }
 
     @Override
-    public ICertReqData getCertificateRequest(int signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
     public Certificate getSignerCertificate(int signerId) throws CryptoTokenOfflineException {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
@@ -227,16 +221,7 @@ public class MockedWorkerSession implements IWorkerSession {
     public List<Integer> getWorkers(int workerType) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
-
-    @Override
-    public void importCertificateChain(int signerId, List<byte[]> signerCerts, String alias, char[] athenticationCode) throws CryptoTokenOfflineException, CertificateException, OperationUnsupportedException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public List<Certificate> getSignerCertificateChain(int signerId, String alias) throws CryptoTokenOfflineException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
     
     
+
 }

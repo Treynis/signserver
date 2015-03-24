@@ -22,10 +22,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import javax.xml.namespace.QName;
+import junit.framework.TestCase;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.junit.FixMethodOrder;
-import org.junit.runners.MethodSorters;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GenericSignResponse;
 import org.signserver.common.RequestAndResponseManager;
@@ -53,7 +52,6 @@ import org.signserver.testutils.ModulesTestCase;
  * @author Markus Kilås
  * @version $Id$
  */
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SignServerWSServiceTest extends ModulesTestCase {
 
     /** Logger for this class. */
@@ -65,8 +63,8 @@ public class SignServerWSServiceTest extends ModulesTestCase {
             "https://" + getHTTPHost() + ":" + getPublicHTTPSPort() + "/signserver/signserverws/signserverws?wsdl";
 
     private static final String[] CONF_FILES = {
-        "signserver_deploy.properties",
-        "conf/signserver_deploy.properties",
+        "signserver_build.properties",
+        "conf/signserver_build.properties",
     };
     
     /** Worker ID as defined in test-configuration.properties. **/
@@ -91,9 +89,9 @@ public class SignServerWSServiceTest extends ModulesTestCase {
         final File home;
         final File path1 = new File("../..");
         final File path2 = new File(".");
-        if (new File(path1, "res/deploytools/app.properties").exists()) {
+        if (new File(path1, "res/compile.properties").exists()) {
             home = path1;
-        } else if (new File(path2, "res/deploytools/app.properties").exists()) {
+        } else if (new File(path2, "res/compile.properties").exists()) {
             home = path2;
             } else {
             throw new RuntimeException("Unable to detect SignServer path");
@@ -108,15 +106,15 @@ public class SignServerWSServiceTest extends ModulesTestCase {
             }
         }
         if (confFile == null) {
-            throw new RuntimeException("No signserver_deploy.properties found");
+            throw new RuntimeException("No signserver_build.properties found");
         } else {
         
             try {
                 config.load(new FileInputStream(confFile));
         } catch (FileNotFoundException ignored) {
-            LOG.debug("No signserver_deploy.properties");
+            LOG.debug("No signserver_build.properties");
         } catch (IOException ex) {
-            LOG.error("Not using signserver_deploy.properties: " + ex.getMessage());
+            LOG.error("Not using signserver_build.properties: " + ex.getMessage());
         }
             final String truststore = new File(home, "p12/truststore.jks").getAbsolutePath();
             System.out.println("Truststore: " + truststore);
@@ -148,15 +146,11 @@ public class SignServerWSServiceTest extends ModulesTestCase {
     protected String getWsEndPointUrl() {
     	return ENDPOINT;
     }
-    
-    public void test00SetupDatabase() throws Exception {
-        addDummySigner(7001, "SignServerWSServiceTest_XMLSigner1", true);
-    }
 
     // TODO add test methods here. The name must begin with 'test'. For example:
     // public void testHello() {}
 
-    public void test01GetStatusExisting() {
+    public void testGetStatusExisting() {
         try {
             final List<WorkerStatusWS> statuses = ws.getStatus(WORKERID);
             assertEquals("Number of results", 1, statuses.size());
@@ -172,7 +166,7 @@ public class SignServerWSServiceTest extends ModulesTestCase {
         }
     }
 
-    public void test02GetStatusNonExisting() {
+    public void testGetStatusNonExisting() {
         try {
             final List<WorkerStatusWS> statuses
                     = ws.getStatus(NONEXISTING_WORKERID);
@@ -183,7 +177,7 @@ public class SignServerWSServiceTest extends ModulesTestCase {
         }
     }
 
-    public void test03ProcessOk() {
+    public void testProcessOk() {
         try {
             final List<ProcessRequestWS> requests = new ArrayList<ProcessRequestWS>();
             final ProcessRequestWS request = new ProcessRequestWS();
@@ -214,7 +208,7 @@ public class SignServerWSServiceTest extends ModulesTestCase {
         }
     }
 
-    public void test04ProcessNonExisting() {
+    public void testProcessNonExisting() {
         try {
             final List<ProcessRequestWS> requests = new ArrayList<ProcessRequestWS>();
             final ProcessRequestWS request = new ProcessRequestWS();
@@ -239,7 +233,7 @@ public class SignServerWSServiceTest extends ModulesTestCase {
         }
     }
 
-    public void test05ProcessIllegalRequest() {
+    public void testProcessIllegalRequest() {
         try {
             final List<ProcessRequestWS> requests = new ArrayList<ProcessRequestWS>();
             final ProcessRequestWS request = new ProcessRequestWS();
@@ -262,10 +256,6 @@ public class SignServerWSServiceTest extends ModulesTestCase {
         } catch (SignServerException_Exception ex) {
             // OK (sort of, better would have been an illegalrequest)
         }
-    }
-    
-    public void test99RemoveDatabase() throws Exception {
-        removeWorker(7001);
     }
 
     private String toString(WorkerStatusWS status) {

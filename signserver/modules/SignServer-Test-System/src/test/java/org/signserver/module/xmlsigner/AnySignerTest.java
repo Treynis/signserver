@@ -32,7 +32,6 @@ import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.util.PathUtil;
 import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
@@ -46,10 +45,13 @@ import org.signserver.ejb.interfaces.IWorkerSession;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class AnySignerTest extends ModulesTestCase {
 
-    private static final int WORKERID = 5803;    
-    private static final int[] WORKERS = new int[] {WORKERID};
+    /** WORKERID used in this test case as defined in 
+     * junittest-part-config.properties for XMLSigner. */
+    private static final int WORKERID = 5803;
+    
+    private static final int[] WORKERS = new int[] {5676, 5679, 5681, 5682, 5683, 5802, 5803};
 
-    private static File signserverhome;
+    private static String signserverhome;
 
     private static File keystoreFile;
 
@@ -58,7 +60,8 @@ public class AnySignerTest extends ModulesTestCase {
     @Before
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
-        signserverhome = PathUtil.getAppHome();
+        signserverhome = System.getenv("SIGNSERVER_HOME");
+        assertNotNull("Please set SIGNSERVER_HOME environment variable", signserverhome);
     }
 
     @After
@@ -68,9 +71,10 @@ public class AnySignerTest extends ModulesTestCase {
 
     @Test
     public void test00SetupDatabase() throws Exception {
-        addDummySigner(WORKERID, "TestXMLSignerKeystore2", true);
+        setProperties(new File(signserverhome, "res/test/test-xmlsigner-configuration.properties"));
+        workerSession.reloadConfiguration(WORKERID);
 
-        final File newKeystore = new File(signserverhome, "tmp"
+        final File newKeystore = new File(signserverhome + File.separator + "tmp"
                 + File.separator + "empty-testkeystore.p12");
         if (newKeystore.exists()) {
             assertTrue(newKeystore.delete());

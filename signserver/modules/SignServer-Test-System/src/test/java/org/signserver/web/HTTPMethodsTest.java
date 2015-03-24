@@ -41,7 +41,7 @@ public class HTTPMethodsTest extends WebTestCase {
 	@Before
 	public void setUp() throws Exception {
 		// set up dummy signer
-		addDummySigner1(true);
+		addDummySigner1();
 		useProcess = true;
 	}
 

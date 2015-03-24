@@ -20,21 +20,15 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Vector;
 import javax.ejb.EJBException;
 import javax.swing.DefaultCellEditor;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableModel;
@@ -48,7 +42,6 @@ import org.jdesktop.application.Task;
 import org.signserver.admin.gui.adminws.gen
         .AdminNotAuthorizedException_Exception;
 import org.signserver.admin.gui.adminws.gen.IllegalRequestException_Exception;
-import org.signserver.admin.gui.adminws.gen.OperationUnsupportedException_Exception;
 import org.signserver.common.GlobalConfiguration;
 
 /**
@@ -67,6 +60,9 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
     public static final int CANCEL = 0;
     public static final int OK = 1;
 
+    private static final String NEXT_KEY = "Next key";
+    private static final String DEFAULT_KEY = "Default key";
+
     @SuppressWarnings("UseOfObsoleteCollectionType")
     private static final Vector<String> COLUMN_NAMES = new Vector<String>();
     static {
@@ -74,17 +70,15 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
         COLUMN_NAMES.add("Key");
         COLUMN_NAMES.add("Signer certificate");
         COLUMN_NAMES.add("Certificate chain");
-        COLUMN_NAMES.add("Install in token");
     };
 
     private int resultCode = CANCEL;
 
     private List<Worker> signers;
-    private Vector<Vector<Object>> data;
-    private JCheckBox installInTokenCheckbox = new JCheckBox();
-    
-    private Map<Integer, Utils.HardCodedAliasValue> savedAliases =
-            new HashMap<Integer, Utils.HardCodedAliasValue>();
+    private Vector<Vector<String>> data;
+
+    private JComboBox aliasComboBox = new JComboBox(new String[] {
+         NEXT_KEY, DEFAULT_KEY});
 
     /** Creates new form InstallCertificatesDialog. */
     public InstallCertificatesDialog(java.awt.Frame parent, boolean modal,
@@ -93,22 +87,18 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
         this.signers = new ArrayList<Worker>(signers);
         initComponents();
         setTitle("Install certificates for " + signers.size() + " signers");
-        data = new Vector<Vector<Object>>();
-
+        data = new Vector<Vector<String>>();
         for (int row = 0; row < signers.size(); row++) {
             Worker signer = signers.get(row);
-            Vector<Object> cols = new Vector<Object>();
+            Vector<String> cols = new Vector<String>();
             cols.add(signer.getName() + " (" + signer.getWorkerId() + ")");
             if (signer.getConfiguration().getProperty("NEXTCERTSIGNKEY") != null) {
-                cols.add(new Utils.HardCodedAliasValue(Utils.HardCodedAlias.NEXT_KEY,
-                                                       signer));
+                cols.add(NEXT_KEY);
             } else {
-                cols.add(new Utils.HardCodedAliasValue(Utils.HardCodedAlias.DEFAULT_KEY,
-                                                       signer));
+                cols.add(DEFAULT_KEY);
             }
             cols.add("");
             cols.add("");
-            cols.add(false);
             data.add(cols);
         }
         jTable1.setModel(new DefaultTableModel(data, COLUMN_NAMES) {
@@ -119,107 +109,35 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
             }
 
         });
-
-        final BrowseCellEditor editor = new BrowseCellEditor(new JTextField(),
-                JFileChooser.OPEN_DIALOG);
-        editor.setClickCountToStart(1);
-        final TableColumn columnSignerCert = jTable1.getColumn("Signer certificate");
-        final TableColumn columnCertChain = jTable1.getColumn("Certificate chain");
-        final TableColumn installInToken = jTable1.getColumn("Install in token");
-        final TableColumn keyColumn = jTable1.getColumn("Key");
-        
-        columnSignerCert.setCellEditor(editor);
-        columnCertChain.setCellEditor(editor);
-        columnSignerCert.setCellRenderer(new BrowseCellRenderer());
-        columnCertChain.setCellRenderer(new BrowseCellRenderer());
-
-        final AliasCellEditor aliasCellEditor =
-                new AliasCellEditor(signers, new JComboBox(), false);
-        keyColumn.setCellEditor(aliasCellEditor);
-
         jTable1.getModel().addTableModelListener(new TableModelListener() {
 
             @Override
             public void tableChanged(final TableModelEvent e) {
                 boolean enable = true;
                 for (int row = 0; row < jTable1.getRowCount(); row++) {
-                    final String cert = (String) jTable1.getValueAt(row, 2);
-                    final String certChain = (String) jTable1.getValueAt(row, 3);
-                    final boolean installInToken =
-                            (Boolean) jTable1.getValueAt(row, 4);
-                    
-                    if (("".equals(cert) && !installInToken) || "".equals(certChain)) {
+                    if ("".equals(jTable1.getValueAt(row, 2))
+                            || "".equals(jTable1.getValueAt(row, 3))) {
                         enable = false;
                         break;
                     }
                 }
                 jButtonInstall.setEnabled(enable);
-                
-                updateAliasCombobox();
             }
-            
-            
-        });
-        
-        jTable1.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
-
-            @Override
-            public void valueChanged(ListSelectionEvent e) {
-                updateAliasCombobox();
-            }
-            
         });
 
-        final DefaultCellEditor installInTokenCheckboxFieldEditor
-                = new DefaultCellEditor(installInTokenCheckbox);
-        installInToken.setCellEditor(installInTokenCheckboxFieldEditor);
-        installInToken.setCellRenderer(new CheckboxCellRenderer());
-        
-        jTable1.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-    }
-    
-    private void updateAliasCombobox() {
-        final int selectedRow = jTable1.getSelectedRow();
-        final boolean installInToken =
-                (Boolean) jTable1.getValueAt(selectedRow, 4);
-        final Object selectedAlias = jTable1.getValueAt(selectedRow, 1);
-        final JComboBox comboBox =
-                (JComboBox) jTable1.getCellEditor(selectedRow, 1)
-                .getTableCellEditorComponent(jTable1, selectedAlias, true, selectedRow, 1);
-        final boolean wasEditable = comboBox.isEditable();
-        final Worker selectedSigner = signers.get(selectedRow); 
-
-        // update editability of the alias key alias
-        comboBox.setEditable(installInToken);
-
-        if (selectedAlias instanceof Utils.HardCodedAliasValue) {
-            // record the old (hard-coded) selection
-            savedAliases.put(selectedRow,
-                             (Utils.HardCodedAliasValue) jTable1.getValueAt(selectedRow, 1));
-        } else if (!installInToken && selectedAlias instanceof String) {
-            final int confirm =
-                    JOptionPane.showConfirmDialog(this,
-                                                  "Reset manually edited alias?",
-                                                  "Reset alias",
-                                                  JOptionPane.YES_NO_CANCEL_OPTION,
-                                                  JOptionPane.INFORMATION_MESSAGE);            
-            
-            if (confirm == JOptionPane.OK_OPTION) {
-                // restore the saved hard-coded alias
-                final Utils.HardCodedAliasValue savedAlias =
-                        savedAliases.get(selectedRow);
-                
-                jTable1.setValueAt(savedAlias != null ?
-                                   savedAlias :
-                                   new Utils.HardCodedAliasValue(Utils.HardCodedAlias.DEFAULT_KEY,
-                                                                 selectedSigner),
-                                   selectedRow, 1);
-            } else {
-                // restore the state for install to crypto token when
-                // user wants to keep the manually entered alias
-                jTable1.setValueAt(true, selectedRow, 4);
-            }
-        }
+        final BrowseCellEditor editor = new BrowseCellEditor(new JTextField(),
+                JFileChooser.OPEN_DIALOG);
+        editor.setClickCountToStart(1);
+        final TableColumn columnSignerCert = jTable1.getColumn("Signer certificate");
+        final TableColumn columnCertChain = jTable1.getColumn("Certificate chain");
+        columnSignerCert.setCellEditor(editor);
+        columnCertChain.setCellEditor(editor);
+        columnSignerCert.setCellRenderer(new BrowseCellRenderer());
+        columnCertChain.setCellRenderer(new BrowseCellRenderer());
+        final DefaultCellEditor aliasComboBoxFieldEditor
+                = new DefaultCellEditor(aliasComboBox);
+        aliasComboBoxFieldEditor.setClickCountToStart(1);
+        jTable1.getColumn("Key").setCellEditor(aliasComboBoxFieldEditor);
     }
 
     /** This method is called from within the constructor to
@@ -357,19 +275,11 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
             for (int row = 0; row < data.size(); row++) {
                 final Worker signer = signers.get(row);
                 final int workerid = signer.getWorkerId();
-                final Object key = data.get(row).get(1);
-                final String cert = data.get(row).get(2).toString();
-                final String certChain = data.get(row).get(3).toString();
-                final File signerCertFile =
-                        "".equals(cert) ? null : new File(cert);
-                final File signerChainFile = new File(certChain);
+                final String key = (String) data.get(row).get(1);
+                final File signerCertFile = new File(data.get(row).get(2));
+                final File signerChainFile = new File(data.get(row).get(3));
 
-                final boolean defaultKey = 
-                        key instanceof Utils.HardCodedAliasValue &&
-                        ((Utils.HardCodedAliasValue) key).getHardCodedAlias()
-                            .equals(Utils.HardCodedAlias.DEFAULT_KEY);
-                final boolean editedAlias = key instanceof String;
-                final boolean installInToken = (Boolean) data.get(row).get(4);
+                final boolean defaultKey= DEFAULT_KEY.equals(key);
 
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("signer=" + workerid + "cert=\"" + signerCertFile
@@ -381,11 +291,9 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
                     final String scope = GlobalConfiguration.SCOPE_GLOBAL;
 
                     final Collection<Certificate> signerCerts =
-                            signerCertFile != null ?
-                            CertTools.getCertsFromPEM(signerCertFile.getAbsolutePath()) :
-                            null;
-                    
-                    if (signerCerts != null && signerCerts.isEmpty()) {
+                            CertTools.getCertsFromPEM(
+                            signerCertFile.getAbsolutePath());
+                    if (signerCerts.isEmpty()) {
                         final String error =
                             "Problem with signer certificate file for signer "
                             + workerid + ":\n" + "No certificate in file";
@@ -393,7 +301,7 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
                         errors.append(error);
                         errors.append("\n");
                     } else {
-                        if (signerCerts != null && signerCerts.size() != 1) {
+                        if (signerCerts.size() != 1) {
                             final String warning =
                                     "Warning: More than one certificate "
                                     + "found in signer certificate file for signer "
@@ -402,10 +310,8 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
                             warnings.append(warning);
                             warnings.append("\n");
                         }
-                        final X509Certificate signerCert =
-                                signerCerts != null ?
-                                (X509Certificate) signerCerts.iterator().next() :
-                                null;
+                        final X509Certificate signerCert
+                                = (X509Certificate) signerCerts.iterator().next();
 
                         List<Certificate> signerChain;
 
@@ -421,55 +327,36 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
                                 errors.append("\n");
                             }
 
-                            if (signerCert != null) {
-                                if (signerChain.contains(signerCert)) {
-                                    LOG.debug("Chain contains signercert");
-                                } else {
-                                    LOG.debug("Adding signercert to chain");
-                                    signerChain.add(0, signerCert);
-                                }
+                            if (signerChain.contains(signerCert)) {
+                                LOG.debug("Chain contains signercert");
+                            } else {
+                                LOG.debug("Adding signercert to chain");
+                                signerChain.add(0, signerCert);
                             }
 
-                            if (installInToken) {
-                                final String alias =
-                                        editedAlias ?
-                                        (String) key :
-                                        defaultKey ?
-                                        signer.getConfiguration().getProperty("DEFAULTKEY") :
-                                        signer.getConfiguration().getProperty("NEXTCERTSIGNKEY");
-                                
-                                SignServerAdminGUIApplication.getAdminWS()
-                                        .importCertificateChain(Integer.toString(workerid),
-                                                                asByteArrayList(signerChain),
-                                                                alias, null);
-                            } else {
-                                SignServerAdminGUIApplication.getAdminWS()
-                                        .uploadSignerCertificateChain(workerid,
-                                            asByteArrayList(signerChain), scope);
-                                SignServerAdminGUIApplication.getAdminWS()
-                                        .uploadSignerCertificate(workerid, 
-                                        asByteArray(signerCert), scope);
+                            SignServerAdminGUIApplication.getAdminWS()
+                                    .uploadSignerCertificateChain(workerid,
+                                        asByteArrayList(signerChain), scope);
+                            SignServerAdminGUIApplication.getAdminWS()
+                                    .uploadSignerCertificate(workerid, 
+                                    asByteArray(signerCert), scope);
+                            // Set DEFAULTKEY to NEXTCERTSIGNKEY
+                            if (defaultKey) {
+                                LOG.debug("Uploaded was for DEFAULTKEY");
+                            } else if (!defaultKey) {
+                                LOG.debug("Uploaded was for NEXTCERTSIGNKEY");
+                                final String nextCertSignKey
+                                        = signer.getConfiguration()
+                                            .getProperty("NEXTCERTSIGNKEY");
+                               SignServerAdminGUIApplication.getAdminWS()
+                                       .setWorkerProperty(workerid, "DEFAULTKEY",
+                                       nextCertSignKey);
+                               SignServerAdminGUIApplication.getAdminWS()
+                                       .removeWorkerProperty(workerid,
+                                       "NEXTCERTSIGNKEY");
                             }
-                               
-                            if (!editedAlias) {
-                                // Set DEFAULTKEY to NEXTCERTSIGNKEY
-                                if (defaultKey) {
-                                    LOG.debug("Uploaded was for DEFAULTKEY");
-                                } else if (!defaultKey) {
-                                    LOG.debug("Uploaded was for NEXTCERTSIGNKEY");
-                                    final String nextCertSignKey
-                                            = signer.getConfiguration()
-                                                .getProperty("NEXTCERTSIGNKEY");
-                                   SignServerAdminGUIApplication.getAdminWS()
-                                           .setWorkerProperty(workerid, "DEFAULTKEY",
-                                           nextCertSignKey);
-                                   SignServerAdminGUIApplication.getAdminWS()
-                                           .removeWorkerProperty(workerid,
-                                           "NEXTCERTSIGNKEY");
-                                }
-                                SignServerAdminGUIApplication.getAdminWS()
-                                        .reloadConfiguration(workerid);
-                            }
+                            SignServerAdminGUIApplication.getAdminWS()
+                                    .reloadConfiguration(workerid);
 
                             signers.remove(signer);
                             data.remove(row);
@@ -479,13 +366,6 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
                             final String error =
                                 "Authorization denied for worker "
                                 + workerid;
-                            LOG.error(error, ex);
-                            errors.append(error).append(":\n").append(ex.getMessage());
-                            errors.append("\n");
-                        } catch (OperationUnsupportedException_Exception ex) {
-                            final String error =
-                                    "Importing certificate chain is not supported by crypto token for worker "
-                                    + workerid;
                             LOG.error(error, ex);
                             errors.append(error).append(":\n").append(ex.getMessage());
                             errors.append("\n");

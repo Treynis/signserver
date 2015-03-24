@@ -18,7 +18,6 @@ import java.security.Signature;
 import java.util.Properties;
 
 import junit.framework.TestCase;
-import org.signserver.common.util.PathUtil;
 
 /**
  * Tests for a crypto token that uses a Java Keystore (JKS) file.
@@ -30,11 +29,14 @@ import org.signserver.common.util.PathUtil;
 public class JKSCryptoTokenTest extends TestCase {
 
     /** Project base directory. */
-    private File homeDir;
+    private transient File homeDir;
 
     @Override
     protected void setUp() throws Exception {
-        homeDir = PathUtil.getAppHome();
+        final String signServerHome = System.getenv("SIGNSERVER_HOME");
+        assertNotNull("Please set SIGNSERVER_HOME environment variable",
+                signServerHome);
+        homeDir = new File(signServerHome);
         assertTrue("SIGNSERVER_HOME nonexisting directory", homeDir.exists());
     }
 

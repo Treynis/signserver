@@ -12,33 +12,21 @@
  *************************************************************************/
 package org.signserver.server;
 
-import java.security.KeyStoreException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import javax.persistence.EntityManager;
 import junit.framework.TestCase;
 import org.apache.log4j.Logger;
 import org.cesecore.util.CertTools;
-import org.cesecore.util.query.QueryCriteria;
 import org.ejbca.util.Base64;
 import org.junit.Test;
 import org.signserver.common.CryptoTokenInitializationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.GlobalConfiguration;
-import org.signserver.common.ICertReqData;
-import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.IllegalRequestException;
-import org.signserver.common.KeyTestResult;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
@@ -47,12 +35,8 @@ import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
-import org.signserver.server.aliasselectors.AliasSelector;
 import org.signserver.server.cryptotokens.HardCodedCryptoToken;
-import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV3;
 import org.signserver.server.cryptotokens.NullCryptoToken;
-import org.signserver.server.cryptotokens.TokenSearchResults;
 import org.signserver.server.signers.BaseSigner;
 
 /**
@@ -99,7 +83,6 @@ public class BaseProcessableTest extends TestCase {
         globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         workerConfig.setProperty("NAME", "TestSigner100");
         workerConfig.setProperty("SHAREDLIBRARY", "/opt/hsm/pkcs11.so");
-        workerConfig.setProperty("SHAREDLIBRARYNAME", "P11Library");
         workerConfig.setProperty("SLOT", "3");
         workerConfig.setProperty("ATTRIBUTESFILE", "/opt/hsm/sunpkcs11.cfg");
         
@@ -115,7 +98,6 @@ public class BaseProcessableTest extends TestCase {
         globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         workerConfig.setProperty("NAME", "TestSigner100");
         workerConfig.setProperty("SHAREDLIBRARY", "/opt/hsm/pkcs11.so");
-        workerConfig.setProperty("SHAREDLIBRARYNAME", "P11Library");
         workerConfig.setProperty("SLOTLISTINDEX", "2");
         workerConfig.setProperty("ATTRIBUTESFILE", "/opt/hsm/sunpkcs11.cfg");
         
@@ -163,7 +145,6 @@ public class BaseProcessableTest extends TestCase {
         globalConfig.setProperty("GLOB.DEFAULT.SLOTLISTINDEX", "33");
         workerConfig.setProperty("NAME", "TestSigner100");
         workerConfig.setProperty("SHAREDLIBRARY", "/opt/hsm/pkcs11.so");
-        workerConfig.setProperty("SHAREDLIBRARYNAME", "P11Library");
         workerConfig.setProperty("SLOTLISTINDEX", "44");
         workerConfig.setProperty("ATTRIBUTES", SAMPLE_ATTRIBUTES);
         
@@ -199,7 +180,6 @@ public class BaseProcessableTest extends TestCase {
         globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
         globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         globalConfig.setProperty("GLOB.DEFAULT.SHAREDLIBRARY", "/opt/hsm/default-pkcs11.so");
-        globalConfig.setProperty("GLOB.DEFAULT.SHAREDLIBRARYNAME", "DefaultLibrary");
         globalConfig.setProperty("GLOB.DEFAULT.SLOT", "44");
         globalConfig.setProperty("GLOB.DEFAULT.ATTRIBUTESFILE", "/opt/hsm/default-sunpkcs11.cfg");
         globalConfig.setProperty("GLOB.DEFAULT.PIN", "FooBar789");
@@ -213,7 +193,6 @@ public class BaseProcessableTest extends TestCase {
         Properties expectedProperties = new Properties();
         expectedProperties.putAll(workerConfig.getProperties());
         expectedProperties.setProperty("SHAREDLIBRARY", "/opt/hsm/default-pkcs11.so");
-        expectedProperties.setProperty("SHAREDLIBRARYNAME", "DefaultLibrary");
         expectedProperties.setProperty("SLOT", "44");
         expectedProperties.setProperty("ATTRIBUTESFILE", "/opt/hsm/default-sunpkcs11.cfg");
         expectedProperties.setProperty("PIN", "FooBar789");
@@ -224,13 +203,11 @@ public class BaseProcessableTest extends TestCase {
         globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
         globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         globalConfig.setProperty("GLOB.DEFAULT.SHAREDLIBRARY", "/opt/hsm/default-pkcs11.so");
-        globalConfig.setProperty("GLOB.DEFAULT.SHAREDLIBRARYNAME", "DefaultLibrary");
         globalConfig.setProperty("GLOB.DEFAULT.SLOT", "44");
         globalConfig.setProperty("GLOB.DEFAULT.ATTRIBUTESFILE", "/opt/hsm/default-sunpkcs11.cfg");
         globalConfig.setProperty("GLOB.DEFAULT.PIN", "FooBar789");
         workerConfig.setProperty("NAME", "TestSigner100");
         workerConfig.setProperty("SHAREDLIBRARY", "/opt/hsm/pkcs11.so");
-        workerConfig.setProperty("SHAREDLIBRARYNAME", "OverriddenLibrary");
         workerConfig.setProperty("SLOT", "3");
         workerConfig.setProperty("PIN", "AnotherPin");
         workerConfig.setProperty("ATTRIBUTESFILE", "/opt/hsm/sunpkcs11.cfg");
@@ -243,13 +220,14 @@ public class BaseProcessableTest extends TestCase {
         expectedProperties = new Properties();
         expectedProperties.putAll(workerConfig.getProperties());
         expectedProperties.setProperty("SHAREDLIBRARY", "/opt/hsm/pkcs11.so");
-        expectedProperties.setProperty("SHAREDLIBRARYNAME", "OverriddenLibrary");
-        assertEquals("worker overriding SHAREDLIBRARY, SHAREDLIBRARYNAME etc used", 
+        assertEquals("worker overriding SHAREDLIBRARY etc used", 
                 expectedProperties.toString(), actualProperties.toString());
     }
     
     /**
-     * Test the fatal error reported when setting an unknown crypto token class.
+     * Test with an unknown class name as the crypto token.
+     * Should give an appropriate crypto token-related error.
+     * 
      * @throws Exception
      */
     @Test
@@ -320,101 +298,13 @@ public class BaseProcessableTest extends TestCase {
         assertEquals("cert from token", "End Entity 1", CertTools.getPartFromDN(((X509Certificate) instance.getSigningCertificateChain().get(0)).getSubjectX500Principal().getName(), "CN"));
     }
 
-    @Test
-    public void testCryptoToken_P11NoSharedLibrary() throws Exception {
-        Properties globalConfig = new Properties();
-        WorkerConfig workerConfig = new WorkerConfig();
-        
-        // All PKCS#11 properties that can have default values in GlobalConfiguration (except SLOTLISTINDEX)
-        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
-        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", 
-                "org.signserver.server.cryptotokens.PKCS11CryptoToken");
-        workerConfig.setProperty("NAME", "TestSigner100");
-        
-        TestSigner instance = new TestSigner(globalConfig);
-        instance.init(workerId, workerConfig, anyContext, null);
-        
-        final List<String> fatalErrors = instance.getSignerFatalErrors();
-        final String expectedErrorPrefix =
-                "Failed to initialize crypto token: Missing SHAREDLIBRARYNAME property";
-        boolean foundError = false;
-        
-        for (final String error : fatalErrors) {
-            if (error.startsWith(expectedErrorPrefix)) {
-                foundError = true;
-                break;
-            }
-        }
-
-        assertTrue("Should contain error", foundError);
-    }
-    
-    /**
-     * Test the override mechanism for alias selectors.
-     * 
-     * @throws Exception 
-     */
-    @Test
-    public void testDefaulAliasSelector() throws Exception {
-        Properties globalConfig = new Properties();
-        WorkerConfig workerConfig = new WorkerConfig();
-        
-        TestSigner instance = new TestSigner(globalConfig);
-        
-        instance.init(workerId, workerConfig, anyContext, null);
-        
-        final AliasSelector selector = instance.createAliasSelector(null);
-        
-        assertTrue("Alias selector implementation: " + selector.getClass().getName(),
-                    selector instanceof TestAliasSelector);
-        assertEquals("Alias", "Test",
-                selector.getAlias(workerId, instance, null, null));
-        
-        final List<String> errors = instance.getSignerFatalErrors();
-        
-        assertTrue("Contains alias selector fatal error",
-                errors.contains("Test alias selector error"));
-    }
-    
-    @Test
-    public void testImportCertificateChain() throws Exception {
-        LOG.info("testGetCryptoToken_noDefaults");
-        
-        Properties globalConfig = new Properties();
-        WorkerConfig workerConfig = new WorkerConfig();
-        
-        // Exercising all properties (except SLOTLISTINDEX)
-        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
-        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
-        workerConfig.setProperty("NAME", "TestSigner100");
-        
-        TestSigner instance = new TestSigner(globalConfig);
-        instance.init(workerId, workerConfig, anyContext, null);
-        
-            
-        final List<Certificate> chain =
-                Arrays.asList(CertTools.getCertfromByteArray(HardCodedCryptoToken.certbytes2));
-        
-        instance.importCertificateChain(chain, "alias2", null, new ServicesImpl());
-        
-        final List<Certificate> importedChain =
-                instance.getSigningCertificateChain("alias2");
-        
-        assertTrue("Matching certificate",
-                Arrays.equals(chain.get(0).getEncoded(),
-                              importedChain.get(0).getEncoded()));
-    }
-    
     /** CryptoToken only holding its properties and offering a way to access them. */
-    private static class MockedCryptoToken
-        extends NullCryptoToken implements ICryptoTokenV3 {
+    private static class MockedCryptoToken extends NullCryptoToken {
 
         private Properties props;
 
         private static final Certificate CERTIFICATE;
-        private final Map<String, List<Certificate>> importedChains =
-                new HashMap<String, List<Certificate>>();
-        
+
         static {
             try {
                 CERTIFICATE = CertTools.getCertfromByteArray(HardCodedCryptoToken.certbytes1);
@@ -449,88 +339,6 @@ public class BaseProcessableTest extends TestCase {
         @Override
         public Certificate getCertificate(int purpose) throws CryptoTokenOfflineException {
             return CERTIFICATE;
-        }
-
-        @Override
-        public void importCertificateChain(List<Certificate> certChain, String alias, char[] athenticationCode, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
-            importedChains.put(alias, certChain);
-        }
-
-        @Override
-        public TokenSearchResults searchTokenEntries(int startIndex, int max, QueryCriteria qc, boolean includeData, IServices services) {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public PrivateKey getPrivateKey(String alias) throws CryptoTokenOfflineException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public PublicKey getPublicKey(String alias) throws CryptoTokenOfflineException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public Certificate getCertificate(String alias) throws CryptoTokenOfflineException {
-            return CERTIFICATE;
-        }
-
-        @Override
-        public List<Certificate> getCertificateChain(String alias) throws CryptoTokenOfflineException {
-            final List<Certificate> chain = importedChains.get(alias);
-            
-            if (chain == null) {
-                // fall-back to the hard-coded cert
-                return Collections.singletonList(CERTIFICATE);
-            }
-            
-            return chain;
-        }
-
-        @Override
-        public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode) throws CryptoTokenOfflineException, IllegalArgumentException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public boolean removeKey(String alias) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public ICryptoInstance aquireCryptoInstance(String alias, RequestContext context) throws CryptoTokenOfflineException, IllegalRequestException, SignServerException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public void releaseCryptoInstance(ICryptoInstance instance) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-        
-        @Override
-        public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias, IServices services) throws CryptoTokenOfflineException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public Collection<KeyTestResult> testKey(String alias, char[] authCode, IServices Services) throws CryptoTokenOfflineException, KeyStoreException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public int getCryptoTokenStatus(IServices services) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
         }
 
     }
@@ -585,29 +393,6 @@ public class BaseProcessableTest extends TestCase {
             return super.getFatalErrors();
         }
         
-        @Override
-        protected AliasSelector createAliasSelector(final String className) {
-            return new TestAliasSelector();
-        }
-        
-    }
-    
-    private static class TestAliasSelector implements AliasSelector {
-
-        @Override
-        public void init(int workerId, WorkerConfig config, WorkerContext workerContext, EntityManager workerEM) {
-            
-        }
-
-        @Override
-        public String getAlias(int purpose, IProcessable processble, ProcessRequest signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-            return "Test";
-        }
-
-        @Override
-        public List<String> getFatalErrors() {
-            return Collections.singletonList("Test alias selector error");
-        }
         
     }
 }

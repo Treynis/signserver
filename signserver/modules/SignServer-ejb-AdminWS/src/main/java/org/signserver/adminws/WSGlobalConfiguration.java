@@ -35,7 +35,6 @@ public class WSGlobalConfiguration {
     private boolean useClassVersions;
     private boolean requireSigning;
 
-    /** Default no-arg constructor. */
     public WSGlobalConfiguration() {
     }
 

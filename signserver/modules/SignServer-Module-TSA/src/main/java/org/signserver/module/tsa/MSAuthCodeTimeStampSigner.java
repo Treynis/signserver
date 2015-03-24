@@ -65,7 +65,6 @@ import org.signserver.server.ITimeSource;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
-import org.signserver.server.cryptotokens.ICryptoInstance;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.log.LogMap;
 import org.signserver.server.signers.BaseSigner;
@@ -300,84 +299,76 @@ public class MSAuthCodeTimeStampSigner extends BaseSigner {
             ASN1OctetString octets = ASN1OctetString.getInstance(tag.getObject());
             byte[] content = octets.getOctets();
            
-            final ITimeSource timeSrc;
-            final Date date;
-            byte[] der;
-            ICryptoInstance crypto = null;
-            try {
-                crypto = aquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
-
-                // get signing cert certificate chain and private key
-                List<Certificate> certList =
-                        this.getSigningCertificateChain(crypto);
-                if (certList == null) {
-                    throw new SignServerException(
-                            "Null certificate chain. This signer needs a certificate.");
-                }
-
-                Certificate[] certs = (Certificate[]) certList.toArray(new Certificate[certList.size()]);
-
-                // Sign
-                X509Certificate x509cert = (X509Certificate) certs[0]; 
-
-                timeSrc = getTimeSource();
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("TimeSource: " + timeSrc.getClass().getName());
-                }
-                date = timeSrc.getGenTime();
-
-                if (date == null) {
-                    throw new ServiceUnavailableException("Time source is not available");
-                }
-
-                ASN1EncodableVector signedAttributes = new ASN1EncodableVector();
-                signedAttributes.add(new Attribute(CMSAttributes.signingTime, new DERSet(new Time(date))));
-
-                if (includeSigningCertificateAttribute) {
-                    try {
-                        final DERInteger serial = new DERInteger(x509cert.getSerialNumber());
-                        final X509CertificateHolder certHolder =
-                                new X509CertificateHolder(x509cert.getEncoded());
-                        final X500Name issuer = certHolder.getIssuer();                   
-                        final GeneralName name = new GeneralName(issuer);
-                        final GeneralNames names = new GeneralNames(name);
-                        final IssuerSerial is = new IssuerSerial(names, ASN1Integer.getInstance(serial));
-
-                        final ESSCertID essCertid =
-                                new ESSCertID(MessageDigest.getInstance("SHA-1").digest(x509cert.getEncoded()), is);
-                        signedAttributes.add(new Attribute(PKCSObjectIdentifiers.id_aa_signingCertificate,
-                                new DERSet(new SigningCertificate(essCertid))));
-                    } catch (NoSuchAlgorithmException e) {
-                        LOG.error("Can't find SHA-1 implementation: " + e.getMessage());
-                        throw new SignServerException("Can't find SHA-1 implementation", e);
-                    }
-                }
-
-                AttributeTable signedAttributesTable = new AttributeTable(signedAttributes);
-                DefaultSignedAttributeTableGenerator signedAttributeGenerator = new DefaultSignedAttributeTableGenerator(signedAttributesTable);
-
-
-                final String provider = cryptoToken.getProvider(ICryptoToken.PROVIDERUSAGE_SIGN);
-
-                SignerInfoGeneratorBuilder signerInfoBuilder =
-                        new SignerInfoGeneratorBuilder(new JcaDigestCalculatorProviderBuilder().setProvider("BC").build());
-                signerInfoBuilder.setSignedAttributeGenerator(signedAttributeGenerator);
-
-                JcaContentSignerBuilder contentSigner = new JcaContentSignerBuilder(signatureAlgo);
-                contentSigner.setProvider(provider);
-
-                final SignerInfoGenerator sig = signerInfoBuilder.build(contentSigner.build(crypto.getPrivateKey()), new X509CertificateHolder(x509cert.getEncoded()));
-
-                JcaCertStore cs = new JcaCertStore(certList);
-
-                CMSTypedData cmspba = new CMSProcessableByteArray(content);
-                CMSSignedData cmssd = MSAuthCodeCMSUtils.generate(cmspba, true, Arrays.asList(sig),
-                        MSAuthCodeCMSUtils.getCertificatesFromStore(cs), Collections.emptyList(), ci);
-
-                der = ASN1Primitive.fromByteArray(cmssd.getEncoded()).getEncoded(); 
-            } finally {
-                releaseCryptoInstance(crypto);
+            // get signing cert certificate chain and private key
+            List<Certificate> certList = this.getSigningCertificateChain();
+            if (certList == null) {
+                throw new SignServerException(
+                        "Null certificate chain. This signer needs a certificate.");
             }
+
+            Certificate[] certs = (Certificate[]) certList.toArray(new Certificate[certList.size()]);
+            PrivateKey pk = this.getCryptoToken().getPrivateKey(
+                    ICryptoToken.PURPOSE_SIGN);
+
+            // Sign
+            X509Certificate x509cert = (X509Certificate) certs[0]; 
+
+            final ITimeSource timeSrc = getTimeSource();
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("TimeSource: " + timeSrc.getClass().getName());
+            }
+            final Date date = timeSrc.getGenTime();
+            
+            if (date == null) {
+                throw new ServiceUnavailableException("Time source is not available");
+            }
+            
+            ASN1EncodableVector signedAttributes = new ASN1EncodableVector();
+            signedAttributes.add(new Attribute(CMSAttributes.signingTime, new DERSet(new Time(date))));
+            
+            if (includeSigningCertificateAttribute) {
+                try {
+                    final DERInteger serial = new DERInteger(x509cert.getSerialNumber());
+                    final X509CertificateHolder certHolder =
+                            new X509CertificateHolder(x509cert.getEncoded());
+                    final X500Name issuer = certHolder.getIssuer();                   
+                    final GeneralName name = new GeneralName(issuer);
+                    final GeneralNames names = new GeneralNames(name);
+                    final IssuerSerial is = new IssuerSerial(names, ASN1Integer.getInstance(serial));
+
+                    final ESSCertID essCertid =
+                            new ESSCertID(MessageDigest.getInstance("SHA-1").digest(x509cert.getEncoded()), is);
+                    signedAttributes.add(new Attribute(PKCSObjectIdentifiers.id_aa_signingCertificate,
+                            new DERSet(new SigningCertificate(essCertid))));
+                } catch (NoSuchAlgorithmException e) {
+                    LOG.error("Can't find SHA-1 implementation: " + e.getMessage());
+                    throw new SignServerException("Can't find SHA-1 implementation", e);
+                }
+            }
+
+            AttributeTable signedAttributesTable = new AttributeTable(signedAttributes);
+            DefaultSignedAttributeTableGenerator signedAttributeGenerator = new DefaultSignedAttributeTableGenerator(signedAttributesTable);
+
+            
+            final String provider = cryptoToken.getProvider(ICryptoToken.PROVIDERUSAGE_SIGN);
+            
+            SignerInfoGeneratorBuilder signerInfoBuilder =
+                    new SignerInfoGeneratorBuilder(new JcaDigestCalculatorProviderBuilder().setProvider("BC").build());
+            signerInfoBuilder.setSignedAttributeGenerator(signedAttributeGenerator);
+
+            JcaContentSignerBuilder contentSigner = new JcaContentSignerBuilder(signatureAlgo);
+            contentSigner.setProvider(provider);
+
+            final SignerInfoGenerator sig = signerInfoBuilder.build(contentSigner.build(pk), new X509CertificateHolder(x509cert.getEncoded()));
+
+            JcaCertStore cs = new JcaCertStore(certList);
+            
+            CMSTypedData cmspba = new CMSProcessableByteArray(content);
+            CMSSignedData cmssd = MSAuthCodeCMSUtils.generate(cmspba, true, Arrays.asList(sig),
+                    MSAuthCodeCMSUtils.getCertificatesFromStore(cs), Collections.emptyList(), ci);
+
+            byte[] der = ASN1Primitive.fromByteArray(cmssd.getEncoded()).getEncoded(); 
+
   
             // Log values
             logMap.put(ITimeStampLogger.LOG_TSA_TIME, String.valueOf(date.getTime()));
@@ -400,15 +391,14 @@ public class MSAuthCodeTimeStampSigner extends BaseSigner {
             if (signRequest instanceof GenericServletRequest) {
                 signResponse = new GenericServletResponse(sReq.getRequestID(),
                         		signedbytes,
-                                    getSigningCertificate(signRequest,
-                                                          requestContext),
+                                    getSigningCertificate(),
                                     archiveId,
                                     archivables,
                                     RESPONSE_CONTENT_TYPE);
             } else {
                 signResponse = new GenericSignResponse(sReq.getRequestID(),
                         signedbytes,
-                        getSigningCertificate(signRequest, requestContext),
+                        getSigningCertificate(),
                         archiveId,
                         archivables);
             }
@@ -528,8 +518,7 @@ public class MSAuthCodeTimeStampSigner extends BaseSigner {
     private boolean validateChain() {
         boolean result = true;
         try {
-            final List<Certificate> signingCertificateChain =
-                    getSigningCertificateChain();
+            final List<Certificate> signingCertificateChain = getSigningCertificateChain();
             if (signingCertificateChain != null) {
                 List<Certificate> chain = (List<Certificate>) signingCertificateChain;
                 for (int i = 0; i < chain.size(); i++) {
@@ -645,5 +634,7 @@ public class MSAuthCodeTimeStampSigner extends BaseSigner {
 
         return result;
     }
+    
+
 
 }

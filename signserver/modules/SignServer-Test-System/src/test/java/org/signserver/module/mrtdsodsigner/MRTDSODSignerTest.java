@@ -62,51 +62,6 @@ public class MRTDSODSignerTest extends ModulesTestCase {
     
     /** Worker7904: SHA256WithECDSA, DODATAGROUPHASHING=true */
     private static final int WORKER5 = 7904;
-    
-    private static final String SIGNER1C_CERT = 
-            "-----BEGIN CERTIFICATE-----\n" +
-            "MIIDBzCCAe+gAwIBAgIBATANBgkqhkiG9w0BAQUFADAeMRwwGgYDVQQDExNUZXN0\n" +
-            "IFYzIENlcnRpZmljYXRlMB4XDTI1MDEwMTA5MDAwMFoXDTMwMDEwMTA5MDAwMFow\n" +
-            "HjEcMBoGA1UEAxMTVGVzdCBWMyBDZXJ0aWZpY2F0ZTCCASIwDQYJKoZIhvcNAQEB\n" +
-            "BQADggEPADCCAQoCggEBALGmSmtv9FtplILfe8kOjmEBdqo96WVMp6oy8bHMC59e\n" +
-            "aE9Wu03kquoI2JMTwNcgapWKMYambzxr4rCVzBcc3kHpLaefnpq/5kFi9d8U6tgv\n" +
-            "3T8Q8ZH1kMx/CH/fYQol0nMEqgl+S557zjNdBuSD36m45cN/UmI4K8Ie3S7a1xRx\n" +
-            "2TuQZsxBxZUAU4SYgbC0DzwPXWB+EWJcGWXiqqZzKRNAnawNShkdEfVrCleg/Vff\n" +
-            "T/iYOxMu3W/LQEpe69g/HmFYwYAATl7zm4jnVAhEZbEj8J4GhHW0gEo1qrf6CugO\n" +
-            "a8/dEtGOSLLm9eilJIxydSiiTu9v9MAzs1LY3Ryt2wUCAwEAAaNQME4wHQYDVR0O\n" +
-            "BBYEFDZcLOA/gL2djDmuITgKN+4JaT8IMC0GA1UdEAQmMCSgEBgOMjAxNTAxMDEx\n" +
-            "MDAwMDChEBgOMjAyMDAxMDExMDAwMDAwDQYJKoZIhvcNAQEFBQADggEBAAGBmxuH\n" +
-            "Z7VDnJacGonJOJxk5dDTA50c7Y8ggJZ3bpRW9afKTiAryq49ozm5sOv+XzWPf8FK\n" +
-            "mbKhmknm3z8cfPL1LjA6c8dA0yvIpeT4IUYPqfWLHVpWTnbfnXQY97qKluRJF0sQ\n" +
-            "AVNzxTE+ZDHBPFKzl/t8Zo9C7/ffNwxCVl0x5Ss8ie7q0y7PIm6yqnShPofvEnBE\n" +
-            "F+dD33k8WXID2D/OLWQolrM6dnIGA9c1cFQ9v8kUXfX02fW4KGB09DAthgLv84zz\n" +
-            "UoTzGmMnqBlb99BYjoDViVq4yWcxczJcjjIuj4hSNlH0Q/uWhqpmw4dqnlbH3fGO\n" +
-            "ZvlQhYEZsj0eJMc=\n" +
-            "-----END CERTIFICATE-----";
-    
-    private static final String SIGNER1D_CERT =
-            "-----BEGIN CERTIFICATE-----\n" +
-            "MIIDBzCCAe+gAwIBAgIBATANBgkqhkiG9w0BAQUFADAeMRwwGgYDVQQDExNUZXN0\n" +
-            "IFYzIENlcnRpZmljYXRlMB4XDTE1MDEwMTA5MDAwMFoXDTIwMDEwMTA5MDAwMFow\n" +
-            "HjEcMBoGA1UEAxMTVGVzdCBWMyBDZXJ0aWZpY2F0ZTCCASIwDQYJKoZIhvcNAQEB\n" +
-            "BQADggEPADCCAQoCggEBAJq2VhSoCMsOCI4YyGAOWHJk+8GNkz9/xsqDd4+YCkXl\n" +
-            "pgBZvUrmCEhxd8IMS6LEvlAtv/TEGyh1FlL5ncUBFjPIbSvS7zM8f1gm06iNSdC9\n" +
-            "dVwTHhu+L+mvajuFWlUr/agPaCM9rvUcUE5bceRioM0ORway1uyGGg5agecLbEKE\n" +
-            "KB7mmmK4sJgwk6Ol/AbRk2bw2ep6XeZusEdplySTM3PFpbS97wRzJLQuo0pg9fZ3\n" +
-            "yTvxlgRFbOJ7uGVY1H1ac2RcgvC3E+oSxg5Hk/xFn7R1iGMukn2exPVp0lPOz+QH\n" +
-            "kgl+PefojU1MRTV4Nqf4jDp7zawhZz5yUvme3ZGg6tsCAwEAAaNQME4wHQYDVR0O\n" +
-            "BBYEFCGmTJsyJQ/esdU6lsZXShnqS0LtMC0GA1UdEAQmMCSgEBgOMjAyNTAxMDEx\n" +
-            "MDAwMDChEBgOMjAzMDAxMDExMDAwMDAwDQYJKoZIhvcNAQEFBQADggEBAB61vYmr\n" +
-            "5fEuoN78Yiu3qZhOrJzA6I4D4F6NEX3vQOTfzjcdVLVRUhOmFHi33UfPcugWU1Nt\n" +
-            "GLxa0nIdT+Pnc7AnoblBeNWNdYiM93DLHuQTwYyQVcQMlltHs2LhGesQ+LLijcTE\n" +
-            "Cm+t1/HTuhQcENbS3IUyvp1borH+txTh+YBWKVmrvis+2SlLZSF8MppNO4NysaEa\n" +
-            "ehTHOn0XLy9LSXHypmTqR/Jx5kfG12OcAx58baIMPbTbGxqR1tNceKb7+Sjy+urI\n" +
-            "sX/0d4c1L1hohgpeJ2nbSeZ3SbSx/eNqhglBls/PSdEFqTpbAK7d+LfqkjDbKWbB\n" +
-            "iVFbkjAvj/aacdk=\n" +
-            "-----END CERTIFICATE-----";
-    
-    private static final String ALIAS_DEMODSEC = "MRTD Sod Signer";
-    private static final String ALIAS_DEMODS1 = "demods1";
 
     private final IWorkerSession workerSession = getWorkerSession();
     
@@ -134,7 +89,6 @@ public class MRTDSODSignerTest extends ModulesTestCase {
                 + File.separator + "res" + File.separator + "test"
                 + File.separator + "demods1.p12");
         workerSession.setWorkerProperty(WORKER1, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(WORKER1, "DEFAULTKEY", ALIAS_DEMODS1);
 
         // WORKER1B uses a P12 keystore
         workerSession.setWorkerProperty(WORKER1B, "KEYSTOREPATH",
@@ -142,7 +96,6 @@ public class MRTDSODSignerTest extends ModulesTestCase {
                 + File.separator + "res" + File.separator + "test"
                 + File.separator + "dss10/dss10_signer1.p12");
         workerSession.setWorkerProperty(WORKER1B, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(WORKER1B, "DEFAULTKEY", "Signer 1");
 
         // WORKER2 uses a P12 keystore
         workerSession.setWorkerProperty(WORKER2, "KEYSTOREPATH",
@@ -150,7 +103,6 @@ public class MRTDSODSignerTest extends ModulesTestCase {
                 + File.separator + "res" + File.separator + "test"
                 + File.separator + "demods1.p12");
         workerSession.setWorkerProperty(WORKER2, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(WORKER2, "DEFAULTKEY", ALIAS_DEMODS1);
 
         // WORKER3 uses a P12 keystore
         workerSession.setWorkerProperty(WORKER3, "KEYSTOREPATH",
@@ -158,7 +110,6 @@ public class MRTDSODSignerTest extends ModulesTestCase {
                 + File.separator + "res" + File.separator + "test"
                 + File.separator + "demods1.p12");
         workerSession.setWorkerProperty(WORKER3, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(WORKER3, "DEFAULTKEY", ALIAS_DEMODS1);
 
         // WORKER4 uses a P12 keystore
         workerSession.setWorkerProperty(WORKER4, "KEYSTOREPATH",
@@ -166,7 +117,6 @@ public class MRTDSODSignerTest extends ModulesTestCase {
                 + File.separator + "res" + File.separator + "test"
                 + File.separator + "demods1.p12");
         workerSession.setWorkerProperty(WORKER4, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(WORKER4, "DEFAULTKEY", ALIAS_DEMODS1);
 
         // WORKER5 uses a P12 keystore and ECC
         workerSession.setWorkerProperty(WORKER5, "KEYSTOREPATH",
@@ -174,7 +124,6 @@ public class MRTDSODSignerTest extends ModulesTestCase {
                 + File.separator + "res" + File.separator + "test"
                 + File.separator + "demodsecc1.p12");
         workerSession.setWorkerProperty(WORKER5, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(WORKER5, "DEFAULTKEY", ALIAS_DEMODSEC);
 
         workerSession.reloadConfiguration(WORKER1);
         workerSession.reloadConfiguration(WORKER2);
@@ -182,14 +131,7 @@ public class MRTDSODSignerTest extends ModulesTestCase {
         workerSession.reloadConfiguration(WORKER4);
         workerSession.reloadConfiguration(WORKER5);
         workerSession.reloadConfiguration(WORKER1B);
-
-        addSigner("org.signserver.module.mrtdsodsigner.MRTDSODSigner", WORKER1C, "TestMRTDSODSigner1c", true);
-        workerSession.setWorkerProperty(WORKER1C, "SIGNERCERT", SIGNER1C_CERT);
-        workerSession.setWorkerProperty(WORKER1C, "SIGNERCERTCHAIN", SIGNER1C_CERT);
         workerSession.reloadConfiguration(WORKER1C);
-        addSigner("org.signserver.module.mrtdsodsigner.MRTDSODSigner", WORKER1D, "TestMRTDSODSigner1d", true);
-        workerSession.setWorkerProperty(WORKER1D, "SIGNERCERT", SIGNER1D_CERT);
-        workerSession.setWorkerProperty(WORKER1D, "SIGNERCERTCHAIN", SIGNER1D_CERT);
         workerSession.reloadConfiguration(WORKER1D);
     }
 
@@ -296,9 +238,6 @@ public class MRTDSODSignerTest extends ModulesTestCase {
         workerSession.setWorkerProperty(WORKER1B,
                 SignServerConstants.MINREMAININGCERTVALIDITY, "6300");
         workerSession.reloadConfiguration(WORKER1B);
-        
-        System.out.println("remaining: " + workerSession.getSigningValidityNotAfter(WORKER1B));
-        
         // Signing operation should not work now
         boolean thrown = false;
         try {

@@ -25,7 +25,6 @@ public class QueryCondition {
     private RelationalOperator operator;
     private String value;
 
-    /** Default no-arg constructor. */
     public QueryCondition() {
     }
     

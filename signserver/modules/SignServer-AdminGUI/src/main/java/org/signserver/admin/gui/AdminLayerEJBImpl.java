@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.logging.Level;
 import javax.naming.NamingException;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
@@ -59,7 +58,6 @@ import org.signserver.admin.gui.adminws.gen.KeyStoreException_Exception;
 import org.signserver.admin.gui.adminws.gen.KeyTestResult;
 import org.signserver.admin.gui.adminws.gen.LogEntry;
 import org.signserver.admin.gui.adminws.gen.LogEntry.AdditionalDetails;
-import org.signserver.admin.gui.adminws.gen.OperationUnsupportedException_Exception;
 import org.signserver.admin.gui.adminws.gen.Pkcs10CertReqInfo;
 import org.signserver.admin.gui.adminws.gen.QueryCondition;
 import org.signserver.admin.gui.adminws.gen.QueryOrdering;
@@ -76,7 +74,6 @@ import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.InvalidWorkerIdException;
-import org.signserver.common.OperationUnsupportedException;
 import org.signserver.common.PKCS10CertReqInfo;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestAndResponseManager;
@@ -467,27 +464,6 @@ public class AdminLayerEJBImpl implements AdminWS {
         }
     }
 
-    @Override
-    public Base64SignerCertReqData getPKCS10CertificateRequestForAlias(int signerId, Pkcs10CertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias) throws AdminNotAuthorizedException_Exception, CryptoTokenOfflineException_Exception, InvalidWorkerIdException_Exception {
-        final Base64SignerCertReqData result;
-        try {
-            final ICertReqData data = worker.getCertificateRequest(signerId, 
-                    new PKCS10CertReqInfo(certReqInfo.getSignatureAlgorithm(),
-                    certReqInfo.getSubjectDN(), null), explicitEccParameters,
-                    keyAlias);
-            if (!(data instanceof org.signserver.common.Base64SignerCertReqData)) {
-                throw new RuntimeException("Unsupported cert req data: " + data);
-            }
-            result = new Base64SignerCertReqData();
-            result.setBase64CertReq(((org.signserver.common.Base64SignerCertReqData) data).getBase64CertReq());
-            return result;
-        } catch (CryptoTokenOfflineException ex) {
-            throw wrap(ex);
-        } catch (InvalidWorkerIdException ex) {
-            throw wrap(ex);
-        }
-    }
-
     /**
      * Method returning the current signing certificate for the signer.
      * @param signerId Id of signer
@@ -810,55 +786,6 @@ public class AdminLayerEJBImpl implements AdminWS {
                     "Unable to parse certificate", null, ex);
         }
     }
-
-    /**
-     * Method used to import a certificate chain to a crypto token.
-     * 
-     * @param workerIdOrName ID or name of the (crypto)worker
-     * @param certificateChain Certificate chain to import
-     * @param alias Alias to use in the token
-     * @param authCode Authentication code (used if the alias is using a
-     *                 separate authentication code), if null, use the
-     *                 authentication code used to activate the token.
-     * @throws AdminNotAuthorizedException_Exception
-     * @throws IllegalRequestException_Exception
-     * @throws OperationUnsupportedException_Exception
-     */
-    @Override
-    public void importCertificateChain(final String workerIdOrName,
-                                       final List<byte[]> certificateChain,
-                                       final String alias,
-                                       final String authCode)
-            throws AdminNotAuthorizedException_Exception,
-                   IllegalRequestException_Exception,
-                   OperationUnsupportedException_Exception {
-        try {
-            int workerId;
-            
-            try {
-                workerId = Integer.parseInt(workerIdOrName);
-            } catch (NumberFormatException e) {
-                workerId = getWorkerId(workerIdOrName);
-            }
-            
-            worker.importCertificateChain(workerId, certificateChain, alias,
-                    authCode != null ? authCode.toCharArray() : null);
-        } catch (CryptoTokenOfflineException ex) {
-            LOG.error("Crypto token offline: ", ex);
-            throw new IllegalRequestException_Exception("Cryptotoken offline",
-                                                        null, ex);
-        } catch (CertificateException ex) {
-            LOG.error("Unable to parse certificate", ex);
-            throw new IllegalRequestException_Exception(
-                    "Unable to parse certificate", null, ex);
-        } catch (OperationUnsupportedException ex) {
-            LOG.error("Unable to parse certificate", ex);
-            throw new OperationUnsupportedException_Exception(
-                    "Operation is not supported by crypto token", null, ex);
-        }
-    }
-    
-    
 
     // "Insert Code > Add Web Service Operation")
 

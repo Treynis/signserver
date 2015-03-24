@@ -15,6 +15,7 @@ package org.signserver.module.ooxmlsigner;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.security.PrivateKey;
 import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
@@ -33,7 +34,6 @@ import org.signserver.common.*;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
-import org.signserver.server.cryptotokens.ICryptoInstance;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
@@ -119,16 +119,18 @@ public class OOXMLSigner extends BaseSigner {
         PackageDigitalSignatureManager dsm = new PackageDigitalSignatureManager(
                 docxPackage);
 
-        ICryptoInstance crypto = null;
-        try {
-            crypto = aquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
+        // get signing key
+        PrivateKey privateKey = getCryptoToken().getPrivateKey(
+                ICryptoToken.PURPOSE_SIGN);
+
+        // get signing certificate
+        X509Certificate cert = (X509Certificate) getSigningCertificate();
         
-            // sign document
-            dsm.SignDocument(crypto.getPrivateKey(), (X509Certificate) getSigningCertificate(crypto));
+        // sign document
+        try {
+            dsm.SignDocument(privateKey, cert);
         } catch (OpenXML4JException e1) {
             throw new SignServerException("Problem signing document", e1);
-        } finally {
-            releaseCryptoInstance(crypto);
         }
 
         // save output to package
@@ -145,14 +147,10 @@ public class OOXMLSigner extends BaseSigner {
 
         if (signRequest instanceof GenericServletRequest) {
             signResponse = new GenericServletResponse(sReq.getRequestID(),
-                    signedbytes,
-                    getSigningCertificate(signRequest, requestContext),
-                    archiveId, archivables, CONTENT_TYPE);
+                    signedbytes, getSigningCertificate(), archiveId, archivables, CONTENT_TYPE);
         } else {
             signResponse = new GenericSignResponse(sReq.getRequestID(),
-                    signedbytes,
-                    getSigningCertificate(signRequest, requestContext),
-                    archiveId, archivables);
+                    signedbytes, getSigningCertificate(), archiveId, archivables);
         }
 
         // The client can be charged for the request
@@ -169,5 +167,6 @@ public class OOXMLSigner extends BaseSigner {
         errors.addAll(configErrors);
         return errors;
     }
-
+    
+    
 }

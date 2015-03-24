@@ -59,7 +59,8 @@ public class ODFSignerTest extends ModulesTestCase {
 
     @Test
     public void test00SetupDatabase() throws Exception {
-        addSigner("org.signserver.module.odfsigner.ODFSigner", WORKERID, "TestODFSigner", true);
+        setProperties(new File(getSignServerHome(), "res/test/test-odfsigner-configuration.properties"));
+        workerSession.reloadConfiguration(WORKERID);
     }
 
     @Test

@@ -51,7 +51,6 @@ import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.util.PathUtil;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession.IRemote;
 import org.signserver.module.renewal.common.RenewalWorkerProperties;
@@ -895,8 +894,9 @@ public class RenewalWorkerTest extends AbstractTestCase {
     	
     	setupRenewalWorker(signerId, signerName);
         
-        final File truststorePath = new File(PathUtil.getAppHome(), "res" + File.separator + "test" + File.separator + "renewal.pem");
-        getWorkerSession().setWorkerProperty(signerId, "TRUSTSTOREPATH", truststorePath.getAbsolutePath());
+        final String truststorePath = System.getenv("SIGNSERVER_HOME") + File.separator +
+    			"res" + File.separator + "test" + File.separator + "renewal.pem";
+        getWorkerSession().setWorkerProperty(signerId, "TRUSTSTOREPATH", truststorePath);
         getWorkerSession().setWorkerProperty(signerId, "TRUSTSTORETYPE", "PEM");
         getWorkerSession().setWorkerProperty(signerId, "EJBCAWSURL",
                 EJBCAWSURL_PREFIX);

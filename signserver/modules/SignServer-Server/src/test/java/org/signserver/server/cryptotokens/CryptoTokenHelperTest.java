@@ -16,7 +16,6 @@ import java.util.Properties;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import junit.framework.TestCase;
-import org.apache.log4j.Logger;
 
 /**
  * Tests that the hard token properties are set correctly for PKCS11 crypto tokens.
@@ -24,9 +23,6 @@ import org.apache.log4j.Logger;
  * @version $Id$
  */
 public class CryptoTokenHelperTest extends TestCase {
-    
-    /** Logger for this class. */
-    private static final Logger LOG = Logger.getLogger(CryptoTokenHelperTest.class);
 
     /**
      * Tests some slot properties, including ATTRIBUTES.
@@ -116,9 +112,4 @@ public class CryptoTokenHelperTest extends TestCase {
         SortedMap p = new TreeMap(CryptoTokenHelper.fixP11Properties(prop));
         assertEquals("{ATTRIBUTESFILE=/opt/attributes.cfg, DEFAULTKEY=default, PIN=1234, SHAREDLIBRARY=/opt/nfast/toolkits/pkcs11/libcknfast.so, SLOTLABELTYPE=SLOT_LABEL, SLOTLABELVALUE=MyLabel, attributesFile=/opt/attributes.cfg, defaultKey=default, pin=1234, sharedLibrary=/opt/nfast/toolkits/pkcs11/libcknfast.so, slotLabelType=SLOT_LABEL, slotLabelValue=MyLabel}", p.toString());
     }
-    
-    // TODO: Tests for dummy certificates temporarly moved to
-    // SignServer-Test-System but can be moved back after upgrading to
-    // BC >= 1.50
-
 }

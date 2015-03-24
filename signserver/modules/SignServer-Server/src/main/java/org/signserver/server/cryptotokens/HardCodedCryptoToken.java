@@ -20,7 +20,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -32,19 +31,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.query.QueryCriteria;
 import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenInitializationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
-import org.signserver.common.IllegalRequestException;
 import org.signserver.common.KeyTestResult;
-import org.signserver.common.QueryException;
-import org.signserver.common.RequestContext;
-import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerStatus;
-import org.signserver.server.IServices;
 import static org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases.KEY_ALIAS_1;
 import static org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases.KEY_ALIAS_2;
 import static org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases.KEY_ALIAS_3;
@@ -55,16 +48,12 @@ import static org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases.KEY
  *
  * @author Philip Vendil
  * @version $Id$
- * @deprecated Use a real crypto token instead.
  */
-@Deprecated
-public class HardCodedCryptoToken implements ICryptoToken, ICryptoTokenV3 {
+public class HardCodedCryptoToken implements ICryptoToken {
     
     private X509Certificate cert;
     
     private PrivateKey privateKey;
-    
-    private String supportedAlias;
     
 
     public HardCodedCryptoToken() {
@@ -285,14 +274,13 @@ public class HardCodedCryptoToken implements ICryptoToken, ICryptoTokenV3 {
 
     @Override
     public void init(int workerId, Properties props) throws CryptoTokenInitializationFailureException {
-        
+
         final String defaultKey;
         if (props == null) {
             defaultKey = KEY_ALIAS_1;
         } else {
             defaultKey = props.getProperty("DEFAULTKEY", KEY_ALIAS_1);
         }
-        this.supportedAlias = defaultKey;
         final byte[] certbytes;
         final byte[] passTestKey;
 
@@ -336,11 +324,6 @@ public class HardCodedCryptoToken implements ICryptoToken, ICryptoTokenV3 {
     @Override
     public int getCryptoTokenStatus() {
         return WorkerStatus.STATUS_ACTIVE;
-    }
-    
-    @Override
-    public int getCryptoTokenStatus(final IServices services) {
-        return getCryptoTokenStatus();
     }
 
     /**
@@ -430,94 +413,11 @@ public class HardCodedCryptoToken implements ICryptoToken, ICryptoTokenV3 {
             throws CryptoTokenOfflineException, KeyStoreException {
         throw new UnsupportedOperationException("Not supported yet.");
     }
-    
-    @Override
-    public Collection<KeyTestResult> testKey(final String alias,
-            final char[] authCode,
-            final IServices services)
-            throws CryptoTokenOfflineException, KeyStoreException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
 
     @Override
     public KeyStore getKeyStore() throws UnsupportedOperationException,
             CryptoTokenOfflineException, KeyStoreException {
         throw new UnsupportedOperationException(
                 "Operation not supported by crypto token.");
-    }
-    
-    private void checkAlias(final String alias) throws CryptoTokenOfflineException {
-        if (alias != null && !supportedAlias.equals(alias)) {
-            throw new CryptoTokenOfflineException("Only key alias " + supportedAlias + " supported by this token");
-        }
-    }
-
-    @Override
-    public void importCertificateChain(List<Certificate> certChain, String alias, char[] athenticationCode, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public TokenSearchResults searchTokenEntries(int startIndex, int max, QueryCriteria qc, boolean includeData, IServices services) throws CryptoTokenOfflineException, QueryException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public ICryptoInstance aquireCryptoInstance(String alias, RequestContext context) throws CryptoTokenOfflineException, IllegalRequestException, SignServerException {
-        checkAlias(alias);
-        return new DefaultCryptoInstance(alias, context, Security.getProvider("BC"), privateKey, getCertificateChain(PURPOSE_SIGN));
-    }
-
-    @Override
-    public void releaseCryptoInstance(ICryptoInstance instance) {
-    }
-
-    @Override
-    public PrivateKey getPrivateKey(String alias) throws CryptoTokenOfflineException {
-        checkAlias(alias);
-        return getPrivateKey(PURPOSE_SIGN);
-    }
-
-    @Override
-    public PublicKey getPublicKey(String alias) throws CryptoTokenOfflineException {
-        checkAlias(alias);
-        return getPublicKey(PURPOSE_SIGN);
-    }
-
-    @Override
-    public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException {
-        return genCertificateRequest(info, explicitEccParameters, explicitEccParameters);
-    }
-
-    @Override
-    public Certificate getCertificate(String alias) throws CryptoTokenOfflineException {
-        checkAlias(alias);
-        return getCertificate(PURPOSE_SIGN);
-    }
-
-    @Override
-    public List<Certificate> getCertificateChain(String alias) throws CryptoTokenOfflineException {
-        checkAlias(alias);
-        return getCertificateChain(PURPOSE_SIGN);
-    }
-
-    @Override
-    public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode) throws CryptoTokenOfflineException, IllegalArgumentException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public boolean removeKey(String alias) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias, IServices services) throws CryptoTokenOfflineException {
-        return null;
     }
 }

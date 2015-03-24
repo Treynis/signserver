@@ -37,7 +37,6 @@ import org.bouncycastle.cert.jcajce.JcaX509CRLConverter;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.signserver.common.*;
-import org.signserver.common.util.PathUtil;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.cryptotokens.ICryptoToken;
@@ -46,7 +45,6 @@ import org.signserver.test.utils.builders.CertBuilderException;
 import org.signserver.test.utils.builders.CertExt;
 import org.signserver.test.utils.builders.CryptoUtils;
 import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
-import org.signserver.test.utils.mock.MockedCryptoToken;
 import org.signserver.test.utils.mock.WorkerSessionMock;
 
 /**
@@ -97,9 +95,10 @@ public class PDFSignerUnitTest extends TestCase {
     
     private JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
 
-    public PDFSignerUnitTest() throws FileNotFoundException {
+    public PDFSignerUnitTest() {
         SignServerUtil.installBCProvider();
-        File home = PathUtil.getAppHome();
+        File home = new File(System.getenv("SIGNSERVER_HOME"));
+        assertTrue("Environment variable SIGNSERVER_HOME", home.exists());
         sampleOk = new File(home, "res/test/ok.pdf");
         sampleRestricted = new File(home, "res/test/sample-restricted.pdf");
         sample = new File(home, "res/test/pdf/sample.pdf");
@@ -1339,16 +1338,12 @@ public class PDFSignerUnitTest extends TestCase {
         }
         
         @Override
-        public Certificate getSigningCertificate(final ProcessRequest request,
-                                                 final RequestContext context)
-                throws CryptoTokenOfflineException {
+        public Certificate getSigningCertificate() throws CryptoTokenOfflineException {
             return mockedToken.getCertificate(ICryptoToken.PURPOSE_SIGN);
         }
 
         @Override
-        public List<Certificate> getSigningCertificateChain(final ProcessRequest request,
-                                                            final RequestContext context)
-                throws CryptoTokenOfflineException {
+        public List<Certificate> getSigningCertificateChain() throws CryptoTokenOfflineException {
             return mockedToken.getCertificateChain(ICryptoToken.PURPOSE_SIGN);
         }
 
@@ -1380,16 +1375,12 @@ public class PDFSignerUnitTest extends TestCase {
             }
 
             @Override
-            public Certificate getSigningCertificate(final ProcessRequest request,
-                                                     final RequestContext context)
-                    throws CryptoTokenOfflineException {
+            public Certificate getSigningCertificate() throws CryptoTokenOfflineException {
                 return signerCertificate;
             }
 
             @Override
-            public List<Certificate> getSigningCertificateChain(final ProcessRequest request,
-                                                                final RequestContext context)
-                    throws CryptoTokenOfflineException {
+            public List<Certificate> getSigningCertificateChain() throws CryptoTokenOfflineException {
                 return Arrays.asList(certChain);
             }
 
@@ -1407,9 +1398,7 @@ public class PDFSignerUnitTest extends TestCase {
         instance.setIncludeCertificateLevels(1);
         
         try {
-            byte[] signedPdfbytes =
-                    instance.addSignatureToPDFDocument(token.aquireCryptoInstance("any-alias", null), params, pdfbytes, null, 0,
-                                                       null, null);
+            byte[] signedPdfbytes = instance.addSignatureToPDFDocument(params, pdfbytes, null, 0);
             assertNotNull(signedPdfbytes);
         } catch (SignServerException ex) {
             LOG.debug("failed to sign", ex);
@@ -1466,7 +1455,7 @@ public class PDFSignerUnitTest extends TestCase {
         return response.getProcessedData();
     }
 
-    private void setupWorkers() throws NoSuchAlgorithmException, NoSuchProviderException, CertBuilderException, CertificateException {
+    private void setupWorkers() {
 
         final GlobalConfigurationSessionMock globalMock
                 = new GlobalConfigurationSessionMock();
@@ -1475,7 +1464,6 @@ public class PDFSignerUnitTest extends TestCase {
         workerSession = workerMock;
 
         // WORKER1
-        final MockedCryptoToken token = generateToken(false);
         {
             final int workerId = WORKER1;
             final WorkerConfig config = new WorkerConfig();
@@ -1488,11 +1476,6 @@ public class PDFSignerUnitTest extends TestCase {
                 protected IGlobalConfigurationSession.IRemote
                         getGlobalConfigurationSession() {
                     return globalConfig;
-                }
-                        
-                @Override
-                public ICryptoToken getCryptoToken() {
-                    return token;
                 }
             });
             workerSession.reloadConfiguration(workerId);

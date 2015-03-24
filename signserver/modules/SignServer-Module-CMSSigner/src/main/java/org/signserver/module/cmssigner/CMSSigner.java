@@ -13,6 +13,7 @@
 package org.signserver.module.cmssigner;
 
 import java.io.IOException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
@@ -36,7 +37,6 @@ import org.signserver.common.*;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
-import org.signserver.server.cryptotokens.ICryptoInstance;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
@@ -126,27 +126,35 @@ public class CMSSigner extends BaseSigner {
         byte[] data = (byte[]) sReq.getRequestData();
         final String archiveId = createArchiveId(data, (String) requestContext.get(RequestContext.TRANSACTION_ID));
 
-        ICryptoInstance crypto = null;
+        // Get certificate chain and signer certificate
+        List<Certificate> certs = this.getSigningCertificateChain();
+        if (certs == null) {
+            throw new IllegalArgumentException(
+                    "Null certificate chain. This signer needs a certificate.");
+        }
+        List<X509Certificate> x509CertChain = new LinkedList<X509Certificate>();
+        for (Certificate cert : certs) {
+            if (cert instanceof X509Certificate) {
+                x509CertChain.add((X509Certificate) cert);
+                LOG.debug("Adding to chain: "
+                        + ((X509Certificate) cert).getSubjectDN());
+            }
+        }
+        Certificate cert = this.getSigningCertificate();
+        LOG.debug("SigningCert: " + ((X509Certificate) cert).getSubjectDN());
+
+        // Private key
+        PrivateKey privKey
+                = getCryptoToken().getPrivateKey(ICryptoToken.PURPOSE_SIGN);
+
         try {
-            crypto = aquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
-            final X509Certificate cert = (X509Certificate) getSigningCertificate(crypto);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("SigningCert: " + cert);
-            }
-            
-            // Get certificate chain and signer certificate
-            final List<Certificate> certs = this.getSigningCertificateChain(crypto);
-            if (certs == null) {
-                throw new IllegalArgumentException("Null certificate chain. This signer needs a certificate.");
-            }
-            
             final CMSSignedDataGenerator generator
                     = new CMSSignedDataGenerator();
-            final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(crypto.getPublicKey()) : signatureAlgorithm;
-            final ContentSigner contentSigner = new JcaContentSignerBuilder(sigAlg).setProvider(crypto.getProvider()).build(crypto.getPrivateKey());
+            final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(cert.getPublicKey()) : signatureAlgorithm;
+            final ContentSigner contentSigner = new JcaContentSignerBuilder(sigAlg).setProvider(getCryptoToken().getProvider(ICryptoToken.PROVIDERUSAGE_SIGN)).build(privKey);
             generator.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(
                      new JcaDigestCalculatorProviderBuilder().setProvider("BC").build())
-                     .build(contentSigner, cert));
+                     .build(contentSigner, (X509Certificate) cert));
 
             generator.addCertificates(new JcaCertStore(includedCertificates(certs)));
             final CMSTypedData content = new CMSProcessableByteArray(data);
@@ -180,14 +188,13 @@ public class CMSSigner extends BaseSigner {
 
             if (signRequest instanceof GenericServletRequest) {
                 signResponse = new GenericServletResponse(sReq.getRequestID(),
-                        signedbytes,
-                        getSigningCertificate(signRequest, requestContext),
-                        archiveId, archivables, CONTENT_TYPE);
+                        signedbytes, getSigningCertificate(), archiveId,
+                        archivables,
+                        CONTENT_TYPE);
             } else {
                 signResponse = new GenericSignResponse(sReq.getRequestID(),
-                        signedbytes,
-                        getSigningCertificate(signRequest, requestContext),
-                        archiveId, archivables);
+                        signedbytes, getSigningCertificate(), archiveId,
+                        archivables);
             }
             
             // Suggest new file name
@@ -212,8 +219,6 @@ public class CMSSigner extends BaseSigner {
         } catch (IOException ex) {
             LOG.error("Error constructing CMS", ex);
             throw new SignServerException("Error constructing CMS", ex);
-        } finally {
-            releaseCryptoInstance(crypto);
         }
     }
     

@@ -30,7 +30,6 @@ import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
-import org.signserver.common.util.PathUtil;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 
@@ -52,7 +51,7 @@ public class DocumentValidatorTest extends ModulesTestCase {
 
     private static final String VALIDATION_WORKER = "TestValidationWorker";
 
-    private static File signserverhome;
+    private static String signserverhome;
 
     private final IWorkerSession workerSession = getWorkerSession();
     private final IGlobalConfigurationSession globalSession = getGlobalSession();
@@ -61,7 +60,8 @@ public class DocumentValidatorTest extends ModulesTestCase {
     protected void setUp() throws Exception {
         SignServerUtil.installBCProvider();
         TestingSecurityManager.install();
-        signserverhome = PathUtil.getAppHome();
+        signserverhome = System.getenv("SIGNSERVER_HOME");
+        assertNotNull("Please set SIGNSERVER_HOME environment variable", signserverhome);
     }
 
     @After
@@ -71,8 +71,8 @@ public class DocumentValidatorTest extends ModulesTestCase {
 
     private String getTruststorePassword() {
         Properties config = new Properties();
-        File confFile1 = new File("../../signserver_deploy.properties");
-        File confFile2 = new File("../../conf/signserver_deploy.properties");
+        File confFile1 = new File("../../signserver_build.properties");
+        File confFile2 = new File("../../conf/signserver_build.properties");
         try {
             if (confFile1.exists()) {
                 config.load(new FileInputStream(confFile1));
@@ -80,9 +80,9 @@ public class DocumentValidatorTest extends ModulesTestCase {
                 config.load(new FileInputStream(confFile2));
             }
         } catch (FileNotFoundException ignored) {
-            LOG.debug("No signserver_deploy.properties");
+            LOG.debug("No signserver_build.properties");
         } catch (IOException ex) {
-            LOG.error("Not using signserver_deploy.properties: " + ex.getMessage());
+            LOG.error("Not using signserver_build.properties: " + ex.getMessage());
         }
         return config.getProperty("java.trustpassword", "changeit");
     }
@@ -91,6 +91,7 @@ public class DocumentValidatorTest extends ModulesTestCase {
 
         // VALIDATION SERVICE
         globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.CLASSPATH", "org.signserver.validationservice.server.ValidationServiceWorker");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.HardCodedCryptoToken");
         workerSession.setWorkerProperty(17, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(17, "NAME", VALIDATION_WORKER);
         workerSession.setWorkerProperty(17, "VAL1.CLASSPATH", "org.signserver.validationservice.server.DummyValidator");
@@ -122,13 +123,13 @@ public class DocumentValidatorTest extends ModulesTestCase {
                                     "-workername", "TestXMLValidator",
                                     "-data", XMLValidatorTestData.TESTXML1,
                                     "-host", getHTTPHost(), "-port", String.valueOf(getPublicHTTPSPort()),
-                                    "-truststore", new File(signserverhome, "p12/truststore.jks").getAbsolutePath(),
+                                    "-truststore", new File(new File(signserverhome), "p12/truststore.jks").getAbsolutePath(),
                                     "-truststorepwd", getTruststorePassword()) :
                             execute("validatedocument",
                                     "-workername", "TestXMLValidator",
                                     "-data", XMLValidatorTestData.TESTXML1,
                                     "-host", getHTTPHost(), "-port", String.valueOf(getPublicHTTPSPort()),
-                                    "-truststore", new File(signserverhome, "p12/truststore.jks").getAbsolutePath(),
+                                    "-truststore", new File(new File(signserverhome), "p12/truststore.jks").getAbsolutePath(),
                                     "-truststorepwd", getTruststorePassword(),
                                     "-protocol", protocol));
                     
@@ -159,7 +160,7 @@ public class DocumentValidatorTest extends ModulesTestCase {
             final List<String> argList = new LinkedList<String>(Arrays.asList("validatedocument", "-workername",
                                             "TestXMLValidator", "-infile", doc.getAbsolutePath(),
                                             "-host", getHTTPHost(), "-port", String.valueOf(getPublicHTTPSPort()),
-                                            "-truststore", new File(signserverhome, "p12/truststore.jks").getAbsolutePath(),
+                                            "-truststore", new File(new File(signserverhome), "p12/truststore.jks").getAbsolutePath(),
                                             "-truststorepwd", getTruststorePassword()));
             
             if (protocol != null) {

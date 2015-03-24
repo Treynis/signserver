@@ -13,9 +13,7 @@
 package org.signserver.server;
 
 import java.security.KeyStoreException;
-import java.security.cert.Certificate;
 import java.util.Collection;
-import java.util.List;
 import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.ProcessRequest;
@@ -26,7 +24,6 @@ import org.signserver.common.IllegalRequestException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.KeyTestResult;
-import org.signserver.common.OperationUnsupportedException;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.cryptotokens.IKeyGenerator;
 
@@ -82,20 +79,6 @@ public interface IProcessable extends IWorker {
             throws CryptoTokenOfflineException;
 
     /**
-     * Generate a certificate request using the worker's crypto token, given
-     * a key alias.
-     * 
-     * @param info Certificate request info
-     * @param explicitEccParameters If explicit ECC parameters should be used
-     * @param keyAlias Key alias in crypto token
-     * @return Certificate request data
-     * @throws CryptoTokenOfflineException 
-     */
-    ICertReqData genCertificateRequest(ISignerCertReqInfo info,
-            boolean explicitEccParameters, String keyAlias)
-            throws CryptoTokenOfflineException;
-    
-    /**
      * Method specifying which type of authentication that should be performed before signature is performed
      * Returns one of the AUTHTYPE_ constants
      */
@@ -132,19 +115,4 @@ public interface IProcessable extends IWorker {
      * @see WorkerStatus#STATUS_OFFLINE
      */
     int getCryptoTokenStatus();
-    
-    /**
-     * Import a signing certificate chain to the signer's crypto token.
-     * 
-     * @param certChain Certificate chain to import 
-     * @param alias Alias to use in the crypto token
-     * @param authenticationCode Authentication code for the key entry, or use
-     *                           the token's authentication code if null
-     * @throws CryptoTokenOfflineException
-     * @throws OperationUnsupportedException
-     */
-    void importCertificateChain(List<Certificate> certChain, String alias,
-            char[] authenticationCode,
-            IServices services)
-            throws CryptoTokenOfflineException, OperationUnsupportedException;
 }

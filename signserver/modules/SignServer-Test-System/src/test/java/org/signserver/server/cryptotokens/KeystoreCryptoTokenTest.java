@@ -18,26 +18,37 @@ import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
-import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javax.security.auth.x500.X500Principal;
 import static junit.framework.TestCase.assertEquals;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.signserver.common.CryptoTokenOfflineException;
+import org.bouncycastle.pkcs.PKCS10CertificationRequest;
+import org.bouncycastle.util.encoders.Base64;
+import org.signserver.common.Base64SignerCertReqData;
 import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.KeyTestResult;
+import org.signserver.common.PKCS10CertReqInfo;
 import org.signserver.common.SignServerUtil;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.test.utils.builders.CryptoUtils;
+import org.signserver.testutils.ModulesTestCase;
 
 /**
  * System tests for the KeystoreCryptoToken.
@@ -45,7 +56,7 @@ import org.signserver.common.SignServerUtil;
  * @author Markus Kilås
  * @version $Id$
  */
-public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
+public class KeystoreCryptoTokenTest extends ModulesTestCase {
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(KeystoreCryptoTokenTest.class);
     
@@ -55,9 +66,13 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
     private static final String SIGN_KEY_ALIAS = "p12signkey1234";
     private static final String TEST_KEY_ALIAS = "p12testkey1234";
     private static final String KEYSTORE_NAME = "p12testkeystore1234";
+    private static final String pin = "foo123";
     
     private File keystoreFile;
- 
+    
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
+    
     @Override
     protected void setUp() throws Exception {
         super.setUp();
@@ -89,7 +104,6 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
         workerSession.setWorkerProperty(workerId, "KEYSTORETYPE", "PKCS12");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "KEYSTOREPATH", keystoreFile.getAbsolutePath());
-        workerSession.setWorkerProperty(workerId, "DEFAULTKEY", SIGN_KEY_ALIAS);
         if (autoActivate) {
             workerSession.setWorkerProperty(workerId, "KEYSTOREPASSWORD", pin);
         } else {
@@ -116,7 +130,6 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
         workerSession.setWorkerProperty(tokenId, "NAME", "TestCryptoTokenP12");
         workerSession.setWorkerProperty(tokenId, "KEYSTORETYPE", "PKCS12");
         workerSession.setWorkerProperty(tokenId, "KEYSTOREPATH", keystoreFile.getAbsolutePath());
-        workerSession.setWorkerProperty(tokenId, "DEFAULTKEY", SIGN_KEY_ALIAS);   
         if (autoActivate) {
             workerSession.setWorkerProperty(tokenId, "KEYSTOREPASSWORD", pin);
         } else {
@@ -128,7 +141,6 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
         workerSession.setWorkerProperty(workerId, "NAME", "CMSSignerP12");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "CRYPTOTOKEN", "TestCryptoTokenP12");
-        workerSession.setWorkerProperty(workerId, "DEFAULTKEY", SIGN_KEY_ALIAS);
     }
 
     /**
@@ -172,6 +184,38 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             removeWorker(workerId);
             removeWorker(tokenId);
         }
+    }
+
+    private void cmsSigner(final int workerId) throws Exception {
+        // Generate CSR
+        PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + workerId, null);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(workerId, certReqInfo, false);
+
+        // Issue certificate
+        PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
+        KeyPair issuerKeyPair = CryptoUtils.generateRSA(512);
+        X509CertificateHolder cert = new X509v3CertificateBuilder(new X500Name("CN=TestP11 Issuer"), BigInteger.ONE, new Date(), new Date(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(365)), csr.getSubject(), csr.getSubjectPublicKeyInfo()).build(new JcaContentSignerBuilder("SHA256WithRSA").setProvider("BC").build(issuerKeyPair.getPrivate()));
+
+        // Install certificate and chain
+        workerSession.uploadSignerCertificate(workerId, cert.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+        workerSession.uploadSignerCertificateChain(workerId, Arrays.asList(cert.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
+        workerSession.reloadConfiguration(workerId);
+
+        // Test active
+        List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
+        assertEquals("errors: " + errors, 0, errors.size());
+
+        // Test signing
+        signGenericDocument(workerId, "Sample data".getBytes());
+    }
+    
+    private Set<String> getKeyAliases(final int workerId) throws Exception {
+        Collection<KeyTestResult> testResults = workerSession.testKey(workerId, "all", pin.toCharArray());
+        final HashSet<String> results = new HashSet<String>();
+        for (KeyTestResult testResult : testResults) {
+            results.add(testResult.getAlias());
+        }
+        return results;
     }
     
     public void testGenerateKey() throws Exception {
@@ -250,7 +294,6 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
                 IOUtils.closeQuietly(out);
             }
 
-            workerSession.setWorkerProperty(workerId, "DEFAULTKEY", "newkey11");
             workerSession.reloadConfiguration(workerId);
 
             // Activate first so we can generate a key
@@ -265,61 +308,6 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
         }
     }
 
-    public void testImportCertificateChain() throws Exception {
-        LOG.info("testImportCertificateChain");
-
-        final boolean autoActivate = false;
-
-        final int workerId = WORKER_CMS;
-        try {
-            setCMSSignerPropertiesCombined(workerId, autoActivate);
-
-            // Generate key and issue certificate
-            final KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "BC");
-            kpg.initialize(1024);
-            final KeyPair keyPair = kpg.generateKeyPair();
-
-            // Create a key-pair and certificate in the keystore
-            FileOutputStream out = null;
-            try {
-                KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
-                ks.load(null, null);
-
-                
-                final X509Certificate[] chain = new X509Certificate[1];
-                chain[0] = getSelfCertificate("CN=Test", (long) 30*24*60*60*365, keyPair);
-                ks.setKeyEntry("newkey11", keyPair.getPrivate(), pin.toCharArray(), chain);
-
-                out = new FileOutputStream(keystoreFile);
-                ks.store(out, pin.toCharArray());
-            } finally {
-                IOUtils.closeQuietly(out);
-            }
-
-            workerSession.setWorkerProperty(workerId, "DEFAULTKEY", "newkey11");
-            workerSession.reloadConfiguration(workerId);
-
-            // Activate first so we can generate a key
-            workerSession.activateSigner(workerId, pin);
-
-            List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
-            assertTrue("Fatal errors: " + errors, workerSession.getStatus(workerId).getFatalErrors().isEmpty());
-            
-            // generate a new certificate
-            final X509Certificate newCert =
-                    getSelfCertificate("CN=TestNew", (long) 30*24*60*60*365, keyPair);
-            
-            workerSession.importCertificateChain(workerId,
-                    Arrays.asList(newCert.getEncoded()), "newkey11", null);
-            
-            final Certificate readCert = workerSession.getSignerCertificate(workerId);
-            assertTrue("Matching certificates", Arrays.equals(newCert.getEncoded(), readCert.getEncoded()));
-        } finally {
-            FileUtils.deleteQuietly(keystoreFile);
-            removeWorker(workerId);
-        }
-    }
-    
     /** Creates a self signed certificate. */
     private X509Certificate getSelfCertificate(String alias, long validity, KeyPair keyPair) throws Exception {
         final long currentTime = new Date().getTime();
@@ -504,7 +492,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
            
            final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
            assertTrue("Should contain error",
-                   errors.contains("Failed to initialize crypto token: KEYSTORETYPE should be either PKCS12, JKS, or INTERNAL"));
+                   errors.contains("Failed to initialize crypto token: KEYSTORETYPE should be either PKCS12 or JKS"));
        } finally {
            removeWorker(workerId);
        }
@@ -551,32 +539,6 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
             assertTrue("Should contain error",
                     errors.contains("Failed to initialize crypto token: File not found: non-existing.p12"));
-        } finally {
-            removeWorker(workerId);
-        }
-    }
-    
-    /**
-     * Test that unsetting DEFAULTKEY results in a CryptoTokenOfflineException.
-     * 
-     * @throws Exception 
-     */
-    public void testNoDefaultKey() throws Exception {
-        LOG.info("testNoDefaultKey");
-        
-        final int workerId = WORKER_CMS;
-        
-        try {
-            setCMSSignerPropertiesCombined(workerId, true);
-            // unset DEFAULTKEY
-            workerSession.removeWorkerProperty(workerId, "DEFAULTKEY");
-            workerSession.reloadConfiguration(workerId);
-            
-            cmsSigner(workerId);
-        } catch (CryptoTokenOfflineException e) {
-            // expected
-        } catch (Exception e) {
-            fail("Unexpected exception: " + e.getClass().getName());
         } finally {
             removeWorker(workerId);
         }

@@ -95,7 +95,7 @@ public class GenericProcessServlet extends AbstractProcessServlet {
 
     @EJB
     private IWorkerSession.ILocal workersession;
-    
+
     @EJB
     private IGlobalConfigurationSession.ILocal globalSession;
 
@@ -143,7 +143,7 @@ public class GenericProcessServlet extends AbstractProcessServlet {
         	workerId = getWorkerSession().getWorkerId(workerNameOverride);
         	workerRequest = true;
         }
-        
+
         final long maxUploadSize = getMaxUploadSize();
 
         ProcessType processType = ProcessType.signDocument;

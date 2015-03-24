@@ -53,7 +53,6 @@ import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
-import org.signserver.server.cryptotokens.ICryptoInstance;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -337,13 +336,9 @@ public class XAdESSigner extends BaseSigner {
             throw new SignServerException("Received a request with no user name set, while configured to get claimed role from user name and no default value for claimed role is set.");
         }
         
-        ICryptoInstance crypto = null;
         try {
-            crypto = aquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
-
             // Parse
-            final XadesSigner signer =
-                    createSigner(crypto, parameters, claimedRole, signRequest, requestContext);
+            final XadesSigner signer = createSigner(parameters, claimedRole);
             final DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             dbf.setNamespaceAware(true);
 
@@ -390,21 +385,15 @@ public class XAdESSigner extends BaseSigner {
             throw new SignServerException("Exception signing document", ex);
         } catch (TransformerException ex) {
             throw new SignServerException("Transformation failure", ex);
-        } finally {
-            releaseCryptoInstance(crypto);
         }
         
         // Response
         final ProcessResponse response;
         final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
         if (signRequest instanceof GenericServletRequest) {
-            response = new GenericServletResponse(sReq.getRequestID(), signedbytes,
-                    getSigningCertificate(signRequest, requestContext),
-                    archiveId, archivables, CONTENT_TYPE);
+            response = new GenericServletResponse(sReq.getRequestID(), signedbytes, getSigningCertificate(), archiveId, archivables, CONTENT_TYPE);
         } else {
-            response = new GenericSignResponse(sReq.getRequestID(), signedbytes,
-                    getSigningCertificate(signRequest, requestContext),
-                    archiveId, archivables);
+            response = new GenericSignResponse(sReq.getRequestID(), signedbytes, getSigningCertificate(), archiveId, archivables);
         }
         
         // The client can be charged for the request
@@ -416,36 +405,22 @@ public class XAdESSigner extends BaseSigner {
     /**
      * Creates the signer implementation given the parameters.
      *
-     * @param crypto instance
      * @param params Parameters such as XAdES form and TSA properties.
-     * @param claimedRole
-     * @param request Signing request
-     * @param context Request context
      * @return The signer implementation
      * @throws SignServerException In case an unsupported XAdES form was specified
      * @throws XadesProfileResolutionException if the dependencies of the signer cannot be resolved
      * @throws CryptoTokenOfflineException If the private key is not available
      */
-    private XadesSigner createSigner(final ICryptoInstance crypto,
-                                    final XAdESSignerParameters params,
-                                    final String claimedRole,
-                                    final ProcessRequest request,
-                                    final RequestContext context)
-            throws SignServerException, XadesProfileResolutionException,
-                   CryptoTokenOfflineException, IllegalRequestException {
+    private XadesSigner createSigner(final XAdESSignerParameters params, final String claimedRole)
+            throws SignServerException, XadesProfileResolutionException, CryptoTokenOfflineException {
         // Setup key and certificiates
         final List<X509Certificate> xchain = new LinkedList<X509Certificate>();
-        final List<Certificate> chain = this.getSigningCertificateChain(crypto);
-        if (chain == null) {
-            throw new CryptoTokenOfflineException("No certificate chain");
-        }
-        for (Certificate cert : chain) {
+        for (Certificate cert : this.getSigningCertificateChain()) {
             if (cert instanceof X509Certificate) {
                 xchain.add((X509Certificate) cert);
             }
         }
-        final KeyingDataProvider kdp =
-                new CertificateAndChainKeyingDataProvider(xchain, crypto.getPrivateKey());
+        final KeyingDataProvider kdp = new CertificateAndChainKeyingDataProvider(xchain, this.getCryptoToken().getPrivateKey(ICryptoToken.PURPOSE_SIGN));
         
         // Signing profile
         XadesSigningProfile xsp;                   

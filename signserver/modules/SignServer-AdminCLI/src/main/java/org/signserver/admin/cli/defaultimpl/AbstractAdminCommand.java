@@ -13,12 +13,14 @@
 package org.signserver.admin.cli.defaultimpl;
 
 import java.rmi.RemoteException;
-import java.util.Collection;
+import java.util.Iterator;
 
 import org.apache.log4j.Logger;
 import org.signserver.cli.spi.AbstractCommand;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.common.AuthorizedClient;
+import org.signserver.common.ProcessableConfig;
+import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession.IRemote;
 import org.signserver.statusrepo.IStatusRepositorySession;
@@ -73,13 +75,17 @@ public abstract class AbstractAdminCommand extends AbstractCommand {
     
     /**
      * Prints the list of authorized clients to the output stream.
-     * @param authClients Clients to print
+     * @param config to read the authorization list from
      */
-    protected void printAuthorizedClients(final Collection<AuthorizedClient> authClients) {
-        for (final AuthorizedClient client : authClients) {
+    protected void printAuthorizedClients(WorkerConfig config) {
+        Iterator<AuthorizedClient> iter = new ProcessableConfig(config).getAuthorizedClients().iterator();
+        while (iter.hasNext()) {
+            AuthorizedClient client = (AuthorizedClient) iter.next();
             this.getOutputStream().println("  " + client.getCertSN() + ", " + client.getIssuerDN() + "\n");
         }
     }
+    
+
 
     /**
      * @return The logger for the implementing class

@@ -47,7 +47,6 @@ import org.bouncycastle.asn1.DERPrintableString;
 import org.bouncycastle.asn1.DERUTF8String;
 import org.signserver.client.cli.defaultimpl.AliasKeyManager;
 import static org.junit.Assert.*;
-import org.signserver.common.util.PathUtil;
 
 /**
  * Class containing utility methods used to simplify testing.
@@ -129,8 +128,8 @@ public class TestUtils {
     private Properties getBuildConfig() {
         if (buildConfig == null) {
             buildConfig = new Properties();
-            File confFile1 = new File("../../signserver_deploy.properties");
-            File confFile2 = new File("../../conf/signserver_deploy.properties");
+            File confFile1 = new File("../../signserver_build.properties");
+            File confFile2 = new File("../../conf/signserver_build.properties");
             try {
                 if (confFile1.exists()) {
                     buildConfig.load(new FileInputStream(confFile1));
@@ -138,16 +137,16 @@ public class TestUtils {
                     buildConfig.load(new FileInputStream(confFile2));
                 }
             } catch (FileNotFoundException ignored) {
-                LOG.debug("No signserver_deploy.properties");
+                LOG.debug("No signserver_build.properties");
             } catch (IOException ex) {
-                LOG.error("Not using signserver_deploy.properties: " + ex.getMessage());
+                LOG.error("Not using signserver_build.properties: " + ex.getMessage());
             }
         }
         return buildConfig;
     }
     
-    public File getTruststoreFile() throws FileNotFoundException {
-        return new File(PathUtil.getAppHome(), "p12/truststore.jks");
+    public File getTruststoreFile() {
+        return new File(System.getenv("SIGNSERVER_HOME"), "p12/truststore.jks");
     }
      
     public String getTrustStorePassword() {

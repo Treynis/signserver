@@ -26,7 +26,6 @@ import org.signserver.cli.CommandLineInterface;
 import org.signserver.common.SignServerUtil;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
-import org.signserver.server.signers.EchoRequestMetadataSigner;
 import org.signserver.testutils.CLITestHelper;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
@@ -68,24 +67,26 @@ public class SODSignerTest extends ModulesTestCase {
 	
     @Test
     public void test00SetupDatabase() throws Exception {
-        LOG.info("test00SetupDatabase");
-        addSigner("org.signserver.module.mrtdsodsigner.MRTDSODSigner", WORKERID, "TestMRTDSODSigner1", true);
+
+        assertEquals(CommandLineInterface.RETURN_SUCCESS, 
+                adminCLI.execute("setproperties", getSignServerHome().getAbsolutePath() + "/res/test/test-mrtdsodsigner-configuration.properties"));
 
         // WORKER1 uses a P12 keystore
         workerSession.setWorkerProperty(WORKERID, "KEYSTOREPATH",
                 getSignServerHome().getAbsolutePath()
                 + File.separator + "res" + File.separator + "test"
                 + File.separator + "demods1.p12");
-        workerSession.setWorkerProperty(WORKERID, "DEFAULTKEY", "demods1");
+        workerSession.setWorkerProperty(WORKERID, "KEYSTOREPASSWORD", "foo123");
         workerSession.reloadConfiguration(WORKERID);
         
         // Dummy worker echoing request metadata
-        addSigner(EchoRequestMetadataSigner.class.getName(), WORKERID2, "EchoRequestMetadataSigner", true);
+        assertEquals(CommandLineInterface.RETURN_SUCCESS, 
+                adminCLI.execute("setproperties", getSignServerHome().getAbsolutePath() + "/res/test/test-echometadata-configuration.properties"));
+        workerSession.reloadConfiguration(WORKERID2);
     }
 
     @Test
     public void test01missingArguments() throws Exception {
-        LOG.info("test01missingArguments");
         assertEquals("missing arguments", CommandLineInterface.RETURN_INVALID_ARGUMENTS, 
                 clientCLI.execute("signdatagroups"));
     }
@@ -99,7 +100,6 @@ public class SODSignerTest extends ModulesTestCase {
      */
     @Test
     public void test02signDataFromParameter() throws Exception {
-        LOG.info("test02signDataFromParameter");
         assertEquals(CommandLineInterface.RETURN_SUCCESS, 
                 clientCLI.execute("signdatagroups", "-workername", "TestMRTDSODSigner1", "-data", "1=value1&2=value2&3=value3"));
         String res = clientCLI.getOut().toString();
@@ -116,7 +116,6 @@ public class SODSignerTest extends ModulesTestCase {
      */
     @Test
     public void test02signDataFromParameterOverClientWS() throws Exception {
-        LOG.info("test02signDataFromParameterOverClientWS");
         assertEquals(CommandLineInterface.RETURN_SUCCESS, 
                 clientCLI.execute("signdatagroups", "-workername", "TestMRTDSODSigner1", "-data", "1=value1&2=value2&3=value3", "-protocol", "CLIENTWS", 
                 "-truststore", getSignServerHome() + "/p12/truststore.jks", "-truststorepwd", "changeit", "-host", getHTTPHost(), "-port", String.valueOf(getPublicHTTPSPort())));
@@ -138,7 +137,6 @@ public class SODSignerTest extends ModulesTestCase {
      */
     @Test
     public void test03signDataMetadata() throws Exception {
-        LOG.info("test03signDataMetadata");
         assertEquals(CommandLineInterface.RETURN_SUCCESS, 
                 clientCLI.execute("signdatagroups", "-workername", "EchoRequestMetadataSigner", "-data", "1=value1&2=value2&3=value3",
                         "-metadata", "foo=bar"));
@@ -154,7 +152,6 @@ public class SODSignerTest extends ModulesTestCase {
      */
     @Test
     public void test04signDataMetadataMultipleParams() throws Exception {
-        LOG.info("test04signDataMetadataMultipleParams");
         assertEquals(CommandLineInterface.RETURN_SUCCESS, 
                 clientCLI.execute("signdatagroups", "-workername", "EchoRequestMetadataSigner", "-data", "1=value1&2=value2&3=value3",
                         "-metadata", "foo=bar", "-metadata", "foo2=bar2"));
@@ -171,7 +168,6 @@ public class SODSignerTest extends ModulesTestCase {
      */
     @Test
     public void test05signDataMetadataOverClientWS() throws Exception {
-        LOG.info("test05signDataMetadataOverClientWS");
         assertEquals(CommandLineInterface.RETURN_SUCCESS, 
                 clientCLI.execute("signdatagroups", "-workername", "EchoRequestMetadataSigner", "-data", "1=value1&2=value2&3=value3", "-protocol", "CLIENTWS", 
                 "-truststore", getSignServerHome() + "/p12/truststore.jks", "-truststorepwd", "changeit", "-host", getHTTPHost(), "-port", String.valueOf(getPublicHTTPSPort()),
@@ -184,7 +180,6 @@ public class SODSignerTest extends ModulesTestCase {
     
     @Test
     public void test99TearDownDatabase() throws Exception {
-        LOG.info("test99TearDownDatabase");
         assertEquals(CommandLineInterface.RETURN_SUCCESS, adminCLI.execute(
             "removeworker",
             String.valueOf(WORKERID)

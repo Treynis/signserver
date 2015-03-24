@@ -26,7 +26,6 @@ import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Test;
-import org.signserver.common.util.PathUtil;
 
 /**
  * Tests for the signdocument command of Client CLI.
@@ -51,9 +50,9 @@ public class DocumentSignerTest extends ModulesTestCase {
     /** Worker ID for the dummy metadata echo signer. */
     private static final int WORKERID3 = 6676;
 
-    private static final int[] WORKERS = new int[] {WORKERID, WORKERID2, WORKERID3};
+    private static final int[] WORKERS = new int[] {5676, 5679, 5681, 5682, 5683, 5802, 5803, 6676};
 
-    private static File signserverhome;
+    private static String signserverhome;
     
     private final IWorkerSession workerSession = getWorkerSession();
     
@@ -61,7 +60,9 @@ public class DocumentSignerTest extends ModulesTestCase {
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
         TestingSecurityManager.install();
-        signserverhome = PathUtil.getAppHome();
+        signserverhome = System.getenv("SIGNSERVER_HOME");
+        LOG.info("HOME:"+signserverhome);
+        assertNotNull("Please set SIGNSERVER_HOME environment variable", signserverhome);
         setupSSLKeystores();
     }
 
@@ -73,13 +74,16 @@ public class DocumentSignerTest extends ModulesTestCase {
     @Test
     public void test00SetupDatabase() throws Exception {
         // Worker 1
-        addDummySigner(WORKERID, "TestXMLSigner", true);
+        setProperties(new File(signserverhome, "res/test/test-xmlsigner-configuration.properties"));
+        workerSession.reloadConfiguration(WORKERID);
         
         // Worker 2
-        addPDFSigner(WORKERID2, "TestPDFSigner", true);
+        setProperties(new File(signserverhome, "res/test/test-pdfsigner-configuration.properties"));
+        workerSession.reloadConfiguration(WORKERID2);
         
         // Worker 3 (dummy signer echoing request metadata)
-        addSigner("org.signserver.server.signers.EchoRequestMetadataSigner", WORKERID3, "EchoRequestMetadataSigner", true);
+        setProperties(new File(signserverhome, "res/test/test-echometadata-configuration.properties"));
+        workerSession.reloadConfiguration(WORKERID3);
     }
 
     @Test

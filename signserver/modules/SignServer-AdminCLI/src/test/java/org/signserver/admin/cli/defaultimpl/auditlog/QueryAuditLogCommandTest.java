@@ -51,7 +51,7 @@ public class QueryAuditLogCommandTest extends TestCase {
         final String criteria = "customId FOO 1";
         
         try {
-            QueryAuditLogCommand.parseCriteria(criteria);
+            final Term term = QueryAuditLogCommand.parseCriteria(criteria);
             fail("Should throw an IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             // expected
@@ -68,7 +68,7 @@ public class QueryAuditLogCommandTest extends TestCase {
         final String criteria = "customId BETWEEN 1";
         
         try {
-            QueryAuditLogCommand.parseCriteria(criteria);
+            final Term term = QueryAuditLogCommand.parseCriteria(criteria);
             fail("Should throw an IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             // expected
@@ -110,7 +110,7 @@ public class QueryAuditLogCommandTest extends TestCase {
         final String criteria = "sequenceNumber EQ foo";
         
         try {
-            QueryAuditLogCommand.parseCriteria(criteria);
+            final Term term = QueryAuditLogCommand.parseCriteria(criteria);
             fail("Should throw a NumberFormatException");
         } catch (NumberFormatException e) {
             // expected
@@ -123,7 +123,7 @@ public class QueryAuditLogCommandTest extends TestCase {
         final String criteria = "authToken EQ";
         
         try {
-            QueryAuditLogCommand.parseCriteria(criteria);
+            final Term term = QueryAuditLogCommand.parseCriteria(criteria);
             fail("Should throw an IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             // expected
@@ -140,7 +140,7 @@ public class QueryAuditLogCommandTest extends TestCase {
         final String criteria = "dummyField EQ 0";
         
         try {
-            QueryAuditLogCommand.parseCriteria(criteria);
+            final Term term = QueryAuditLogCommand.parseCriteria(criteria);
             fail("Should throw an IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             // expected
@@ -179,7 +179,7 @@ public class QueryAuditLogCommandTest extends TestCase {
         final String criteria = "timeStamp EQ foobar";
         
         try {
-            QueryAuditLogCommand.parseCriteria(criteria);
+            final Term term = QueryAuditLogCommand.parseCriteria(criteria);
         } catch (ParseException e) {
             // expected
         } catch (Exception e) {

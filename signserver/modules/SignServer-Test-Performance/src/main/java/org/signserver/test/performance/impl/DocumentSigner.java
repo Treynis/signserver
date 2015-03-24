@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 import java.io.InputStream;
-import org.bouncycastle.util.encoders.Base64;
 import org.signserver.test.performance.FailedException;
 import org.signserver.test.performance.Task;
 
@@ -44,24 +43,14 @@ public class DocumentSigner implements Task {
     private boolean useWorkerServlet;
     
     private String workerNameOrId;
-    private final Random random;
     private byte[] data;
 
-    private final String userPrefix;
-    private final Integer userSuffixMin;
-    private final Integer userSuffixMax;
-
     public DocumentSigner(final String url, final boolean useWorkerServlet, 
-            final byte[] data, final String workerNameOrId, final Random random,
-            final String userPrefix, final Integer userSuffixMin, final Integer userSuffixMax) {
+            final byte[] data, final String workerNameOrId, final Random random) {
         this.url = url;
         this.useWorkerServlet = useWorkerServlet;
-        this.data = data;
         this.workerNameOrId = workerNameOrId;
-        this.random = random;
-        this.userPrefix = userPrefix;
-        this.userSuffixMin = userSuffixMin;
-        this.userSuffixMax = userSuffixMax;
+        this.data = data;
     }
     
     @Override
@@ -107,22 +96,7 @@ public class DocumentSigner implements Task {
 
         urlConn.setDoOutput(true);
         urlConn.setAllowUserInteraction(false);
-
-        // Send with username
-        if (userPrefix != null) {
-            final String username;
-            final String password = "";
-            if (userSuffixMin == null) {
-                username = userPrefix;
-            } else {
-                username = userPrefix + (userSuffixMin + random.nextInt(userSuffixMax - userSuffixMin + 1));
-            }
-            urlConn.setRequestProperty("Authorization", "Basic " + new String(Base64.encode((username + ":" + password).getBytes())));
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Username: " + username);
-            }
-        }
-
+        
         final StringBuilder sb = new StringBuilder();
         sb.append("--" + BOUNDARY);
         sb.append(CRLF);

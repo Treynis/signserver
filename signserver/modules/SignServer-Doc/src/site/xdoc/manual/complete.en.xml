@@ -39,11 +39,6 @@ lookup the validation of a given certificate.
             </section>
 
             <section name="Major changes from previous versions">
-                <subsection name="Changes between version 3.6 and 3.7">
-                    <ul>
-                        <li>PKCS11 libraries used by crypto tokens must be defined at deploy-time</li>
-                    </ul>
-                </subsection>
                 <subsection name="Changes between version 3.5 and 3.6">
                     <ul>
                         <li>Underlaying CESeCore library upgraded to version 6.1</li>
@@ -763,11 +758,11 @@ One package is however needed still. In JBoss EAP 6.1 the file is located in <i>
 
                 <subsection name="7. Configure build">
                     <p>
-Copy conf/signserver_deploy.properties.sample to conf/signserver_deploy.properties and open
+Copy conf/signserver_build.properties.sample to conf/signserver_build.properties and open
 it for editing in your favorite text editor.
                     </p>
                     <source>
-cp conf/signserver_deploy.properties.sample conf/signserver_deploy.properties
+cp conf/signserver_build.properties.sample conf/signserver_build.properties
                     </source>
 
                     <subsubsection name="Web GUI configuration">
@@ -909,7 +904,7 @@ The "setproperties" command loads all the properties from a property file that
 can define one or many signers. The code for the signers needs to be deployed
 to the application server together with SignServer either by setting
 includemodulesinbuild=true to include all modules or by setting individual
-module.MODULENAME.include=true properties in signserver_deploy.properties.
+module.MODULENAME.include=true properties in signserver_build.properties.
                         </p>
                         <source>
 bin/signserver setproperties doc/sample-configs/CONFIGURATION.PROPERTIES
@@ -960,7 +955,7 @@ This is a quick start guide to quickly get you setup with a demo Time Stamp serv
                     <ol>
                         <li>
 Make sure the tsa module is built in by setting module.tsa.enabled=true and
-module.tsa.include=true in signserver_deploy.properties before building and
+module.tsa.include=true in signserver_build.properties before building and
 deploying SignServer. Alternativly, set includemodulesinbuild=true to have all
 modules built in.
                         </li>
@@ -999,7 +994,7 @@ To install the PDF signer you can issue the following commands (either instead o
                     <ol>
                         <li>
 Make sure the pdfsigner module is built in by setting module.pdfsigner.enabled=true and
-module.pdfsigner.include=true in signserver_deploy.properties before building and
+module.pdfsigner.include=true in signserver_build.properties before building and
 deploying SignServer. Alternativly, set includemodulesinbuild=true to have all
 modules built in.
                         </li>
@@ -1058,7 +1053,7 @@ Then to install the XML validator you can issue the following commands:
                     <ol>
                         <li>
 Make sure the xmlvalidator module is built in by setting module.xmlvalidator.enabled=true and
-module.xmlvalidator.include=true in signserver_deploy.properties before building and
+module.xmlvalidator.include=true in signserver_build.properties before building and
 deploying SignServer. Alternativly, set includemodulesinbuild=true to have all
 modules built in.
                         </li>
@@ -1098,7 +1093,7 @@ To install the MRTD SOD signer you can issue the following commands:
                     <ol>
                         <li>
 Make sure the mrtdsodsigner module is built in by setting module.mrtdsodsigner.enabled=true and
-module.mrtdsodsigner.include=true in signserver_deploy.properties before building and
+module.mrtdsodsigner.include=true in signserver_build.properties before building and
 deploying SignServer. Alternativly, set includemodulesinbuild=true to have all
 modules built in.
                         </li>
@@ -1338,18 +1333,10 @@ Used to upload the certificate when the worker only needs the actual signing cer
 Used when uploading a complete certificate chain to the worker. Which command that is supposed to be used is depending on the worker and crypto token used.
                         </p>
                         <p>
-<b>importcertificatechain:</b>
-Used to import a certificate chain into a crypto token. It takes a worker ID of the crypto worker
-(or a worker ID of a worker with the crypto token configured in the legacy way)
-and a path pointing to a file containing the certificate chain and a key alias to import to.
-This is currently supported by the PKCS11 and keystore crypto token implementations.
-                        </p>
-                        <p>
 <b>generatecertreq:</b>
 Used to generate a certificate request for a worker to be signed by a certificate authority. It takes
 distinguished name and signature algorithm as parameters and writes the request in PEM format to
-file. An optional key alias can be specified to generate a request given a specific key alias
-from the crypto token.
+file.
                         </p>
                         <p>
 <b>activatecryptotoken:</b>
@@ -1593,34 +1580,6 @@ of each row displayed are verified. If the verification fails for any of the
 rows matching the search criteria, an error message is displayed. The error message contains 
 information about the first row that failed.
                         </p>
-                        
-                    <p>
-<b>querytokenentries:</b>
-                        </p>
-                        <p>
-Queries the entries (key alias, certificates etc) in a CryptoToken.
-If no limit is given all entries are queried and printed (10 at a time).
-You can specify to start query from an index in the result.
-Search conditions can be added to only search for entries with certain key aliases.
-                        </p>
-                        <p>
-Usage:
-                        </p>
-                        <source>
-signserver querytokenentries -token &lt;id or name&gt; -limit &lt;number&gt; [-criteria  "&lt;field&gt; &lt;op&gt; &lt;value&gt;" [-criteria...]] [-from &lt;index&gt;] [-v]
-                        </source>
-                        <p>
--limit sets the maximum number of rows matched, this option is required to avoid putting too much load on the server.
-                        </p>
-                        <p>
-&lt;field&gt; is a field name from the token: alias
-                        </p>
-                        <p>
-&lt;op&gt; is a relational operator: EQ, NEQ or LIKE
-                        </p>
-                        <p>
--v means verbose and if given outputs also entry type as well as any certificates or additional information available in each entry
-                        </p>
                     </subsubsection>
                 </subsection>
                 
@@ -1719,7 +1678,7 @@ As a complement to the command line interface there is also a graphical user
 interface for managing some of the most basic administrative tasks.
                     </p>
                     <p>
-The SignServer AdminGUI is built by default (unless the property admingui.enabled is set to the value "false" in signserver_deploy.properties),
+The SignServer AdminGUI is built by default (unless the property admingui.enabled is set to the value "false" in signserver_build.properties),
 and can be started using the script bin/signserver-gui.
                     </p>
                     <p>
@@ -2036,9 +1995,7 @@ key alias, SUCCESS and the public key hash if the test signing succeded.
                     <subsubsection name="Generate CSR dialog">
                         <p>
 Generates certificate signing requests (CSR:s) in PKCS#10 format for all listed 
-signers. In the key dropdown menu either the current key (Default key) or the next key
-can be selected. It is also possible to manually enter a value in the field to
-generate a CSR for a specific key alias in the crypto token.
+signers and either for the current key (Default key) or the next key. 
 Signature algorithm, subject distingueshed name (DN) and Filename must be 
 specified if not already taken from the worker's configuration. The format of 
 the request could either be a Standard CSR file or a CSR wrapped in PKCS#7/CMS 
@@ -2051,11 +2008,6 @@ the CA the signature of the request can be verified.
                         <p>
 Installs signer certificate and certificate chains for the listed workers and
 if next key is choosen that key becomes the new default key.
-If the "Install in token" check box is selected, the certificate chain will be
-imported to the worker's crypto token (if the crypto token supports this operation).
-When this is selected, the key alias to import the chain to in the token can
-be manually entered in the key column. This is currently only supported for
-keystore and PKCS11 crypto tokens.
                         </p>
                         <p>
 <b>Signer certificate</b>: Browse for the signer certificate file in PEM format.
@@ -2265,7 +2217,7 @@ More information about the MySQL Cluster can be found at
 In SignServer there exists a health check service that can be used for health monitoring. It is also useful for cluster, as it can be checked by load balancers to determine if a node should be active in the cluster (healthy) or taken out of the cluster (unhealthy).
                     </p>
                     <p>
-The servlet is located at the URL: http://localhost:8080/signserver/healthcheck/signserverhealth and configured in signserver_deploy.properties.
+The servlet is located at the URL: http://localhost:8080/signserver/healthcheck/signserverhealth and configured in signserver_build.properties.
                     </p>
                     <p>
 The following configuration parameters may be set to configure authorization and what the service checks: 
@@ -2634,7 +2586,7 @@ try {
                                         <li><b>HTTP 400</b> (Bad Request): The request could not be fulfilled. Some request data were missing or incorrect etc.</li>
                                         <li><b>HTTP 401</b> (Unauthorized): The worker requires user authentication</li>
                                         <li><b>HTTP 404</b> (Not Found): The requested workerName or workerId does not represent an existing worker</li>
-                                        <li><b>HTTP 413</b> (Request Entity Too Large): The data field or uploaded file is too large. See the HTTP_MAX_UPLOAD_SIZE global configuration property.</li>
+                                        <li><b>HTTP 413</b> (Request Entity Too Large): The data field or uploaded file is too large. See the HTTP_MAX_UPLOAD_SIZE global configuration property.</li> 
                                         <li><b>HTTP 500</b> (Internal Server Error): There was an internal error when processing the request. Typically indicating an configuration problem or unexpected error at the server side.</li>
                                         <li><b>HTTP 503</b> (Service Unavailable): The worker is not active, its crypto token is not activated or similar</li>
                                     </ul>
@@ -2676,7 +2628,7 @@ try {
                             "multipart/form-data" the message body is not parsed but instead directly passed to the worker specified by workerName or workerId
                             in the URI's query string.
                         </p>
-
+                        
                         <subsubsection name="Configuration">
                             <p><b>HTTP_MAX_UPLOAD_SIZE</b> = Global configuration property that can be set to specify the maximum size (in bytes) of the HTTP request (Defaut: 104857600).</p>
                         </subsubsection>
@@ -3125,7 +3077,7 @@ This section will show you examples on how the Apache Web Server (version 2.2.20
                         <li>Only accepting requests to specified locations</li>
                     </ul>
                     <p>
-As the requests should go through the proxy you will probably want to configure the application server to only listen to localhost and/or use a firewall blocking the application server ports from external requests. To configure JBoss to only listen to localhost set the following properties in signserver_deploy.properties:
+As the requests should go through the proxy you will probably want to configure the application server to only listen to localhost and/or use a firewall blocking the application server ports from external requests. To configure JBoss to only listen to localhost set the following properties in signserver_build.properties:
                     </p>
                     <source>
 httpsserver.bindaddress.pubhttp=127.0.0.1
@@ -3520,7 +3472,7 @@ MAX_FORWARDED_ADDRESSES=10
 <b>AUTHTYPE</b> = org.signserver.server.DispatchedAuthorizer    
                         </p>
                         <p>
-<b>AUTHORIZEALLDISPATCHERS</b> = True, if any Dispatcher should be authorized. (Required) (currently only true is supported)
+<b>AUTHORIZEALLDISPATCHERS</b> = True, if any Dispatcher should be authorized. (Default: true, currently only true is supported)
                         </p>
                         <p>
 Only accepts requests that has gone through a Dispatcher. This Authorizer only checks the present of the DISPATCHER_AUTHORIZED_CLIENT field in the request context to know that the request has passed a Dispatcher.
@@ -4665,7 +4617,7 @@ Currently the signer certificate is always included.
                         </p>
                     </subsubsection>
                 </subsection>
-                
+
                 <subsection name="MS Authenticode Signer">
                     <note>
 This is a SignServer Enterprise Edition (EE) feature.
@@ -5647,8 +5599,7 @@ The fully qualified class name is: <b>org.signserver.server.cryptotokens.P12Cryp
 <b>KEYSTOREPASSWORD</b>: The password that locks the key-store. Used for automatic activation.
                         </p>
                         <p>
-<b>DEFAULTKEY</b>: The key to use. If a key is not derived from each signing request
-(using an implementation of the AliasSelector interface), this needs to be defined. (optional)
+<b>DEFAULTKEY</b>: The key to use. If not specified the first found key is used. (optional)
                         </p>
                     </subsubsection>
                 </subsection>
@@ -5676,46 +5627,6 @@ The fully qualified class name is: <b>org.signserver.server.cryptotokens.JKSCryp
                         <p>
 <b>KEYSTOREPATH</b>: The full path to the key-store to load. (required)
                         </p>
-                        <p>
-<b>KEYSTOREPASSWORD</b>: The password that locks the key-store. Used for automatic activation.
-                        </p>
-                        <p>
-<b>DEFAULTKEY</b>: The key to use. If a key is not derived from each signing request
-(using an implementation of the AliasSelector interface), this needs to be defined. (optional)
-                        </p>
-                        <p>
-<b>NEXTCERTSIGNKEY</b>: The next key to use. See PKCS11CryptoToken. (optional)
-                        </p>
-                    </subsubsection>
-                </subsection>
-                
-                <subsection name="KeystoreInConfigCryptoToken">
-                    <subsubsection name="Overview">
-                        <p>
-A CryptoToken using a PKCS#12 keystore stored in the configuration (in the
-database).
-                        </p>
-                        <p>
-The content of the keystore is not part of the regular worker properties.
-Thus, it is not included when running the <source>dumpproperties</source>
-command. It is also removed when removing the crypto worker (or regular worker
-when using the legacy method to set-up crypto tokens).
-To backup the content of the crypto token, a database backup should be made.
-                        </p>
-                        <p>
-The password supplied when activating the token the first time will be used
-as the keystore password.
-                        </p>
-                        <p>
-This crypto token is not compatible with running under GlassFish version 2.    
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="SIGNERTOKEN.CLASSPATH">
-                        <p>
-The fully qualified class name is: <b>org.signserver.server.cryptotokens.KeystoreInConfigCryptoToken</b>
-                        </p>
-                    </subsubsection>
-                    <subsubsection name="Available Properties">
                         <p>
 <b>KEYSTOREPASSWORD</b>: The password that locks the key-store. Used for automatic activation.
                         </p>
@@ -5789,13 +5700,7 @@ DEFAULTKEY. (optional)
 <b>PIN</b> =   Authentication code for activation. (Only required for auth-activation, otherwise the activatecryptotoken CLI command can be used)
                         </p>
                         <p>
-<b>SHAREDLIBRARYNAME</b> = Name of pre-defined PKCS11 library to be used. The available libraries can be configured in signserver_deploy.properties.
-If the legacy SHAREDLIBRARY property is also defined, it must point to the same library on the file system. (Required, unless the old SHAREDLIBRARY is set)
-                        </p>
-                        <p>
-<b>SHAREDLIBRARY</b> = Full path to the library containing the PKCS11 interface. From version 3.7.0 this must point to a file declared
-in signserver_deploy.properties (or using the built-in values). If this property is defined at the same time as SHAREDLIBRARYNAME
-they must point to the same library on the file system. NOTE: This property is deprecated.
+<b>SHAREDLIBRARY</b> =   Full path to the library containing the PKCS11 interface. (Required)
                         </p>
                         <p>
 <b>SLOTLABELTYPE</b> = Indicates how the slot should be identified. Supported values are SLOT_NUMBER, SLOT_INDEX or SLOT_LABEL. (Required)
@@ -5856,9 +5761,6 @@ disabledMechanisms = {
 <b>Notice:</b> The PKCS#11 attributes configuration is global per shared library. If specified in multiple workers only the configuration from the first worker loaded will be used. Changing the property might not take effect without restarting the application server.
                         </p>
                         <p>
-<b>Notice:</b> For a Thales nCipher 'module protected' slot (slot index 0), CKA_PRIVATE must be false for the CKO_PRIVATEKEY so the key can be used without a login otherwise the key generation will fail with a CKR_USER_NOT_LOGGED_IN PKCS#11 error.
-                        </p>
-                        <p>
 <b>CACHE_PRIVATEKEY</b> = If set to true the private key reference is cached in the worker so that it is not queried for each signature. This could potentially improve performance in some environments. (Default: false)
                         </p>
                     </subsubsection>
@@ -5871,7 +5773,6 @@ Global default values are specified as global values in the global configuration
 The following properties can currently be specified in the global configuration:
                         </p>
                         <ul>
-                            <li>SHAREDLIBRARYNAME</li>
                             <li>SHAREDLIBRARY</li>
                             <li>SLOTLABELTYPE</li>
                             <li>SLOTLABELVALUE</li>
@@ -6301,8 +6202,8 @@ Sample modules/mod-mysigners/build.xml:
     <property name="platform.project.dir" location="../../"/>
     <property name="signserver.home" location="../../"/>
     <property file="build.properties"/>
-    <property file="${platform.project.dir}/conf/signserver_deploy.properties"/>
-    <property file="${platform.project.dir}/signserver_deploy.properties"/>
+    <property file="${platform.project.dir}/conf/signserver_build.properties"/>
+    <property file="${platform.project.dir}/signserver_build.properties"/>
     
     <!-- Clean selected modules in this sub module -->
     <target name="-do-clean-module">
@@ -6630,7 +6531,7 @@ public interface IExtendedCryptoToken extends ICryptoToken {
                         </pre>
                     </subsubsection>
                 </subsection>
-            
+                
                 <subsection name="Sample Workers and Components">
                     <note>
 This is a SignServer Enterprise Edition (EE) feature.
@@ -6801,7 +6702,7 @@ Automatic JUnit tests are in the different projects and system tests in SignServ
                     </p>
                     <p>
 Important: For the SignServer test suite to run successful the following 
-properties should be set in signserver_deploy.properties:
+properties should be set in signserver_build.properties:
                     <ul>
                         <li>signserverws.enabled=true</li>
                         <li>genericws.enabled=true</li>
@@ -7799,7 +7700,7 @@ For JBoss 7/EAP6 the following can be edited in JBOSS_HOME/standalone/configurat
 By default the Status Repository produces a log entry for every update. This can 
 be disabled or changed in the configuration so that only changes are 
 logged. See the property <i>statusrepository.log</i> in 
-signserver_deploy.properties.sample.
+signserver_build.properties.sample.
                     </p>
                 </subsection>
 
@@ -7813,7 +7714,7 @@ verifying the audit log.
                 <subsection name="Building">
                     <p>
 The DB CLI is built if the property databasecli.enabled=true is specified in 
-signserver_deploy.properties. It can also be built using:
+signserver_build.properties. It can also be built using:
                     </p>
                     <source>
 $ bin/ant -f modules/SignServer-DatabaseCLI/build.xml dist-module
@@ -7850,7 +7751,7 @@ To increase throughput it is recommended to disable the key usage counter as eve
                 
                 <subsection name="Configuration">
                     <p>
-In signserver_deploy.properties, set database.type to "nodb".
+In signserver_build.properties, set database.type to "nodb".
                     </p>
 					<source>
 database.type=nodb

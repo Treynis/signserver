@@ -36,6 +36,4 @@ public interface PropertiesConstants {
     String NAME = "NAME";
     String CLASSPATH = "CLASSPATH";
     String SIGNERTOKEN = "SIGNERTOKEN";
-    
-    String KEYSTORE_DATA = "KEYSTORE_DATA";
 }

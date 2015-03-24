@@ -81,7 +81,7 @@ public class AddAuthorizedClientCommand extends AbstractAdminCommand {
             getWorkerSession().addAuthorizedClient(signerid, authClient);
 
 
-            printAuthorizedClients(getWorkerSession().getAuthorizedClients(signerid));
+            printAuthorizedClients(getWorkerSession().getCurrentWorkerConfig(signerid));
 
             this.getOutputStream().println("\n\n");
             return 0;

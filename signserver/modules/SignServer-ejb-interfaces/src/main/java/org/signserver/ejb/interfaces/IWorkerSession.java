@@ -34,15 +34,12 @@ import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.KeyTestResult;
-import org.signserver.common.OperationUnsupportedException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
-import org.signserver.common.QueryException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
-import org.signserver.server.cryptotokens.TokenSearchResults;
 import org.signserver.server.log.AdminInfo;
 
 /**
@@ -121,11 +118,7 @@ public interface IWorkerSession {
             InvalidWorkerIdException;
 
     /**
-     * Returns the current configuration of a worker. Only the worker properties
-     * are included in the WorkerConfig instance returned.
-     * Prior to version 3.7.0 the returned WorkerConfig instance also contained
-     * authorized clients and the signer certificate and chain.
-     * Use the dedicated methods to retrieve this data.
+     * Returns the current configuration of a worker.
      *
      * Observe that this config might not be active until a reload command
      * has been excecuted.
@@ -211,26 +204,6 @@ public interface IWorkerSession {
             ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, 
             boolean defaultKey) throws CryptoTokenOfflineException,
             InvalidWorkerIdException;
-    
-    /**
-     * Method used to let a signer generate a certificate request
-     * using the signers own genCertificateRequest method given a key alias.
-     * 
-     * @param signerId ID of the signer
-     * @param certReqInfo information used by the signer to create the request
-     * @param explicitEccParameters false should be default and will use
-     * NamedCurve encoding of ECC public keys (IETF recommendation), use true
-     * to include all parameters explicitly (ICAO ePassport requirement).
-     * @param keyAlias key alias to use in the crypto token.
-     * @return Certificate request data
-     * @throws CryptoTokenOfflineException
-     * @throws InvalidWorkerIdException 
-     */
-    ICertReqData getCertificateRequest(int signerId,
-            ISignerCertReqInfo certReqInfo, boolean explicitEccParameters,
-            String keyAlias)
-            throws CryptoTokenOfflineException, InvalidWorkerIdException;
-            
 
     /**
      * Method returning the current signing certificate for the signer.
@@ -264,21 +237,6 @@ public interface IWorkerSession {
      */
     public List<Certificate> getSignerCertificateChain(int signerId)
             throws CryptoTokenOfflineException;
-    
-    /**
-     * Method returning the signing certificate chain for the signer given
-     * a key alias.
-     * 
-     * @param signerId
-     * @param alias
-     * @return The certificate chain, or null if there is no chain for the
-     *         given alias
-     * @throws CryptoTokenOfflineException 
-     * @throws InvalidWorkerIdException
-     */
-    public List<Certificate> getSignerCertificateChain(int signerId,
-                                                       String alias)
-            throws CryptoTokenOfflineException, InvalidWorkerIdException;
     
     /**
      * Method returning the current signing certificate chain for the signer.
@@ -388,24 +346,6 @@ public interface IWorkerSession {
              throws CertificateException;
 
     /**
-     * Method used to import a complete certificate chain to a crypto token.
-     * 
-     * @param signerId ID of the signer
-     * @param signerCerts the certificate chain to upload
-     * @param alias key alias to use in the token
-     * @param authenticationCode authentication code used for the key entry,
-     *                          or use the authentication code used when activating
-     *                          the token if null
-     * @throws CryptoTokenOfflineException
-     * @throws CertificateException
-     * @throws OperationUnsupportedException 
-     */
-    void importCertificateChain(int signerId, List<byte[]> signerCerts,
-                                String alias,char[] authenticationCode)
-            throws CryptoTokenOfflineException, CertificateException,
-                   OperationUnsupportedException;
-    
-    /**
      * Methods that generates a free worker id that can be used for new signers.
      */
     int genFreeWorkerId();
@@ -482,25 +422,6 @@ public interface IWorkerSession {
         String JNDI_NAME = "signserver/WorkerSessionBean/remote";
         
         List<? extends AuditLogEntry> selectAuditLogs(int startIndex, int max, QueryCriteria criteria, String logDeviceId) throws AuthorizationDeniedException;
-        
-        /**
-         * Queries the specified worker's crypto token.
-         *
-         * @param workerId Id of worker to query
-         * @param startIndex Start index of first result (0-based)
-         * @param max Maximum number of results to return
-         * @param qc Search criteria for matching results
-         * @param includeData If 'false' only the alias and key type is included, otherwise all information available is returned
-         * @return the search result
-         * @throws OperationUnsupportedException in case the search operation is not supported by the worker
-         * @throws CryptoTokenOfflineException in case the token is not in a searchable state
-         * @throws QueryException in case the query could not be understood or could not be executed
-         * @throws InvalidWorkerIdException in case the worker ID is not existing
-         * @throws AuthorizationDeniedException in case the operation was not allowed
-         * @throws SignServerException in case of any other problem
-         */
-        TokenSearchResults searchTokenEntries(int workerId, final int startIndex, final int max, final QueryCriteria qc, final boolean includeData) 
-            throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, AuthorizationDeniedException, SignServerException;
     }
 
     /**
@@ -633,21 +554,6 @@ public interface IWorkerSession {
                 final boolean explicitEccParameters,
                 final boolean defaultKey) throws
                 CryptoTokenOfflineException, InvalidWorkerIdException;
-        
-        /**
-         * Method that gets the signing certificate chain given a key alias.
-         * 
-         * @param adminInfo
-         * @param signerId
-         * @param alias
-         * @return Certificate chain, or null if no such alias exists in the token
-         * @throws CryptoTokenOfflineException
-         * @throws InvalidWorkerIdException
-         */
-        List<Certificate> getSigningCertificateChain(AdminInfo adminInfo,
-                                                     int signerId,
-                                                     String alias)
-                throws CryptoTokenOfflineException, InvalidWorkerIdException;
             
         /**
          * Method used to let a signer generate a certificate request
@@ -666,45 +572,6 @@ public interface IWorkerSession {
                 final ISignerCertReqInfo certReqInfo,
                 final boolean explicitEccParameters) throws
                 CryptoTokenOfflineException, InvalidWorkerIdException;
-        
-        /**
-         * Method used to let a signer generate a certificate request
-         * using the signers own genCertificateRequest method. Using the specified
-         * key alias from the crypto token.
-         *
-         * @param adminInfo Administrator info
-         * @param signerId id of the signer
-         * @param certReqInfo information used by the signer to create the request
-         * @param explicitEccParameters false should be default and will use
-         * NamedCurve encoding of ECC public keys (IETF recommendation), use true
-         * to include all parameters explicitly (ICAO ePassport requirement).
-         * @param keyAlias key alias to use from the crypto token
-         * @return certificate request data
-         * @throws CryptoTokenOfflineException
-         * @throws InvalidWorkerIdException
-         */
-        ICertReqData getCertificateRequest(final AdminInfo adminInfo, final int signerId,
-                final ISignerCertReqInfo certReqInfo,
-                final boolean explicitEccParameters, final String keyAlias)
-                throws CryptoTokenOfflineException, InvalidWorkerIdException;
-        
-        /**
-         * Get keystore data, used by the KeystoreInConfigCryptoToken.
-         * 
-         * @param adminInfo Administrator info
-         * @param signerId ID of the signer
-         * @return Keystore data
-         */
-        byte[] getKeystoreData(final AdminInfo adminInfo, final int signerId);
-        
-        /**
-         * Set keystore data, used by the KeystoreInConfigCryptoToken
-         * @param adminInfo Administator info
-         * @param signerId ID of the signer
-         * @param keystoreData Keystore data to set
-         */
-        void setKeystoreData(final AdminInfo adminInfo, final int signerId,
-                final byte[] keystoreData);
             
         /**
          * Method used to upload a certificate to a signers active configuration.
@@ -729,24 +596,6 @@ public interface IWorkerSession {
                 Collection<byte[]> signerCerts, String scope) throws CertificateException;
 
         
-        /**
-         * Method used to import a complete certificate chain to a crypto token.
-         * 
-         * @param adminInfo
-         * @param signerId ID of the signer
-         * @param signerCerts the certificate chain to upload
-         * @param alias key alias to use in the token
-         * @param authenticationCode authentication code for the key entry,
-         *                           or null to use the token authentication code
-         * @throws CryptoTokenOfflineException
-         * @throws CertificateException
-         * @throws OperationUnsupportedException 
-         */
-        void importCertificateChain(AdminInfo adminInfo, int signerId,
-                List<byte[]> signerCerts, String alias, char[] authenticationCode)
-                throws CryptoTokenOfflineException, CertificateException,
-                       OperationUnsupportedException;
-
         /**
          * The Worker Beans main method. Takes  requests processes them
          * and returns a response.
@@ -805,25 +654,5 @@ public interface IWorkerSession {
                 final List<String> uniqueIds, 
                 final boolean includeData)
                 throws AuthorizationDeniedException;
-        
-        /**
-         * Queries the specified worker's crypto token.
-         *
-         * @param adminInfo Administrator information
-         * @param workerId Id of worker to query
-         * @param startIndex Start index of first result (0-based)
-         * @param max Maximum number of results to return
-         * @param qc Search criteria for matching results
-         * @param includeData If 'false' only the alias and key type is included, otherwise all information available is returned
-         * @return the search result
-         * @throws OperationUnsupportedException in case the search operation is not supported by the worker
-         * @throws CryptoTokenOfflineException in case the token is not in a searchable state
-         * @throws QueryException in case the query could not be understood or could not be executed
-         * @throws InvalidWorkerIdException in case the worker ID is not existing
-         * @throws AuthorizationDeniedException in case the operation was not allowed
-         * @throws SignServerException in case of any other problem
-         */
-        TokenSearchResults searchTokenEntries(final AdminInfo adminInfo, int workerId, final int startIndex, final int max, final QueryCriteria qc, final boolean includeData) 
-            throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, AuthorizationDeniedException, SignServerException;
     }
 }

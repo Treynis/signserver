@@ -105,23 +105,18 @@ public class MRTDSODSignerUnitTest extends TestCase {
 
     private static final String KEYSTOREPATH = "KEYSTOREPATH";
     private static final String KEYSTOREPASSWORD = "KEYSTOREPASSWORD";
-    private static final String DEFAULTKEY = "DEFAULTKEY";
 
     private File keystore1;
     private String keystore1Password;
-    private String keystore1DefaultKey;
 
     private File keystore2;
     private String keystore2Password;
-    private String keystore2DefaultKey;
 
     private File keystore3;
     private String keystore3Password;
-    private String keystore3DefaultKey;
 
     private File keystore4;
     private String keystore4Password;
-    private String keystore4DefaultKey;
     
     private IGlobalConfigurationSession.IRemote globalConfig;
     private IWorkerSession.IRemote workerSession;
@@ -142,7 +137,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
                     + keystore1.getAbsolutePath());
         }
         keystore1Password = "foo123";
-        keystore1DefaultKey = "demods1";
 
         // Keystore with certificate not using LDAP DN ordering
         keystore2 = new File("src/test/java/reversedendentity2.p12");
@@ -151,7 +145,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
                     + keystore2.getAbsolutePath());
         }
         keystore2Password = "foo123";
-        keystore2DefaultKey = "End Entity 2";
 
         // Normal keystore
         keystore3 = new File("src/test/java/demods41.p12");
@@ -160,8 +153,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
                     + keystore3.getAbsolutePath());
         }
         keystore3Password = "foo123";
-        keystore3DefaultKey = "Demo DS 41";
-        
+
         // Keystore with ECC using named parameters
         keystore4 = new File("src/test/java/demodsecc1.p12");
         if (!keystore4.exists()) {
@@ -169,7 +161,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
                     + keystore4.getAbsolutePath());
         }
         keystore4Password = "foo123";
-        keystore4DefaultKey = "mrtdsod";
 
         setupWorkers();
     }
@@ -564,7 +555,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(KEYSTOREPATH, keystore1.getAbsolutePath());
             config.setProperty(KEYSTOREPASSWORD, keystore1Password);
             config.setProperty(AUTHTYPE, "NOAUTH");
-            config.setProperty(DEFAULTKEY, keystore1DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -586,7 +576,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DIGESTALGORITHM", "SHA512");
             config.setProperty("SIGNATUREALGORITHM", "SHA512withRSA");
-            config.setProperty(DEFAULTKEY, keystore1DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -607,7 +596,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(KEYSTOREPASSWORD, keystore1Password);
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DODATAGROUPHASHING", "true");
-            config.setProperty(DEFAULTKEY, keystore1DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -630,7 +618,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA512");
             config.setProperty("SIGNATUREALGORITHM", "SHA512withRSA");
             config.setProperty("DODATAGROUPHASHING", "true");
-            config.setProperty(DEFAULTKEY, keystore1DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -652,7 +639,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("LDSVERSION", "0108");
             config.setProperty("UNICODEVERSION", "040000");
-            config.setProperty(DEFAULTKEY, keystore1DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -674,7 +660,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DIGESTALGORITHM", "SHA1");
             config.setProperty("SIGNATUREALGORITHM", "SHA1withRSAandMGF1");
-            config.setProperty(DEFAULTKEY, keystore1DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -696,7 +681,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DIGESTALGORITHM", "SHA256");
             config.setProperty("SIGNATUREALGORITHM", "SHA256withRSAandMGF1");
-            config.setProperty(DEFAULTKEY, keystore1DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -718,7 +702,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(KEYSTOREPASSWORD, keystore1Password);
             config.setProperty("DIGESTALGORITHM", "SHA384");
             config.setProperty("SIGNATUREALGORITHM", "SHA384withRSAandMGF1");
-            config.setProperty(DEFAULTKEY, keystore1DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -740,8 +723,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DIGESTALGORITHM", "SHA512");
             config.setProperty("SIGNATUREALGORITHM", "SHA512withRSAandMGF1");
-            config.setProperty(DEFAULTKEY, "demods1"); // Use a larger key
-            
+            config.setProperty("defaultKey", HardCodedCryptoTokenAliases.KEY_ALIAS_2); // Use a larger key
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -763,7 +745,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DIGESTALGORITHM", "SHA1");
             config.setProperty("SIGNATUREALGORITHM", "SHA256withRSAandMGF1");
-            config.setProperty(DEFAULTKEY, keystore1DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -785,7 +766,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DIGESTALGORITHM", "SHA1");
             config.setProperty("SIGNATUREALGORITHM", "SHA1withRSAandMGF1");
-            config.setProperty(DEFAULTKEY, keystore2DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -807,7 +787,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DIGESTALGORITHM", "SHA256");
             config.setProperty("SIGNATUREALGORITHM", "SHA256withRSAandMGF1");
-            config.setProperty(DEFAULTKEY, keystore3DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override
@@ -829,7 +808,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DIGESTALGORITHM", "SHA256");
             config.setProperty("SIGNATUREALGORITHM", "SHA256withECDSA");
-            config.setProperty(DEFAULTKEY, keystore4DefaultKey);
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new MRTDSODSigner() {
                 @Override

@@ -60,7 +60,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
         workerSession.setWorkerProperty(3, "NAME", "testWorker");
         workerSession.reloadConfiguration(3);
                 
-        addDummySigner1(true);
+        addDummySigner1();
     }
 
     /*
@@ -127,14 +127,14 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
         }
         
         // Now change so the crypto token is offline
-        final String keyDataBefore = before.getActiveSignerConfig().getProperty("KEYSTOREPATH");
-        workerSession.removeWorkerProperty(getSignerIdDummy1(), "KEYSTOREPATH");
+        final String keyDataBefore = before.getActiveSignerConfig().getProperty("KEYDATA");
+        workerSession.removeWorkerProperty(getSignerIdDummy1(), "KEYDATA");
         workerSession.reloadConfiguration(getSignerIdDummy1());
         
         final WorkerStatus actual = workerSession.getStatus(getSignerIdDummy1());
         
         // Restore
-        workerSession.setWorkerProperty(getSignerIdDummy1(), "KEYSTOREPATH", keyDataBefore);
+        workerSession.setWorkerProperty(getSignerIdDummy1(), "KEYDATA", keyDataBefore);
         workerSession.reloadConfiguration(getSignerIdDummy1());
         
         assertFalse("getFatalErrors should not be empty", actual.getFatalErrors().isEmpty());
@@ -185,7 +185,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
         AuthorizedClient authClient = new AuthorizedClient("123456", "CN=testca");
         workerSession.addAuthorizedClient(3, authClient);
 
-        Collection<?> result = workerSession.getAuthorizedClients(3);
+        Collection<?> result = new ProcessableConfig(workerSession.getCurrentWorkerConfig(3)).getAuthorizedClients();
         boolean exists = false;
         Iterator<?> iter = result.iterator();
         while (iter.hasNext()) {
@@ -201,11 +201,11 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
      */
     @Test
     public void test08RemoveAuthorizedClient() throws Exception {
-        int initialsize = workerSession.getAuthorizedClients(3).size();
+        int initialsize = new ProcessableConfig(workerSession.getCurrentWorkerConfig(3)).getAuthorizedClients().size();
         AuthorizedClient authClient = new AuthorizedClient("123456", "CN=testca");
         assertTrue(workerSession.removeAuthorizedClient(3, authClient));
 
-        Collection<?> result = workerSession.getAuthorizedClients(3);
+        Collection<?> result = new ProcessableConfig(workerSession.getCurrentWorkerConfig(3)).getAuthorizedClients();
         assertTrue(result.size() == initialsize - 1);
 
         boolean exists = false;
@@ -269,27 +269,17 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
     }
 
     /**
-     * Test that getCurrentWorkerConfig doesn't include the internal authclients
-     * mapping.
-     * 
-     * @throws Exception 
+     * Test the getSignerCertificateChainBytes method with a worker with no cert chain set.
+     * @throws Exception
      */
     @Test
-    public void test12noAuthClientsInGetCurrentWorkerConfig() throws Exception {
-        try {
-            workerSession.addAuthorizedClient(getSignerIdDummy1(),
-               new AuthorizedClient("123456789", "CN=SomeUser"));
-            
-            final WorkerConfig config =
-                    workerSession.getCurrentWorkerConfig(getSignerIdDummy1());
-            final ProcessableConfig pc = new ProcessableConfig(config);
-            
-            assertTrue("Should not contain authclients",
-                    pc.getAuthorizedClients().isEmpty());
-        } finally {
-            workerSession.removeAuthorizedClient(getSignerIdDummy1(),
-               new AuthorizedClient("123456789", "CN=SomeUser"));
-        }
+    public void test11noCertChain() throws Exception {
+        workerSession.removeWorkerProperty(getSignerIdDummy1(), "SIGNERCERTCHAIN");
+        workerSession.reloadConfiguration(getSignerIdDummy1());
+        
+        final List<byte[]> certs = workerSession.getSignerCertificateChainBytes(getSignerIdDummy1());
+        
+        assertNull("Cert chain should be null", certs);
     }
 
     @Test

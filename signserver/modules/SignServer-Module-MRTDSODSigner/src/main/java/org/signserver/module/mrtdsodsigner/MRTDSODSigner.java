@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -40,7 +41,6 @@ import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
-import org.signserver.server.cryptotokens.ICryptoInstance;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
@@ -152,29 +152,25 @@ public class MRTDSODSigner extends BaseSigner {
                 }
             }
         }
+        final X509Certificate cert = (X509Certificate) getSigningCertificate();
+        final PrivateKey privKey = token.getPrivateKey(ICryptoToken.PURPOSE_SIGN);
+        final String provider = token.getProvider(ICryptoToken.PURPOSE_SIGN);
 
+        if (cert == null) {
+            throw new CryptoTokenOfflineException("No signing certificate");
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Using signer certificate with subjectDN '" 
+                    + CertTools.getSubjectDN(cert) 
+                    + "', issuerDN '" 
+                    + CertTools.getIssuerDN(cert) 
+                    + ", serNo " 
+                    + CertTools.getSerialNumberAsString(cert));
+        }
         // Construct SOD
         final SODFile sod;
-        final X509Certificate cert;
-        final List<Certificate> certChain;
-        ICryptoInstance crypto = null;
         try {
-            crypto = aquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
-
-            cert = (X509Certificate) getSigningCertificate(crypto);
-            if (cert == null) {
-                throw new CryptoTokenOfflineException("No signing certificate");
-            }
-            if (log.isDebugEnabled()) {
-                log.debug("Using signer certificate with subjectDN '" 
-                        + CertTools.getSubjectDN(cert) 
-                        + "', issuerDN '" 
-                        + CertTools.getIssuerDN(cert) 
-                        + ", serNo " 
-                        + CertTools.getSerialNumberAsString(cert));
-            }
-            certChain = getSigningCertificateChain(crypto);
-
             // Create the SODFile using the data group hashes that was sent to us in the request.
             final String digestAlgorithm = config.getProperty(PROPERTY_DIGESTALGORITHM, DEFAULT_DIGESTALGORITHM);
             final String digestEncryptionAlgorithm = config.getProperty(PROPERTY_SIGNATUREALGORITHM, DEFAULT_SIGNATUREALGORITHM);
@@ -244,7 +240,7 @@ public class MRTDSODSigner extends BaseSigner {
 
             final SODFile constructedSod
                     = new SODFile(digestAlgorithm, digestEncryptionAlgorithm,
-                    dghashes, crypto.getPrivateKey(), cert, crypto.getProvider().getName(),
+                    dghashes, privKey, cert, provider,
                     ldsVersion, unicodeVersion);
 
             // Reconstruct the sod
@@ -256,13 +252,11 @@ public class MRTDSODSigner extends BaseSigner {
             throw new SignServerException("Problem constructing SOD", ex);
         } catch (IOException ex) {
             throw new SignServerException("Problem reconstructing SOD", ex);
-        } finally {
-            releaseCryptoInstance(crypto);
         }
 
         // Verify the Signature before returning
         try {
-            verifySignatureAndChain(sod, certChain);
+            verifySignatureAndChain(sod, getSigningCertificateChain());
 
             if (log.isDebugEnabled()) {
                 log.debug("SOD verified correctly, returning SOD.");

@@ -22,7 +22,6 @@ import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerStatus;
 import org.signserver.common.WorkerStatusInfo;
 import org.signserver.server.BaseProcessable;
-import org.signserver.server.IServices;
 
 /**
  * Base class that all (document) validators can extend to cover basic in common
@@ -37,7 +36,7 @@ public abstract class BaseValidator extends BaseProcessable implements IValidato
      * @see org.signserver.server.IProcessable#getStatus()
      */
     @Override
-    public WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services) {
+    public WorkerStatus getStatus(final List<String> additionalFatalErrors) {
         final List<String> fatalErrors = new LinkedList<String>(additionalFatalErrors);
         fatalErrors.addAll(getFatalErrors());
 

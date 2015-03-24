@@ -388,27 +388,6 @@ public class AdminWS {
         return (Base64SignerCertReqData) data;
     }
 
-    @WebMethod(operationName = "getPKCS10CertificateRequestForAlias")
-    public Base64SignerCertReqData getPKCS10CertificateRequestForAlias(
-            @WebParam(name = "signerId") final int signerId,
-            @WebParam(name = "certReqInfo") final PKCS10CertReqInfo certReqInfo,
-            @WebParam(name = "explicitEccParameters")
-                final boolean explicitEccParameters,
-            @WebParam(name = "keyAlias") final String keyAlias)
-                throws CryptoTokenOfflineException, InvalidWorkerIdException,
-                    AdminNotAuthorizedException {
-        
-        final AdminInfo adminInfo = requireAdminAuthorization("getPKCS10CertificateRequestForKey",
-                String.valueOf(signerId));
-        
-        final ICertReqData data = worker.getCertificateRequest(adminInfo, signerId,
-                certReqInfo, explicitEccParameters, keyAlias);
-        if (!(data instanceof Base64SignerCertReqData)) {
-            throw new RuntimeException("Unsupported cert req data");
-        }
-        return (Base64SignerCertReqData) data;
-    }
-    
     /**
      * Method returning the current signing certificate for the signer.
      * @param signerId Id of signer
@@ -864,38 +843,6 @@ public class AdminWS {
     }
     
     /**
-     * Method used to import a certificate chain to a crypto token.
-     * 
-     * @param workerIdOrName ID or name of (crypto)worker
-     * @param certChain Certificate chain to import
-     * @param alias Alias to import into in the crypto token
-     * @param authCode Set if the alias is protected by an individual authentication
-     *                 code. If null, uses the authentication code used when activating
-     *                 the token
-     * @throws CryptoTokenOfflineException
-     * @throws CertificateException
-     * @throws OperationUnsupportedException
-     * @throws AdminNotAuthorizedException 
-     */
-    @WebMethod(operationName = "importCertificateChain")
-    public void importCertificateChain(
-            @WebParam(name="workerIdOrName") final String workerIdOrName,
-            @WebParam(name="certificateChain") final List<byte[]> certChain,
-            @WebParam(name="alias") final String alias,
-            @WebParam(name="authenticationCode") final String authCode)
-            throws CryptoTokenOfflineException, CertificateException,
-                   OperationUnsupportedException, AdminNotAuthorizedException {
-        final AdminInfo adminInfo =
-                requireAdminAuthorization("importCertificateChain",
-                                          workerIdOrName);
-        final int workerId = getWorkerId(workerIdOrName);
-        
-        worker.importCertificateChain(adminInfo, workerId, certChain, alias,
-                                      authCode.toCharArray());
-    }
-    
-    
-    /**
      * Query the audit log.
      *
      * @param startIndex Index where select will start. Set to 0 to start from the beginning.
@@ -907,7 +854,7 @@ public class AdminWS {
      * @throws AdminNotAuthorizedException  In case the administrator was not authorized to perform the operation
      */
     @WebMethod(operationName="queryAuditLog")
-    public List<WSAuditLogEntry> queryAuditLog(@WebParam(name="startIndex") int startIndex, @WebParam(name="max") int max, @WebParam(name="condition") final List<QueryCondition> conditions, @WebParam(name="ordering") final List<QueryOrdering> orderings) throws SignServerException, AdminNotAuthorizedException {
+    public List<LogEntry> queryAuditLog(@WebParam(name="startIndex") int startIndex, @WebParam(name="max") int max, @WebParam(name="condition") final List<QueryCondition> conditions, @WebParam(name="ordering") final List<QueryOrdering> orderings) throws SignServerException, AdminNotAuthorizedException {
         final AdminInfo adminInfo = requireAuditorAuthorization("queryAuditLog", String.valueOf(startIndex), String.valueOf(max));
         
         // For now we only query one of the available audit devices
@@ -938,10 +885,10 @@ public class AdminWS {
     /**
      * Convert to WS model LogEntry:s.
      */
-    private List<WSAuditLogEntry> toLogEntries(final List<? extends AuditLogEntry> entries) {
-        final List<WSAuditLogEntry> results = new LinkedList<WSAuditLogEntry>();
+    private List<LogEntry> toLogEntries(final List<? extends AuditLogEntry> entries) {
+        final List<LogEntry> results = new LinkedList<LogEntry>();
         for (AuditLogEntry entry : entries) {
-            results.add(WSAuditLogEntry.fromAuditLogEntry(entry));
+            results.add(LogEntry.fromAuditLogEntry(entry));
         }
         return results;
     }
@@ -959,7 +906,7 @@ public class AdminWS {
      * @throws AdminNotAuthorizedException
      */
     @WebMethod(operationName="queryArchive")
-    public List<WSArchiveMetadata> queryArchive(@WebParam(name="startIndex") int startIndex,
+    public List<ArchiveEntry> queryArchive(@WebParam(name="startIndex") int startIndex,
             @WebParam(name="max") int max, @WebParam(name="condition") final List<QueryCondition> conditions,
             @WebParam(name="ordering") final List<QueryOrdering> orderings,
             @WebParam(name="includeData") final boolean includeData)
@@ -986,7 +933,7 @@ public class AdminWS {
     }
     
     @WebMethod(operationName="queryArchiveWithIds")
-    public List<WSArchiveMetadata> queryArchiveWithIds(@WebParam(name="uniqueIds") List<String> uniqueIds,
+    public List<ArchiveEntry> queryArchiveWithIds(@WebParam(name="uniqueIds") List<String> uniqueIds,
             @WebParam(name="includeData") boolean includeData)
             throws SignServerException, AdminNotAuthorizedException {
         final AdminInfo adminInfo =
@@ -998,35 +945,18 @@ public class AdminWS {
             throw new AdminNotAuthorizedException(ex.getMessage());
         }
     }
-    
-    @WebMethod(operationName="queryTokenEntries")
-    public WSTokenSearchResults queryTokenEntries(@WebParam(name="workerNameOrId") String workerNameOrId, @WebParam(name="startIndex") int startIndex, @WebParam(name="max") int max, @WebParam(name="condition") final List<QueryCondition> conditions, @WebParam(name="ordering") final List<QueryOrdering> orderings, @WebParam(name="includeData") boolean includeData) throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, AuthorizationDeniedException, SignServerException, AdminNotAuthorizedException {
-        final AdminInfo adminInfo = requireAdminAuthorization("queryTokenEntries", workerNameOrId, String.valueOf(startIndex), String.valueOf(max));
-        final List<Elem> elements = toElements(conditions);
-        final QueryCriteria qc = QueryCriteria.create();
-
-        for (QueryOrdering order : orderings) {
-            qc.add(new Order(order.getColumn(), Order.Value.valueOf(order.getOrder().name())));
-        }
-        
-        if (!elements.isEmpty()) {
-            qc.add(andAll(elements, 0));
-        }
-
-        return WSTokenSearchResults.fromTokenSearchResults(worker.searchTokenEntries(adminInfo, getWorkerId(workerNameOrId), startIndex, max, qc, includeData));
-    }
-
+   
     /**
      * Convert to WS model ArchiveEntry:s
      * 
      * @param entries
      * @return
      */
-    private List<WSArchiveMetadata> toArchiveEntries(final List<? extends ArchiveMetadata> entries) {
-        final List<WSArchiveMetadata> results = new LinkedList<WSArchiveMetadata>();
+    private List<ArchiveEntry> toArchiveEntries(final List<? extends ArchiveMetadata> entries) {
+        final List<ArchiveEntry> results = new LinkedList<ArchiveEntry>();
         
         for (final ArchiveMetadata entry : entries) {
-            results.add(WSArchiveMetadata.fromArchiveMetadata(entry));
+            results.add(ArchiveEntry.fromArchiveMetadata(entry));
         }
         
         return results;

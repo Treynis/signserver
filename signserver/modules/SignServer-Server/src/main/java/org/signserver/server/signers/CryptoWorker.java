@@ -15,7 +15,6 @@ package org.signserver.server.signers;
 import java.util.List;
 import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerStatus;
-import org.signserver.server.IServices;
 
 /**
  * Worker not performing any operations on its own.
@@ -34,8 +33,8 @@ public class CryptoWorker extends NullSigner {
     }
 
     @Override
-    public WorkerStatus getStatus(List<String> additionalFatalErrors, final IServices services) {
-        WorkerStatus status = super.getStatus(additionalFatalErrors, services);
+    public WorkerStatus getStatus(List<String> additionalFatalErrors) {
+        WorkerStatus status = super.getStatus(additionalFatalErrors);
         if (status instanceof StaticWorkerStatus) {
             // Adjust worker type
             ((StaticWorkerStatus) status).getInfo().setWorkerType(WORKER_TYPE);

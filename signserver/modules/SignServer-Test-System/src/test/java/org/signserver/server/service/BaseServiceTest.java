@@ -28,7 +28,6 @@ import org.signserver.common.ServiceConfig;
 import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.StaticWorkerStatus;
-import org.signserver.common.util.PathUtil;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 
@@ -61,7 +60,8 @@ public class BaseServiceTest {
         sSSession.setWorkerProperty(WORKER_ID, ServiceConfig.ACTIVE, "TRUE");
         sSSession.setWorkerProperty(WORKER_ID, ServiceConfig.INTERVAL,
                 String.valueOf(INTERVAL));
-        final String signserverhome = PathUtil.getAppHome().getAbsolutePath();
+        String signserverhome = System.getenv("SIGNSERVER_HOME");
+        assertNotNull(signserverhome);
         tmpFile = signserverhome + "/tmp/testservicefile.tmp";
         sSSession.setWorkerProperty(WORKER_ID, "OUTPATH", tmpFile);
 
@@ -187,6 +187,8 @@ public class BaseServiceTest {
         sSSession.removeWorkerProperty(WORKER_ID, "INTERVALMS");
         sSSession.removeWorkerProperty(WORKER_ID, "CRON");
         sSSession.removeWorkerProperty(WORKER_ID, ServiceConfig.SINGLETON);
+        String signserverhome = System.getenv("SIGNSERVER_HOME");
+        assertNotNull(signserverhome);
         sSSession.removeWorkerProperty(WORKER_ID, "OUTPATH");
 
         sSSession.reloadConfiguration(WORKER_ID);

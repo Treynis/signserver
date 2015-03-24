@@ -38,7 +38,6 @@ import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
-import org.signserver.server.cryptotokens.ICryptoInstance;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
@@ -279,10 +278,7 @@ public class PDFSigner extends BaseSigner {
             Event event = (Event) requestContext.get(RequestContext.STATISTICS_EVENT);
             event.addCustomStatistics("PDFBYTES", pdfbytes.length);
         }
-        
-        ICryptoInstance crypto = null;
         try {
-            crypto = aquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
 
             if (params.isRefuseDoubleIndirectObjects()) {
                 checkForDuplicateObjects(pdfbytes);
@@ -302,21 +298,17 @@ public class PDFSigner extends BaseSigner {
                 logMap.put(IWorkerLogger.LOG_PDF_PASSWORD_SUPPLIED, Boolean.TRUE.toString());
             }
             
-            byte[] signedbytes =
-                    addSignatureToPDFDocument(crypto, params, pdfbytes, password, 0,
-                                              signRequest, requestContext);
+            byte[] signedbytes = addSignatureToPDFDocument(params, pdfbytes, password, 0);
             final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
             
             if (signRequest instanceof GenericServletRequest) {
                 signResponse = new GenericServletResponse(sReq.getRequestID(),
-                        signedbytes,
-                        getSigningCertificate(signRequest, requestContext),
-                        archiveId, archivables, CONTENT_TYPE);
+                        signedbytes, getSigningCertificate(), archiveId,
+                        archivables, CONTENT_TYPE);
             } else {
                 signResponse = new GenericSignResponse(sReq.getRequestID(),
-                        signedbytes, 
-                        getSigningCertificate(signRequest, requestContext),
-                        archiveId, archivables);
+                        signedbytes, getSigningCertificate(), archiveId,
+                        archivables);
             }
 
             // Archive to disk
@@ -336,8 +328,6 @@ public class PDFSigner extends BaseSigner {
             throw new IllegalRequestException("The supplied password could not be read: " + ex.getMessage(), ex);
         } catch (IOException e) {
             throw new IllegalRequestException("Could not sign document: " + e.getMessage(), e);
-        } finally {
-            releaseCryptoInstance(crypto);
         }
 
         return signResponse;
@@ -527,32 +517,23 @@ public class PDFSigner extends BaseSigner {
         }
     }
     
-    protected byte[] addSignatureToPDFDocument(final ICryptoInstance crypto, PDFSignerParameters params,
-            byte[] pdfbytes, byte[] password, int contentEstimated,
-            final ProcessRequest request, final RequestContext context)
-            throws IOException, DocumentException,
-                   CryptoTokenOfflineException, SignServerException, IllegalRequestException {
+    protected byte[] addSignatureToPDFDocument(PDFSignerParameters params,
+            byte[] pdfbytes, byte[] password, int contentEstimated) throws IOException, DocumentException,
+            CryptoTokenOfflineException, SignServerException, IllegalRequestException {
     	// when given a content length (i.e. non-zero), it means we are running a second try
     	boolean secondTry = contentEstimated != 0;
     	
         // get signing cert certificate chain and private key
-        final List<Certificate> certs = getSigningCertificateChain(crypto);
+        List<Certificate> certs = this.getSigningCertificateChain();
         if (certs == null) {
             throw new SignServerException(
                     "Null certificate chain. This signer needs a certificate.");
         }
         final List<Certificate> includedCerts = includedCertificates(certs);
         Certificate[] certChain = includedCerts.toArray(new Certificate[includedCerts.size()]);
-        PrivateKey privKey = crypto.getPrivateKey();
+        PrivateKey privKey = this.getCryptoToken().getPrivateKey(
+                ICryptoToken.PURPOSE_SIGN);
 
-        // need to check digest algorithms for DSA private key at signing
-        // time since we can't be sure what key a configured alias selector gives back
-        if (privKey instanceof DSAPrivateKey) {
-            if (!"SHA1".equals(digestAlgorithm)) {
-                throw new IllegalRequestException("Only SHA1 is permitted as digest algorithm for DSA private keys");
-            }
-        }
-        
         PdfReader reader = new PdfReader(pdfbytes, password);
         boolean appendMode = true; // TODO: This could be good to have as a property in the future
 
@@ -687,7 +668,7 @@ public class PDFSigner extends BaseSigner {
         // include signer certificate crl inside cms package if requested
         CRL[] crlList = null;
         if (params.isEmbed_crl()) {
-            crlList = getCrlsForChain(certs);
+            crlList = getCrlsForChain(this.getSigningCertificateChain());
         }
         sap.setCrypto(null, certChain, crlList,
                 PdfSignatureAppearance.SELF_SIGNED);
@@ -794,9 +775,7 @@ public class PDFSigner extends BaseSigner {
         		}
  
            		// try signing again
-        		return addSignatureToPDFDocument(crypto, params, pdfbytes,
-                                                         password, contentExact,
-                                                         request, context);
+        		return addSignatureToPDFDocument(params, pdfbytes, password, contentExact);
         	} else {
         		// if we fail to get an accurate signature size on the second attempt, bail out (this shouldn't happen)
         		throw new SignServerException("Failed to calculate signature size");

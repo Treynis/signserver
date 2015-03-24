@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import javax.xml.namespace.QName;
+import junit.framework.TestCase;
 import org.apache.log4j.Logger;
 import org.signserver.testutils.ModulesTestCase;
 
@@ -46,8 +47,8 @@ public class AdminWebServiceTest extends ModulesTestCase {
             = new AuthorizedClient();
 
     private static final String[] CONF_FILES = {
-        "signserver_deploy.properties",
-        "conf/signserver_deploy.properties",
+        "signserver_build.properties",
+        "conf/signserver_build.properties",
     };
     
     static {
@@ -71,9 +72,9 @@ public class AdminWebServiceTest extends ModulesTestCase {
         final File home;
         final File path1 = new File("../..");
         final File path2 = new File(".");
-        if (new File(path1, "res/deploytools/app.properties").exists()) {
+        if (new File(path1, "res/compile.properties").exists()) {
             home = path1;
-        } else if (new File(path2, "res/deploytools/app.properties").exists()) {
+        } else if (new File(path2, "res/compile.properties").exists()) {
             home = path2;
             } else {
             throw new RuntimeException("Unable to detect SignServer path");
@@ -88,15 +89,15 @@ public class AdminWebServiceTest extends ModulesTestCase {
             }
         }
         if (confFile == null) {
-            throw new RuntimeException("No signserver_deploy.properties found");
+            throw new RuntimeException("No signserver_build.properties found");
         } else {
         
             try {
                 config.load(new FileInputStream(confFile));
             } catch (FileNotFoundException ignored) {
-                LOG.debug("No signserver_deploy.properties");
+                LOG.debug("No signserver_build.properties");
             } catch (IOException ex) {
-                LOG.error("Not using signserver_deploy.properties: " + ex.getMessage());
+                LOG.error("Not using signserver_build.properties: " + ex.getMessage());
             }
             final String truststore = new File(home, "p12/truststore.jks").getAbsolutePath();
             System.out.println("Truststore: " + truststore);
@@ -255,47 +256,7 @@ public class AdminWebServiceTest extends ModulesTestCase {
             // OK
         }
     }
-    
-    public void testGetPKCS10CertificateRequest() throws Exception {
-        try {
-            adminWS.getPKCS10CertificateRequest(10, null, false);
-        } catch (AdminNotAuthorizedException_Exception ignored) {
-            // OK
-        }
-    }
 
-    public void testGetPKCS10CertificateRequestForAlias() throws Exception {
-        try {
-            adminWS.getPKCS10CertificateRequestForAlias(10, null, false, "user1");
-        } catch (AdminNotAuthorizedException_Exception ignored) {
-            // OK
-        }
-    }
-    
-    public void testGetPKCS10CertificateRequestForKey() throws Exception {
-        try {
-            adminWS.getPKCS10CertificateRequestForKey(10, null, false, true);
-        } catch (AdminNotAuthorizedException_Exception ignored) {
-            // OK
-        }
-    }
-    
-    public void testImportCertificateChain() throws Exception {
-        try {
-            adminWS.importCertificateChain("10", null, null, null);
-        } catch (AdminNotAuthorizedException_Exception ignored) {
-            // OK
-        }
-    }
-    
-    public void testQueryTokenEntries() throws Exception {
-        try {
-            adminWS.queryTokenEntries("10", 0, 1, null, null, false);
-        } catch (AdminNotAuthorizedException_Exception ignored) { // NOPMD
-            // OK
-        }
-    }
-    
     // TODO add test methods here. The name must begin with 'test'. For example:
     // public void testHello() {}
 

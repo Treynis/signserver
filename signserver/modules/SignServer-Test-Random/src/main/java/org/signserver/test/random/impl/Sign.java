@@ -12,32 +12,11 @@
  *************************************************************************/
 package org.signserver.test.random.impl;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.Key;
-import java.security.Provider;
-import java.security.PublicKey;
 import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
-import java.util.Iterator;
 import java.util.Random;
-import javax.xml.crypto.AlgorithmMethod;
-import javax.xml.crypto.KeySelector;
-import javax.xml.crypto.KeySelectorException;
-import javax.xml.crypto.KeySelectorResult;
-import javax.xml.crypto.MarshalException;
-import javax.xml.crypto.XMLCryptoContext;
-import javax.xml.crypto.XMLStructure;
-import javax.xml.crypto.dsig.SignatureMethod;
-import javax.xml.crypto.dsig.XMLSignature;
-import javax.xml.crypto.dsig.XMLSignatureException;
-import javax.xml.crypto.dsig.XMLSignatureFactory;
-import javax.xml.crypto.dsig.dom.DOMValidateContext;
-import javax.xml.crypto.dsig.keyinfo.KeyInfo;
-import javax.xml.crypto.dsig.keyinfo.X509Data;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
+import java.util.logging.Level;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.cmp.PKIStatus;
 import org.bouncycastle.tsp.*;
@@ -46,9 +25,6 @@ import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.test.random.FailedException;
 import org.signserver.test.random.Task;
 import org.signserver.test.random.WorkerSpec;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 /**
  * Signs a sample document.
@@ -64,16 +40,15 @@ public class Sign implements Task {
     private final WorkerSpec signer;
     private final IWorkerSession.IRemote workerSession;
     private final Random random;
-    private int counter;    
-    private final RequestContextPreProcessor preProcessor;
+    private int counter;
+    private final RequestContext requestContext = new RequestContext();
     
     private static final String TESTXML1 = "<doc>Some sample XML to sign</doc>";
 
-    public Sign(final WorkerSpec signerId, final IWorkerSession.IRemote workerSession, final Random random, final RequestContextPreProcessor preProcessor) {
+    public Sign(final WorkerSpec signerId, final IWorkerSession.IRemote workerSession, final Random random) {
         this.signer = signerId;
         this.workerSession = workerSession;
         this.random = random;
-        this.preProcessor = preProcessor;
     }
     
     @Override
@@ -88,23 +63,19 @@ public class Sign implements Task {
         } catch (CryptoTokenOfflineException ex) {
             throw new FailedException("Worker offline", ex);
         } catch (SignServerException ex) {
-            throw new FailedException("Generic error: " + ex.getMessage(), ex);
+            throw new FailedException("Generic error", ex);
         }
         LOG.debug("<run");
     }
     
     private void process(final WorkerSpec signer, final int reqid) throws FailedException, IllegalRequestException, CryptoTokenOfflineException, SignServerException {
         final ProcessResponse result;
-        final RequestContext requestContext = new RequestContext();
-        if (preProcessor != null) {
-            preProcessor.preProcess(requestContext);
-        }
         switch (signer.getWorkerType()) {
             case xml: {
                 // Process
                 final GenericSignRequest signRequest = new GenericSignRequest(reqid, TESTXML1.getBytes());
                 final ProcessResponse response = workerSession.process(signer.getWorkerId(), signRequest, requestContext);
-
+                
                 // Check result
                 GenericSignResponse res = (GenericSignResponse) response;
                 final byte[] data = res.getProcessedData();
@@ -113,7 +84,6 @@ public class Sign implements Task {
                 if (!xml.contains("xmldsig")) {
                     throw new FailedException("Response was not signed: \"" + xml + "\"");
                 }
-                validateXMLSignature(xml);
                 break;
             }
             case tsa: {
@@ -161,106 +131,25 @@ public class Sign implements Task {
                 throw new IllegalRequestException("Unsupported workerType: " + signer.getWorkerType());
         }
     }
-
-    /**
-     * Validates the XML signature using a certificate in it.
-     * Does not check certificate in any other way.
-     * @param xml document to check
-     * @throws FailedException in case validation failed
-     * @throws SignServerException in case testing failed in other ways
-     */
-    private void validateXMLSignature(String xml) throws FailedException, SignServerException {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
-
-        Document doc;
-        try {
-            dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
-            dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-            dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-
-            doc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(xml.getBytes("UTF-8")));
-        } catch (ParserConfigurationException ex) {
-            throw new FailedException("Document parsing error", ex);
-        } catch (SAXException ex) {
-            throw new FailedException("Document parsing error", ex);
-        } catch (IOException ex) {
-            throw new FailedException("Document parsing error", ex);
-        }
-        NodeList nl = doc.getElementsByTagNameNS(XMLSignature.XMLNS, "Signature");
-        if (nl.getLength() == 0) {
-            throw new FailedException("No Signature found");
-        }
-
-        String providerName = System.getProperty("jsr105Provider", "org.apache.jcp.xml.dsig.internal.dom.XMLDSigRI");
-        XMLSignatureFactory fac;
-        try {
-            fac = XMLSignatureFactory.getInstance("DOM", (Provider) Class.forName(providerName).newInstance());
-        } catch (InstantiationException e) {
-            throw new SignServerException("Problem with JSR105 provider", e);
-        } catch (IllegalAccessException e) {
-            throw new SignServerException("Problem with JSR105 provider", e);
-        } catch (ClassNotFoundException e) {
-            throw new SignServerException("Problem with JSR105 provider", e);
-        }
-
-        DOMValidateContext valContext = new DOMValidateContext(new X509KeySelector(), nl.item(0));
-
-        // enable secure validation
-        valContext.setProperty("org.apache.jcp.xml.dsig.secureValidation", Boolean.TRUE);
-
-        try {
-            XMLSignature signature = fac.unmarshalXMLSignature(valContext);
-            if (!signature.validate(valContext)) {
-                throw new FailedException("Signature verification failed");
+    
+    private void checkResponse(final WorkerSpec signer, final ProcessResponse response) throws FailedException {
+        switch (signer.getWorkerType()) {
+            case xml: {
+                GenericSignResponse res = (GenericSignResponse) response;
+                final byte[] data = res.getProcessedData();
+                // Check that we got a signed XML back
+                String xml = new String(data);
+                if (!xml.contains("xmldsig")) {
+                    throw new FailedException("Response was not signed: \"" + xml + "\"");
+                }
+                break;
             }
-        } catch (MarshalException ex) {
-            throw new FailedException("XML signature validation error", ex);
-        } catch (XMLSignatureException ex) {
-            throw new FailedException("XML signature validation error", ex);
+            case tsa: {
+                
+            }
+            default:
+                throw new FailedException("Unsupported workerType: " + signer.getWorkerType());
         }
     }
-
-    /** Key selector just using the first certificate of right type. */
-    class X509KeySelector extends KeySelector {
-
-        @Override
-        public KeySelectorResult select(KeyInfo keyInfo, KeySelector.Purpose purpose, AlgorithmMethod method, XMLCryptoContext context) throws KeySelectorException {
-            Iterator ki = keyInfo.getContent().iterator();
-            while (ki.hasNext()) {
-                XMLStructure info = (XMLStructure) ki.next();
-                if (!(info instanceof X509Data)) {
-                    continue;
-                }
-                X509Data x509Data = (X509Data) info;
-                Iterator xi = x509Data.getContent().iterator();
-                while (xi.hasNext()) {
-                    Object o = xi.next();
-                    if (!(o instanceof X509Certificate)) {
-                        continue;
-                    }
-                    final PublicKey key = ((X509Certificate) o).getPublicKey();
-                    if (algEquals(method.getAlgorithm(), key.getAlgorithm())) {
-                        return new KeySelectorResult() {
-                            public Key getKey() {
-                                return key;
-                            }
-                        };
-                    }
-                }
-            }
-            throw new KeySelectorException("No key found!");
-        }
-        private boolean algEquals(String algURI, String algName) {
-            if ((algName.equalsIgnoreCase("DSA") &&
-                algURI.equalsIgnoreCase(SignatureMethod.DSA_SHA1)) ||
-                (algName.equalsIgnoreCase("RSA") &&
-                algURI.equalsIgnoreCase(SignatureMethod.RSA_SHA1))) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
-
+    
 }

@@ -30,11 +30,15 @@ import org.junit.runners.MethodSorters;
 public class GlobalConfigurationTest {
 
     private static IGlobalConfigurationSession.IRemote globalConfigSession;
+    private static String signserverhome;
 
     @Before
     public void setUp() throws Exception {
         globalConfigSession = ServiceLocator.getInstance().lookupRemote(
                 IGlobalConfigurationSession.IRemote.class);
+
+        signserverhome = System.getenv("SIGNSERVER_HOME");
+        assertNotNull(signserverhome);
     }
 
     /*

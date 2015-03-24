@@ -17,7 +17,6 @@ import java.util.List;
 import junit.framework.TestCase;
 import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IWorkerSession;
-import org.signserver.server.ServicesImpl;
 
 /**
  * Unit test for the HSM keep alive timed service.
@@ -47,7 +46,7 @@ public class HSMKeepAliveTimedServiceUnitTest extends TestCase {
        instance.init(DUMMY_WORKERID, new WorkerConfig(), null, null);
        
        final List<String> fatalErrors =
-            instance.getStatus(Collections.<String>emptyList(), new ServicesImpl()).getFatalErrors();
+            instance.getStatus(Collections.<String>emptyList()).getFatalErrors();
 
        assertTrue("Should contain error", fatalErrors.contains("Must specify CRYPTOTOKENS"));
     }
@@ -72,7 +71,7 @@ public class HSMKeepAliveTimedServiceUnitTest extends TestCase {
         instance.init(DUMMY_WORKERID, config, null, null);
         
         final List<String> fatalErrors =
-            instance.getStatus(Collections.<String>emptyList(), new ServicesImpl()).getFatalErrors();
+            instance.getStatus(Collections.<String>emptyList()).getFatalErrors();
 
         assertTrue("Should not contain errors", fatalErrors.isEmpty());
     }

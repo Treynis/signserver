@@ -64,7 +64,8 @@ public class HealthCheckTest extends WebTestCase {
      */
     @Test
     public void test00SetupDatabase() throws Exception {
-        addDummySigner1(true);
+        addDummySigner1();
+//        addCMSSigner1();
     }
 
     /**
@@ -84,21 +85,19 @@ public class HealthCheckTest extends WebTestCase {
      */
     @Test
     public void test02CryptoTokenOffline() throws Exception {
-        try {
-            // Make sure one worker is offline
-            getWorkerSession().setWorkerProperty(getSignerIdDummy1(), "KEYSTOREPATH", "_non-existing-path_");
-            getWorkerSession().reloadConfiguration(getSignerIdDummy1());
-            if (getWorkerSession().getStatus(getSignerIdDummy1()).getFatalErrors().isEmpty()) {
-                throw new Exception("Error in test case. We should have an offline worker to test with");
-            }
-
-            assertStatusReturned(NO_FIELDS, 500);
-            String body = new String(sendAndReadyBody(NO_FIELDS));
-            assertFalse("Not ALLOK: " + body, body.contains("ALLOK"));
-        } finally {
-            // remove offline worker so it won't interfere with the next tests
-            removeWorker(getSignerIdDummy1());
+        // Make sure one worker is offline
+        getWorkerSession().removeWorkerProperty(getSignerIdDummy1(), "KEYDATA");
+        getWorkerSession().reloadConfiguration(getSignerIdDummy1());
+        if (getWorkerSession().getStatus(getSignerIdDummy1()).getFatalErrors().isEmpty()) {
+            throw new Exception("Error in test case. We should have an offline worker to test with");
         }
+        
+        assertStatusReturned(NO_FIELDS, 500);
+        String body = new String(sendAndReadyBody(NO_FIELDS));
+        assertFalse("Not ALLOK: " + body, body.contains("ALLOK"));
+        
+        // remove offline worker so it won't interfere with the next tests
+        removeWorker(getSignerIdDummy1());
     }
     
     /**
@@ -107,21 +106,17 @@ public class HealthCheckTest extends WebTestCase {
      */
     @Test
     public void test03TimeSourceNotInsync() throws Exception {
-        try {
-            addTimeStampSigner(TSA_WORKER, "TestTSA4", true);
-            workerSession.setWorkerProperty(TSA_WORKER, "DEFAULTTSAPOLICYOID", "1.2.3");
-            workerSession.setWorkerProperty(TSA_WORKER, "TIMESOURCE", "org.signserver.server.StatusReadingLocalComputerTimeSource");
-            workerSession.reloadConfiguration(TSA_WORKER);
-
-            // Test without insync
-            repository.update(StatusName.TIMESOURCE0_INSYNC.name(), "");
-
-            assertStatusReturned(NO_FIELDS, 500);
-            String body = new String(sendAndReadyBody(NO_FIELDS));
-            assertFalse("Not ALLOK: " + body, body.contains("ALLOK"));
-        } finally {
-            removeWorker(TSA_WORKER);
-        }
+    	setProperties(new File(getSignServerHome(), "res/test/test_healthcheck_timestamp_configuration.properties"));
+        workerSession.reloadConfiguration(TSA_WORKER);
+    	
+    	// Test without insync
+        repository.update(StatusName.TIMESOURCE0_INSYNC.name(), "");
+        
+        assertStatusReturned(NO_FIELDS, 500);
+        String body = new String(sendAndReadyBody(NO_FIELDS));
+        assertFalse("Not ALLOK: " + body, body.contains("ALLOK"));
+    
+        removeWorker(TSA_WORKER);
     }
     
     private FileOutputStream openMaintenanceProperties() throws Exception {

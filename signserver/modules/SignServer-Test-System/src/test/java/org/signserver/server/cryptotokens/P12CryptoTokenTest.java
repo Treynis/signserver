@@ -20,7 +20,6 @@ import java.util.Properties;
 import junit.framework.TestCase;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.signserver.common.util.PathUtil;
 
 /**
  * TODO: Document me!
@@ -50,7 +49,7 @@ public class P12CryptoTokenTest extends TestCase {
 
         P12CryptoToken signToken = new P12CryptoToken();
         Properties props = new Properties();
-        final String signserverhome = PathUtil.getAppHome().getAbsolutePath();
+        String signserverhome = System.getenv("SIGNSERVER_HOME");
         assertNotNull(signserverhome);
         props.setProperty("KEYSTOREPATH", signserverhome + "/res/test/timestamp1.p12");
         signToken.init(1, props);

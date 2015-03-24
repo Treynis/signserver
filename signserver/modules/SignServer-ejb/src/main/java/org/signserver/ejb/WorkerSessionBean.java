@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.ejb;
 
-import org.signserver.server.ServicesImpl;
 import java.math.BigInteger;
 import java.security.KeyStoreException;
 import java.security.cert.Certificate;
@@ -22,12 +21,9 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import javax.ejb.EJB;
 import javax.ejb.EJBException;
-import javax.ejb.SessionContext;
 import javax.ejb.Stateless;
-import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 
 import org.apache.log4j.Logger;
@@ -43,9 +39,7 @@ import org.ejbca.util.CertTools;
 import org.signserver.common.*;
 import org.signserver.common.KeyTestResult;
 import org.signserver.common.util.PropertiesConstants;
-import org.signserver.ejb.interfaces.IDispatcherWorkerSession;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
-import org.signserver.ejb.interfaces.IInternalWorkerSession;
 import org.signserver.ejb.interfaces.IServiceTimerSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
@@ -56,10 +50,7 @@ import org.signserver.server.cesecore.AlwaysAllowLocalAuthenticationToken;
 import org.signserver.server.config.entities.FileBasedWorkerConfigDataService;
 import org.signserver.server.config.entities.IWorkerConfigDataService;
 import org.signserver.server.config.entities.WorkerConfigDataService;
-import org.signserver.server.cryptotokens.ICryptoToken;
-import org.signserver.server.cryptotokens.ICryptoTokenV3;
 import org.signserver.server.cryptotokens.IKeyRemover;
-import org.signserver.server.cryptotokens.TokenSearchResults;
 import org.signserver.server.entities.FileBasedKeyUsageCounterDataService;
 import org.signserver.server.entities.IKeyUsageCounterDataService;
 import org.signserver.server.entities.KeyUsageCounter;
@@ -67,7 +58,6 @@ import org.signserver.server.entities.KeyUsageCounterDataService;
 import org.signserver.server.log.*;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
 import org.signserver.server.statistics.StatisticsManager;
-import org.signserver.statusrepo.IStatusRepositorySession;
 
 /**
  * The main worker session bean.
@@ -104,44 +94,27 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
     @EJB
     private SecurityEventsAuditorSessionLocal auditorSession;
     
-    @Resource
-    private SessionContext ctx;
-    
     EntityManager em;
 
     private WorkerProcessImpl processImpl;
-    private final ServicesImpl servicesImpl = new ServicesImpl();
 
     @PostConstruct
     public void create() {
-        try {
-            if (em == null) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("No EntityManager injected. Running without database.");
-                }
-                workerConfigService = new FileBasedWorkerConfigDataService(FileBasedDatabaseManager.getInstance());
-                keyUsageCounterDataService = new FileBasedKeyUsageCounterDataService(FileBasedDatabaseManager.getInstance());
-            } else {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("EntityManager injected. Running with database.");
-                }
-                workerConfigService = new WorkerConfigDataService(em);
-                archiveDataService = new ArchiveDataService(em);
-                keyUsageCounterDataService = new KeyUsageCounterDataService(em);
+        if (em == null) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("No EntityManager injected. Running without database.");
             }
-            processImpl = new WorkerProcessImpl(em, keyUsageCounterDataService, globalConfigurationSession, workerManagerSession, logSession);
-            
-            // XXX Needs to be duplicated in each xWorkerSessionBean
-            servicesImpl.put(EntityManager.class, em);
-            servicesImpl.put(IWorkerSession.ILocal.class, ctx.getBusinessObject(IWorkerSession.ILocal.class));
-            servicesImpl.put(IGlobalConfigurationSession.ILocal.class, globalConfigurationSession);
-            servicesImpl.put(SecurityEventsLoggerSessionLocal.class, logSession);
-            servicesImpl.put(IInternalWorkerSession.ILocal.class, ServiceLocator.getInstance().lookupLocal(IInternalWorkerSession.ILocal.class));
-            servicesImpl.put(IDispatcherWorkerSession.ILocal.class, ServiceLocator.getInstance().lookupLocal(IDispatcherWorkerSession.ILocal.class));
-            servicesImpl.put(IStatusRepositorySession.ILocal.class, ServiceLocator.getInstance().lookupLocal(IStatusRepositorySession.ILocal.class));
-        } catch (NamingException ex) {
-            throw new IllegalStateException("Lookup of services failed: " + ex.getMessage());
+            workerConfigService = new FileBasedWorkerConfigDataService(FileBasedDatabaseManager.getInstance());
+            keyUsageCounterDataService = new FileBasedKeyUsageCounterDataService(FileBasedDatabaseManager.getInstance());
+        } else {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("EntityManager injected. Running with database.");
+            }
+            workerConfigService = new WorkerConfigDataService(em);
+            archiveDataService = new ArchiveDataService(em);
+            keyUsageCounterDataService = new KeyUsageCounterDataService(em);
         }
+        processImpl = new WorkerProcessImpl(em, keyUsageCounterDataService, globalConfigurationSession, workerManagerSession, logSession);
     }
 
     @Override
@@ -149,7 +122,6 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
             final ProcessRequest request, final RequestContext requestContext)
             throws IllegalRequestException, CryptoTokenOfflineException,
             SignServerException {
-        requestContext.setServices(servicesImpl);
         return processImpl.process(workerId, request, requestContext);
     }
     
@@ -158,10 +130,11 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
             final ProcessRequest request, final RequestContext requestContext)
             throws IllegalRequestException, CryptoTokenOfflineException,
             SignServerException {
-        requestContext.setServices(servicesImpl);
+
         if (LOG.isDebugEnabled()) {
             LOG.debug(">process: " + workerId);
         }
+
         return processImpl.process(adminInfo, workerId, request, requestContext);
     }
 
@@ -273,7 +246,7 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
                 errorsAtEjbLevel.add(ex.getLocalizedMessage());
             }
         }
-        return worker.getStatus(errorsAtEjbLevel, servicesImpl);
+        return worker.getStatus(errorsAtEjbLevel);
     }
 
     /* (non-Javadoc)
@@ -302,9 +275,7 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
                     Integer.toString(workerId), Collections.<String, Object>emptyMap());
 
             // Try to initialize the key usage counter
-            initKeyUsageCounter(workerManagerSession.getWorker(workerId,
-                                                               globalConfigurationSession),
-                                null, null);
+            initKeyUsageCounter(workerManagerSession.getWorker(workerId, globalConfigurationSession));
         }
 
         if (workerId == 0 || getWorkers(
@@ -339,7 +310,7 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
         signer.activateSigner(authenticationCode);
 
         // Try to initialize the key usage counter
-        initKeyUsageCounter(worker, null, null);
+        initKeyUsageCounter(worker);
     }
 
     /* (non-Javadoc)
@@ -407,13 +378,8 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
             }
         }
 
-        if (signer instanceof BaseProcessable) {
-            ((BaseProcessable) signer).generateKey(keyAlgorithm, keySpec, alias,
-                authCode, servicesImpl);
-        } else {
-            signer.generateKey(keyAlgorithm, keySpec, alias,
+        signer.generateKey(keyAlgorithm, keySpec, alias,
                 authCode);
-        }
         
         final HashMap<String, Object> auditMap = new HashMap<String, Object>();
         auditMap.put("KEYALG", keyAlgorithm);
@@ -483,12 +449,7 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
             alias = config.getProperty("DEFAULTKEY");
         }
         
-        final Collection<KeyTestResult> result;
-        if (signer instanceof BaseProcessable) {
-            result = ((BaseProcessable) signer).testKey(alias, authCode, servicesImpl);
-        } else {
-            result = signer.testKey(alias, authCode);
-        }
+        final Collection<KeyTestResult> result = signer.testKey(alias, authCode);
         final HashMap<String, Object> auditMap = new HashMap<String, Object>();
         auditMap.put("KEYALIAS", alias);
         auditMap.put("TESTRESULTS", createResultsReport(result));
@@ -502,31 +463,8 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
      */
     @Override
     public WorkerConfig getCurrentWorkerConfig(int signerId) {
-        final WorkerConfig config = new WorkerConfig();
-        final Properties workerProps =
-                getWorkerConfig(signerId).getProperties();
-        
-        config.setProperties(workerProps);
-        
-        return config;
+        return getWorkerConfig(signerId);
     }
-
-    @Override
-    public byte[] getKeystoreData(AdminInfo adminInfo, int signerId) {
-        WorkerConfig config = getWorkerConfig(signerId);
-        
-        return (new ProcessableConfig(config)).getKeystoreData();
-    }
-
-    @Override
-    public void setKeystoreData(AdminInfo adminInfo, int signerId, byte[] keystoreData) {
-        WorkerConfig config = getWorkerConfig(signerId);
-        (new ProcessableConfig(config)).setKeystoreData(keystoreData);
-        setWorkerConfig(adminInfo, signerId, config, "set:keystore_data", null);
-    }
-    
-    
-    
     
     @Override
     public void setWorkerProperty(int workerId, String key, String value) {
@@ -699,16 +637,6 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
             final boolean explicitEccParameters,
             final boolean defaultKey) throws
             CryptoTokenOfflineException, InvalidWorkerIdException {
-        return getCertificateRequestInternal(adminInfo, signerId, certReqInfo,
-                explicitEccParameters, null, defaultKey);
-    }
-    
-    private ICertReqData getCertificateRequestInternal(final AdminInfo adminInfo, int signerId,
-            ISignerCertReqInfo certReqInfo,
-            final boolean explicitEccParameters,
-            final String keyAlias,
-            final boolean defaultKey)
-        throws CryptoTokenOfflineException, InvalidWorkerIdException {
         if (LOG.isTraceEnabled()) {
             LOG.trace(">getCertificateRequest: signerId=" + signerId);
         }
@@ -728,24 +656,9 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
                     getClass().getName());
         }
 
-        final ICertReqData ret;
-        if (processable instanceof BaseProcessable) {
-            if (keyAlias != null) {
-                ret = ((BaseProcessable) processable).genCertificateRequest(certReqInfo,
-                        explicitEccParameters, keyAlias, servicesImpl);
-            } else {
-                ret = ((BaseProcessable) processable).genCertificateRequest(certReqInfo,
-                    explicitEccParameters, defaultKey, servicesImpl);
-            }
-        } else {
-            if (keyAlias != null) {
-                ret = processable.genCertificateRequest(certReqInfo,
-                        explicitEccParameters, keyAlias);
-            } else {
-                ret = processable.genCertificateRequest(certReqInfo,
-                    explicitEccParameters, defaultKey);
-            }
-        }
+        ICertReqData ret = processable.genCertificateRequest(certReqInfo,
+                explicitEccParameters, defaultKey);
+        
         
         final HashMap<String, Object> auditMap = new HashMap<String, Object>();
         
@@ -766,38 +679,11 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
     }
 
     @Override
-    public ICertReqData getCertificateRequest(AdminInfo adminInfo, int signerId,
-            ISignerCertReqInfo certReqInfo, boolean explicitEccParameters,
-            String keyAlias)
-            throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        return getCertificateRequestInternal(adminInfo, signerId, certReqInfo,
-                explicitEccParameters, keyAlias, false);
-    }
-
-    @Override
-    public ICertReqData getCertificateRequest(int signerId,
-            ISignerCertReqInfo certReqInfo, boolean explicitEccParameters,
-            String keyAlias)
-            throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        return getCertificateRequest(new AdminInfo("CLI user", null, null),
-                signerId, certReqInfo, explicitEccParameters, keyAlias);
-    }
-    
-    
-
-    @Override
     public Certificate getSignerCertificate(final int signerId) throws CryptoTokenOfflineException {
-         return getSignerCertificate(signerId, null, null);
-    }
-
-    private Certificate getSignerCertificate(final int signerId,
-                                            final ProcessRequest request,
-                                            final RequestContext context)
-            throws CryptoTokenOfflineException {
         Certificate ret = null;
         final IWorker worker = workerManagerSession.getWorker(signerId, globalConfigurationSession);
         if (worker instanceof BaseProcessable) {
-            ret = ((BaseProcessable) worker).getSigningCertificate(request, context);
+            ret = ((BaseProcessable) worker).getSigningCertificate();
         }
         return ret;
     }
@@ -805,17 +691,10 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
     @Override
     public List<Certificate> getSignerCertificateChain(final int signerId)
             throws CryptoTokenOfflineException {
-        return getSignerCertificateChain(signerId, null, null);
-    }
-        
-    private List<Certificate> getSignerCertificateChain(final int signerId,
-                                                       final ProcessRequest request,
-                                                       final RequestContext context)
-            throws CryptoTokenOfflineException {
         List<Certificate> ret = null;
         IWorker worker = workerManagerSession.getWorker(signerId, globalConfigurationSession);
         if (worker instanceof BaseProcessable) {
-            ret = ((BaseProcessable) worker).getSigningCertificateChain(request, context);
+            ret = ((BaseProcessable) worker).getSigningCertificateChain();
         }
         return ret;
     }
@@ -823,16 +702,8 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
     @Override
     public byte[] getSignerCertificateBytes(final int signerId) 
             throws CryptoTokenOfflineException {
-        return getSignerCertificateBytes(signerId, null, null);
-    }
-    
-    private byte[] getSignerCertificateBytes(final int signerId,
-                                            final ProcessRequest request,
-                                            final RequestContext context) 
-            throws CryptoTokenOfflineException {
         try {
-            final Certificate cert =
-                    getSignerCertificate(signerId, request, context);
+            final Certificate cert = getSignerCertificate(signerId);
             return cert == null ? null : cert.getEncoded();
         } catch (CertificateEncodingException ex) {
             throw new CryptoTokenOfflineException(ex);
@@ -842,15 +713,7 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
     @Override
     public List<byte[]> getSignerCertificateChainBytes(final int signerId)
             throws CryptoTokenOfflineException {
-        return getSignerCertificateChainBytes(signerId, null, null);
-    }
-    
-    public List<byte[]> getSignerCertificateChainBytes(final int signerId,
-                                                       final ProcessRequest request,
-                                                       final RequestContext context)
-            throws CryptoTokenOfflineException {
-        final List<Certificate> certs =
-                getSignerCertificateChain(signerId, request, context);
+        final List<Certificate> certs = getSignerCertificateChain(signerId);
         final List<byte[]> res = new LinkedList<byte[]>();
         
         if (certs == null) {
@@ -866,38 +729,6 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
         }
         return res;
     }
-
-    @Override
-    public List<Certificate> getSigningCertificateChain(final AdminInfo adminInfo,
-                                                        final int signerId,
-                                                        final String alias)
-            throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        final IWorker worker = workerManagerSession.getWorker(signerId,
-                                                              globalConfigurationSession);
-        
-        if (worker == null) {
-            throw new InvalidWorkerIdException("Given SignerId " + signerId
-                    + " doesn't exist");
-        }
-        
-        List<Certificate> ret = null;
-        
-        if (worker instanceof BaseProcessable) {
-            ret = ((BaseProcessable) worker).getSigningCertificateChain(alias);
-        }
-        
-        return ret;
-    }
-
-    @Override
-    public List<Certificate> getSignerCertificateChain(final int signerId,
-                                                       final String alias)
-            throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        return getSigningCertificateChain(new AdminInfo("CLI user", null, null),
-                                         signerId, alias);
-    }
-    
-    
     
     @Override
     public boolean removeKey(final AdminInfo adminInfo, final int signerId, final String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException, SignServerException {
@@ -975,41 +806,6 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
         final boolean scopeGlobal = GlobalConfiguration.SCOPE_GLOBAL.equalsIgnoreCase(scope);
         auditLogCertChainInstalled(adminInfo, signerId, new String (CertTools.getPEMFromCerts(certs)), scopeGlobal ? "GLOBAL" : "NODE", scopeGlobal ? null : WorkerConfig.getNodeId());
     }
-
-    @Override
-    public void importCertificateChain(final AdminInfo adminInfo, final int signerId,
-                                       final List<byte[]> signerCerts,
-                                       final String alias,
-                                       final char[] authenticationCode)
-            throws CryptoTokenOfflineException, CertificateException,
-                   OperationUnsupportedException {
-        final List<Certificate> certs = new LinkedList<Certificate>();
-        
-        for (final byte[] certBytes : signerCerts) {
-            final X509Certificate cert =
-                    (X509Certificate) CertTools.getCertfromByteArray(certBytes);
-            certs.add(cert);
-        }
-        
-        final IWorker worker = workerManagerSession.getWorker(signerId, globalConfigurationSession);
-        
-        if (worker instanceof BaseProcessable) {
-            ((BaseProcessable) worker).importCertificateChain(certs, alias, null, servicesImpl);
-        }
-    }
-
-    @Override
-    public void importCertificateChain(final int signerId,
-                                       final List<byte[]> signerCerts,
-                                       final String alias,
-                                       final char[] authenticationCode)
-            throws CryptoTokenOfflineException, CertificateException,
-                   OperationUnsupportedException {
-        importCertificateChain(new AdminInfo("CLI user", null, null), signerId,
-                signerCerts, alias, authenticationCode);
-    }
-    
-    
 
     /* (non-Javadoc)
      * @see org.signserver.ejb.interfaces.IWorkerSession#genFreeWorkerId()
@@ -1215,16 +1011,14 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
                 uniqueIds, includeData);
     }
 
-    private void initKeyUsageCounter(final IWorker worker,
-                                     final ProcessRequest request,
-                                     final RequestContext context) {
+    private void initKeyUsageCounter(final IWorker worker) {
         // Try to insert a key usage counter entry for this worker's public
         // key
         // Get worker instance
         if (worker instanceof BaseProcessable) {
             try {
                 final Certificate cert = ((BaseProcessable)worker)
-                        .getSigningCertificate(request, context);
+                        .getSigningCertificate();
                 if (cert != null) {
                     final String keyHash = KeyUsageCounterHash
                             .create(cert.getPublicKey());
@@ -1251,29 +1045,6 @@ public class WorkerSessionBean implements IWorkerSession.ILocal,
                         + "Crypto token offline trying to create key usage counter");
                 }
             }
-        }
-    }
-
-    @Override
-    public TokenSearchResults searchTokenEntries(final int workerId, int startIndex, int max, final QueryCriteria qc, final boolean includeData) throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, AuthorizationDeniedException, SignServerException {
-        return searchTokenEntries(new AdminInfo("CLI user", null, null), workerId, startIndex, max, qc, includeData);
-    }
-    
-    @Override
-    public TokenSearchResults searchTokenEntries(final AdminInfo adminInfo, final int workerId, int startIndex, int max, final QueryCriteria qc, final boolean includeData) throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, AuthorizationDeniedException, SignServerException {
-        final IWorker worker = workerManagerSession.getWorker(workerId, globalConfigurationSession);
-        if (worker instanceof BaseProcessable) {
-            ICryptoToken cryptoToken = ((BaseProcessable) worker).getCryptoToken();
-            if (cryptoToken instanceof ICryptoTokenV3) {
-                return ((ICryptoTokenV3) cryptoToken).searchTokenEntries(startIndex, max, qc, includeData, servicesImpl);
-            } else {
-                throw new OperationUnsupportedException("Operation not supported by crypto token");
-            }
-        } else if (worker == null) {
-            throw new InvalidWorkerIdException("Given SignerId " + workerId
-                    + " doesn't exist");
-        } else {
-            throw new OperationUnsupportedException("Crypto token operations not supported by worker");
         }
     }
 }

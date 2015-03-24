@@ -17,6 +17,9 @@ import java.security.KeyStoreException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.util.*;
+
+import javax.persistence.EntityManager;
+
 import org.apache.log4j.Logger;
 import org.cesecore.audit.AuditLogEntry;
 import org.cesecore.authorization.AuthorizationDeniedException;
@@ -32,10 +35,8 @@ import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.KeyTestResult;
-import org.signserver.common.OperationUnsupportedException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
-import org.signserver.common.QueryException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
@@ -43,7 +44,7 @@ import org.signserver.common.WorkerStatus;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.IProcessable;
 import org.signserver.server.SignServerContext;
-import org.signserver.server.cryptotokens.TokenSearchResults;
+import org.signserver.server.WorkerContext;
 import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.LogMap;
 
@@ -258,18 +259,6 @@ public class WorkerSessionMock implements IWorkerSession.ILocal,
     }
 
     @Override
-    public ICertReqData getCertificateRequest(AdminInfo adminInfo, int signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public ICertReqData getCertificateRequest(int signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-    
-    
-
-    @Override
     public Certificate getSignerCertificate(int signerId) throws
             CryptoTokenOfflineException {
         throw new UnsupportedOperationException("Not supported yet.");
@@ -419,45 +408,7 @@ public class WorkerSessionMock implements IWorkerSession.ILocal,
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
-    public byte[] getKeystoreData(AdminInfo adminInfo, int signerId) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
 
-    @Override
-    public void setKeystoreData(AdminInfo adminInfo, int signerId, byte[] keystoreData) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public void importCertificateChain(int signerId, List<byte[]> signerCerts, String alias, char[] authenticationCode) throws CryptoTokenOfflineException, CertificateException, IllegalArgumentException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public void importCertificateChain(AdminInfo adminInfo, int signerId, List<byte[]> signerCerts, String alias, char[] authenticationCode) throws CryptoTokenOfflineException, CertificateException, OperationUnsupportedException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public TokenSearchResults searchTokenEntries(AdminInfo adminInfo, int workerId, int startIndex, int max, QueryCriteria qc, boolean includeData) throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, AuthorizationDeniedException, SignServerException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public TokenSearchResults searchTokenEntries(int workerId, int startIndex, int max, QueryCriteria qc, boolean includeData) throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, AuthorizationDeniedException, SignServerException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public List<Certificate> getSigningCertificateChain(AdminInfo adminInfo, int signerId, String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public List<Certificate> getSignerCertificateChain(int signerId, String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
 
     private static class Worker {
         private IProcessable processable;

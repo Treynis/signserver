@@ -71,9 +71,9 @@ public class SystemLoggingTest extends ModulesTestCase {
     private final int signerId = 6000;
     
     /** workers testing timed services audit logging */
-    private static final int WORKERID_SERVICE = 5800;
-    private static final int WORKERID_CRYPTOWORKER1 = 5801;
-    private static final int WORKERID_CRYPTOWORKER2 = 5802;
+    private static int WORKERID_SERVICE = 5800;
+    private static int WORKERID_CRYPTOWORKER1 = 5801;
+    private static int WORKERID_CRYPTOWORKER2 = 5802;
 
     
     private File auditLogFile;
@@ -97,7 +97,7 @@ public class SystemLoggingTest extends ModulesTestCase {
     @Test
     public void test00SetupDatabase() throws Exception {
         LOG.info(">test00SetupDatabase");
-        addDummySigner(signerId, "TestSigner6000", true);
+        addSoftDummySigner(signerId, "TestSigner6000");
         workerSession.setWorkerProperty(signerId, "WORKERLOGGER", "org.signserver.server.log.SecurityEventsWorkerLogger");
         workerSession.reloadConfiguration(signerId);
     }
@@ -588,9 +588,6 @@ public class SystemLoggingTest extends ModulesTestCase {
         
         // Remove the property
         workerSession.removeWorkerProperty(signerId, "NODE47.DEFAULTKEY");
-        
-        // Reset defaultkey
-        workerSession.setWorkerProperty(signerId, "DEFAULTKEY", "Signer 1");
     }
 
     @Test
@@ -625,7 +622,7 @@ public class SystemLoggingTest extends ModulesTestCase {
             }
             
             // Add signer using the P12
-            addP12DummySigner(p12SignerId, signerName, p12, "foo123", null);
+            addP12DummySigner(p12SignerId, signerName, p12, "foo123");
             
             // Test keygen
             int linesBefore = readEntriesCount(auditLogFile);

@@ -35,12 +35,10 @@ import org.bouncycastle.util.Selector;
 import org.bouncycastle.util.Store;
 import org.signserver.common.*;
 import org.signserver.server.BaseProcessable;
-import org.signserver.server.IServices;
 import org.signserver.server.KeyUsageCounterHash;
 import org.signserver.server.ValidityTimeUtils;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.cryptotokens.ICryptoToken;
-import org.signserver.server.cryptotokens.ICryptoTokenV3;
 import org.signserver.server.entities.KeyUsageCounter;
 
 /**
@@ -87,7 +85,7 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
      * @see org.signserver.server.IProcessable#getStatus()
      */
     @Override
-    public WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services) {
+    public WorkerStatus getStatus(final List<String> additionalFatalErrors) {
         WorkerStatusInfo info;
         final List<String> fatalErrors = new LinkedList<String>(additionalFatalErrors);
         fatalErrors.addAll(getFatalErrors());
@@ -110,13 +108,10 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
         X509Certificate signerCertificate = null;
 
         try {
-            signerCertificate =
-                    (X509Certificate) getSigningCertificate();
+            signerCertificate = (X509Certificate) getSigningCertificate();
             final long keyUsageLimit = Long.valueOf(config.getProperty(SignServerConstants.KEYUSAGELIMIT, "-1"));
 
-            if (token instanceof ICryptoTokenV3) {
-                status = ((ICryptoTokenV3) token).getCryptoTokenStatus(services);
-            } else if (token != null) {
+            if (token != null) {
                 status = token.getCryptoTokenStatus();
             }
 
@@ -322,13 +317,10 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
 
         return result;
     }
-
-    @Deprecated
-    protected Store getCertStoreWithChain(Certificate signingCert) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, CryptoTokenOfflineException, CertStoreException, CertificateEncodingException, IOException {
-        return getCertStoreWithChain(signingCert, getSigningCertificateChain());
-    }
     
-    protected Store getCertStoreWithChain(Certificate signingCert, List<Certificate> signingCertificateChain) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, CryptoTokenOfflineException, CertStoreException, CertificateEncodingException, IOException {
+    protected Store getCertStoreWithChain(Certificate signingCert) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, CryptoTokenOfflineException, CertStoreException, CertificateEncodingException, IOException {
+        List<Certificate> signingCertificateChain = getSigningCertificateChain();
+        
         if (signingCertificateChain == null) {
             throw new CryptoTokenOfflineException("Certificate chain not available");
         } else {
