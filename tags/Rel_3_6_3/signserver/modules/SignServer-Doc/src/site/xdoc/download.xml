@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document>
+
+  <properties>
+    <title>Download</title>
+  </properties>
+
+<body>
+  <section name="Latest Release">
+    <note>
+    SignServer 3.6.2 is now available for <a href="https://sourceforge.net/projects/signserver/files/signserver/3.6/">download from SourceForge</a>.
+    <br/><br/>
+    SHA1 checksums:
+    <pre>
+e3c35d014f0071e0180c1d33c963d02e8ab4ec60 *signserver-ce-3.6.2-bin.zip
+c6b1dfc7a4bd9790c9d0839d4a854c67780cbd2e *signserver-ce-3.6.2-src.tar.gz
+2f12653b03b8f7de8eba3d9284b7138f641ee497 *signserver-ce-3.6.2.zip
+    </pre>
+    SHA-256 checksums:
+    <pre>
+887ecf375f0647dcf7aa3c88174a55e80251f692fba2f58e5929f90d39c47924 *signserver-ce-3.6.2-bin.zip
+7b242615eca9d5991923af85f43702256b8642b2a37f28b111bd81a649bf6f92 *signserver-ce-3.6.2-src.tar.gz
+64c13fe6cb7c9eb1be260649ebffe9255d310dc6c2b7a3aff39b478f5e7ac4dc *signserver-ce-3.6.2.zip
+    </pre>
+    </note>
+  </section>
+  <section name="Main source packages">
+    <p>
+    Download any of the source packages from <a href="http://sourceforge.net/projects/signserver/files/">SourceForge</a>.
+    </p>
+  </section>
+
+  <section name="Live CD">
+    <p>
+        Get up and running quicker by downloading and running our 
+        <a href="http://download.primekey.se/public/livecd.iso">LiveCD</a>. It
+        contains a (old) sample installation of SignServer and also EJBCA.
+    </p>
+    <p>
+        Requires atleast 1512 MB of memory to run. Please see
+        <a href="http://wiki.ejbca.org/livecd">wiki.ejbca.org/livecd</a>
+        for all information.
+    </p>
+  </section>
+</body>
+</document>
+
