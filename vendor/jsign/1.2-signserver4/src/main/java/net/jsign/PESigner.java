@@ -61,7 +61,7 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cms.CMSAttributeTableGenerator;
 import org.bouncycastle.cms.CMSException;
 import org.bouncycastle.cms.CMSSignedData;
-import org.bouncycastle.cms.DefaultAuthenticatedAttributeTableGenerator;
+import org.bouncycastle.cms.DefaultSignedAttributeTableGenerator;
 import org.bouncycastle.cms.SignerInfoGenerator;
 import org.bouncycastle.cms.SignerInfoGeneratorBuilder;
 import org.bouncycastle.cms.SignerInformation;
@@ -206,7 +206,7 @@ public class PESigner {
         AttributeTable authenticatedAttributes = createAuthenticatedAttributes();
         // TODO: figure out why?!
         authenticatedAttributes = authenticatedAttributes.add(CMSAttributes.cmsAlgorithmProtect, DERNull.INSTANCE);
-        CMSAttributeTableGenerator attributeTableGenerator = new DefaultAuthenticatedAttributeTableGenerator(authenticatedAttributes);
+        CMSAttributeTableGenerator attributeTableGenerator = new DefaultSignedAttributeTableGenerator(authenticatedAttributes);
         
         // fetch the signing certificate
         X509CertificateHolder certificate = new JcaX509CertificateHolder((X509Certificate) chain[0]);
@@ -220,7 +220,7 @@ public class PESigner {
         generator.addCertificates(new JcaCertStore(removeRoot(chain)));
         generator.addSignerInfoGenerator(signerInfoGenerator);
         
-        return generator.generate2(AuthenticodeObjectIdentifiers.SPC_INDIRECT_DATA_OBJID, spcIndirectDataContent);
+        return generator.generate(AuthenticodeObjectIdentifiers.SPC_INDIRECT_DATA_OBJID, spcIndirectDataContent);
     }
 
     /**
@@ -290,7 +290,7 @@ public class PESigner {
         ASN1ObjectIdentifier contentType = new ASN1ObjectIdentifier(sigData.getSignedContentTypeOID());
         ASN1Encodable content = ASN1Sequence.getInstance(sigData.getSignedContent().getContent());
                 
-        return generator.generate2(contentType, content);
+        return generator.generate(contentType, content);
     }
 
     protected CMSSignedData timestamp(byte[] encryptedDigest, URL tsaurl) throws IOException, CMSException {
