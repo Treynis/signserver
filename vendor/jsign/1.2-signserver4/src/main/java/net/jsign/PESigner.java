@@ -203,7 +203,10 @@ public class PESigner {
         DigestCalculatorProvider digestCalculatorProvider = new JcaDigestCalculatorProviderBuilder().build();
         
         // prepare the authenticated attributes
-        CMSAttributeTableGenerator attributeTableGenerator = new DefaultAuthenticatedAttributeTableGenerator(createAuthenticatedAttributes());
+        AttributeTable authenticatedAttributes = createAuthenticatedAttributes();
+        // TODO: figure out why?!
+        authenticatedAttributes = authenticatedAttributes.add(CMSAttributes.cmsAlgorithmProtect, DERNull.INSTANCE);
+        CMSAttributeTableGenerator attributeTableGenerator = new DefaultAuthenticatedAttributeTableGenerator(authenticatedAttributes);
         
         // fetch the signing certificate
         X509CertificateHolder certificate = new JcaX509CertificateHolder((X509Certificate) chain[0]);
@@ -217,7 +220,7 @@ public class PESigner {
         generator.addCertificates(new JcaCertStore(removeRoot(chain)));
         generator.addSignerInfoGenerator(signerInfoGenerator);
         
-        return generator.generate(AuthenticodeObjectIdentifiers.SPC_INDIRECT_DATA_OBJID, spcIndirectDataContent);
+        return generator.generate2(AuthenticodeObjectIdentifiers.SPC_INDIRECT_DATA_OBJID, spcIndirectDataContent);
     }
 
     /**
@@ -287,7 +290,7 @@ public class PESigner {
         ASN1ObjectIdentifier contentType = new ASN1ObjectIdentifier(sigData.getSignedContentTypeOID());
         ASN1Encodable content = ASN1Sequence.getInstance(sigData.getSignedContent().getContent());
                 
-        return generator.generate(contentType, content);
+        return generator.generate2(contentType, content);
     }
 
     protected CMSSignedData timestamp(byte[] encryptedDigest, URL tsaurl) throws IOException, CMSException {
