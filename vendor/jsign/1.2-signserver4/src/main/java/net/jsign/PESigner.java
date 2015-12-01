@@ -203,10 +203,7 @@ public class PESigner {
         DigestCalculatorProvider digestCalculatorProvider = new JcaDigestCalculatorProviderBuilder().build();
         
         // prepare the authenticated attributes
-        AttributeTable authenticatedAttributes = createAuthenticatedAttributes();
-        // TODO: figure out why?!
-        authenticatedAttributes = authenticatedAttributes.add(CMSAttributes.cmsAlgorithmProtect, DERNull.INSTANCE);
-        CMSAttributeTableGenerator attributeTableGenerator = new DefaultSignedAttributeTableGenerator(authenticatedAttributes);
+        CMSAttributeTableGenerator attributeTableGenerator = new DefaultSignedAttributeTableGenerator(createAuthenticatedAttributes());
         
         // fetch the signing certificate
         X509CertificateHolder certificate = new JcaX509CertificateHolder((X509Certificate) chain[0]);
