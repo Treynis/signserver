@@ -22,7 +22,7 @@ import java.math.BigInteger;
 import java.security.cert.X509CRL;
 import org.bouncycastle.asn1.ASN1Object;
 import org.bouncycastle.asn1.x509.CRLNumber;
-import org.bouncycastle.asn1.x509.X509Extension;
+import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.x509.extension.X509ExtensionUtil;
 
 /**
@@ -37,7 +37,7 @@ public class CrlExtensionsUtils
 
     public static BigInteger getCrlNumber(X509CRL crl) throws IOException
     {
-        byte[] crlNumEnc = crl.getExtensionValue(X509Extension.cRLNumber.getId());
+        byte[] crlNumEnc = crl.getExtensionValue(Extension.cRLNumber.getId());
         BigInteger crlNum = null;
         // XAdES 7.4.2: "The 'number' element is an optional hint ..."
         if (crlNumEnc != null)
