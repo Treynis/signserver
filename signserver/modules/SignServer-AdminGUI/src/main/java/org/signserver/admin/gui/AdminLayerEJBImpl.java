@@ -140,11 +140,7 @@ public class AdminLayerEJBImpl implements AdminWS {
     @Override
     public int getWorkerId(
             final String workerName) {
-        try {
-            return worker.getWorkerId(workerName);
-        } catch (InvalidWorkerIdException ex) {
-            return 0;
-        }
+        return worker.getWorkerId(workerName);
     }
 
     /**

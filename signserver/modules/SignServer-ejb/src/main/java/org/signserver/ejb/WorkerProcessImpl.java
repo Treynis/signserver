@@ -39,8 +39,8 @@ import org.signserver.common.SignServerConstants;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.util.PropertiesConstants;
-import org.signserver.ejb.interfaces.IWorkerSession;
-import org.signserver.ejb.worker.impl.WorkerManagerSingletonBean;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
 import org.signserver.server.AccounterException;
 import org.signserver.server.BaseProcessable;
 import org.signserver.server.IClientCredential;
@@ -78,7 +78,9 @@ class WorkerProcessImpl {
 
     private final IKeyUsageCounterDataService keyUsageCounterDataService;
 
-    private final WorkerManagerSingletonBean workerManagerSession;
+    private final IGlobalConfigurationSession.ILocal globalConfigurationSession;
+
+    private final IWorkerManagerSessionLocal workerManagerSession;
 
     private final SecurityEventsLoggerSessionLocal logSession;
 
@@ -86,12 +88,14 @@ class WorkerProcessImpl {
      * Constructs a new instance of WorkerProcessImpl.
      * @param em The EntityManager (if used)
      * @param keyUsageCounterDataService The key usage counter data service
+     * @param globalConfigurationSession The global configuration session
      * @param workerManagerSession The worker manager session
      * @param logSession The log session
      */
-    public WorkerProcessImpl(EntityManager em, IKeyUsageCounterDataService keyUsageCounterDataService, WorkerManagerSingletonBean workerManagerSession, SecurityEventsLoggerSessionLocal logSession) {
+    public WorkerProcessImpl(EntityManager em, IKeyUsageCounterDataService keyUsageCounterDataService, IGlobalConfigurationSession.ILocal globalConfigurationSession, IWorkerManagerSessionLocal workerManagerSession, SecurityEventsLoggerSessionLocal logSession) {
         this.em = em;
         this.keyUsageCounterDataService = keyUsageCounterDataService;
+        this.globalConfigurationSession = globalConfigurationSession;
         this.workerManagerSession = workerManagerSession;
         this.logSession = logSession;
     }
@@ -141,10 +145,10 @@ class WorkerProcessImpl {
                 (String) requestContext.get(RequestContext.REMOTE_IP));
 
         // Get worker instance
-        final IWorker worker;
-        try {
-            worker = workerManagerSession.getWorker(workerId);
-        } catch (NoSuchWorkerException ex) {
+        final IWorker worker = workerManagerSession.getWorker(workerId, globalConfigurationSession);
+
+        if (worker == null) {
+            NoSuchWorkerException ex = new NoSuchWorkerException(String.valueOf(workerId));
             Map<String, Object> details = new LinkedHashMap<String, Object>();
             final String serNo = adminInfo.getCertSerialNumber() != null ? adminInfo.getCertSerialNumber().toString(16) : null;
 
@@ -549,8 +553,8 @@ class WorkerProcessImpl {
     /**
      * @see org.signserver.ejb.interfaces.IWorkerSession#getWorkerId(java.lang.String)
      */
-    public int getWorkerId(String signerName) throws NoSuchWorkerException {
-        return workerManagerSession.getIdFromName(signerName);
+    public int getWorkerId(String signerName) {
+        return workerManagerSession.getIdFromName(signerName, globalConfigurationSession);
     }
 
 }

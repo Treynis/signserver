@@ -12,13 +12,11 @@
  *************************************************************************/
 package org.signserver.module.tsa;
 
-import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.cert.Certificate;
 import java.util.Properties;
 import java.util.Random;
-import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.cmp.PKIStatus;
 import org.bouncycastle.tsp.*;
@@ -53,16 +51,11 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
     /** Worker ID for test worker. */
     private static final int WORKER3 = 8913;
 
-    private static final ASN1ObjectIdentifier WORKER1_PROFILE =
-            new ASN1ObjectIdentifier("1.2.13.1");
-    private static final ASN1ObjectIdentifier WORKER1_ALTERNATIVE_PROFILE =
-            new ASN1ObjectIdentifier("1.2.13.9");
-    private static final ASN1ObjectIdentifier WORKER2_PROFILE =
-            new ASN1ObjectIdentifier("1.2.13.2");
-    private static final ASN1ObjectIdentifier WORKER3_PROFILE =
-            new ASN1ObjectIdentifier("1.2.13.3");
-    private static final ASN1ObjectIdentifier UNSUPPORTED_PROFILE =
-            new ASN1ObjectIdentifier("1.2.13.55");
+    private static final String WORKER1_PROFILE = "1.2.13.1";
+    private static final String WORKER1_ALTERNATIVE_PROFILE = "1.2.13.9";
+    private static final String WORKER2_PROFILE = "1.2.13.2";
+    private static final String WORKER3_PROFILE = "1.2.13.3";
+    private static final String UNSUPPORTED_PROFILE = "1.2.13.55";
     
     private Random random = new Random(4711);
 
@@ -87,30 +80,16 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
         Properties conf = new Properties();
         // TSDispatcher
         conf.setProperty("GLOB.WORKER8910.CLASSPATH", "org.signserver.module.tsa.RequestedPolicyDispatcher");
-        conf.setProperty("WORKER8910.IMPLEMENTATION_CLASS", "org.signserver.module.tsa.RequestedPolicyDispatcher");
-        conf.setProperty("GLOB.WORKER8910.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.KeystoreCryptoToken");
+        conf.setProperty("GLOB.WORKER8910.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.HardCodedCryptoToken");
         conf.setProperty("WORKER8910.NAME", "TestTSDispatcher1");
-        conf.setProperty("WORKER8910.KEYSTOREPATH", getSignServerHome() + 
-                File.separator + "res" + File.separator + "test" + File.separator +
-                "dss10" + File.separator + "dss10_tssigner1.p12");
-        conf.setProperty("WORKER8910.KEYSTORETYPE", "PKCS12");
-        conf.setProperty("WORKER8910.KEYSTOREPASSWORD", "foo123");
-        conf.setProperty("WORKER8910.DEFAULTKEY", "TS Signer 1");
         conf.setProperty("WORKER8910.AUTHTYPE", "NOAUTH");
         conf.setProperty("WORKER8910.MAPPINGS", "1.2.13.1:TestTSUnit1;1.2.13.2:TestTSUnit2;1.2.13.3:TestTSUnit3");
         conf.setProperty("WORKER8910.DEFAULTWORKER", "TestTSUnit1");
         
         // TSDispatcher2
         conf.setProperty("GLOB.WORKER8909.CLASSPATH", "org.signserver.module.tsa.RequestedPolicyDispatcher");
-        conf.setProperty("WORKER8909.IMPLEMENTATION_CLASS", "org.signserver.module.tsa.RequestedPolicyDispatcher");
-        conf.setProperty("GLOB.WORKER8909.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.KeystoreCryptoToken");
+        conf.setProperty("GLOB.WORKER8909.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.HardCodedCryptoToken");
         conf.setProperty("WORKER8909.NAME", "TestTSDispatcher2");
-        conf.setProperty("WORKER8909.KEYSTOREPATH", getSignServerHome() + 
-                File.separator + "res" + File.separator + "test" + File.separator +
-                "dss10" + File.separator + "dss10_tssigner1.p12");
-        conf.setProperty("WORKER8909.KEYSTORETYPE", "PKCS12");
-        conf.setProperty("WORKER8909.KEYSTOREPASSWORD", "foo123");
-        conf.setProperty("WORKER8909.DEFAULTKEY", "TS Signer 1");
         conf.setProperty("WORKER8909.AUTHTYPE", "NOAUTH");
         conf.setProperty("WORKER8909.MAPPINGS", "1.2.13.1:TestTSUnit1;1.2.13.2:TestTSUnit2;1.2.13.3:TestTSUnit3");
         conf.setProperty("WORKER8909.DEFAULTWORKER", "TestTSUnit1");
@@ -193,7 +172,7 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
         req = gen.generate(TSPAlgorithms.SHA1, new byte[20], createNounce());
         res = requestTimeStamp(WORKER1, req);
         assertEquals("token granted", PKIStatus.GRANTED, res.getStatus());
-        assertEquals("right profile", WORKER1_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy());
+        assertEquals("right profile", WORKER1_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy().getId());
         assertValid(req, res);
         
         gen.setReqPolicy(WORKER2_PROFILE);
@@ -215,7 +194,7 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
         req = gen.generate(TSPAlgorithms.SHA1, new byte[20], createNounce());
         res = requestTimeStamp(WORKER2, req);
         assertEquals("token granted", PKIStatus.GRANTED, res.getStatus());
-        assertEquals("right profile", WORKER2_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy());
+        assertEquals("right profile", WORKER2_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy().getId());
         assertValid(req, res);
         
         gen.setReqPolicy(WORKER1_PROFILE);
@@ -235,7 +214,7 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
         req = gen.generate(TSPAlgorithms.SHA1, new byte[20], createNounce());
         res = requestTimeStamp(WORKER3, req);
         assertEquals("token granted", PKIStatus.GRANTED, res.getStatus());
-        assertEquals("right profile", WORKER3_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy());
+        assertEquals("right profile", WORKER3_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy().getId());
         assertValid(req, res);
         
         gen.setReqPolicy(WORKER1_PROFILE);
@@ -268,7 +247,7 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
             req = gen.generate(TSPAlgorithms.SHA256, new byte[32], createNounce());
             res = requestTimeStamp(DISPATCHER0, req);
             assertEquals("token granted", PKIStatus.GRANTED, res.getStatus());
-            assertEquals("right profile", WORKER1_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy());
+            assertEquals("right profile", WORKER1_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy().getId());
             assertValid(req, res);
             
             // Test that a request with WORKER2_PROFILE is accepted
@@ -276,7 +255,7 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
             req = gen.generate(TSPAlgorithms.SHA256, new byte[32], createNounce());
             res = requestTimeStamp(DISPATCHER0, req);
             assertEquals("token granted", PKIStatus.GRANTED, res.getStatus());
-            assertEquals("right profile", WORKER2_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy());
+            assertEquals("right profile", WORKER2_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy().getId());
             assertValid(req, res);
             
             // Test that a request with WORKER3_PROFILE is accepted
@@ -284,7 +263,7 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
             req = gen.generate(TSPAlgorithms.SHA256, new byte[32], createNounce());
             res = requestTimeStamp(DISPATCHER0, req);
             assertEquals("token granted", PKIStatus.GRANTED, res.getStatus());
-            assertEquals("right profile", WORKER3_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy());
+            assertEquals("right profile", WORKER3_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy().getId());
             assertValid(req, res);
             
             // Test that an unknown profile is not accepted (USEDEFAULTIFMISMATCH=false)
@@ -322,7 +301,7 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
             req = gen.generate(TSPAlgorithms.SHA256, new byte[32], createNounce());
             res = requestTimeStamp(DISPATCHER0, req);
             assertEquals("token granted", PKIStatus.GRANTED, res.getStatus());
-            assertEquals("right profile", WORKER1_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy());
+            assertEquals("right profile", WORKER1_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy().getId());
             assertValid(req, res);
         } finally {
             resetDispatchedAuthorizerForAllWorkers();
@@ -354,7 +333,7 @@ public class RequestedPolicyDispatcherTest extends ModulesTestCase {
             req = gen.generate(TSPAlgorithms.SHA256, new byte[32], createNounce());
             res = requestTimeStamp(DISPATCHER9, req);
             assertEquals("token granted", PKIStatus.GRANTED, res.getStatus());
-            assertEquals("right profile", WORKER1_ALTERNATIVE_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy());
+            assertEquals("right profile", WORKER1_ALTERNATIVE_PROFILE, res.getTimeStampToken().getTimeStampInfo().getPolicy().getId());
             
             // Test that an profile not known by DISPATCHER9 and not by a TSUnit1 is rejected even though USEDEFAULTIFMISMATCH=true
             gen.setReqPolicy(UNSUPPORTED_PROFILE);

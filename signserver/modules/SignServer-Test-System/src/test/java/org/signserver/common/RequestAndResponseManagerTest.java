@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.common;
 
-import org.cesecore.keys.util.KeyTools;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 import java.util.Date;
@@ -20,6 +19,7 @@ import java.util.Properties;
 
 import org.apache.log4j.Logger;
 
+import org.ejbca.util.keystore.KeyTools;
 import org.junit.Test;
 import org.signserver.validationservice.server.ValidationTestUtils;
 import static org.junit.Assert.*;

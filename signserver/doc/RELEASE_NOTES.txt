@@ -1,17 +1,3 @@
-SignServer 4.0.0
-----------------
-
-
-Notice:
- - The way to specify a worker's implementation class name in properties form
-   has changed. Previously it was specified as:
-   GLOB.WORKER4711.CLASSPATH=org.signserver.module.pdfsigner.PDFSigner
-   But now it should be specified as a worker property:
-   WORKER4711.IMPLEMENTATION_CLASS=org.signserver.module.pdfsigner.PDFSigner
-   Exported configurations might have to be adapted.
-   SignServer will try to upgrade existing configurations during startup.
-
-
 SignServer 3.7.1
 ----------------
 
@@ -37,7 +23,7 @@ New features:
 Improvements:
 
 Bug fixes:
- - Crypto token operations in the administration GUI no requires clicking
+ - Crypto token operations in the administration GUI does not require clicking
    outside of the last edited input field to be able to performe the action
    (i.e. when generating keys).
 

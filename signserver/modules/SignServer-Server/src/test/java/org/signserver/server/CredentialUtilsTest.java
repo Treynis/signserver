@@ -145,7 +145,7 @@ public class CredentialUtilsTest {
         String username = "user1";
         String password = "foo456";
         RequestContext context = new RequestContext();
-        HashMap<String, String> headers = new HashMap<>();
+        HashMap<String, String> headers = new HashMap<String, String>();
         headers.put("Authorization", "basic " + Base64.toBase64String((username + ":" + password).getBytes("UTF-8")));
         HttpServletRequest req = new MockedHttpServletRequest(headers);
         CertificateFactory factory = CertificateFactory.getInstance("X.509");
@@ -179,7 +179,7 @@ public class CredentialUtilsTest {
         String username = "user1";
         String password = "foo456";
         RequestContext context = new RequestContext();
-        HashMap<String, String> headers = new HashMap<>();
+        HashMap<String, String> headers = new HashMap<String, String>();
         headers.put("Authorization", "basic " + Base64.toBase64String((username + ":" + password).getBytes("UTF-8")));
         HttpServletRequest req = new MockedHttpServletRequest(headers);
         

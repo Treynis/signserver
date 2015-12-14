@@ -26,9 +26,9 @@ import java.util.Date;
 import java.util.List;
 import org.bouncycastle.asn1.x509.CRLDistPoint;
 import org.bouncycastle.jce.X509KeyUsage;
-import org.cesecore.certificates.crl.RevokedCertInfo;
-import org.cesecore.keys.util.KeyTools;
-import org.cesecore.util.CertTools;
+import org.ejbca.core.model.ca.crl.RevokedCertInfo;
+import org.ejbca.util.CertTools;
+import org.ejbca.util.keystore.KeyTools;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.GlobalConfiguration;
@@ -41,11 +41,10 @@ import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
 import org.signserver.validationservice.common.ValidationServiceConstants;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.WorkerConfig;
 import org.signserver.common.util.PathUtil;
-import org.signserver.testutils.ModulesTestCase;
 
 /**
  * Tests for the CRL Validator.
@@ -54,7 +53,7 @@ import org.signserver.testutils.ModulesTestCase;
  * @version $Id$
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class CRLValidatorTest extends ModulesTestCase {
+public class CRLValidatorTest {
 
     private static IGlobalConfigurationSession.IRemote gCSession;
     private static IWorkerSession.IRemote sSSession;
@@ -134,16 +133,10 @@ public class CRLValidatorTest extends ModulesTestCase {
                 new Date(0), new Date(System.currentTimeMillis() + 1000000), false, X509KeyUsage.digitalSignature | X509KeyUsage.nonRepudiation, crlDistPointCA1WithUrl);
 
         ArrayList<RevokedCertInfo> revoked = new ArrayList<RevokedCertInfo>();
-        revoked.add(new RevokedCertInfo("fingerprint".getBytes(),
-                certEndEntity2.getSerialNumber().toByteArray(),
-                new Date().getTime(),
-                RevokedCertInfo.REVOCATION_REASON_UNSPECIFIED,
-                new Date(System.currentTimeMillis() + 1000000).getTime()));
+        revoked.add(new RevokedCertInfo("fingerprint", certEndEntity2.getSerialNumber(), new Date(),
+                RevokedCertInfo.REVOKATION_REASON_UNSPECIFIED, new Date(System.currentTimeMillis() + 1000000)));
 
-        crlRootCA1 =
-                ValidationTestUtils.genCRL(certRootCA1, keysRootCA1.getPrivate(),
-                                           crlDistPointCA1WithUrl.getDistributionPoints()[0],
-                                           revoked, 24, 1);
+        crlRootCA1 = ValidationTestUtils.genCRL(certRootCA1, keysRootCA1.getPrivate(), crlDistPointCA1WithUrl.getDistributionPoints()[0], revoked, 24, 1);
 
         // Write CRL to file
         OutputStream out = null;
@@ -178,11 +171,8 @@ public class CRLValidatorTest extends ModulesTestCase {
                 new Date(0), new Date(System.currentTimeMillis() + 1000000), false, 0, crlDistPointCA2WithIssuer);
 
         ArrayList<RevokedCertInfo> revoked2 = new ArrayList<RevokedCertInfo>();
-        revoked2.add(new RevokedCertInfo("fingerprint2".getBytes(),
-                certEndEntity4.getSerialNumber().toByteArray(),
-                new Date().getTime(),
-                RevokedCertInfo.REVOCATION_REASON_UNSPECIFIED,
-                new Date(System.currentTimeMillis() + 1000000).getTime()));
+        revoked2.add(new RevokedCertInfo("fingerprint2", certEndEntity4.getSerialNumber(), new Date(),
+                RevokedCertInfo.REVOKATION_REASON_UNSPECIFIED, new Date(System.currentTimeMillis() + 1000000)));
 
         crlRootCA2 = ValidationTestUtils.genCRL(certRootCA2, keysRootCA2.getPrivate(), crlDistPointCA2WithIssuer.getDistributionPoints()[0], revoked2, 24, 1);
 
@@ -201,15 +191,8 @@ public class CRLValidatorTest extends ModulesTestCase {
         chain2.add(certRootCA2);
 
         // Setup worker
-        sSSession.setWorkerProperty(15, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.validationservice.server.ValidationServiceWorker");
-        sSSession.setWorkerProperty(15, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.signserver.server.cryptotokens.KeystoreCryptoToken");
-        sSSession.setWorkerProperty(15, "KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" + File.separator +
-                "test" + File.separator + "dss10" + File.separator +
-                "dss10_signer1.p12");
-        sSSession.setWorkerProperty(15, "KEYSTORETYPE", "PKCS12");
-        sSSession.setWorkerProperty(15, "KEYSTOREPASSWORD", "foo123");
-        sSSession.setWorkerProperty(15, "DEFAULTKEY", "Signer 1");
+        gCSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER15.CLASSPATH", "org.signserver.validationservice.server.ValidationServiceWorker");
+        gCSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER15.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.HardCodedCryptoToken");
         sSSession.setWorkerProperty(15, "AUTHTYPE", "NOAUTH");
         sSSession.setWorkerProperty(15, "VAL1.CLASSPATH", "org.signserver.validationservice.server.CRLValidator");
         sSSession.setWorkerProperty(15, "VAL1.ISSUER1.CERTCHAIN", ValidationTestUtils.genPEMStringFromChain(chain1));
@@ -432,6 +415,16 @@ public class CRLValidatorTest extends ModulesTestCase {
     // TODO: Add more tests for the CRLValidator here
     @Test
     public void test99RemoveDatabase() throws Exception {
-        removeWorker(15);
+        gCSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER15.CLASSPATH");
+        gCSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER15.SIGNERTOKEN.CLASSPATH");
+
+        sSSession.removeWorkerProperty(15, "AUTHTYPE");
+        sSSession.removeWorkerProperty(15, "VAL1.CLASSPATH");
+        sSSession.removeWorkerProperty(15, "VAL1.ISSUER1.CERTCHAIN");
+        sSSession.removeWorkerProperty(15, "VAL1.ISSUER1.CRLPATHS");
+        sSSession.removeWorkerProperty(15, "VAL1.ISSUER2.CERTCHAIN");
+        sSSession.removeWorkerProperty(15, "VAL1.ISSUER2.CRLPATHS");
+
+        sSSession.reloadConfiguration(15);
     }
 }

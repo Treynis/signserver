@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.server;
 
-import java.io.File;
 import java.math.BigInteger;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -27,13 +26,13 @@ import org.signserver.common.*;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.module.tsa.TimeStampSigner;
+import org.signserver.server.cryptotokens.HardCodedCryptoToken;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
 import org.junit.Test;
 import org.signserver.common.util.PathUtil;
-import org.signserver.server.cryptotokens.KeystoreCryptoToken;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class CustomAuthTest extends ModulesTestCase {
@@ -61,13 +60,12 @@ public class CustomAuthTest extends ModulesTestCase {
 
     @Test
     public void test00SetupDatabase() throws Exception {
-        workerSession.setWorkerProperty(9, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.tsa.TimeStampSigner");
-        workerSession.setWorkerProperty(9, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.signserver.server.cryptotokens.P12CryptoToken");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER9.CLASSPATH", "org.signserver.module.tsa.TimeStampSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER9.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.P12CryptoToken");
 
         workerSession.setWorkerProperty(9, "AUTHTYPE", "org.signserver.server.DummyAuthorizer");
         workerSession.setWorkerProperty(9, "TESTAUTHPROP", "DATA");
         workerSession.setWorkerProperty(9, "KEYSTOREPATH", signserverhome + "/res/test/dss10/dss10_tssigner1.p12");
-        workerSession.setWorkerProperty(9, "KEYSTORETYPE", "PKCS12");
         workerSession.setWorkerProperty(9, "KEYSTOREPASSWORD", "foo123");
         workerSession.setWorkerProperty(9, "DEFAULTKEY", "TS Signer 1");
         workerSession.setWorkerProperty(9, TimeStampSigner.DEFAULTTSAPOLICYOID, "1.0.1.2.33");
@@ -95,16 +93,8 @@ public class CustomAuthTest extends ModulesTestCase {
         } catch (IllegalRequestException e) {
         }
 
-        final Properties props = new Properties();
-        final KeystoreCryptoToken token = new KeystoreCryptoToken();
-        
-        props.setProperty("KEYSTORETYPE", "PKCS12");
-        props.setProperty("KEYSTOREPATH", getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-        props.setProperty("KEYSTOREPASSWORD", "foo123");
-        props.setProperty("DEFAULTKEY", "TS Signer 1");
-        token.init(1, props);
+        HardCodedCryptoToken token = new HardCodedCryptoToken();
+        token.init(1, new Properties());
 
         // This test apparently borrows the signer certificate to test with
         // as if it were a client authentication certificate. Well I guess it work...

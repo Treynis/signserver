@@ -25,7 +25,7 @@ import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
 import org.apache.log4j.Logger;
 import org.apache.commons.io.IOUtils;
-import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.util.Base64;
 import org.signserver.client.clientws.ClientWS;
 import org.signserver.client.clientws.ClientWSService;
 import org.signserver.client.clientws.DataResponse;

@@ -24,7 +24,6 @@ import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.InvalidWorkerIdException;
-import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 
 /**
@@ -33,7 +32,7 @@ import org.signserver.common.WorkerStatus;
  * @version $Id$
  */
 public class GetStatusCommand extends AbstractCommand {
-
+    
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(GetStatusCommand.class);
 
@@ -83,7 +82,7 @@ public class GetStatusCommand extends AbstractCommand {
                 }
 
                 try {
-                    List<Integer> workers = helper.getWorkerSession().getWorkers(WorkerConfig.WORKERTYPE_ALL);
+                    List<Integer> workers = helper.getWorkerSession().getWorkers(GlobalConfiguration.WORKERTYPE_ALL);
 
                     Collections.sort(workers);
 

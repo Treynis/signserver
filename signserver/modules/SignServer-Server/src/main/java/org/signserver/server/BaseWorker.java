@@ -107,6 +107,10 @@ public abstract class BaseWorker implements IWorker {
         return result;
     }
 
+    public void destroy() {
+        LOG.debug("Destroy called");
+    }
+    
     @Override
     public WorkerConfig getConfig() {
         return config;

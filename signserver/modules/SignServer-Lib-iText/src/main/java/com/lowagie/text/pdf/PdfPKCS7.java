@@ -503,8 +503,7 @@ public class PdfPKCS7 {
                 if (ts != null) {
                     ASN1Set attributeValues = ts.getAttrValues();
                     ASN1Sequence tokenSequence = ASN1Sequence.getInstance(attributeValues.getObjectAt(0));
-                    ContentInfo contentInfo =
-                            ContentInfo.getInstance(tokenSequence);
+                    ContentInfo contentInfo = new ContentInfo(tokenSequence);
                     this.timeStampToken = new TimeStampToken(contentInfo);
                 }
             }
@@ -1218,7 +1217,7 @@ public class PdfPKCS7 {
             // Add the digestAlgorithm
             v = new ASN1EncodableVector();
             v.add(new DERObjectIdentifier(digestAlgorithm));
-            v.add(DERNull.INSTANCE);
+            v.add(new DERNull());
             signerinfo.add(new DERSequence(v));
             
             // add the authenticated attribute if present
@@ -1228,7 +1227,7 @@ public class PdfPKCS7 {
             // Add the digestEncryptionAlgorithm
             v = new ASN1EncodableVector();
             v.add(new DERObjectIdentifier(digestEncryptionAlgorithm));
-            v.add(DERNull.INSTANCE);
+            v.add(new DERNull());
             signerinfo.add(new DERSequence(v));
             
             // Add the digest

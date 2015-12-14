@@ -203,7 +203,7 @@ public class HTTPDocumentSigner extends AbstractDocumentSigner {
 
             // Get the response
             final int responseCode = conn.getResponseCode();
-            responseIn = conn.getErrorStream();
+                responseIn = conn.getErrorStream();
             if (responseIn == null) {             
                 responseIn = conn.getInputStream();
             }

@@ -35,7 +35,7 @@ import javax.xml.ws.Endpoint;
 import static junit.framework.TestCase.assertNotNull;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.admin.cli.AdminCLI;
 import org.signserver.cli.CommandLineInterface;
 import org.signserver.common.CryptoTokenOfflineException;
@@ -771,9 +771,11 @@ public class RenewalWorkerTest extends AbstractTestCase {
         final String keystorePassword = "foo123";
         createEmptyKeystore("PKCS12", keystorePath, keystorePassword);
     	
-    	getWorkerSession().setWorkerProperty(signerId, WorkerConfig.IMPLEMENTATION_CLASS,
+    	getGlobalSession().setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                "WORKER" + signerId + ".CLASSPATH",
                 "org.signserver.module.renewal.worker.RenewalWorker");
-        getWorkerSession().setWorkerProperty(signerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS,
+            getGlobalSession().setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                "WORKER" + signerId + ".SIGNERTOKEN.CLASSPATH",
                 "org.signserver.server.cryptotokens.P12CryptoToken");
 
         getWorkerSession().setWorkerProperty(signerId, "NAME", signerName);
@@ -831,7 +833,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
         config.setProperty("DEFAULTKEY", "defaultKey");
         
         final String CRYPTOTOKEN_CLASSNAME =
-                "org.signserver.server.cryptotokens.KeystoreCryptoToken";
+                "org.signserver.server.cryptotokens.HardCodedCryptoToken";
         
         workerSession.setupWorker(signerId, CRYPTOTOKEN_CLASSNAME, config, new RenewalWorker() {
             @Override
@@ -867,7 +869,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
         config.setProperty("REQUESTDN", "CN=MockWorker");
         
         final String CRYPTOTOKEN_CLASSNAME =
-                "org.signserver.server.cryptotokens.KeystoreCryptoToken";
+                "org.signserver.server.cryptotokens.HardCodedCryptoToken";
         
         workerSession.setupWorker(signerId, CRYPTOTOKEN_CLASSNAME, config, new BaseSigner() {
             @Override

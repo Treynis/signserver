@@ -130,46 +130,46 @@ public class SODFile extends PassportFile
             algorithmParameters.put("SHA1withRSAandMGF1".toLowerCase(Locale.ENGLISH),
                     new RSASSAPSSparams(
                         new AlgorithmIdentifier(X509ObjectIdentifiers.id_SHA1,
-                            DERNull.INSTANCE),
+                            new DERNull()),
                         new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                         new AlgorithmIdentifier(X509ObjectIdentifiers.id_SHA1,
-                            DERNull.INSTANCE)),
+                            new DERNull())),
                         new ASN1Integer(20), new ASN1Integer(1)));
             
             algorithmParameters.put("SHA224withRSAandMGF1".toLowerCase(Locale.ENGLISH),
                     new RSASSAPSSparams(
                         new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha224,
-                            DERNull.INSTANCE),
+                            new DERNull()),
                         new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                         new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha224,
-                            DERNull.INSTANCE)),
+                            new DERNull())),
                         new ASN1Integer(28), new ASN1Integer(1)));
             
             algorithmParameters.put("SHA256withRSAandMGF1".toLowerCase(Locale.ENGLISH),
                     new RSASSAPSSparams(
                         new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha256,
-                            DERNull.INSTANCE),
+                            new DERNull()),
                         new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                         new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha256,
-                            DERNull.INSTANCE)),
+                            new DERNull())),
                         new ASN1Integer(32), new ASN1Integer(1)));
             
             algorithmParameters.put("SHA384withRSAandMGF1".toLowerCase(Locale.ENGLISH),
                     new RSASSAPSSparams(
                         new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha384,
-                            DERNull.INSTANCE),
+                            new DERNull()),
                         new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                         new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha384,
-                            DERNull.INSTANCE)),
+                            new DERNull())),
                         new ASN1Integer(48), new ASN1Integer(1)));
             
             algorithmParameters.put("SHA512withRSAandMGF1".toLowerCase(Locale.ENGLISH),
                     new RSASSAPSSparams(
                         new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha512,
-                            DERNull.INSTANCE),
+                            new DERNull()),
                         new AlgorithmIdentifier(PKCS1_MGF1_OID, 
                         new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha512,
-                            DERNull.INSTANCE)),
+                            new DERNull())),
                         new ASN1Integer(64), new ASN1Integer(1)));
         }
 
@@ -595,7 +595,7 @@ public class SODFile extends PassportFile
 			LOGGER.warning("Found " + signerInfos.size() + " signerInfos");
 		}
 		for (int i = 0; i < signerInfos.size(); i++) {
-			SignerInfo info = SignerInfo.getInstance((DERSequence)signerInfos.getObjectAt(i));
+			SignerInfo info = new SignerInfo((DERSequence)signerInfos.getObjectAt(i));
 			return info;
 		}
 		return null;

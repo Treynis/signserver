@@ -358,7 +358,12 @@ public class WorkerSessionMock implements IWorkerSession.ILocal,
 
     public void setupWorker(int workerId, String cryptoToken, WorkerConfig config,
             IProcessable worker) {
-        config.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, cryptoToken);
+        globalConfig.setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                    GlobalConfiguration.WORKERPROPERTY_BASE + workerId
+                    + GlobalConfiguration.OLD_CRYPTOTOKENPROPERTY_BASE
+                    + GlobalConfiguration.CRYPTOTOKENPROPERTY_CLASSPATH,
+                    cryptoToken);
+
         workers.put(workerId, new Worker(worker, config));
     }
 

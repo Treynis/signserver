@@ -56,7 +56,7 @@ import org.bouncycastle.cms.SignerInfoGeneratorBuilder;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
-import org.cesecore.util.Base64;
+import org.ejbca.util.Base64;
 import org.signserver.common.*;
 import org.signserver.module.tsa.bc.MSAuthCodeCMSUtils;
 import org.signserver.module.tsa.bc.TimeStampRequest;
@@ -273,7 +273,7 @@ public class MSAuthCodeTimeStampSigner extends BaseSigner {
             ASN1ObjectIdentifier oid = ASN1ObjectIdentifier.getInstance(asn1seq.getObjectAt(0));
             ASN1Sequence asn1seq1 = ASN1Sequence.getInstance(asn1seq.getObjectAt(1));
 
-            final ContentInfo ci = ContentInfo.getInstance(asn1seq1);
+            final ContentInfo ci = new ContentInfo(asn1seq1);
             
             if (!oid.getId().equals(msOID)) {
                     LOG.error("Invalid OID in request: " + oid.getId());

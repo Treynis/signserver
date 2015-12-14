@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.module.tsa;
 
-import java.io.File;
 import java.math.BigInteger;
 import java.security.Security;
 import java.util.Arrays;
@@ -38,10 +37,10 @@ import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.LocalComputerTimeSource;
+import org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases;
 import org.signserver.server.log.LogMap;
 import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
 import org.signserver.test.utils.mock.WorkerSessionMock;
-import org.signserver.testutils.ModulesTestCase;
 
 /**
  * Unit tests for the TimeStampSigner.
@@ -51,7 +50,7 @@ import org.signserver.testutils.ModulesTestCase;
  * @author Markus Kilås
  * @version $Id$
  */
-public class TimeStampSignerUnitTest extends ModulesTestCase {
+public class TimeStampSignerUnitTest {
 
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(TimeStampSignerUnitTest.class);
@@ -62,11 +61,8 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
     private static final int WORKER4 = 8893;
     private static final String NAME = "NAME";
     private static final String AUTHTYPE = "AUTHTYPE";
-    private static final String CRYPTOTOKEN_CLASSNAME =
-            "org.signserver.server.cryptotokens.KeystoreCryptoToken";
+    private static final String CRYPTOTOKEN_CLASSNAME = "org.signserver.server.cryptotokens.HardCodedCryptoToken";
 
-    private static final String KEY_ALIAS = "TS Signer 1";
-    
     private IGlobalConfigurationSession.IRemote globalConfig;
     private IWorkerSession.IRemote workerSession;
 
@@ -136,7 +132,7 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
                 logMap.get(ITimeStampLogger.LOG_TSA_TIMESTAMPREQUEST_ENCODED).lastIndexOf('\n'));
     }
 
-    private void setupWorkers() throws Exception {
+    private void setupWorkers() {
 
         final GlobalConfigurationSessionMock globalMock
                 = new GlobalConfigurationSessionMock();
@@ -151,13 +147,7 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             config.setProperty(NAME, "TestTimeStampSigner1");
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
 
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new TimeStampSigner() {
@@ -177,15 +167,9 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             config.setProperty(NAME, "TestTimeStampSigner3");
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
             config.setProperty("ACCEPTEDEXTENSIONS", "1.2.74;1.2.7.2;1.2.7.8");
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            
+
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new TimeStampSigner() {
                 @Override
@@ -204,15 +188,9 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             config.setProperty(NAME, "TestTimeStampSigner2");
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
             config.setProperty("ACCEPTEDEXTENSIONS", "");
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            
+
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new TimeStampSigner() {
                 @Override
@@ -231,14 +209,9 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             config.setProperty(NAME, "TestTimeStampSigner3");
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
             config.setProperty("ACCEPTEDEXTENSIONS", "1.2.74; 1.2.7.2; 1.2.7.8");
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
+
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new TimeStampSigner() {
                 @Override

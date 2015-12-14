@@ -20,7 +20,7 @@ import java.util.List;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.*;
@@ -66,15 +66,8 @@ public class XMLValidatorTest extends ModulesTestCase {
     @Test
     public void test00SetupDatabase() throws Exception {
         // VALIDATION SERVICE
-        workerSession.setWorkerProperty(17, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.validationservice.server.ValidationServiceWorker");
-        workerSession.setWorkerProperty(17, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.signserver.server.cryptotokens.KeystoreCryptoToken");
-        workerSession.setWorkerProperty(17, "KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" + File.separator +
-                        "test" + File.separator + "dss10" + File.separator +
-                        "dss10_signer1.p12");
-        workerSession.setWorkerProperty(17, "KEYSTORETYPE", "PKCS12");
-        workerSession.setWorkerProperty(17, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(17, "DEFAULTKEY", "Signer 1");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.CLASSPATH", "org.signserver.validationservice.server.ValidationServiceWorker");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.HardCodedCryptoToken");
         workerSession.setWorkerProperty(17, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(17, "NAME", VALIDATION_WORKER);
         workerSession.setWorkerProperty(17, "VAL1.CLASSPATH", "org.signserver.validationservice.server.DummyValidator");
@@ -457,8 +450,18 @@ public class XMLValidatorTest extends ModulesTestCase {
     public void test99TearDownDatabase() throws Exception {
         removeWorker(WORKERID);
 
+        workerSession.removeWorkerProperty(WORKERID, "RETURNDOCUMENT");
+        workerSession.removeWorkerProperty(WORKERID, "STRIPSIGNATURE");
+        workerSession.reloadConfiguration(WORKERID);
+
         // Remove validation service worker
-        removeWorker(17);
+        globalSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.CLASSPATH");
+        globalSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.SIGNERTOKEN.CLASSPATH");
+        workerSession.removeWorkerProperty(17, "AUTHTYPE");
+        workerSession.removeWorkerProperty(17, "VAL1.CLASSPATH");
+        workerSession.removeWorkerProperty(17, "VAL1.ISSUER1.CERTCHAIN");
+        workerSession.removeWorkerProperty(17, "VAL1.TESTPROP");
+        workerSession.removeWorkerProperty(17, "VAL1.REVOKED");
     }
 
     private void checkXmlWellFormed(InputStream in) {

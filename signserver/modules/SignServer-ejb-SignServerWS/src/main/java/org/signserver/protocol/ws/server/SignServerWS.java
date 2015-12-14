@@ -113,7 +113,7 @@ public class SignServerWS implements ISignServerWS {
             retval.add(resp);
         } else {
             // All Workers
-            List<Integer> signers = getWorkerSession().getWorkers(WorkerConfig.WORKERTYPE_PROCESSABLE);
+            List<Integer> signers = getWorkerSession().getWorkers(GlobalConfiguration.WORKERTYPE_PROCESSABLE);
             for (Iterator<Integer> iterator = signers.iterator(); iterator.hasNext();) {
                 int next = iterator.next();
                 if (errors.isEmpty()) {
@@ -164,7 +164,7 @@ public class SignServerWS implements ISignServerWS {
 
         // Add credentials to the context
         CredentialUtils.addToRequestContext(requestContext, servletRequest, clientCertificate);
-
+        
         final LogMap logMap = LogMap.getInstance(requestContext);
 
         final String xForwardedFor = servletRequest.getHeader(RequestContext.X_FORWARDED_FOR);
@@ -279,9 +279,8 @@ public class SignServerWS implements ISignServerWS {
         if (workerIdOrName.substring(0, 1).matches("\\d")) {
             retval = Integer.parseInt(workerIdOrName);
         } else {
-            try {
-                retval = getWorkerSession().getWorkerId(workerIdOrName);
-            } catch (InvalidWorkerIdException ex) {
+            retval = getWorkerSession().getWorkerId(workerIdOrName);
+            if (retval == 0) {
                 throw new IllegalRequestException("Error: No worker with the given name could be found");
             }
         }
