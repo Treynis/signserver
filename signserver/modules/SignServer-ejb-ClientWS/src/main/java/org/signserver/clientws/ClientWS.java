@@ -114,7 +114,10 @@ public class ClientWS {
                 LOG.debug("Service unvailable", ex);
             }
             throw new InternalServerException("Service unavailable: " + ex.getMessage());
-        } catch (AuthorizationRequiredException | AccessDeniedException | InvalidWorkerIdException ex) {
+        } catch (AuthorizationRequiredException ex) {
+            LOG.info("Request failed: " + ex.getMessage());
+            throw new RequestFailedException(ex.getMessage());
+        } catch (AccessDeniedException ex) {
             LOG.info("Request failed: " + ex.getMessage());
             throw new RequestFailedException(ex.getMessage());
         } catch (SignServerException ex) {
@@ -215,7 +218,13 @@ public class ClientWS {
                 LOG.debug("Service unvailable", ex);
             }
             throw new InternalServerException("Service unavailable: " + ex.getMessage());
-        } catch (IllegalRequestException | AuthorizationRequiredException | AccessDeniedException | InvalidWorkerIdException ex) {
+        } catch (IllegalRequestException ex) {
+            LOG.info("Request failed: " + ex.getMessage());
+            throw new RequestFailedException(ex.getMessage());
+        } catch (AuthorizationRequiredException ex) {
+            LOG.info("Request failed: " + ex.getMessage());
+            throw new RequestFailedException(ex.getMessage());
+        } catch (AccessDeniedException ex) {
             LOG.info("Request failed: " + ex.getMessage());
             throw new RequestFailedException(ex.getMessage());
         } catch (SignServerException ex) {
@@ -246,7 +255,7 @@ public class ClientWS {
         return null;
     }
     
-    private int getWorkerId(String workerIdOrName) throws InvalidWorkerIdException {
+    private int getWorkerId(String workerIdOrName) {
         final int retval;
 
         if (workerIdOrName.substring(0, 1).matches("\\d")) {
@@ -266,7 +275,7 @@ public class ClientWS {
 
         // Add credentials to the context
         CredentialUtils.addToRequestContext(requestContext, servletRequest, clientCertificate);
-
+        
         final LogMap logMap = LogMap.getInstance(requestContext);
 
         // Add HTTP specific log entries

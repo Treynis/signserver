@@ -27,6 +27,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
+import org.ejbca.util.CertTools;
 import org.jdesktop.application.Application;
 import org.jdesktop.application.ResourceMap;
 import org.jdesktop.application.SingleFrameApplication;
@@ -34,7 +35,6 @@ import org.signserver.admin.gui.adminws.gen.AdminWS;
 import org.signserver.client.api.ISigningAndValidation;
 import org.signserver.client.api.SigningAndValidationEJB;
 import org.signserver.client.api.SigningAndValidationWS;
-import org.signserver.common.SignServerUtil;
 
 /**
  * The main class of the application.
@@ -157,8 +157,8 @@ public class SignServerAdminGUIApplication extends SingleFrameApplication {
                 if (line.hasOption(OPTION_BASEDIR)) {
                     baseDir = new File(line.getOptionValue(OPTION_BASEDIR));
                 }
-
-                SignServerUtil.installBCProvider();
+                
+                CertTools.installBCProvider();
 
                 final ConnectDialog dlg = new ConnectDialog(null, true,
                         connectFile, defaultConnectFile, baseDir, Protocol.WS == protocol);
@@ -188,7 +188,6 @@ public class SignServerAdminGUIApplication extends SingleFrameApplication {
      */
     public static AdminWS getAdminWS() {
         if (adminWS == null) {
-            SignServerUtil.installBCProvider();
 
             final ConnectDialog dlg = new ConnectDialog(null, true,
                     connectFile, defaultConnectFile, baseDir, Protocol.WS == protocol);

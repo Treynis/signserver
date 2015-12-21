@@ -49,7 +49,7 @@ import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.cms.SignerInformationVerifier;
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
 import org.bouncycastle.tsp.*;
-import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.util.Base64;
 import org.junit.After;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
@@ -426,10 +426,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
         final TimeStampToken token = timeStampResponse.getTimeStampToken();
         
         try {
-                final SignerInformationVerifier infoVerifier =
-                        new JcaSimpleSignerInfoVerifierBuilder().setProvider("BC").build((X509Certificate) cert);
-
-                token.validate(infoVerifier);
+        	
+        	token.validate(cert, "BC");
+        	
         } catch (TSPException e) {
         	fail("Failed to validate response token");
         }
@@ -1177,7 +1176,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
     @Test
     public void test34TSANameFromCert() throws Exception {
        workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.TSA);
-        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.TSA_FROM_CERT, "true");
+       workerSession.setWorkerProperty(WORKER1, TimeStampSigner.TSA_FROM_CERT, "true");
        workerSession.reloadConfiguration(WORKER1);
        
        final TimeStampResponse response = assertSuccessfulTimestamp(WORKER1, true);

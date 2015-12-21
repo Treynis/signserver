@@ -21,8 +21,8 @@ import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Date;
-import org.cesecore.keys.util.KeyTools;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
+import org.ejbca.util.keystore.KeyTools;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.SignServerUtil;
@@ -51,14 +51,12 @@ public class ValidationSerializationTest {
 
     @Test
     public void test01ValidationSerialization() throws Exception {
-        KeyPair rootCA1Keys = KeyTools.genKeys("1024", "RSA");
-        validRootCA1 = ValidationTestUtils.genCert("CN=ValidRootCA1", "CN=ValidRootCA1", rootCA1Keys.getPrivate(), rootCA1Keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), true);
+        KeyPair keys = KeyTools.genKeys("1024", "RSA");
+        validRootCA1 = ValidationTestUtils.genCert("CN=ValidRootCA1", "CN=ValidRootCA1", keys.getPrivate(), keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), true);
 
-        KeyPair subCA1Keys = KeyTools.genKeys("1024", "RSA");
-        validSubCA1 = ValidationTestUtils.genCert("CN=ValidSubCA1", "CN=ValidRootCA1", rootCA1Keys.getPrivate(), subCA1Keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), true);
+        validSubCA1 = ValidationTestUtils.genCert("CN=ValidSubCA1", "CN=ValidRootCA1", keys.getPrivate(), keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), true);
 
-        KeyPair validCert1Keys = KeyTools.genKeys("1024", "RSA");
-        validCert1 = ValidationTestUtils.genCert("CN=ValidCert1", "CN=ValidSubCA1", subCA1Keys.getPrivate(), validCert1Keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), false);
+        validCert1 = ValidationTestUtils.genCert("CN=ValidCert1", "CN=ValidSubCA1", keys.getPrivate(), keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), false);
 
         ArrayList<Certificate> caChain = new ArrayList<Certificate>();
         caChain.add(validSubCA1);

@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.ejb;
 
-import java.io.File;
 import java.security.cert.Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,6 +37,7 @@ import org.signserver.ejb.interfaces.IWorkerSession;
 public class WorkerSessionBeanTest extends ModulesTestCase {
 
     private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
     
     /**
      * Set up the test case
@@ -49,18 +49,13 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
 
     @Test
     public void test00SetupDatabase() throws Exception {
-        workerSession.setWorkerProperty(3, WorkerConfig.IMPLEMENTATION_CLASS,
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                "WORKER3.CLASSPATH",
                 "org.signserver.module.mrtdsigner.MRTDSigner");
-        workerSession.setWorkerProperty(3, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS,
-                "org.signserver.server.cryptotokens.KeystoreCryptoToken");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                "WORKER3.SIGNERTOKEN.CLASSPATH",
+                "org.signserver.server.cryptotokens.HardCodedCryptoToken");
 
-        workerSession.setWorkerProperty(3, "KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" + File.separator +
-                        "test" + File.separator + "dss10" + File.separator +
-                        "dss10_signer1.p12");
-        workerSession.setWorkerProperty(3, "KEYSTORETYPE", "PKCS12");
-        workerSession.setWorkerProperty(3, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(3, "DEFAULTKEY", "Signer 1");
         workerSession.setWorkerProperty(3, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(3, "NAME", "testWorker");
         workerSession.reloadConfiguration(3);

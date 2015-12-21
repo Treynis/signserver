@@ -16,7 +16,7 @@ import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.List;
 import javax.persistence.EntityManager;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
@@ -64,7 +64,6 @@ public class DummyAuthorizer implements IAuthorizer {
             throw new IllegalRequestException("Not authorized");
         }
         if (clientCert != null && (CertTools.stringToBCDNString(clientCert.getSubjectDN().toString()).equals("CN=timestamptest,O=PrimeKey Solution AB")
-                || CertTools.stringToBCDNString(clientCert.getSubjectDN().toString()).equals("CN=TS Signer 1,OU=Testing,O=SignServer,C=SE")
                 || CertTools.stringToBCDNString(clientCert.getSubjectDN().toString()).equals("CN=Signer 4,OU=Testing,O=SignServer,C=SE")
                 || clientCert.getSerialNumber().toString(16).equalsIgnoreCase("58ece0453711fe20"))) {
             throw new IllegalRequestException("Not authorized");

@@ -47,7 +47,7 @@ import org.bouncycastle.tsp.TSPAlgorithms;
 import org.bouncycastle.tsp.TSPException;
 import org.bouncycastle.tsp.TimeStampResponse;
 import org.bouncycastle.tsp.TimeStampToken;
-import org.cesecore.util.Base64;
+import org.ejbca.util.Base64;
 import org.signserver.common.*;
 import org.signserver.server.ITimeSource;
 import org.signserver.server.WorkerContext;
@@ -343,7 +343,7 @@ public class TimeStampSigner extends BaseSigner {
         
         maxSerialNumberLength = DEFAULT_MAXSERIALNUMBERLENGTH;
         final String maxSerialNumberLengthProp = config.getProperty(MAXSERIALNUMBERLENGTH);
-        
+
         if (maxSerialNumberLengthProp != null) {
             String serialNumberError = null;
             try {
@@ -383,7 +383,7 @@ public class TimeStampSigner extends BaseSigner {
         if (ordering && !includeOrdering) {
             configErrors.add("INCLUDEORDERING can not be set to \"false\" when ORDERING is set to \"true\"");
         }
-        
+
         if (hasSetIncludeCertificateLevels && includeCertificateLevels == 0) {
             configErrors.add("Illegal value for property " + WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS + ". Only numbers >= 1 supported.");
         }

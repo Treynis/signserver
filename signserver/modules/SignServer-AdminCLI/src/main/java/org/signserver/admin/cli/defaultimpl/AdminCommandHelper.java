@@ -14,16 +14,13 @@ package org.signserver.admin.cli.defaultimpl;
 
 import java.rmi.RemoteException;
 import java.util.Collection;
-import java.util.logging.Level;
 import javax.naming.NamingException;
 import org.apache.log4j.Logger;
 import org.cesecore.audit.audit.SecurityEventsAuditorSessionRemote;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.common.CESeCoreModules;
 import org.signserver.common.GlobalConfiguration;
-import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.ServiceLocator;
-import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.statusrepo.IStatusRepositorySession;
@@ -132,9 +129,8 @@ public class AdminCommandHelper {
         if (workerIdOrName.substring(0, 1).matches("\\d")) {
             retval = Integer.parseInt(workerIdOrName);
         } else {
-            try {
-                retval = getWorkerSession().getWorkerId(workerIdOrName);
-            } catch (InvalidWorkerIdException ex) {
+            retval = getWorkerSession().getWorkerId(workerIdOrName);
+            if (retval == 0) {
                 throw new IllegalCommandArgumentsException("Error: No worker with the given name could be found");
             }
         }
@@ -148,7 +144,7 @@ public class AdminCommandHelper {
      * @throws RemoteException 
      */
     public void checkThatWorkerIsProcessable(int signerid) throws RemoteException, IllegalCommandArgumentsException {
-        Collection<Integer> signerIds = getWorkerSession().getWorkers(WorkerConfig.WORKERTYPE_PROCESSABLE);
+        Collection<Integer> signerIds = getWorkerSession().getWorkers(GlobalConfiguration.WORKERTYPE_PROCESSABLE);
         if (!signerIds.contains(new Integer(signerid))) {
             throw new IllegalCommandArgumentsException("Error: given workerId doesn't seem to point to any processable worker in the system.");
         }

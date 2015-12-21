@@ -16,7 +16,6 @@ import javax.ejb.Local;
 import javax.ejb.Remote;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
-import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
@@ -47,7 +46,7 @@ public interface IDispatcherWorkerSession {
     /**
      * @see IWorkerSession#getWorkerId(java.lang.String)
      */
-    int getWorkerId(String workerName) throws InvalidWorkerIdException;
+    int getWorkerId(String workerName);
 
     /** Remote view. */
     @Remote

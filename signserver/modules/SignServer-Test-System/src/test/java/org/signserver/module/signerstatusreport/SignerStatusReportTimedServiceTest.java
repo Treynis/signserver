@@ -18,12 +18,12 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerStatus;
 import org.signserver.testutils.ModulesTestCase;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.WorkerConfig;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
 
@@ -101,7 +101,8 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
         addDummySigner(WORKERID_SIGNER3, WORKER_SIGNER3, false);
 
         // Setup service
-        workerSession.setWorkerProperty(WORKERID_SERVICE, WorkerConfig.IMPLEMENTATION_CLASS,
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+            "WORKER" + WORKERID_SERVICE + ".CLASSPATH",
             "org.signserver.server.timedservices.SignerStatusReportTimedService");
 
         workerSession.setWorkerProperty(WORKERID_SERVICE, "WORKERS",

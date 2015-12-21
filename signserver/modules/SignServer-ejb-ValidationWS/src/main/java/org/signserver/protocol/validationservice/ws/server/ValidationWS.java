@@ -29,8 +29,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
 import org.apache.log4j.Logger;
-import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.Base64;
+import org.ejbca.util.CertTools;
 import org.signserver.common.*;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
@@ -126,15 +126,11 @@ public class ValidationWS implements IValidationWS {
         if (serviceName.substring(0, 1).matches("\\d")) {
             retval = Integer.parseInt(serviceName);
         } else {
-            try {
-                retval = getWorkerSession().getWorkerId(serviceName);
-            } catch (InvalidWorkerIdException ex) {
-                retval = 0;
-            }
+            retval = getWorkerSession().getWorkerId(serviceName);
         }
 
         if (retval != 0) {
-            String classPath = getWorkerSession().getCurrentWorkerConfig(retval).getImplementationClass();
+            String classPath = getGlobalConfigurationSession().getGlobalConfiguration().getProperty(GlobalConfiguration.SCOPE_GLOBAL, GlobalConfiguration.WORKERPROPERTY_BASE + retval + GlobalConfiguration.WORKERPROPERTY_CLASSPATH);
             if (classPath == null || !classPath.trim().equals(ValidationServiceWorker.class.getName())) {
                 retval = 0;
             }

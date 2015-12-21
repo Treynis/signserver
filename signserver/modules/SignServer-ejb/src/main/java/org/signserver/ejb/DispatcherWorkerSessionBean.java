@@ -23,8 +23,6 @@ import org.apache.log4j.Logger;
 import org.cesecore.audit.log.SecurityEventsLoggerSessionLocal;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
-import org.signserver.common.InvalidWorkerIdException;
-import org.signserver.common.NoSuchWorkerException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
@@ -34,7 +32,7 @@ import org.signserver.ejb.interfaces.IDispatcherWorkerSession;
 import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.ejb.interfaces.IInternalWorkerSession;
 import org.signserver.ejb.interfaces.IWorkerSession;
-import org.signserver.ejb.worker.impl.WorkerManagerSingletonBean;
+import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
 import org.signserver.server.entities.FileBasedKeyUsageCounterDataService;
 import org.signserver.server.entities.IKeyUsageCounterDataService;
 import org.signserver.server.entities.KeyUsageCounterDataService;
@@ -62,7 +60,7 @@ public class DispatcherWorkerSessionBean implements IDispatcherWorkerSession.ILo
     private IGlobalConfigurationSession.ILocal globalConfigurationSession;
 
     @EJB
-    private WorkerManagerSingletonBean workerManagerSession;
+    private IWorkerManagerSessionLocal workerManagerSession;
 
     @EJB
     private SecurityEventsLoggerSessionLocal logSession;
@@ -89,7 +87,7 @@ public class DispatcherWorkerSessionBean implements IDispatcherWorkerSession.ILo
             }
             keyUsageCounterDataService = new KeyUsageCounterDataService(em);
         }
-        processImpl = new WorkerProcessImpl(em, keyUsageCounterDataService, workerManagerSession, logSession);
+        processImpl = new WorkerProcessImpl(em, keyUsageCounterDataService, globalConfigurationSession, workerManagerSession, logSession);
         
         // XXX The lookups will fail on GlassFish V2
         // When we no longer support GFv2 we can refactor this code
@@ -134,12 +132,8 @@ public class DispatcherWorkerSessionBean implements IDispatcherWorkerSession.ILo
     }
 
     @Override
-    public int getWorkerId(String workerName) throws InvalidWorkerIdException {
-        try {
-            return processImpl.getWorkerId(workerName);
-        } catch (NoSuchWorkerException ex) {
-            throw new InvalidWorkerIdException(ex.getMessage());
-        }
+    public int getWorkerId(String workerName) {
+        return processImpl.getWorkerId(workerName);
     }
 
 }

@@ -20,7 +20,6 @@ import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
-import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
@@ -93,7 +92,9 @@ public class FirstActiveDispatcher extends BaseDispatcher {
         for (String workerName : workers) {
             try {
                 id = workerSession.getWorkerId(workerName);
-                if (id == workerId) {
+                if (id == 0) {
+                    LOG.warn("Non existing worker: \"" + workerName + "\"");
+                } else if (id == workerId) {
                     LOG.warn("Ignoring dispatching to it self (worker "
                             + id + ")");
                 } else {
@@ -110,8 +111,6 @@ public class FirstActiveDispatcher extends BaseDispatcher {
                     LOG.debug("Skipping offline worker: " + id + " ("
                             + ex.getMessage() + ")");
                 }
-            } catch (InvalidWorkerIdException ex) {
-                LOG.warn("Non existing worker: \"" + workerName + "\"");
             }
         }
         if (response == null) {

@@ -36,6 +36,7 @@ import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.Extensions;
 import org.bouncycastle.asn1.x509.ExtensionsGenerator;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
+import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.operator.DigestCalculator;
@@ -224,13 +225,13 @@ public class TSPUtil
             throw new IllegalArgumentException("Certificate must have an ExtendedKeyUsage extension.");
         }
         
-        byte[]  ext = cert.getExtensionValue(Extension.extendedKeyUsage.getId());
+        byte[]  ext = cert.getExtensionValue(X509Extensions.ExtendedKeyUsage.getId());
         if (ext == null)
         {
             throw new TSPValidationException("Certificate must have an ExtendedKeyUsage extension.");
         }
         
-        if (!cert.getCriticalExtensionOIDs().contains(Extension.extendedKeyUsage.getId()))
+        if (!cert.getCriticalExtensionOIDs().contains(X509Extensions.ExtendedKeyUsage.getId()))
         {
             throw new TSPValidationException("Certificate must have an ExtendedKeyUsage extension marked as critical.");
         }
@@ -341,7 +342,7 @@ public class TSPUtil
         return MessageDigest.getInstance(digestName);
     }
 
-        static Set getCriticalExtensionOIDs(Extensions extensions)
+        static Set getCriticalExtensionOIDs(X509Extensions extensions)
     {
         if (extensions == null)
         {
@@ -351,7 +352,7 @@ public class TSPUtil
         return Collections.unmodifiableSet(new HashSet(java.util.Arrays.asList(extensions.getCriticalExtensionOIDs())));
     }
 
-    static Set getNonCriticalExtensionOIDs(Extensions extensions)
+    static Set getNonCriticalExtensionOIDs(X509Extensions extensions)
     {
         if (extensions == null)
         {

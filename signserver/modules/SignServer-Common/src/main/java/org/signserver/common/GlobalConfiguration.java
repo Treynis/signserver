@@ -13,6 +13,7 @@
 package org.signserver.common;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Properties;
 
@@ -38,8 +39,15 @@ public class GlobalConfiguration implements Serializable {
     public static final String SCOPE_NODE = "NODE.";
     public static final String STATE_INSYNC = "INSYNC";
     public static final String STATE_OUTOFSYNC = "OUTOFSYNC";
+    public static final int WORKERTYPE_ALL = 1;
+    public static final int WORKERTYPE_PROCESSABLE = 2;
+    public static final int WORKERTYPE_SERVICES = 3;
+    public static final int WORKERTYPE_MAILSIGNERS = 4;
     public static final String WORKERPROPERTY_BASE = "WORKER";
     public static final String WORKERPROPERTY_CLASSPATH = ".CLASSPATH";
+    public static final String CRYPTOTOKENPROPERTY_BASE = ".CRYPTOTOKEN";
+    public static final String OLD_CRYPTOTOKENPROPERTY_BASE = ".SIGNERTOKEN";
+    public static final String CRYPTOTOKENPROPERTY_CLASSPATH = ".CLASSPATH";
 
     private final Properties config;
     private final String state;
@@ -91,6 +99,38 @@ public class GlobalConfiguration implements Serializable {
      */
     public String getState() {
         return state;
+    }
+
+    /**
+     * Returns the classpath of the worker with id
+     *
+     * Is backward compatible with the version 1 global configuration syntax
+     * @param workerId
+     * @return the defined classpath or null of it couldn't be found.
+     */
+    public String getWorkerClassPath(int workerId) {
+        return getProperty(SCOPE_GLOBAL, WORKERPROPERTY_BASE
+                + workerId + WORKERPROPERTY_CLASSPATH);
+    }
+
+    /**
+     * Returns the property specific to a cryptotoken,
+     * This should only be used with signers and not with
+     * cryptotokens.
+     *
+     * @param workerId
+     * @param cryptotokenproperty
+     * @return return the given cryptotoken property or null.
+     */
+    public String getCryptoTokenProperty(int workerId,
+            String cryptotokenproperty) {
+        String key = WORKERPROPERTY_BASE + workerId
+                + CRYPTOTOKENPROPERTY_BASE + cryptotokenproperty;
+        if (getProperty(SCOPE_GLOBAL, key) == null) {
+            key = WORKERPROPERTY_BASE + workerId
+                    + OLD_CRYPTOTOKENPROPERTY_BASE + cryptotokenproperty;
+        }
+        return getProperty(SCOPE_GLOBAL, key);
     }
 
     /**

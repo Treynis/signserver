@@ -28,12 +28,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.log4j.Logger;
-import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.util.Base64;
 import org.signserver.common.AccessDeniedException;
 import org.signserver.common.AuthorizationRequiredException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
-import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.NoSuchWorkerException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.RequestMetadata;
@@ -117,24 +116,14 @@ public class SODProcessServlet extends AbstractProcessServlet {
             (String) req.getAttribute(ServletUtils.WORKERNAME_PROPERTY_OVERRIDE);
 
         if (workerNameOverride != null) {
-            try {
-                workerId = getWorkerSession().getWorkerId(workerNameOverride);
-            } catch (InvalidWorkerIdException ex) {
-                res.sendError(HttpServletResponse.SC_NOT_FOUND, "Worker Not Found");
-                return;
-            }
+            workerId = getWorkerSession().getWorkerId(workerNameOverride);
         } else {
-            String name = req.getParameter(WORKERNAME_PROPERTY_NAME);
+            final String name = req.getParameter(WORKERNAME_PROPERTY_NAME);
             if (name != null) {
                 LOG.debug("Found a signerName in the request: " + name);
-                try {
-                    workerId = getWorkerSession().getWorkerId(name);
-                } catch (InvalidWorkerIdException ex) {
-                    res.sendError(HttpServletResponse.SC_NOT_FOUND, "Worker Not Found");
-                    return;
-                }
+                workerId = getWorkerSession().getWorkerId(name);
             }
-            String id = req.getParameter(WORKERID_PROPERTY_NAME);
+            final String id = req.getParameter(WORKERID_PROPERTY_NAME);
             if (id != null) {
                 LOG.debug("Found a signerId in the request: " + id);
                 workerId = Integer.parseInt(id);

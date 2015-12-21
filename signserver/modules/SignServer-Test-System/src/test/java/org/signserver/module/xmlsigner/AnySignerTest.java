@@ -18,9 +18,9 @@ import java.io.FileOutputStream;
 import java.security.*;
 import java.util.Collection;
 import org.bouncycastle.jce.ECKeyUtil;
-import org.bouncycastle.pkcs.PKCS10CertificationRequest;
-import org.bouncycastle.util.encoders.Base64;
+import org.bouncycastle.jce.PKCS10CertificationRequest;
 import org.bouncycastle.util.encoders.Hex;
+import org.ejbca.util.Base64;
 import org.junit.After;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
@@ -132,12 +132,12 @@ public class AnySignerTest extends ModulesTestCase {
         final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
 
-        final PublicKey actualPubKey = getPublicKeyFromRequest(req);
+        final PublicKey actualPubKey = req.getPublicKey();
 
         assertEquals("key in request", pubKey, actualPubKey);
         
         // Test that the DN is in the correct order
-        String actualDN = req.getSubject().toString();
+        String actualDN = req.getCertificationRequestInfo().getSubject().toString();
         assertTrue("dn: " + actualDN, actualDN.startsWith("CN=test01GenerateKey") && actualDN.endsWith("C=SE"));
     }
 
@@ -187,7 +187,7 @@ public class AnySignerTest extends ModulesTestCase {
         final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
 
-        final PublicKey actualPubKey = getPublicKeyFromRequest(req);
+        final PublicKey actualPubKey = req.getPublicKey();
 
         assertEquals("key in request", pubKey, actualPubKey);
     }
@@ -207,7 +207,7 @@ public class AnySignerTest extends ModulesTestCase {
         final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
 
-        final PublicKey actualPubKey = getPublicKeyFromRequest(req);
+        final PublicKey actualPubKey = req.getPublicKey();
         final PublicKey afterConvert = ECKeyUtil.publicToExplicitParameters(
                 actualPubKey, "BC");
 
@@ -235,7 +235,7 @@ public class AnySignerTest extends ModulesTestCase {
         final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
 
-        final PublicKey actualPubKey = getPublicKeyFromRequest(req);
+        final PublicKey actualPubKey = req.getPublicKey();
         final PublicKey afterConvert = ECKeyUtil.publicToExplicitParameters(
                 actualPubKey, "BC");
 

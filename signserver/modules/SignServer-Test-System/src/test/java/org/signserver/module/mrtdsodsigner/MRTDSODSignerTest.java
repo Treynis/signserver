@@ -20,19 +20,18 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
-import org.bouncycastle.util.encoders.Base64;
 import org.junit.After;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.cli.CommandLineInterface;
 import org.signserver.common.*;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
+import org.signserver.server.cryptotokens.HardCodedCryptoToken;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
 import org.junit.Test;
 import org.signserver.ejb.interfaces.IWorkerSession;
-import org.signserver.test.utils.TestCerts;
 
 /**
  * Tests the MRTDSODSigner.
@@ -63,7 +62,49 @@ public class MRTDSODSignerTest extends ModulesTestCase {
     
     /** Worker7904: SHA256WithECDSA, DODATAGROUPHASHING=true */
     private static final int WORKER5 = 7904;
-
+    
+    private static final String SIGNER1C_CERT = 
+            "-----BEGIN CERTIFICATE-----\n" +
+            "MIIDBzCCAe+gAwIBAgIBATANBgkqhkiG9w0BAQUFADAeMRwwGgYDVQQDExNUZXN0\n" +
+            "IFYzIENlcnRpZmljYXRlMB4XDTI1MDEwMTA5MDAwMFoXDTMwMDEwMTA5MDAwMFow\n" +
+            "HjEcMBoGA1UEAxMTVGVzdCBWMyBDZXJ0aWZpY2F0ZTCCASIwDQYJKoZIhvcNAQEB\n" +
+            "BQADggEPADCCAQoCggEBALGmSmtv9FtplILfe8kOjmEBdqo96WVMp6oy8bHMC59e\n" +
+            "aE9Wu03kquoI2JMTwNcgapWKMYambzxr4rCVzBcc3kHpLaefnpq/5kFi9d8U6tgv\n" +
+            "3T8Q8ZH1kMx/CH/fYQol0nMEqgl+S557zjNdBuSD36m45cN/UmI4K8Ie3S7a1xRx\n" +
+            "2TuQZsxBxZUAU4SYgbC0DzwPXWB+EWJcGWXiqqZzKRNAnawNShkdEfVrCleg/Vff\n" +
+            "T/iYOxMu3W/LQEpe69g/HmFYwYAATl7zm4jnVAhEZbEj8J4GhHW0gEo1qrf6CugO\n" +
+            "a8/dEtGOSLLm9eilJIxydSiiTu9v9MAzs1LY3Ryt2wUCAwEAAaNQME4wHQYDVR0O\n" +
+            "BBYEFDZcLOA/gL2djDmuITgKN+4JaT8IMC0GA1UdEAQmMCSgEBgOMjAxNTAxMDEx\n" +
+            "MDAwMDChEBgOMjAyMDAxMDExMDAwMDAwDQYJKoZIhvcNAQEFBQADggEBAAGBmxuH\n" +
+            "Z7VDnJacGonJOJxk5dDTA50c7Y8ggJZ3bpRW9afKTiAryq49ozm5sOv+XzWPf8FK\n" +
+            "mbKhmknm3z8cfPL1LjA6c8dA0yvIpeT4IUYPqfWLHVpWTnbfnXQY97qKluRJF0sQ\n" +
+            "AVNzxTE+ZDHBPFKzl/t8Zo9C7/ffNwxCVl0x5Ss8ie7q0y7PIm6yqnShPofvEnBE\n" +
+            "F+dD33k8WXID2D/OLWQolrM6dnIGA9c1cFQ9v8kUXfX02fW4KGB09DAthgLv84zz\n" +
+            "UoTzGmMnqBlb99BYjoDViVq4yWcxczJcjjIuj4hSNlH0Q/uWhqpmw4dqnlbH3fGO\n" +
+            "ZvlQhYEZsj0eJMc=\n" +
+            "-----END CERTIFICATE-----";
+    
+    private static final String SIGNER1D_CERT =
+            "-----BEGIN CERTIFICATE-----\n" +
+            "MIIDBzCCAe+gAwIBAgIBATANBgkqhkiG9w0BAQUFADAeMRwwGgYDVQQDExNUZXN0\n" +
+            "IFYzIENlcnRpZmljYXRlMB4XDTE1MDEwMTA5MDAwMFoXDTIwMDEwMTA5MDAwMFow\n" +
+            "HjEcMBoGA1UEAxMTVGVzdCBWMyBDZXJ0aWZpY2F0ZTCCASIwDQYJKoZIhvcNAQEB\n" +
+            "BQADggEPADCCAQoCggEBAJq2VhSoCMsOCI4YyGAOWHJk+8GNkz9/xsqDd4+YCkXl\n" +
+            "pgBZvUrmCEhxd8IMS6LEvlAtv/TEGyh1FlL5ncUBFjPIbSvS7zM8f1gm06iNSdC9\n" +
+            "dVwTHhu+L+mvajuFWlUr/agPaCM9rvUcUE5bceRioM0ORway1uyGGg5agecLbEKE\n" +
+            "KB7mmmK4sJgwk6Ol/AbRk2bw2ep6XeZusEdplySTM3PFpbS97wRzJLQuo0pg9fZ3\n" +
+            "yTvxlgRFbOJ7uGVY1H1ac2RcgvC3E+oSxg5Hk/xFn7R1iGMukn2exPVp0lPOz+QH\n" +
+            "kgl+PefojU1MRTV4Nqf4jDp7zawhZz5yUvme3ZGg6tsCAwEAAaNQME4wHQYDVR0O\n" +
+            "BBYEFCGmTJsyJQ/esdU6lsZXShnqS0LtMC0GA1UdEAQmMCSgEBgOMjAyNTAxMDEx\n" +
+            "MDAwMDChEBgOMjAzMDAxMDExMDAwMDAwDQYJKoZIhvcNAQEFBQADggEBAB61vYmr\n" +
+            "5fEuoN78Yiu3qZhOrJzA6I4D4F6NEX3vQOTfzjcdVLVRUhOmFHi33UfPcugWU1Nt\n" +
+            "GLxa0nIdT+Pnc7AnoblBeNWNdYiM93DLHuQTwYyQVcQMlltHs2LhGesQ+LLijcTE\n" +
+            "Cm+t1/HTuhQcENbS3IUyvp1borH+txTh+YBWKVmrvis+2SlLZSF8MppNO4NysaEa\n" +
+            "ehTHOn0XLy9LSXHypmTqR/Jx5kfG12OcAx58baIMPbTbGxqR1tNceKb7+Sjy+urI\n" +
+            "sX/0d4c1L1hohgpeJ2nbSeZ3SbSx/eNqhglBls/PSdEFqTpbAK7d+LfqkjDbKWbB\n" +
+            "iVFbkjAvj/aacdk=\n" +
+            "-----END CERTIFICATE-----";
+    
     private static final String ALIAS_DEMODSEC = "MRTD Sod Signer";
     private static final String ALIAS_DEMODS1 = "demods1";
 
@@ -143,12 +184,12 @@ public class MRTDSODSignerTest extends ModulesTestCase {
         workerSession.reloadConfiguration(WORKER1B);
 
         addSigner("org.signserver.module.mrtdsodsigner.MRTDSODSigner", WORKER1C, "TestMRTDSODSigner1c", true);
-        workerSession.setWorkerProperty(WORKER1C, "SIGNERCERT", TestCerts.SIGNER1C_CERT);
-        workerSession.setWorkerProperty(WORKER1C, "SIGNERCERTCHAIN", TestCerts.SIGNER1C_CERT);
+        workerSession.setWorkerProperty(WORKER1C, "SIGNERCERT", SIGNER1C_CERT);
+        workerSession.setWorkerProperty(WORKER1C, "SIGNERCERTCHAIN", SIGNER1C_CERT);
         workerSession.reloadConfiguration(WORKER1C);
         addSigner("org.signserver.module.mrtdsodsigner.MRTDSODSigner", WORKER1D, "TestMRTDSODSigner1d", true);
-        workerSession.setWorkerProperty(WORKER1D, "SIGNERCERT", TestCerts.SIGNER1D_CERT);
-        workerSession.setWorkerProperty(WORKER1D, "SIGNERCERTCHAIN", TestCerts.SIGNER1D_CERT);
+        workerSession.setWorkerProperty(WORKER1D, "SIGNERCERT", SIGNER1D_CERT);
+        workerSession.setWorkerProperty(WORKER1D, "SIGNERCERTCHAIN", SIGNER1D_CERT);
         workerSession.reloadConfiguration(WORKER1D);
     }
 
@@ -222,8 +263,7 @@ public class MRTDSODSignerTest extends ModulesTestCase {
 
         // Set property to limit remaining cert validity
         CertificateFactory cf = CertificateFactory.getInstance("X.509", "BC");
-        X509Certificate cert =
-                (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(Base64.decode(TestCerts.CERT1.getBytes())));
+        X509Certificate cert = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(HardCodedCryptoToken.certbytes1));
 
         workerSession.uploadSignerCertificate(WORKER1, cert.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
         workerSession.setWorkerProperty(WORKER1, SignServerConstants.MINREMAININGCERTVALIDITY, "6300");
