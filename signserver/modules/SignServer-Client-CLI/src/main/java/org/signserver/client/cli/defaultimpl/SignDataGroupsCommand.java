@@ -21,8 +21,10 @@ import java.security.cert.CertificateException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
+import javax.xml.ws.soap.SOAPFaultException;
 import org.apache.commons.cli.*;
 import org.apache.log4j.Logger;
+import org.ejbca.ui.cli.util.ConsolePasswordReader;
 import org.signserver.cli.spi.AbstractCommand;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
@@ -198,7 +200,7 @@ public class SignDataGroupsCommand extends AbstractCommand {
      * @param line The command line to read from
      */
     private void parseCommandLine(final CommandLine line)
-            throws IllegalCommandArgumentsException, CommandFailureException {
+            throws IllegalCommandArgumentsException {
         if (line.hasOption(WORKERID)) {
                 workerId = Integer.parseInt(line.getOptionValue(
                     WORKERID, null));
@@ -276,7 +278,7 @@ public class SignDataGroupsCommand extends AbstractCommand {
      * @return a ConsolePasswordReader that can be used to read passwords
      */
     protected ConsolePasswordReader createConsolePasswordReader() {
-        return new DefaultConsolePasswordReader();
+        return new ConsolePasswordReader();
     }
 
     /**
@@ -354,7 +356,7 @@ public class SignDataGroupsCommand extends AbstractCommand {
      * Execute the signing operation.
      */
     public final void run() throws CommandFailureException, IllegalCommandArgumentsException {
-            final int NUM_WORKERS = 1;
+        final int NUM_WORKERS = 1;
         Worker workers[] = new Worker[NUM_WORKERS];
         PrintStream outputStream = getOutputStream();
         if (outputStream == null) {
@@ -388,14 +390,14 @@ public class SignDataGroupsCommand extends AbstractCommand {
             }
         }
 
-            // Check for error, XXX: Yes this is ugly and we should remove this stress test feature from here
+        // Check for error, XXX: Yes this is ugly and we should remove this stress test feature from here
         for (Worker worker : workers) {
             final Exception exception = worker.getException();
             if (exception != null) {
                 if (exception.getCause() instanceof AuthorizationRequiredException) {
-                final AuthorizationRequiredException authEx =
+                    final AuthorizationRequiredException authEx =
                     (AuthorizationRequiredException) exception.getCause();
-                LOG.error("Authorization required: " + authEx.getMessage());
+                    LOG.error("Authorization required: " + authEx.getMessage());
                 } else if (exception instanceof HTTPException) {
                     final HTTPException httpException = (HTTPException) exception;
                     throw new CommandFailureException("Failure: HTTP error: " +
@@ -404,7 +406,7 @@ public class SignDataGroupsCommand extends AbstractCommand {
                 } else {
                     LOG.error("Failed", worker.getException());
                 }
-                    throw new CommandFailureException(worker.getException().getMessage(), ClientCLI.RETURN_ERROR);
+                throw new CommandFailureException(worker.getException().getMessage(), ClientCLI.RETURN_ERROR);
             }
         }
 

@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer-Modules</artifactId>
-        <version>4.0.0-SNAPSHOT</version>
+        <version>3.7.1</version>
     </parent>
     <artifactId>SignServer-Test-Performance</artifactId>
     <name>SignServer-Test-Performance</name>
@@ -33,7 +33,12 @@
         <dependency>
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
-            <version>${log4j.version}</version>
+            <version>1.2.14</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>SignServer-Lib-EJBCA-Util</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>
@@ -58,7 +63,7 @@
         <dependency>
             <groupId>org.cesecore</groupId>
             <artifactId>cesecore-entity</artifactId>
-            <version>${cesecore.version}</version>
+            <version>6.1.1</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -69,12 +74,12 @@
             <artifactId>cesecore-common</artifactId>
             <groupId>org.cesecore</groupId>
             <type>jar</type>
-            <version>${cesecore.version}</version>
+            <version>6.1.1</version>
         </dependency>
         <dependency>
             <groupId>commons-configuration</groupId>
             <artifactId>commons-configuration</artifactId>
-            <version>${commons-configuration.version}</version>
+            <version>1.5</version>
         </dependency>
         <dependency>
             <groupId>commons-io</groupId>

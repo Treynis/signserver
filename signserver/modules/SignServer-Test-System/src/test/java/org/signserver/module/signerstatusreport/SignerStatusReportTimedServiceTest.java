@@ -18,15 +18,14 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerStatus;
 import org.signserver.testutils.ModulesTestCase;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.WorkerSession;
-import org.signserver.ejb.interfaces.GlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for SignerStatusReportTimedService.
@@ -75,8 +74,8 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
     
     private SignerStatusReportParser parser = new SignerStatusReportParser();
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final GlobalConfigurationSession globalSession = getGlobalSession();
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
     
     @Before
     public void setUp() throws Exception {
@@ -102,7 +101,8 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
         addDummySigner(WORKERID_SIGNER3, WORKER_SIGNER3, false);
 
         // Setup service
-        workerSession.setWorkerProperty(WORKERID_SERVICE, WorkerConfig.IMPLEMENTATION_CLASS,
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+            "WORKER" + WORKERID_SERVICE + ".CLASSPATH",
             "org.signserver.server.timedservices.SignerStatusReportTimedService");
 
         workerSession.setWorkerProperty(WORKERID_SERVICE, "WORKERS",
@@ -114,9 +114,9 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
         workerSession.setWorkerProperty(WORKERID_SERVICE, "ACTIVE", "FALSE");
 
         workerSession.reloadConfiguration(WORKERID_SERVICE);
-        workerSession.activateSigner(new WorkerIdentifier(WORKERID_SIGNER1), "foo123");
-        workerSession.activateSigner(new WorkerIdentifier(WORKERID_SIGNER2), "foo123");
-        workerSession.activateSigner(new WorkerIdentifier(WORKERID_SIGNER3), "foo123");
+        workerSession.activateSigner(WORKERID_SIGNER1, "foo123");
+        workerSession.activateSigner(WORKERID_SIGNER2, "foo123");
+        workerSession.activateSigner(WORKERID_SIGNER3, "foo123");
     }
 
     @Test
@@ -152,7 +152,7 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
         // Disable one worker and check the result
 //        workerSession.setWorkerProperty(WORKERID_SIGNER1, "DISABLED", "TRUE");
 //        workerSession.reloadConfiguration(WORKERID_SIGNER1);
-        workerSession.deactivateSigner(new WorkerIdentifier(WORKERID_SIGNER1));
+        workerSession.deactivateSigner(WORKERID_SIGNER1);
         
         outputFile.delete();
 
@@ -181,7 +181,7 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
         assertNotNull("Worker 3 signings", status.get(WORKER_SIGNER3).get("signings"));
         
         // test that there are no fatal errors before removing required properties
-        WorkerStatus workerStatus = workerSession.getStatus(new WorkerIdentifier(WORKERID_SERVICE));
+        WorkerStatus workerStatus = workerSession.getStatus(WORKERID_SERVICE);
         List<String> errors = workerStatus.getFatalErrors();
         assertTrue("No fatal errors", errors.isEmpty());
         
@@ -190,7 +190,7 @@ public class SignerStatusReportTimedServiceTest extends ModulesTestCase {
         workerSession.removeWorkerProperty(WORKERID_SERVICE, "OUTPUTFILE");
         workerSession.reloadConfiguration(WORKERID_SERVICE);
         
-        workerStatus = workerSession.getStatus(new WorkerIdentifier(WORKERID_SERVICE));
+        workerStatus = workerSession.getStatus(WORKERID_SERVICE);
         errors = workerStatus.getFatalErrors();
         assertTrue("Should mention missing WORKERS property", errors.contains("Property WORKERS missing"));
         assertTrue("Should mention missing OUTPUTFILE property", errors.contains("Property OUTPUTFILE missing"));

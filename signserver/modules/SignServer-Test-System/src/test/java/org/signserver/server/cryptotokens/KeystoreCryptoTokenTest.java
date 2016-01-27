@@ -42,13 +42,12 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.util.encoders.Base64;
 import org.signserver.common.Base64SignerCertReqData;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.KeyTestResult;
 import org.signserver.common.PKCS10CertReqInfo;
 import org.signserver.common.SignServerException;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.TokenOutOfSpaceException;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
 
 /**
  * System tests for the KeystoreCryptoToken.
@@ -94,8 +93,8 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
         }
 
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.cmssigner.CMSSigner");
-        workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, KeystoreCryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.cmssigner.CMSSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", KeystoreCryptoToken.class.getName());
         workerSession.setWorkerProperty(workerId, "NAME", "CMSSignerP12");
         workerSession.setWorkerProperty(workerId, "KEYSTORETYPE", "PKCS12");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
@@ -122,8 +121,8 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
         }
 
         // Setup crypto token
-        workerSession.setWorkerProperty(tokenId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.server.signers.CryptoWorker");
-        workerSession.setWorkerProperty(tokenId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, KeystoreCryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".CLASSPATH", "org.signserver.server.signers.CryptoWorker");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".SIGNERTOKEN.CLASSPATH", KeystoreCryptoToken.class.getName());
         workerSession.setWorkerProperty(tokenId, "NAME", "TestCryptoTokenP12");
         workerSession.setWorkerProperty(tokenId, "KEYSTORETYPE", "PKCS12");
         workerSession.setWorkerProperty(tokenId, "KEYSTOREPATH", keystoreFile.getAbsolutePath());
@@ -135,7 +134,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
         }
 
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.cmssigner.CMSSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.cmssigner.CMSSigner");
         workerSession.setWorkerProperty(workerId, "NAME", "CMSSignerP12");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "CRYPTOTOKEN", "TestCryptoTokenP12");
@@ -152,7 +151,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
         try {
             setCMSSignerPropertiesCombined(workerId, true);
             workerSession.reloadConfiguration(workerId);
-            workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", SIGN_KEY_ALIAS, pin.toCharArray());
+            workerSession.generateSignerKey(workerId, "RSA", "1024", SIGN_KEY_ALIAS, pin.toCharArray());
             workerSession.reloadConfiguration(workerId);
 
             cmsSigner(workerId);
@@ -174,7 +173,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             setCMSSignerPropertiesSeparateToken(workerId, tokenId, true);
             workerSession.reloadConfiguration(tokenId);
             workerSession.reloadConfiguration(workerId);
-            workerSession.generateSignerKey(new WorkerIdentifier(tokenId), "RSA", "1024", SIGN_KEY_ALIAS, pin.toCharArray());
+            workerSession.generateSignerKey(tokenId, "RSA", "1024", SIGN_KEY_ALIAS, pin.toCharArray());
             workerSession.reloadConfiguration(tokenId);
 
             cmsSigner(workerId);
@@ -194,7 +193,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(workerId);
             
             // Add a reference key
-            workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", "somekey123", pin.toCharArray());
+            workerSession.generateSignerKey(workerId, "RSA", "1024", "somekey123", pin.toCharArray());
             
             // Check available aliases
             Set<String> aliases1 = getKeyAliases(workerId);
@@ -205,7 +204,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             
             // If the key already exists, try to remove it first
             if (aliases1.contains(TEST_KEY_ALIAS)) {
-                workerSession.removeKey(new WorkerIdentifier(workerId), TEST_KEY_ALIAS);
+                workerSession.removeKey(workerId, TEST_KEY_ALIAS);
                 aliases1 = getKeyAliases(workerId);
             }
             if (aliases1.contains(TEST_KEY_ALIAS)) {
@@ -213,7 +212,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             }
 
             // Generate a testkey
-            workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+            workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
             
             // Now expect the new TEST_KEY_ALIAS
             Set<String> expected = new HashSet<String>(aliases1);
@@ -245,10 +244,10 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(workerId);
             
             // Generate a key with a given key spec
-            workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", spec, 
+            workerSession.generateSignerKey(workerId, "RSA", spec, 
                                             "keywithexponent", pin.toCharArray());
             final Collection<KeyTestResult> testResults =
-                    workerSession.testKey(new WorkerIdentifier(workerId), "keywithexponent", pin.toCharArray());
+                    workerSession.testKey(workerId, "keywithexponent", pin.toCharArray());
             for (final KeyTestResult testResult : testResults) {
                 assertTrue("Testkey successful", testResult.isSuccess());
             }
@@ -257,7 +256,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             final PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA",
                 "CN=test01GenerateKey,C=SE", null);
             Base64SignerCertReqData data = (Base64SignerCertReqData) workerSession
-                .getCertificateRequest(new WorkerIdentifier(workerId), certReqInfo, false, "keywithexponent");
+                .getCertificateRequest(workerId, certReqInfo, false, "keywithexponent");
             final byte[] reqBytes = data.getBase64CertReq();
             final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
@@ -268,7 +267,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
                          expected, pubKey.getPublicExponent());
         } finally {
             try {
-                workerSession.removeKey(new WorkerIdentifier(workerId), "keywithexponent");
+                workerSession.removeKey(workerId, "keywithexponent");
             } catch (SignServerException ignored) {}
             removeWorker(workerId);
         }
@@ -308,7 +307,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(workerId);
             
             // Add a reference key
-            workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", "somekey123", pin.toCharArray());
+            workerSession.generateSignerKey(workerId, "RSA", "1024", "somekey123", pin.toCharArray());
             
             // Check available aliases
             final int keys = getKeyAliases(workerId).size();
@@ -319,7 +318,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             
             // Key generation should fail
             try {
-                workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
                 fail("Should have failed because of no space in token");
             } catch (TokenOutOfSpaceException expected) { // NOPMD
                 // OK
@@ -331,7 +330,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             
             // Generate a new key
             try {
-                workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
             } catch (CryptoTokenOfflineException ex) {
                 fail("Should have worked but got: " + ex.getLocalizedMessage());
             }
@@ -341,7 +340,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             
             // Key generation should fail
             try {
-                workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
                 fail("Should have failed because of no space in token");
             } catch (TokenOutOfSpaceException expected) { // NOPMD
                 // OK
@@ -390,10 +389,10 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(workerId);
 
             // Activate first so we can generate a key
-            workerSession.activateSigner(new WorkerIdentifier(workerId), pin);
+            workerSession.activateSigner(workerId, pin);
 
-            List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
-            assertTrue("Fatal errors: " + errors, workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors().isEmpty());
+            List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
+            assertTrue("Fatal errors: " + errors, workerSession.getStatus(workerId).getFatalErrors().isEmpty());
 
         } finally {
             FileUtils.deleteQuietly(keystoreFile);
@@ -440,19 +439,19 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(workerId);
 
             // Activate first so we can generate a key
-            workerSession.activateSigner(new WorkerIdentifier(workerId), pin);
+            workerSession.activateSigner(workerId, pin);
 
-            List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
-            assertTrue("Fatal errors: " + errors, workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors().isEmpty());
+            List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
+            assertTrue("Fatal errors: " + errors, workerSession.getStatus(workerId).getFatalErrors().isEmpty());
             
             // generate a new certificate
             final X509Certificate newCert =
                     getSelfCertificate("CN=TestNew", (long) 30*24*60*60*365, keyPair);
             
-            workerSession.importCertificateChain(new WorkerIdentifier(workerId),
+            workerSession.importCertificateChain(workerId,
                     Arrays.asList(newCert.getEncoded()), "newkey11", null);
             
-            final Certificate readCert = workerSession.getSignerCertificate(new WorkerIdentifier(workerId));
+            final Certificate readCert = workerSession.getSignerCertificate(workerId);
             assertTrue("Matching certificates", Arrays.equals(newCert.getEncoded(), readCert.getEncoded()));
         } finally {
             FileUtils.deleteQuietly(keystoreFile);
@@ -483,7 +482,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(workerId);
 
             // Add a reference key
-            workerSession.generateSignerKey(new WorkerIdentifier(tokenId), "RSA", "1024", "somekey123", pin.toCharArray());
+            workerSession.generateSignerKey(tokenId, "RSA", "1024", "somekey123", pin.toCharArray());
 
             // Check available aliases
             Set<String> aliases1 = getKeyAliases(tokenId);
@@ -494,7 +493,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
 
             // If the key already exists, try to remove it first
             if (aliases1.contains(TEST_KEY_ALIAS)) {
-                workerSession.removeKey(new WorkerIdentifier(tokenId), TEST_KEY_ALIAS);
+                workerSession.removeKey(tokenId, TEST_KEY_ALIAS);
                 aliases1 = getKeyAliases(tokenId);
             }
             if (aliases1.contains(TEST_KEY_ALIAS)) {
@@ -502,7 +501,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             }
 
             // Generate a testkey
-            workerSession.generateSignerKey(new WorkerIdentifier(tokenId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+            workerSession.generateSignerKey(tokenId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
 
             // Now expect the new TEST_KEY_ALIAS
             Set<String> expected = new HashSet<String>(aliases1);
@@ -526,7 +525,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(workerId);
             
             // Add a reference key
-            workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", "somekey123", pin.toCharArray());
+            workerSession.generateSignerKey(workerId, "RSA", "1024", "somekey123", pin.toCharArray());
             
             // Check available aliases
             Set<String> aliases1 = getKeyAliases(workerId);
@@ -537,7 +536,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             
             if (!aliases1.contains(TEST_KEY_ALIAS)) {
                 // Generate a testkey
-                workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
                 aliases1 = getKeyAliases(workerId);
             }
             if (!aliases1.contains(TEST_KEY_ALIAS)) {
@@ -546,7 +545,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(workerId);
             
             // Remove the key
-            workerSession.removeKey(new WorkerIdentifier(workerId), TEST_KEY_ALIAS);
+            workerSession.removeKey(workerId, TEST_KEY_ALIAS);
             
             // Now expect the TEST_KEY_ALIAS to have been removed
             Set<String> aliases2 = getKeyAliases(workerId);
@@ -570,7 +569,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(workerId);
 
             // Add a reference key
-            workerSession.generateSignerKey(new WorkerIdentifier(tokenId), "RSA", "1024", "somekey123", pin.toCharArray());
+            workerSession.generateSignerKey(tokenId, "RSA", "1024", "somekey123", pin.toCharArray());
 
             // Check available aliases
             Set<String> aliases1 = getKeyAliases(tokenId);
@@ -581,7 +580,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
 
             if (!aliases1.contains(TEST_KEY_ALIAS)) {
                 // Generate a testkey
-                workerSession.generateSignerKey(new WorkerIdentifier(tokenId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(tokenId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
                 aliases1 = getKeyAliases(tokenId);
             }
             if (!aliases1.contains(TEST_KEY_ALIAS)) {
@@ -590,7 +589,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.reloadConfiguration(tokenId);
 
             // Remove the key
-            workerSession.removeKey(new WorkerIdentifier(tokenId), TEST_KEY_ALIAS);
+            workerSession.removeKey(tokenId, TEST_KEY_ALIAS);
 
             // Now expect the TEST_KEY_ALIAS to have been removed
             Set<String> aliases2 = getKeyAliases(tokenId);
@@ -619,7 +618,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
            workerSession.removeWorkerProperty(workerId, "KEYSTORETYPE");
            workerSession.reloadConfiguration(workerId);
            
-           final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+           final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
            assertTrue("Should contain error",
                    errors.contains("Failed to initialize crypto token: Missing KEYSTORETYPE property"));
        } finally {
@@ -642,7 +641,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
            workerSession.setWorkerProperty(workerId, "KEYSTORETYPE", "FOOBAR");
            workerSession.reloadConfiguration(workerId);
            
-           final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+           final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
            assertTrue("Should contain error",
                    errors.contains("Failed to initialize crypto token: KEYSTORETYPE should be either PKCS12, JKS, or INTERNAL"));
        } finally {
@@ -665,7 +664,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.removeWorkerProperty(workerId, "KEYSTOREPATH");
             workerSession.reloadConfiguration(workerId);
             
-            final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+            final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
             assertTrue("Should contain error",
                     errors.contains("Failed to initialize crypto token: Missing KEYSTOREPATH property"));
         } finally {
@@ -688,7 +687,7 @@ public class KeystoreCryptoTokenTest extends KeystoreCryptoTokenTestBase {
             workerSession.setWorkerProperty(workerId, "KEYSTOREPATH", "non-existing.p12");
             workerSession.reloadConfiguration(workerId);
             
-            final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+            final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
             assertTrue("Should contain error",
                     errors.contains("Failed to initialize crypto token: File not found: non-existing.p12"));
         } finally {

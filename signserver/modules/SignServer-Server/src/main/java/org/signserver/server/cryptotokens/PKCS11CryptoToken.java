@@ -615,7 +615,7 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
 
         public KeyStore getActivatedKeyStore() throws CryptoTokenOfflineException {
             try {
-                return getKeyStore().getKeyStore(); // TODO: Consider if we should instead use the CachingKeystoreWrapper
+                return getKeyStore();
             } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
                 throw new CryptoTokenOfflineException(ex);
             }

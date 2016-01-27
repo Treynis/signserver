@@ -42,7 +42,7 @@ import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.cmp.PKIStatus;
 import org.bouncycastle.tsp.*;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.test.random.FailedException;
 import org.signserver.test.random.Task;
 import org.signserver.test.random.WorkerSpec;
@@ -62,14 +62,14 @@ public class Sign implements Task {
     private static final Logger LOG = Logger.getLogger(Sign.class);
     
     private final WorkerSpec signer;
-    private final ProcessSessionRemote workerSession;
+    private final IWorkerSession.IRemote workerSession;
     private final Random random;
     private int counter;    
     private final RequestContextPreProcessor preProcessor;
     
     private static final String TESTXML1 = "<doc>Some sample XML to sign</doc>";
 
-    public Sign(final WorkerSpec signerId, final ProcessSessionRemote workerSession, final Random random, final RequestContextPreProcessor preProcessor) {
+    public Sign(final WorkerSpec signerId, final IWorkerSession.IRemote workerSession, final Random random, final RequestContextPreProcessor preProcessor) {
         this.signer = signerId;
         this.workerSession = workerSession;
         this.random = random;
@@ -95,7 +95,7 @@ public class Sign implements Task {
     
     private void process(final WorkerSpec signer, final int reqid) throws FailedException, IllegalRequestException, CryptoTokenOfflineException, SignServerException {
         final ProcessResponse result;
-        final RemoteRequestContext requestContext = new RemoteRequestContext();
+        final RequestContext requestContext = new RequestContext();
         if (preProcessor != null) {
             preProcessor.preProcess(requestContext);
         }
@@ -103,7 +103,7 @@ public class Sign implements Task {
             case xml: {
                 // Process
                 final GenericSignRequest signRequest = new GenericSignRequest(reqid, TESTXML1.getBytes());
-                final ProcessResponse response = workerSession.process(new WorkerIdentifier(signer.getWorkerId()), signRequest, requestContext);
+                final ProcessResponse response = workerSession.process(signer.getWorkerId(), signRequest, requestContext);
 
                 // Check result
                 GenericSignResponse res = (GenericSignResponse) response;
@@ -126,7 +126,7 @@ public class Sign implements Task {
 
                     GenericSignRequest signRequest =
                             new GenericSignRequest(reqid, requestBytes);
-                    final GenericSignResponse res = (GenericSignResponse) workerSession.process(new WorkerIdentifier(signer.getWorkerId()), signRequest, requestContext);
+                    final GenericSignResponse res = (GenericSignResponse) workerSession.process(signer.getWorkerId(), signRequest, requestContext);
 
                     // Check result
                     if (reqid != res.getRequestID()) {

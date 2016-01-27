@@ -24,7 +24,6 @@ import org.signserver.cli.spi.UnexpectedCommandFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.SignServerException;
-import org.signserver.common.WorkerIdentifier;
 
 /**
  * Command used to remove keys associated with a Crypto Token.
@@ -101,7 +100,8 @@ public class RemoveKeyCommand extends AbstractAdminCommand {
         }
         
         try {
-            final WorkerIdentifier wi = WorkerIdentifier.createFromIdOrName(args[0]);
+            int signerId = getWorkerId(args[0]);
+            checkThatWorkerIsProcessable(signerId);
         
             final boolean proceed;
             if (noAsk) {
@@ -117,7 +117,7 @@ public class RemoveKeyCommand extends AbstractAdminCommand {
             }
                 
             if (proceed) {
-                final boolean result = getWorkerSession().removeKey(wi, alias);
+                final boolean result = getWorkerSession().removeKey(signerId, alias);
                 getOutputStream().println("Key removal returned: " + result);
                 return result ? CommandLineInterface.RETURN_SUCCESS : CommandLineInterface.RETURN_ERROR;
             } else {

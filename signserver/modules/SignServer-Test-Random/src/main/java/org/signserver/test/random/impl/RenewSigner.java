@@ -15,7 +15,7 @@ package org.signserver.test.random.impl;
 import java.util.Properties;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.test.random.FailedException;
 import org.signserver.test.random.Task;
 
@@ -32,13 +32,15 @@ public class RenewSigner implements Task {
     
     private final int workerId;
     private final int renewee;
-    private final ProcessSessionRemote processSession;
+    private final IWorkerSession.IRemote workerSession;
     private int counter;
+    
+    private static final String TESTXML1 = "<doc>Some sample XML to sign</doc>";
 
-    public RenewSigner(int workerId, int renewee, ProcessSessionRemote processSession) {
+    public RenewSigner(int workerId, int renewee, IWorkerSession.IRemote workerSession) {
         this.workerId = workerId;
         this.renewee = renewee;
-        this.processSession = processSession;
+        this.workerSession = workerSession;
     }
     
     @Override
@@ -52,7 +54,7 @@ public class RenewSigner implements Task {
             requestProperties.setProperty("WORKER", String.valueOf(renewee));
             requestProperties.setProperty("AUTHCODE", "foo123"); // TODO
             final GenericPropertiesRequest signRequest = new GenericPropertiesRequest(requestProperties);
-            final GenericPropertiesResponse res =  (GenericPropertiesResponse) processSession.process(new WorkerIdentifier(workerId), signRequest, new RemoteRequestContext());
+            final GenericPropertiesResponse res =  (GenericPropertiesResponse) workerSession.process(workerId, signRequest, new RequestContext());
             final String result = res.getProperties().getProperty("RESULT");
             
             // Check that we got OK back

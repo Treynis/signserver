@@ -37,13 +37,10 @@ public class WorkerConfigDataBean implements Serializable {
     @Id
     private int signerId;
     
-    @Column(length = 255)
-    private String signerName;
-    
     @Lob
     @Column(length = 1048576)
     private String signerConfigData;
-    
+
     /**
      * Unique Id of the signer
      *
@@ -59,14 +56,6 @@ public class WorkerConfigDataBean implements Serializable {
      */
     public void setSignerId(int signerId) {
         this.signerId = signerId;
-    }
-    
-    public String getSignerName() {
-        return signerName;
-    }
-
-    public void setSignerName(String signerName) {
-        this.signerName = signerName;
     }
 
     /**

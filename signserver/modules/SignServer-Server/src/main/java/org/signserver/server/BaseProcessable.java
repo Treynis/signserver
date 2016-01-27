@@ -393,9 +393,10 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
                 }
                 String className = null;
                 try {
-                    className = config.getCryptoTokenImplementationClass();
+                    className = gc.getCryptoTokenProperty(workerId, GlobalConfiguration.CRYPTOTOKENPROPERTY_CLASSPATH);
+
                     if (log.isDebugEnabled()) {
-                        log.debug("Found cryptotoken class name: " + className);
+                        log.debug("Found cryptotoken classpath: " + className);
                     }
                     if (className == null) {
                         cryptoToken = null;

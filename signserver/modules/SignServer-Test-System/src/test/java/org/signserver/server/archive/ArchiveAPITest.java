@@ -22,6 +22,7 @@ import org.junit.After;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.GenericSignRequest;
+import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.SignServerUtil;
 import org.signserver.server.archive.test1archiver.Test1Archiver;
@@ -32,11 +33,8 @@ import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.RemoteRequestContext;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.util.PathUtil;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for the Archiving API.
@@ -58,8 +56,7 @@ public class ArchiveAPITest extends ModulesTestCase {
     private File archiver1File;
     private File archiver2File;
     
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     @Before
     @Override
@@ -337,7 +334,7 @@ public class ArchiveAPITest extends ModulesTestCase {
         final String testDocument = "<document/>";
         final GenericSignRequest signRequest =
                 new GenericSignRequest(371, testDocument.getBytes());
-        processSession.process(new WorkerIdentifier(getSignerIdDummy1()),  signRequest, 
-                new RemoteRequestContext());
+        workerSession.process(getSignerIdDummy1(),  signRequest, 
+                new RequestContext());
     }
 }

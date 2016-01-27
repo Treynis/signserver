@@ -22,7 +22,7 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.SignServerException;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.ValidationServiceConstants;
@@ -131,7 +131,7 @@ public abstract class BaseValidator implements IValidator {
                                 issuerFound = true;
                                 break;
                             }
-                        } catch (IllegalStateException e) {
+                        } catch (IOException e) {
                             // eat up the exception to continue looping
                             LOG.error(e.getMessage(), e);
                         }
@@ -180,7 +180,7 @@ public abstract class BaseValidator implements IValidator {
             } catch (CertificateException e) {
                 LOG.error("Error constructing certificate chain from setting " + ValidationServiceConstants.VALIDATIONSERVICE_ISSUERCERTCHAIN + " is missing for issuer "
                         + issuerId + ", validator id " + validatorId + ", worker id" + workerId, e);
-            } catch (IllegalStateException e) {
+            } catch (IOException e) {
                 LOG.error("Error constructing certificate chain from setting " + ValidationServiceConstants.VALIDATIONSERVICE_ISSUERCERTCHAIN + " is missing for issuer "
                         + issuerId + ", validator id " + validatorId + ", worker id" + workerId, e);
             }

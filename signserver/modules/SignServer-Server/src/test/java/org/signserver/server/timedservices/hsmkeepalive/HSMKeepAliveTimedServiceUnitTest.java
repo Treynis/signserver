@@ -16,8 +16,8 @@ import java.util.Collections;
 import java.util.List;
 import junit.framework.TestCase;
 import org.signserver.common.WorkerConfig;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.ServicesImpl;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
 
 /**
  * Unit test for the HSM keep alive timed service.
@@ -39,7 +39,7 @@ public class HSMKeepAliveTimedServiceUnitTest extends TestCase {
        final HSMKeepAliveTimedService instance =
                new HSMKeepAliveTimedService() {
                     @Override
-                    WorkerSessionLocal getWorkerSession() {
+                    IWorkerSession getWorkerSession() {
                         return null;
                     }
                };
@@ -62,7 +62,7 @@ public class HSMKeepAliveTimedServiceUnitTest extends TestCase {
         final HSMKeepAliveTimedService instance =
                new HSMKeepAliveTimedService() {
                    @Override
-                   WorkerSessionLocal getWorkerSession() {
+                   IWorkerSession getWorkerSession() {
                        return null;
                    }
                };

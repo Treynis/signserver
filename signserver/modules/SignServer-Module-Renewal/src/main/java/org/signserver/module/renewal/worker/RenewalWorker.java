@@ -26,6 +26,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 
+import javax.ejb.EJB;
 import javax.naming.NamingException;
 import javax.net.ssl.*;
 import javax.persistence.EntityManager;
@@ -39,10 +40,11 @@ import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.util.Selector;
 import org.bouncycastle.util.Store;
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.*;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.util.RandomPasswordGenerator;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.module.renewal.common.RenewalWorkerProperties;
 import org.signserver.module.renewal.ejbcaws.gen.*;
 import org.signserver.server.WorkerContext;
@@ -50,7 +52,6 @@ import org.signserver.server.cryptotokens.KeystoreCryptoToken;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
 import org.signserver.server.signers.BaseSigner;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
 
 /**
  * Worker renewing certificate (and optionally keys) for a signer by sending
@@ -102,7 +103,8 @@ public class RenewalWorker extends BaseSigner {
     private List<String> fatalErrors;
     
     /** Workersession. */
-    private WorkerSessionLocal workerSession;
+    @EJB
+    private IWorkerSession workerSession;
 
     /** Configuration parameters. */
     private String alias;
@@ -409,7 +411,7 @@ public class RenewalWorker extends BaseSigner {
             throw new IllegalArgumentException("Missing authcode in request");
         }
 
-        final String newAlias = getWorkerSession().generateSignerKey(new WorkerIdentifier(workerId),
+        final String newAlias = getWorkerSession().generateSignerKey(workerId,
                 keyAlg, keySpec, null, authcode);
 
         // Log
@@ -419,7 +421,7 @@ public class RenewalWorker extends BaseSigner {
         }
 
         final Collection<KeyTestResult> results = getWorkerSession().testKey(
-                new WorkerIdentifier(workerId), newAlias, authcode);
+                workerId, newAlias, authcode);
         if (results.size() != 1) {
             throw new CryptoTokenOfflineException("Key testing failed: "
                     + "No result");
@@ -440,7 +442,7 @@ public class RenewalWorker extends BaseSigner {
 
             LOG.debug("Key generated, tested and set");
 
-            getWorkerSession().activateSigner(new WorkerIdentifier(workerId),
+            getWorkerSession().activateSigner(workerId,
                     String.valueOf(authcode));
 
             LOG.debug("Worker activated");
@@ -568,10 +570,11 @@ public class RenewalWorker extends BaseSigner {
     }
     public static final String TRUSTSTOREVALUE = "TRUSTSTOREVALUE";
 
-    protected WorkerSessionLocal getWorkerSession() {
+    protected IWorkerSession getWorkerSession() {
         if (workerSession == null) {
             try {
-                workerSession = ServiceLocator.getInstance().lookupLocal(WorkerSessionLocal.class);
+                workerSession = ServiceLocator.getInstance().lookupLocal(
+                    IWorkerSession.class);
             } catch (NamingException ex) {
                 throw new RuntimeException("Unable to lookup worker session",
                         ex);
@@ -588,7 +591,7 @@ public class RenewalWorker extends BaseSigner {
                 subjectDN, null);
         final Base64SignerCertReqData reqData
                 = (Base64SignerCertReqData) getWorkerSession()
-                .getCertificateRequest(new WorkerIdentifier(workerId), certReqInfo, explicitEccParameters, defaultKey);
+                .getCertificateRequest(workerId, certReqInfo, explicitEccParameters, defaultKey);
         if (reqData == null) {
             throw new RuntimeException(
                     "Base64SignerCertReqData returned was null."

@@ -32,9 +32,8 @@ import org.signserver.testutils.ModulesTestCase;
 import org.w3c.dom.Document;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
-import org.signserver.ejb.interfaces.GlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for XMLSigner.
@@ -63,9 +62,8 @@ public class XMLSignerTest extends ModulesTestCase {
 
     private static final String TESTXML1 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root><my-tag>My Data</my-tag></root>";
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
-    private final GlobalConfigurationSession globalSession = getGlobalSession();
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
     
     @Before
     public void setUp() throws Exception {
@@ -77,8 +75,8 @@ public class XMLSignerTest extends ModulesTestCase {
         addSigner("org.signserver.module.xmlsigner.XMLSigner", WORKERID, "TestXMLSigner", true);
         
         // Update path to JKS file
-        workerSession.setWorkerProperty(WORKERID2, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.xmlsigner.XMLSigner");
-        workerSession.setWorkerProperty(WORKERID2, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.signserver.server.cryptotokens.JKSCryptoToken");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + WORKERID2 + ".CLASSPATH", "org.signserver.module.xmlsigner.XMLSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + WORKERID2 + ".SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.JKSCryptoToken");
         workerSession.setWorkerProperty(WORKERID2, "NAME", "TestXMLSignerDSA");
         workerSession.setWorkerProperty(WORKERID2, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(WORKERID2, "KEYSTOREPATH",
@@ -87,8 +85,8 @@ public class XMLSignerTest extends ModulesTestCase {
         workerSession.setWorkerProperty(WORKERID2, "DEFAULTKEY", "xmlsigner4");
         workerSession.reloadConfiguration(WORKERID2);
         
-        workerSession.setWorkerProperty(WORKERID3, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.xmlsigner.XMLSigner");
-        workerSession.setWorkerProperty(WORKERID3, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.signserver.server.cryptotokens.P12CryptoToken");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + WORKERID3 + ".CLASSPATH", "org.signserver.module.xmlsigner.XMLSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + WORKERID3 + ".SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.P12CryptoToken");
         workerSession.setWorkerProperty(WORKERID3, "NAME", "TestXMLSignerECDSA");
         workerSession.setWorkerProperty(WORKERID3, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(WORKERID3, "KEYSTOREPATH",
@@ -122,8 +120,8 @@ public class XMLSignerTest extends ModulesTestCase {
         }
 
         final GenericSignResponse res = 
-                (GenericSignResponse) processSession.process(new WorkerIdentifier(workerId),
-                    signRequest, new RemoteRequestContext());
+                (GenericSignResponse) workerSession.process(workerId,
+                    signRequest, new RequestContext());
         final byte[] data = res.getProcessedData();
 
         // Answer to right question
@@ -205,7 +203,7 @@ public class XMLSignerTest extends ModulesTestCase {
     
     @Test
     public void test07GetStatus() throws Exception {
-        final StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(WORKERID));
+        final StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(WORKERID);
         assertSame("Status", stat.getTokenStatus(), WorkerStatus.STATUS_ACTIVE);
     }
 
@@ -288,8 +286,8 @@ public class XMLSignerTest extends ModulesTestCase {
                 new GenericSignRequest(reqid, "foo".getBytes());
 
         final GenericSignResponse res = 
-                (GenericSignResponse) processSession.process(new WorkerIdentifier(DEBUGWORKER),
-                    signRequest, new RemoteRequestContext());
+                (GenericSignResponse) workerSession.process(DEBUGWORKER,
+                    signRequest, new RequestContext());
         final byte[] data = res.getProcessedData();
 
         final Properties props = new Properties();

@@ -33,10 +33,11 @@ import org.signserver.common.RequestContext;
 import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerStatus;
+import org.signserver.common.WorkerStatus;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.cryptotokens.NullCryptoToken;
 import org.signserver.server.signers.BaseSigner;
-import org.signserver.statusrepo.StatusRepositorySessionLocal;
+import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.statusrepo.common.StatusEntry;
 import org.signserver.statusrepo.common.StatusName;
@@ -76,12 +77,12 @@ public class StatusPropertiesWorker extends BaseSigner {
     
     /** StatusRepositorySession. */
     @EJB
-    private StatusRepositorySessionLocal statusRepository;
+    private IStatusRepositorySession statusRepository;
     
-    private StatusRepositorySessionLocal getStatusRepository() {
+    private IStatusRepositorySession getStatusRepository() {
         if (statusRepository == null) {
             try {
-                statusRepository = ServiceLocator.getInstance().lookupLocal(StatusRepositorySessionLocal.class);
+                statusRepository = ServiceLocator.getInstance().lookupLocal(IStatusRepositorySession.class);
             } catch (NamingException ex) {
                 throw new RuntimeException("Unable to lookup worker session", ex);
             }

@@ -23,26 +23,23 @@ import org.apache.log4j.Logger;
 import org.cesecore.audit.enums.EventStatus;
 import org.cesecore.audit.log.SecurityEventsLoggerSessionLocal;
 import org.signserver.common.GlobalConfiguration;
-import org.signserver.common.NoSuchWorkerException;
 import org.signserver.common.ServiceConfig;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.worker.impl.WorkerManagerSingletonBean;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IServiceTimerSession;
+import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
 import org.signserver.server.IWorker;
 import org.signserver.server.ServiceExecutionFailedException;
 import org.signserver.server.log.SignServerEventTypes;
 import org.signserver.server.log.SignServerModuleTypes;
 import org.signserver.server.log.SignServerServiceTypes;
 import org.signserver.server.timedservices.ITimedService;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.ejb.interfaces.ServiceTimerSessionLocal;
 
 /**
  * Timed service session bean running services on a timely basis.
  */
 @Stateless
 @TransactionManagement(TransactionManagementType.BEAN)
-public class ServiceTimerSessionBean implements ServiceTimerSessionLocal {
+public class ServiceTimerSessionBean implements IServiceTimerSession.ILocal, IServiceTimerSession.IRemote {
 
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(ServiceTimerSessionBean.class);
@@ -51,10 +48,10 @@ public class ServiceTimerSessionBean implements ServiceTimerSessionLocal {
     private SessionContext sessionCtx;
     
     @EJB
-    private GlobalConfigurationSessionLocal globalConfigurationSession;
+    private IGlobalConfigurationSession.ILocal globalConfigurationSession;
     
     @EJB
-    private WorkerManagerSingletonBean workerManagerSession;
+    private IWorkerManagerSessionLocal workerManagerSession;
     
     @EJB
     private SecurityEventsLoggerSessionLocal logSession;
@@ -98,24 +95,26 @@ public class ServiceTimerSessionBean implements ServiceTimerSessionLocal {
             UserTransaction ut = sessionCtx.getUserTransaction();
             try {
                 ut.begin();
-                IWorker worker = workerManagerSession.getWorker(new WorkerIdentifier(timerInfo));
-                serviceConfig = new ServiceConfig(worker.getConfig());
-                timedService = (ITimedService) worker;
-                sessionCtx.getTimerService().createTimer(timedService.getNextInterval(), timerInfo);
-                isSingleton = timedService.isSingleton();
-                if (!isSingleton) {
-                    run = true;
-                } else {
-                    GlobalConfiguration gc = globalConfigurationSession.getGlobalConfiguration();
-                    Date nextRunDate = new Date(0);
-                    if (gc.getProperty(GlobalConfiguration.SCOPE_GLOBAL, "SERVICENEXTRUNDATE" + timerInfo.intValue()) != null) {
-                        nextRunDate = new Date(Long.parseLong(gc.getProperty(GlobalConfiguration.SCOPE_GLOBAL, "SERVICENEXTRUNDATE" + timerInfo.intValue())));
-                    }
-                    Date currentDate = new Date();
-                    if (currentDate.after(nextRunDate)) {
-                        nextRunDate = new Date(currentDate.getTime() + timedService.getNextInterval());
-                        globalConfigurationSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "SERVICENEXTRUNDATE" + timerInfo.intValue(), "" + nextRunDate.getTime());
+                IWorker worker = workerManagerSession.getWorker(timerInfo.intValue(), globalConfigurationSession);
+                if (worker != null) {
+                    serviceConfig = new ServiceConfig(worker.getConfig());
+                    timedService = (ITimedService) worker;
+                    sessionCtx.getTimerService().createTimer(timedService.getNextInterval(), timerInfo);
+                    isSingleton = timedService.isSingleton();
+                    if (!isSingleton) {
                         run = true;
+                    } else {
+                        GlobalConfiguration gc = globalConfigurationSession.getGlobalConfiguration();
+                        Date nextRunDate = new Date(0);
+                        if (gc.getProperty(GlobalConfiguration.SCOPE_GLOBAL, "SERVICENEXTRUNDATE" + timerInfo.intValue()) != null) {
+                            nextRunDate = new Date(Long.parseLong(gc.getProperty(GlobalConfiguration.SCOPE_GLOBAL, "SERVICENEXTRUNDATE" + timerInfo.intValue())));
+                        }
+                        Date currentDate = new Date();
+                        if (currentDate.after(nextRunDate)) {
+                            nextRunDate = new Date(currentDate.getTime() + timedService.getNextInterval());
+                            globalConfigurationSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "SERVICENEXTRUNDATE" + timerInfo.intValue(), "" + nextRunDate.getTime());
+                            run = true;
+                        }
                     }
                 }
             } catch (NotSupportedException e) {
@@ -126,8 +125,6 @@ public class ServiceTimerSessionBean implements ServiceTimerSessionLocal {
                 LOG.error(e);
             } catch (IllegalStateException e) {
                 LOG.error(e);
-            } catch (NoSuchWorkerException ex) {
-                LOG.error(ex.getMessage());
             } finally {
                 try {
                     ut.commit();
@@ -229,7 +226,7 @@ public class ServiceTimerSessionBean implements ServiceTimerSessionLocal {
 
         final Collection<Integer> serviceIds;
         if (serviceId == 0) {
-            serviceIds = workerManagerSession.getAllWorkerIDs(WorkerConfig.WORKERTYPE_SERVICES);
+            serviceIds = workerManagerSession.getWorkers(GlobalConfiguration.WORKERTYPE_SERVICES, globalConfigurationSession);
         } else {
             serviceIds = new ArrayList<Integer>();
             serviceIds.add(new Integer(serviceId));
@@ -238,14 +235,9 @@ public class ServiceTimerSessionBean implements ServiceTimerSessionLocal {
         while (iter.hasNext()) {
             Integer nextId = (Integer) iter.next();
             if (!existingTimers.contains(nextId)) {
-                ITimedService timedService;
-                try {
-                    timedService = (ITimedService) workerManagerSession.getWorker(new WorkerIdentifier(nextId));
-                    if (timedService.isActive() && timedService.getNextInterval() != ITimedService.DONT_EXECUTE) {
-                        sessionCtx.getTimerService().createTimer((timedService.getNextInterval()), nextId);
-                    }
-                } catch (NoSuchWorkerException ex) {
-                    LOG.error("Worker no longer exists: " + ex.getMessage());
+                ITimedService timedService = (ITimedService) workerManagerSession.getWorker(nextId.intValue(), globalConfigurationSession);
+                if (timedService != null && timedService.isActive() && timedService.getNextInterval() != ITimedService.DONT_EXECUTE) {
+                    sessionCtx.getTimerService().createTimer((timedService.getNextInterval()), nextId);
                 }
             }
         }

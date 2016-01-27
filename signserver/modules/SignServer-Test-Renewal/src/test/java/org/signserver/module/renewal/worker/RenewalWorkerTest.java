@@ -35,28 +35,25 @@ import javax.xml.ws.Endpoint;
 import static junit.framework.TestCase.assertNotNull;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.CertTools;
-import org.junit.FixMethodOrder;
-import org.junit.runners.MethodSorters;
+import org.ejbca.util.CertTools;
 import org.signserver.admin.cli.AdminCLI;
 import org.signserver.cli.CommandLineInterface;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.GenericPropertiesRequest;
 import org.signserver.common.GenericPropertiesResponse;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
-import org.signserver.common.RemoteRequestContext;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.util.PathUtil;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession.IRemote;
 import org.signserver.module.renewal.common.RenewalWorkerProperties;
 import org.signserver.module.renewal.ejbcaws.gen.EjbcaWS;
 import org.signserver.module.renewal.ejbcaws.gen.EjbcaWSService;
@@ -73,7 +70,6 @@ import org.signserver.testutils.CLITestHelper;
  * @author Markus Kilås
  * @version $Id$
  */
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class RenewalWorkerTest extends AbstractTestCase {
     
     private static final String EJBCAWSURL_PREFIX
@@ -159,8 +155,8 @@ public class RenewalWorkerTest extends AbstractTestCase {
         final GenericPropertiesRequest request = new GenericPropertiesRequest(
                 reqProperties);
         GenericPropertiesResponse response
-                = (GenericPropertiesResponse) getProcessSession().process(
-                    new WorkerIdentifier(WORKERID), request, new RemoteRequestContext());
+                = (GenericPropertiesResponse) getWorkerSession().process(
+                    WORKERID, request, new RequestContext());
 
         // OK result
         LOG.info("Response message: " + response.getProperties().getProperty(
@@ -178,10 +174,10 @@ public class RenewalWorkerTest extends AbstractTestCase {
         
         // Should have certificate and chain
         final X509Certificate cert = (X509Certificate) getWorkerSession()
-                .getSignerCertificate(new WorkerIdentifier(SIGNERID_6102));
+                .getSignerCertificate(SIGNERID_6102);
         assertNotNull(cert);
         final List<java.security.cert.Certificate> chain
-                = getWorkerSession().getSignerCertificateChain(new WorkerIdentifier(SIGNERID_6102));
+                = getWorkerSession().getSignerCertificateChain(SIGNERID_6102);
         assertNotNull(chain);
         assertTrue(chain.contains(cert));
 
@@ -211,7 +207,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
 
         // Generate a new key
         final String nextCertSignAlias = "test03_keyalias";
-        getWorkerSession().generateSignerKey(new WorkerIdentifier(SIGNERID_6102), DEFAULT_KEYALG,
+        getWorkerSession().generateSignerKey(SIGNERID_6102, DEFAULT_KEYALG,
                 DEFAULT_KEYSPEC, nextCertSignAlias, "foo123".toCharArray());
         getWorkerSession().setWorkerProperty(SIGNERID_6102, "NEXTCERTSIGNKEY",
                 nextCertSignAlias);
@@ -230,8 +226,8 @@ public class RenewalWorkerTest extends AbstractTestCase {
         final GenericPropertiesRequest request = new GenericPropertiesRequest(
                 reqProperties);
         GenericPropertiesResponse response
-                = (GenericPropertiesResponse) getProcessSession().process(
-                    new WorkerIdentifier(WORKERID), request, new RemoteRequestContext());
+                = (GenericPropertiesResponse) getWorkerSession().process(
+                    WORKERID, request, new RequestContext());
 
         // OK result
         LOG.info("Response message: " + response.getProperties().getProperty(
@@ -246,10 +242,10 @@ public class RenewalWorkerTest extends AbstractTestCase {
 
         // Should have certificate and chain
         final X509Certificate cert = (X509Certificate) getWorkerSession()
-                .getSignerCertificate(new WorkerIdentifier(SIGNERID_6102));
+                .getSignerCertificate(SIGNERID_6102);
         assertNotNull(cert);
         final List<java.security.cert.Certificate> chain
-                = getWorkerSession().getSignerCertificateChain(new WorkerIdentifier(SIGNERID_6102));
+                = getWorkerSession().getSignerCertificateChain(SIGNERID_6102);
         assertNotNull(chain);
         assertTrue(chain.contains(cert));
 
@@ -286,7 +282,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
         // Generate a new key
         final String nextCertSignAlias = "test4_keyalias2";
         final String defaultKeyAlias = "test04_keyalias";
-        getWorkerSession().generateSignerKey(new WorkerIdentifier(SIGNERID_6102), DEFAULT_KEYALG,
+        getWorkerSession().generateSignerKey(SIGNERID_6102, DEFAULT_KEYALG,
                 DEFAULT_KEYSPEC, defaultKeyAlias, "foo123".toCharArray());
         getWorkerSession().setWorkerProperty(SIGNERID_6102, "DEFAULTKEY",
                 defaultKeyAlias);
@@ -309,8 +305,8 @@ public class RenewalWorkerTest extends AbstractTestCase {
         final GenericPropertiesRequest request = new GenericPropertiesRequest(
                 reqProperties);
         GenericPropertiesResponse response
-                = (GenericPropertiesResponse) getProcessSession().process(
-                    new WorkerIdentifier(WORKERID), request, new RemoteRequestContext());
+                = (GenericPropertiesResponse) getWorkerSession().process(
+                    WORKERID, request, new RequestContext());
 
         // OK result
         LOG.info("Response message: " + response.getProperties().getProperty(
@@ -325,10 +321,10 @@ public class RenewalWorkerTest extends AbstractTestCase {
 
         // Should have certificate and chain
         final X509Certificate cert = (X509Certificate) getWorkerSession()
-                .getSignerCertificate(new WorkerIdentifier(SIGNERID_6102));
+                .getSignerCertificate(SIGNERID_6102);
         assertNotNull(cert);
         final List<java.security.cert.Certificate> chain
-                = getWorkerSession().getSignerCertificateChain(new WorkerIdentifier(SIGNERID_6102));
+                = getWorkerSession().getSignerCertificateChain(SIGNERID_6102);
         assertNotNull(chain);
         assertTrue(chain.contains(cert));
 
@@ -363,7 +359,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
 
         // Generate a new key
         final String defaultKeyAlias = "test05_keyalias";
-        getWorkerSession().generateSignerKey(new WorkerIdentifier(SIGNERID_6102), DEFAULT_KEYALG,
+        getWorkerSession().generateSignerKey(SIGNERID_6102, DEFAULT_KEYALG,
                 DEFAULT_KEYSPEC, defaultKeyAlias, "foo123".toCharArray());
         getWorkerSession().setWorkerProperty(SIGNERID_6102, "DEFAULTKEY",
                 defaultKeyAlias);
@@ -384,8 +380,8 @@ public class RenewalWorkerTest extends AbstractTestCase {
         final GenericPropertiesRequest request = new GenericPropertiesRequest(
                 reqProperties);
         GenericPropertiesResponse response
-                = (GenericPropertiesResponse) getProcessSession().process(
-                    new WorkerIdentifier(WORKERID), request, new RemoteRequestContext());
+                = (GenericPropertiesResponse) getWorkerSession().process(
+                    WORKERID, request, new RequestContext());
 
         // OK result
         LOG.info("Response message: " + response.getProperties().getProperty(
@@ -400,10 +396,10 @@ public class RenewalWorkerTest extends AbstractTestCase {
 
         // Should have certificate and chain
         final X509Certificate cert = (X509Certificate) getWorkerSession()
-                .getSignerCertificate(new WorkerIdentifier(SIGNERID_6102));
+                .getSignerCertificate(SIGNERID_6102);
         assertNotNull(cert);
         final List<java.security.cert.Certificate> chain
-                = getWorkerSession().getSignerCertificateChain(new WorkerIdentifier(SIGNERID_6102));
+                = getWorkerSession().getSignerCertificateChain(SIGNERID_6102);
         assertNotNull(chain);
         assertTrue(chain.contains(cert));
 
@@ -445,8 +441,8 @@ public class RenewalWorkerTest extends AbstractTestCase {
         final GenericPropertiesRequest request = new GenericPropertiesRequest(
                 reqProperties);
         GenericPropertiesResponse response
-                = (GenericPropertiesResponse) getProcessSession().process(
-                    new WorkerIdentifier(WORKERID), request, new RemoteRequestContext());
+                = (GenericPropertiesResponse) getWorkerSession().process(
+                    WORKERID, request, new RequestContext());
 
         // OK result
         LOG.info("Response message: " + response.getProperties().getProperty(
@@ -497,8 +493,8 @@ public class RenewalWorkerTest extends AbstractTestCase {
         final GenericPropertiesRequest request = new GenericPropertiesRequest(
                 reqProperties);
         GenericPropertiesResponse response
-                = (GenericPropertiesResponse) getProcessSession().process(
-                    new WorkerIdentifier(WORKERID), request, new RemoteRequestContext());
+                = (GenericPropertiesResponse) getWorkerSession().process(
+                    WORKERID, request, new RequestContext());
 
         // OK result
         LOG.info("Response message: " + response.getProperties().getProperty(
@@ -591,7 +587,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
      */
     public void test10NoECCExplicit() throws Exception {
         final GlobalConfigurationSessionMock conf = new GlobalConfigurationSessionMock();
-        final MockWorkerSession workerSession = new MockWorkerSession();
+        final MockWorkerSession workerSession = new MockWorkerSession(conf);
         
         addRenewalWorkerMock(conf, workerSession, 6110, "RenewalWorkerMock");
         addSignerMock(conf, workerSession, SIGNERID_6102, SIGNER_6102);
@@ -607,7 +603,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
                 reqProperties);
         GenericPropertiesResponse response
                 = (GenericPropertiesResponse) workerSession.process(
-                    new WorkerIdentifier(6110), request, new RemoteRequestContext());
+                    6110, request, new RequestContext());
         assertNotNull(response);
         
         assertFalse("Explicit ECC parameters not set", workerSession.explicitEccParametersSet);
@@ -621,7 +617,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
      */
     public void test11TrueECCExplicit() throws Exception {
         final GlobalConfigurationSessionMock conf = new GlobalConfigurationSessionMock();
-        final MockWorkerSession workerSession = new MockWorkerSession();
+        final MockWorkerSession workerSession = new MockWorkerSession(conf);
         
         addRenewalWorkerMock(conf, workerSession, 6110, "RenewalWorkerMock");
         addSignerMock(conf, workerSession, SIGNERID_6102, SIGNER_6102);
@@ -640,7 +636,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
                 reqProperties);
         GenericPropertiesResponse response
                 = (GenericPropertiesResponse) workerSession.process(
-                    new WorkerIdentifier(6110), request, new RemoteRequestContext());
+                    6110, request, new RequestContext());
         assertNotNull(response);
         
         assertTrue("Explicit ECC parameters set", workerSession.explicitEccParametersSet);
@@ -654,7 +650,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
      */
     public void test12FalseECCExplicit() throws Exception {
         final GlobalConfigurationSessionMock conf = new GlobalConfigurationSessionMock();
-        final MockWorkerSession workerSession = new MockWorkerSession();
+        final MockWorkerSession workerSession = new MockWorkerSession(conf);
         
         addRenewalWorkerMock(conf, workerSession, 6110, "RenewalWorkerMock");
         addSignerMock(conf, workerSession, SIGNERID_6102, SIGNER_6102);
@@ -673,7 +669,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
                 reqProperties);
         GenericPropertiesResponse response
                 = (GenericPropertiesResponse) workerSession.process(
-                    new WorkerIdentifier(6110), request, new RemoteRequestContext());
+                    6110, request, new RequestContext());
         assertNotNull(response);
         
         assertFalse("Explicit ECC parameters not set", workerSession.explicitEccParametersSet);
@@ -738,10 +734,10 @@ public class RenewalWorkerTest extends AbstractTestCase {
         
         // Should have certificate and chain
         final X509Certificate cert = (X509Certificate) getWorkerSession()
-                .getSignerCertificate(new WorkerIdentifier(SIGNERID_6102));
+                .getSignerCertificate(SIGNERID_6102);
         assertNotNull(cert);
         final List<java.security.cert.Certificate> chain
-                = getWorkerSession().getSignerCertificateChain(new WorkerIdentifier(SIGNERID_6102));
+                = getWorkerSession().getSignerCertificateChain(SIGNERID_6102);
         assertNotNull(chain);
         assertTrue(chain.contains(cert));
 
@@ -775,9 +771,11 @@ public class RenewalWorkerTest extends AbstractTestCase {
         final String keystorePassword = "foo123";
         createEmptyKeystore("PKCS12", keystorePath, keystorePassword);
     	
-    	getWorkerSession().setWorkerProperty(signerId, WorkerConfig.IMPLEMENTATION_CLASS,
+    	getGlobalSession().setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                "WORKER" + signerId + ".CLASSPATH",
                 "org.signserver.module.renewal.worker.RenewalWorker");
-        getWorkerSession().setWorkerProperty(signerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS,
+            getGlobalSession().setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                "WORKER" + signerId + ".SIGNERTOKEN.CLASSPATH",
                 "org.signserver.server.cryptotokens.P12CryptoToken");
 
         getWorkerSession().setWorkerProperty(signerId, "NAME", signerName);
@@ -835,17 +833,17 @@ public class RenewalWorkerTest extends AbstractTestCase {
         config.setProperty("DEFAULTKEY", "defaultKey");
         
         final String CRYPTOTOKEN_CLASSNAME =
-                "org.signserver.server.cryptotokens.KeystoreCryptoToken";
+                "org.signserver.server.cryptotokens.HardCodedCryptoToken";
         
         workerSession.setupWorker(signerId, CRYPTOTOKEN_CLASSNAME, config, new RenewalWorker() {
             @Override
-            protected GlobalConfigurationSessionLocal
+            protected IGlobalConfigurationSession.IRemote
                 getGlobalConfigurationSession() {
                 return conf;
             }
 
             @Override
-            protected WorkerSessionLocal getWorkerSession() {
+            protected IRemote getWorkerSession() {
                 return workerSession;
             }
         });
@@ -871,11 +869,11 @@ public class RenewalWorkerTest extends AbstractTestCase {
         config.setProperty("REQUESTDN", "CN=MockWorker");
         
         final String CRYPTOTOKEN_CLASSNAME =
-                "org.signserver.server.cryptotokens.KeystoreCryptoToken";
+                "org.signserver.server.cryptotokens.HardCodedCryptoToken";
         
         workerSession.setupWorker(signerId, CRYPTOTOKEN_CLASSNAME, config, new BaseSigner() {
             @Override
-            protected GlobalConfigurationSessionLocal
+            protected IGlobalConfigurationSession.IRemote
                 getGlobalConfigurationSession() {
                 return conf;
             }
@@ -974,7 +972,7 @@ public class RenewalWorkerTest extends AbstractTestCase {
         match1.setMatchtype(MATCH_TYPE_EQUALS);
         match1.setMatchvalue(SIGNER_6102_ENDENTITY);
         final Map<UserMatchEq, List<UserDataVOWS>> findResult
-                = new HashMap<>();
+                = new HashMap<UserMatchEq, List<UserDataVOWS>>();
         findResult.put(match1, Arrays.asList(user1));
         mockEjbcaWs.setFindUserResults(findResult);
     }
@@ -990,14 +988,18 @@ public class RenewalWorkerTest extends AbstractTestCase {
 
         protected boolean explicitEccParametersSet = false;
         private WorkerConfig workerConfig;
+        
+        public MockWorkerSession(GlobalConfigurationSessionMock globalConfig) {
+            super(globalConfig);
+        }
 
         @Override
-        public ICertReqData getCertificateRequest(WorkerIdentifier wi, ISignerCertReqInfo certReqInfo,
+        public ICertReqData getCertificateRequest(int signerId, ISignerCertReqInfo certReqInfo,
                 boolean explicitEccParameters, boolean defaultKey)
                 throws CryptoTokenOfflineException, InvalidWorkerIdException {
             explicitEccParametersSet = explicitEccParameters;
             
-            return super.getCertificateRequest(wi, certReqInfo, explicitEccParameters, defaultKey);
+            return super.getCertificateRequest(signerId, certReqInfo, explicitEccParameters, defaultKey);
         }
 
         @Override

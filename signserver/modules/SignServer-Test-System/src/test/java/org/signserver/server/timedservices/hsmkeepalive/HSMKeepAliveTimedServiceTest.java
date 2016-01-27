@@ -22,13 +22,12 @@ import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.ServiceConfig;
 import org.signserver.common.SignServerUtil;
-import org.signserver.common.WorkerIdentifier;
+import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.statusrepo.common.StatusEntry;
 import org.signserver.statusrepo.common.StatusName;
 import org.signserver.testutils.ModulesTestCase;
-import org.signserver.ejb.interfaces.WorkerSession;
-import org.signserver.statusrepo.StatusRepositorySession;
 
 /**
  * System test for the HSM keep-alive timed service.
@@ -45,8 +44,8 @@ public class HSMKeepAliveTimedServiceTest extends ModulesTestCase {
     private static final int WORKERID_CRYPTOWORKER1 = 5801;
     private static final int WORKERID_CRYPTOWORKER2 = 5802;
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final StatusRepositorySession statusSession = getStatusSession();
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IStatusRepositorySession statusSession = getStatusSession();
   
     @Before
     @Override
@@ -272,12 +271,12 @@ public class HSMKeepAliveTimedServiceTest extends ModulesTestCase {
             workerSession.reloadConfiguration(WORKERID_SERVICE);
             
             final List<String> fatalErrors =
-                    workerSession.getStatus(new WorkerIdentifier(WORKERID_SERVICE)).getFatalErrors();
+                    workerSession.getStatus(WORKERID_SERVICE).getFatalErrors();
             
-            assertTrue("Should contain error: " + fatalErrors,
-                    fatalErrors.contains("Invalid worker: Worker{name: NonExistingWorker}"));
-            assertTrue("Should contain error: " + fatalErrors,
-                    fatalErrors.contains("Invalid worker: Worker{id: 9994711}"));
+            assertTrue("Should contain error",
+                    fatalErrors.contains("No such worker: NonExistingWorker"));
+            assertTrue("Should contain error",
+                    fatalErrors.contains("Invalid worker ID: 9994711"));
             
             setServiceActive(true);
             // make sure the service had time to run
@@ -443,12 +442,12 @@ public class HSMKeepAliveTimedServiceTest extends ModulesTestCase {
             workerSession.reloadConfiguration(WORKERID_SERVICE);
             
             final List<String> fatalErrors =
-                    workerSession.getStatus(new WorkerIdentifier(WORKERID_SERVICE)).getFatalErrors();
+                    workerSession.getStatus(WORKERID_SERVICE).getFatalErrors();
             
-            assertTrue("Should contain error: " + fatalErrors,
-                    fatalErrors.contains("Invalid worker: Worker{name: NonExistingWorker}"));
-            assertTrue("Should contain error: " + fatalErrors,
-                    fatalErrors.contains("Invalid worker: Worker{id: 9994711}"));
+            assertTrue("Should contain error",
+                    fatalErrors.contains("No such worker: NonExistingWorker"));
+            assertTrue("Should contain error",
+                    fatalErrors.contains("Invalid worker ID: 9994711"));
             
             setServiceActive(true);
             // make sure the service had time to run

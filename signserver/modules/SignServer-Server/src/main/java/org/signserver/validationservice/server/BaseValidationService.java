@@ -17,7 +17,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.SignServerException;
 import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerConfig;
@@ -98,9 +98,7 @@ public abstract class BaseValidationService implements IValidationService {
         final List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<WorkerStatusInfo.Entry>();
 
         // Number of validators
-        if (validators != null) {
-            briefEntries.add(new WorkerStatusInfo.Entry("Number of validators", String.valueOf(validators.size())));
-        }
+        briefEntries.add(new WorkerStatusInfo.Entry("Number of validators", String.valueOf(validators.size())));
 
         // Properties
         final StringBuilder configValue = new StringBuilder();

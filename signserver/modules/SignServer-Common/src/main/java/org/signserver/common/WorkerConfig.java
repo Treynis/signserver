@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import org.apache.log4j.Logger;
-import org.cesecore.internal.UpgradeableDataHashMap;
+import org.ejbca.core.model.UpgradeableDataHashMap;
 
 /**
  * Class representing a signer config. contains to types of data, 
@@ -72,22 +72,7 @@ public class WorkerConfig extends UpgradeableDataHashMap {
      */
     public static final String PROPERTY_ALIASSELECTOR = "ALIASSELECTOR";
     
-    /**
-     * Fully qualified implementation class name for this worker.
-     */
-    public static final String IMPLEMENTATION_CLASS = "IMPLEMENTATION_CLASS";
-    
-    /**
-     * Fully qualified implementation class name for the crypto token.
-     */
-    public static final String CRYPTOTOKEN_IMPLEMENTATION_CLASS = "CRYPTOTOKEN_IMPLEMENTATION_CLASS";
-    
     private static String nodeId = null;
-
-    public static final int WORKERTYPE_SERVICES = 3;
-    public static final int WORKERTYPE_ALL = 1;
-    public static final int WORKERTYPE_PROCESSABLE = 2;
-    public static final int WORKERTYPE_MAILSIGNERS = 4;
     
     @SuppressWarnings("unchecked")
     public WorkerConfig() {
@@ -167,14 +152,6 @@ public class WorkerConfig extends UpgradeableDataHashMap {
         }
 
         data.put(WorkerConfig.VERSION, new Float(LATEST_VERSION));
-    }
-    
-    public String getImplementationClass() {
-        return getProperty(IMPLEMENTATION_CLASS);
-    }
-    
-    public String getCryptoTokenImplementationClass() {
-        return getProperty(CRYPTOTOKEN_IMPLEMENTATION_CLASS);
     }
 
     /**
