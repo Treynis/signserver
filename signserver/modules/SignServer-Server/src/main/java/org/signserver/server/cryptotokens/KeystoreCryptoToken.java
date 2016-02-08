@@ -25,13 +25,13 @@ import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.operator.OperatorCreationException;
-import org.cesecore.keys.util.KeyTools;
 import org.cesecore.util.query.QueryCriteria;
+import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.*;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.IServices;
 import org.signserver.server.ServicesImpl;
 import org.signserver.server.log.AdminInfo;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
 
 /**
  * Class that uses a PKCS12 or JKS file on the file system for signing.
@@ -68,7 +68,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     private String keystorepath = null;
     private String keystorepassword = null;
 
-    private volatile KeyStore ks; // Note: Needs volatile as different threads might load the key store at activation time
+    private KeyStore ks;
     private String keystoretype;
     private Properties properties;
 
@@ -77,7 +77,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
 
     private char[] authenticationCode;
 
-    private WorkerSessionLocal workerSession;
+    private IWorkerSession.ILocal workerSession;
     private int workerId;
     private Integer keygenerationLimit;
 
@@ -152,7 +152,6 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             this.authenticationCode = authenticationcode.toCharArray();
         }
         this.ks = getKeystore(keystoretype, keystorepath, authenticationCode);
-        LOG.error("Activated: " + this);
 
         entries = new HashMap<Object, KeyEntry>();
 
@@ -498,7 +497,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             if (TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
                 final ByteArrayOutputStream baos = (ByteArrayOutputStream) os;
                 
-                final WorkerSessionLocal workerSessionLocal = services.get(WorkerSessionLocal.class);
+                final IWorkerSession.ILocal workerSessionLocal = services.get(IWorkerSession.ILocal.class);
                 if (workerSessionLocal == null) {
                     throw new IllegalStateException("No WorkerSession available");
                 }
@@ -553,7 +552,6 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     @Override
     public KeyStore getKeyStore() throws UnsupportedOperationException,
             CryptoTokenOfflineException, KeyStoreException {
-        LOG.error("getKeyStore(): " + this);
         if (ks == null) {
             throw new CryptoTokenOfflineException("Not activated");
         }
@@ -743,9 +741,10 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     
     
     
-    protected WorkerSessionLocal getWorkerSession() throws NamingException {
+    protected IWorkerSession.ILocal getWorkerSession() throws NamingException {
         if (workerSession == null) {
-            workerSession = ServiceLocator.getInstance().lookupLocal(WorkerSessionLocal.class);
+            workerSession = ServiceLocator.getInstance().lookupLocal(
+                    IWorkerSession.ILocal.class);
         }
         return workerSession;
     }

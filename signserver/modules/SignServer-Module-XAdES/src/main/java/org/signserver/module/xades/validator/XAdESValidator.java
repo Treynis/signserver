@@ -44,7 +44,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.log4j.Logger;
 import org.bouncycastle.cert.ocsp.OCSPException;
 import org.bouncycastle.cert.ocsp.OCSPReq;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.*;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.validators.BaseValidator;
@@ -120,8 +120,6 @@ public class XAdESValidator extends BaseValidator {
             logPropertyError(workerId, CERTIFICATES, ex);
         } catch (IOException ex) {
             logPropertyError(workerId, CERTIFICATES, ex);
-        } catch (IllegalStateException ex) {
-            logPropertyError(workerId, CERTIFICATES, ex);
         }
         
         // TRUSTANCHORS
@@ -157,9 +155,7 @@ public class XAdESValidator extends BaseValidator {
             logPropertyError(workerId, TRUSTANCHORS, ex);
         } catch (CertificateException ex) {
             logPropertyError(workerId, TRUSTANCHORS, ex);
-        } catch (IllegalStateException ex) {
-            logPropertyError(workerId, TRUSTANCHORS, ex);
-        }
+        }        
     }
     
     /** Log a property error and add the error message the list of fatal errors. */

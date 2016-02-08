@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.admin.cli.defaultimpl;
 
-import java.io.Console;
 import java.util.Properties;
 import javax.ejb.EJBException;
 import org.apache.commons.cli.CommandLine;
@@ -20,13 +19,13 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
+import org.ejbca.ui.cli.util.ConsolePasswordReader;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
 import org.signserver.common.GenericPropertiesRequest;
 import org.signserver.common.GenericPropertiesResponse;
-import org.signserver.common.RemoteRequestContext;
-import org.signserver.common.WorkerIdentifier;
+import org.signserver.common.RequestContext;
 import org.signserver.module.renewal.common.RenewalWorkerProperties;
 
 /**
@@ -52,7 +51,7 @@ public class RenewSignerCommand extends AbstractAdminCommand {
             + "Example 1: signserver renewsigner signer71 -renewalworker RenewalWorker1\n"
             + "Example 2: signserver renewsigner signer71 -renewalworker RenewalWorker1 -authcode foo123\n";
 
-    private WorkerIdentifier renewalWorker;
+    private String renewalWorker;
     private String authCode;
     
     static {
@@ -80,7 +79,7 @@ public class RenewSignerCommand extends AbstractAdminCommand {
      */
     private void parseCommandLine(final CommandLine line) {
         if (line.hasOption(RENEWALWORKER)) {
-            renewalWorker = new WorkerIdentifier(line.getOptionValue(RENEWALWORKER, null));
+            renewalWorker = line.getOptionValue(RENEWALWORKER, null);
         }
         if (line.hasOption(AUTHCODE)) {
             authCode = line.getOptionValue(AUTHCODE, null);
@@ -116,13 +115,8 @@ public class RenewSignerCommand extends AbstractAdminCommand {
             if (authCode == null) {
                 getOutputStream().print("Enter authorization code: ");
                 // Read the password, but mask it so we don't display it on the console
-                final Console console = System.console();
-                
-                if (console != null) {
-                    authCode = String.valueOf(console.readPassword());
-                } else {
-                    throw new CommandFailureException("Unable to read password");
-                }
+                ConsolePasswordReader r = new ConsolePasswordReader();
+                authCode = String.valueOf(r.readPassword());
             }
 
             String workerName = args[0];
@@ -140,8 +134,8 @@ public class RenewSignerCommand extends AbstractAdminCommand {
             final GenericPropertiesRequest request = new GenericPropertiesRequest(requestProperties);
 
             final GenericPropertiesResponse response =
-                    (GenericPropertiesResponse) getProcessSession().process(
-                    renewalWorker, request, new RemoteRequestContext());
+                    (GenericPropertiesResponse) getWorkerSession().process(
+                    getWorkerId(renewalWorker), request, new RequestContext(true));
 
             final Properties responseProperties =
                     response.getProperties();

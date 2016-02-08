@@ -21,13 +21,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.TreeMap;
 import javax.persistence.EntityManager;
 import junit.framework.TestCase;
 import org.apache.log4j.Logger;
-import org.bouncycastle.util.encoders.Base64;
 import org.cesecore.util.CertTools;
+import org.ejbca.util.Base64;
 import org.junit.Test;
+import org.signserver.common.CryptoTokenInitializationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ISignerCertReqInfo;
@@ -40,11 +40,11 @@ import org.signserver.common.ResyncException;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.server.aliasselectors.AliasSelector;
+import org.signserver.server.cryptotokens.HardCodedCryptoToken;
 import org.signserver.server.cryptotokens.NullCryptoToken;
 import org.signserver.server.signers.BaseSigner;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.server.log.AdminInfo;
 
 /**
  * Tests for the BaseProcessable class.
@@ -77,71 +77,6 @@ public class BaseProcessableTest extends TestCase {
             "        CKA_UNWRAP = true\n" +
             "}";
 
-    /**
-    subject=/CN=Signer 4/OU=Testing/O=SignServer/C=SE
-    issuer=/CN=DSS Root CA 10/OU=Testing/O=SignServer/C=SE
-    valid until=27/05/2021 09:51:45 GMT
-    */
-    private static final String CERT1 =
-              "MIIElTCCAn2gAwIBAgIITz1ZKtegWpgwDQYJKoZIhvcNAQELBQAwTTEXMBUGA1UE"
-            + "AwwORFNTIFJvb3QgQ0EgMTAxEDAOBgNVBAsMB1Rlc3RpbmcxEzARBgNVBAoMClNp"
-            + "Z25TZXJ2ZXIxCzAJBgNVBAYTAlNFMB4XDTExMDUyNzA5NTE0NVoXDTIxMDUyNzA5"
-            + "NTE0NVowRzERMA8GA1UEAwwIU2lnbmVyIDQxEDAOBgNVBAsMB1Rlc3RpbmcxEzAR"
-            + "BgNVBAoMClNpZ25TZXJ2ZXIxCzAJBgNVBAYTAlNFMIIBIjANBgkqhkiG9w0BAQEF"
-            + "AAOCAQ8AMIIBCgKCAQEAnCGlYABPTW3Jx607cdkHPDJEGXpKCXkI29zj8BxCIvC3"
-            + "3kyGZB6M7EICU+7vt200u1TmSjx2auTfZI6sA2cDsESlMhKJ+8nj2uj1f5g9MYRb"
-            + "+IIq1IIhDArWwICswnZkWL/5Ncggg2bNcidCblDy5SUQ+xMeXtJQWCU8Zn3a+ySZ"
-            + "Z1ZiYZ10gUu5JValsuOb8YpcT/pqBPF0cgEy6mIe3ANolzxLKNUBYAsQzQnCvgx+"
-            + "GqgbzYHo8fkppSGUFVYdFI0MC9CBT72eOxxQoguICWXus8BdIwebZDGQdluKvTNs"
-            + "ig4hM39G6WvPqoEi9I86VhY9mSyY+WOeU5Y3ZsC8CQIDAQABo38wfTAdBgNVHQ4E"
-            + "FgQUGqddBv2s8iEa5B98MVTbQ2HiFkAwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAW"
-            + "gBQgeiHe6K27Aqj7cVikCWK52FgFojAOBgNVHQ8BAf8EBAMCBeAwHQYDVR0lBBYw"
-            + "FAYIKwYBBQUHAwIGCCsGAQUFBwMEMA0GCSqGSIb3DQEBCwUAA4ICAQB8HpFOfiTb"
-            + "ylu06tg0yqvix93zZrJWSKT5PjwpqAU+btQ4fFy4GUBG6VuuVr27+FaFND3oaIQW"
-            + "BXdQ1+6ea3Nu9WCnKkLLjg7OjBNWw1LCrHXiAHdIYM3mqayPcf7ezbr6AMnmwDs6"
-            + "/8YAXjyRLmhGb23M8db+3pgTf0Co/CoeQWVa1eJObH7aO4/Koeg4twwbKG0MjwEY"
-            + "ZPi0ZWB93w/llEHbvMNI9dsQWSqIU7W56KRFN66WdqFhjdVPyg86NudH+9jmp4x1"
-            + "Ac9GKGNOYYfDnQCdsrJwZMvcI7bZykbd77ZC3zBzuaISAeRJq3rjHygSeKPHCYDW"
-            + "zAVEP9yaO0fL7HMZ2uqHxokvuOo5SxgVfvLr+kT4ioQHz+r9ehkCf0dbydm7EqyJ"
-            + "Y7YSFUDEqk57dnZDxy7ZgUA/TZf3I3rPjSopDxqiqJbm9L0GPW3zk0pAZx7dgLcq"
-            + "2I8fv+DBEKqJ47/H2V5aopxsRhiKC5u8nEEbAMbBYgjGQT/5K4mBt0gUJFNek7vS"
-            + "a50VH05u8P6yo/3ppDxGCXE2d2JfWlEIx7DRWWij2PuOgDGkvVt2soxtp8Lx+kS6"
-            + "K+G+tA5BGZMyEPdqAakyup7udi4LoB0wfJ58Jr5QNHCx4icUWvCBUM5CTcH4O/pQ"
-            + "oj/7HSYZlqigM72nR8f/gv1TwLVKz+ygzg==";
-    
-    /**
-    subject=/CN=Signer 1/OU=Testing/O=SignServer/C=SE
-    issuer=/CN=DSS Root CA 10/OU=Testing/O=SignServer/C=SE
-    valid until=2025-06-01
-    Taken from res/test/dss10/dss10_signer1.pem
-    */
-    private static final String CERT2 =
-            "MIIElTCCAn2gAwIBAgIIQZNa2mLuDoowDQYJKoZIhvcNAQELBQAwTTEXMBUGA1UE"
-          +  "AwwORFNTIFJvb3QgQ0EgMTAxEDAOBgNVBAsMB1Rlc3RpbmcxEzARBgNVBAoMClNp"
-          +  "Z25TZXJ2ZXIxCzAJBgNVBAYTAlNFMB4XDTE1MDYwMTE0MDQ0MVoXDTI1MDYwMTE0"
-          +  "MDQ0MVowRzERMA8GA1UEAwwIU2lnbmVyIDExEDAOBgNVBAsMB1Rlc3RpbmcxEzAR"
-          +  "BgNVBAoMClNpZ25TZXJ2ZXIxCzAJBgNVBAYTAlNFMIIBIjANBgkqhkiG9w0BAQEF"
-          +  "AAOCAQ8AMIIBCgKCAQEAy0GX45lzDRhUU/jhCCeqKKZcFWlOQiDxUcd6JOq38drU"
-          +  "alL9u2+gr+dcBFKRBOGmFxjMGVJ4nDO8uI3dl+BOrFbykUAnf1Yk/t8E2ZmgdQMP"
-          +  "4Cz6iXwlgWj8YRnQ6wEk2gcAp45SARfyEYdtArYvbTxOFoxb9KOjwji89yxCR/pb"
-          +  "RHz/q3RoXgq6E/g8mTmIt4CAgvD5VVFiNP7XWKd4Ptw4bjQY8RW5k8291o1ErHbD"
-          +  "Zvvqvps4E9cIu35v1LtXjlFkwVJ4xc0L61Ak+cjcwAUcGqTHQ7P9KdjcOLztsw0X"
-          +  "3jTZi5nLg3y4FukeOzkjxk5nh0Jr3/F3M7wuY2BS6wIDAQABo38wfTAdBgNVHQ4E"
-          +  "FgQUDsECWxG3XbAJooXiXmQrIz/d0l4wDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAW"
-          +  "gBQgeiHe6K27Aqj7cVikCWK52FgFojAOBgNVHQ8BAf8EBAMCBeAwHQYDVR0lBBYw"
-          +  "FAYIKwYBBQUHAwIGCCsGAQUFBwMEMA0GCSqGSIb3DQEBCwUAA4ICAQAr2nSyOwkD"
-          +  "WPWiIqomXHsBHXwr35kvwqNSqM5Lh9if0XUDj0HudXH+nenyH9FAMkX1rfOm+SjQ"
-          +  "Wmw5mgwgvpDyaI8J6NBSf0Kve9Qxn8Yh224oVZogHS7LYFULd9FE3UdLv0ZrD2i+"
-          +  "0aXEZXaCEJBxNY+iVOpGdBdBgY6c7MD6Ib1Py7bQeslSOjmHNs7OnE5aZaLfmUQ3"
-          +  "0EprvX0Zzx0mhjm8BU41+m7Yg4W94mbZX0AGjEKL8v4NRQkNdv2/wgKNGKK+OvII"
-          +  "E/a3g8i68Jy5xbEI5sVcp6Z6qIa+6+5li33Gblwr86DnQFmm0IrCmgVyT2RuzNeX"
-          +  "FcgenbHJO/udOchn1b65wwzfIuqo5SpJmzsS9HvbsdJOCvXbRRJibjC0TN73Bmag"
-          +  "H0wv4t9TawbRH/8M3JvWIAV7DIuyiosC6F9jN319zWkzPllesNsjmWzE05fwcZky"
-          +  "4RSsS+eYmHxn9oEi1nS4igv0o/4lpz8WZ9KQSNTWP89wXPMW7bT1XUqMehSXk5Q1"
-          +  "3Ao/AXPF+4ZP4QJZMa2OHdDaNPMBinK0fZzoV/RFx5mzQm+XJCcdZBHbB+JEw14V"
-          +  "BQHSf/Icgab1tANxgQSk8IOhZ0/OQ6LdfoTmRVsrxz58tzvA8Fw+FcyyIni8p6ve"
-          +  "2oETepx5f5yVfLJzAdcgTXwo6R52yBgw2w==";
-    
     /** Tests the base case were no default properties are used to configure the PKCS11CryptoToken. */
     @Test
     public void testGetCryptoToken_noDefaults() throws Exception {
@@ -151,8 +86,8 @@ public class BaseProcessableTest extends TestCase {
         WorkerConfig workerConfig = new WorkerConfig();
         
         // Exercising all properties (except SLOTLISTINDEX)
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, MockedCryptoToken.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         workerConfig.setProperty("NAME", "TestSigner100");
         workerConfig.setProperty("SHAREDLIBRARY", "/opt/hsm/pkcs11.so");
         workerConfig.setProperty("SHAREDLIBRARYNAME", "P11Library");
@@ -164,11 +99,11 @@ public class BaseProcessableTest extends TestCase {
         MockedCryptoToken actualToken = (MockedCryptoToken) instance.getCryptoToken();
         Properties actualProperties = actualToken.getProps();
         
-        assertEquals("same as worker config", new TreeMap<>(workerConfig.getProperties()).toString(), new TreeMap<>(actualProperties).toString());
+        assertEquals("same as worker config", workerConfig.getProperties().toString(), actualProperties.toString());
         
         // Exercising all properties (except SLOT)
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, MockedCryptoToken.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         workerConfig.setProperty("NAME", "TestSigner100");
         workerConfig.setProperty("SHAREDLIBRARY", "/opt/hsm/pkcs11.so");
         workerConfig.setProperty("SHAREDLIBRARYNAME", "P11Library");
@@ -180,7 +115,7 @@ public class BaseProcessableTest extends TestCase {
         actualToken = (MockedCryptoToken) instance.getCryptoToken();
         actualProperties = actualToken.getProps();
         
-        assertEquals("same as worker config", new TreeMap<>(workerConfig.getProperties()).toString(), new TreeMap<>(actualProperties).toString());
+        assertEquals("same as worker config", workerConfig.getProperties().toString(), actualProperties.toString());
     }
     
     /** 
@@ -196,8 +131,8 @@ public class BaseProcessableTest extends TestCase {
         WorkerConfig workerConfig = new WorkerConfig();
         
         // SLOTLISTINDEX only in GlobalConfiguration
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, MockedCryptoToken.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         globalConfig.setProperty("GLOB.DEFAULT.SLOTLISTINDEX", "33");
         workerConfig.setProperty("NAME", "TestSigner100");
         workerConfig.setProperty("ATTRIBUTES", SAMPLE_ATTRIBUTES);
@@ -214,8 +149,8 @@ public class BaseProcessableTest extends TestCase {
                 expectedProperties.toString(), actualProperties.toString());
         
         // SLOTLISTINDEX both in GlobalConfiguration and in Worker Config
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, MockedCryptoToken.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         globalConfig.setProperty("GLOB.DEFAULT.SLOTLISTINDEX", "33");
         workerConfig.setProperty("NAME", "TestSigner100");
         workerConfig.setProperty("SHAREDLIBRARY", "/opt/hsm/pkcs11.so");
@@ -252,8 +187,8 @@ public class BaseProcessableTest extends TestCase {
         WorkerConfig workerConfig = new WorkerConfig();
         
         // All PKCS#11 properties that can have default values in GlobalConfiguration (except SLOTLISTINDEX, ATTRIBUTES)
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, MockedCryptoToken.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         globalConfig.setProperty("GLOB.DEFAULT.SHAREDLIBRARY", "/opt/hsm/default-pkcs11.so");
         globalConfig.setProperty("GLOB.DEFAULT.SHAREDLIBRARYNAME", "DefaultLibrary");
         globalConfig.setProperty("GLOB.DEFAULT.SLOT", "44");
@@ -274,11 +209,11 @@ public class BaseProcessableTest extends TestCase {
         expectedProperties.setProperty("ATTRIBUTESFILE", "/opt/hsm/default-sunpkcs11.cfg");
         expectedProperties.setProperty("PIN", "FooBar789");
         assertEquals("default SHAREDLIBRARY etc used", 
-                new TreeMap<>(expectedProperties).toString(), new TreeMap<>(actualProperties).toString());
-
+                expectedProperties.toString(), actualProperties.toString());
+        
         // All PKCS#11 properties that can have default values GlobalConfiguration and overriden in Worker Config (except SLOTLISTINDEX, ATTRIBUTES)
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, MockedCryptoToken.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         globalConfig.setProperty("GLOB.DEFAULT.SHAREDLIBRARY", "/opt/hsm/default-pkcs11.so");
         globalConfig.setProperty("GLOB.DEFAULT.SHAREDLIBRARYNAME", "DefaultLibrary");
         globalConfig.setProperty("GLOB.DEFAULT.SLOT", "44");
@@ -313,8 +248,8 @@ public class BaseProcessableTest extends TestCase {
         Properties globalConfig = new Properties();
         WorkerConfig workerConfig = new WorkerConfig();
         
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.foo.Bar");
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", "org.foo.Bar");
         workerConfig.setProperty("NAME", "TestSigner100");
         
         TestSigner instance = new TestSigner(globalConfig);
@@ -336,8 +271,8 @@ public class BaseProcessableTest extends TestCase {
 
         Properties globalConfig = new Properties();
         WorkerConfig workerConfig = new WorkerConfig();
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, MockedCryptoToken.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         workerConfig.setProperty("NAME", "TestSigner200");
         // Note: No SIGNERCERT or SIGNERCERTCHAIN configured so cert from token should be used
 
@@ -360,20 +295,20 @@ public class BaseProcessableTest extends TestCase {
 
         Properties globalConfig = new Properties();
         WorkerConfig workerConfig = new WorkerConfig();
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, MockedCryptoToken.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         workerConfig.setProperty("NAME", "TestSigner200");
 
         // Configure certbytes3 (CN=End Entity 1)
-        workerConfig.setProperty("SIGNERCERT", "-----BEGIN CERTIFICATE-----\n" + CERT2 + "\n-----END CERTIFICATE-----");
-        workerConfig.setProperty("SIGNERCERTCHAIN", "-----BEGIN CERTIFICATE-----\n" + CERT2 + "\n-----END CERTIFICATE-----");
+        workerConfig.setProperty("SIGNERCERT", "-----BEGIN CERTIFICATE-----\n" + new String(Base64.encode(HardCodedCryptoToken.certbytes3)) + "\n-----END CERTIFICATE-----");
+        workerConfig.setProperty("SIGNERCERTCHAIN", "-----BEGIN CERTIFICATE-----\n" + new String(Base64.encode(HardCodedCryptoToken.certbytes3)) + "\n-----END CERTIFICATE-----");
 
         TestSigner instance = new TestSigner(globalConfig);
         instance.init(workerId, workerConfig, anyContext, null);
 
         // Certifcate in token is "CN=Signer 4", configured certificate is "CN=End Entity 1"
-        assertEquals("cert from token", "Signer 1", CertTools.getPartFromDN(((X509Certificate) instance.getSigningCertificate()).getSubjectX500Principal().getName(), "CN"));
-        assertEquals("cert from token", "Signer 1", CertTools.getPartFromDN(((X509Certificate) instance.getSigningCertificateChain().get(0)).getSubjectX500Principal().getName(), "CN"));
+        assertEquals("cert from token", "End Entity 1", CertTools.getPartFromDN(((X509Certificate) instance.getSigningCertificate()).getSubjectX500Principal().getName(), "CN"));
+        assertEquals("cert from token", "End Entity 1", CertTools.getPartFromDN(((X509Certificate) instance.getSigningCertificateChain().get(0)).getSubjectX500Principal().getName(), "CN"));
     }
 
     /**
@@ -388,8 +323,8 @@ public class BaseProcessableTest extends TestCase {
         Properties globalConfig = new Properties();
         WorkerConfig workerConfig = new WorkerConfig();
 
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, 
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", 
                 "org.signserver.server.cryptotokens.PKCS11CryptoToken");
         workerConfig.setProperty("NAME", "TestSigner100");
         
@@ -451,8 +386,8 @@ public class BaseProcessableTest extends TestCase {
         WorkerConfig workerConfig = new WorkerConfig();
         
         // Exercising all properties (except SLOTLISTINDEX)
-        workerConfig.setProperty(WorkerConfig.IMPLEMENTATION_CLASS, TestSigner.class.getName());
-        workerConfig.setProperty(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, MockedCryptoToken.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".CLASSPATH", TestSigner.class.getName());
+        globalConfig.setProperty("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", MockedCryptoToken.class.getName());
         workerConfig.setProperty("NAME", "TestSigner100");
         
         TestSigner instance = new TestSigner(globalConfig);
@@ -460,7 +395,7 @@ public class BaseProcessableTest extends TestCase {
         
             
         final List<Certificate> chain =
-                Arrays.asList(CertTools.getCertfromByteArray(Base64.decode(CERT2)));
+                Arrays.asList(CertTools.getCertfromByteArray(HardCodedCryptoToken.certbytes2));
         
         instance.importCertificateChain(chain, "alias2", null, Collections.<String, Object>emptyMap(), new ServicesImpl());
         
@@ -515,8 +450,7 @@ public class BaseProcessableTest extends TestCase {
         
         static {
             try {
-                CERTIFICATE =
-                        CertTools.getCertfromByteArray(Base64.decode(CERT1.getBytes()));
+                CERTIFICATE = CertTools.getCertfromByteArray(HardCodedCryptoToken.certbytes1);
             } catch (CertificateException ex) {
                 throw new RuntimeException("Load test certificate failed", ex);
             }
@@ -585,8 +519,8 @@ public class BaseProcessableTest extends TestCase {
         }
         
         @Override
-        protected GlobalConfigurationSessionLocal getGlobalConfigurationSession() {
-            return new GlobalConfigurationSessionLocal() {
+        protected IGlobalConfigurationSession getGlobalConfigurationSession() {
+            return new IGlobalConfigurationSession() {
 
                 @Override
                 public void setProperty(String scope, String key, String value) {
@@ -610,26 +544,6 @@ public class BaseProcessableTest extends TestCase {
 
                 @Override
                 public void reload() {
-                    throw new UnsupportedOperationException("Not supported yet.");
-                }
-
-                @Override
-                public void setProperty(AdminInfo adminInfo, String scope, String key, String value) {
-                    throw new UnsupportedOperationException("Not supported yet.");
-                }
-
-                @Override
-                public boolean removeProperty(AdminInfo adminInfo, String scope, String key) {
-                    throw new UnsupportedOperationException("Not supported yet.");
-                }
-
-                @Override
-                public void resync(AdminInfo adminInfo) throws ResyncException {
-                    throw new UnsupportedOperationException("Not supported yet.");
-                }
-
-                @Override
-                public void reload(AdminInfo adminInfo) {
                     throw new UnsupportedOperationException("Not supported yet.");
                 }
             };

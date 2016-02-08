@@ -30,10 +30,9 @@ import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.KeyTestResult;
 import org.signserver.common.ServiceLocator;
-import org.signserver.common.WorkerStatus;
 import org.signserver.server.cryptotokens.ICryptoToken;
+import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.NoSuchPropertyException;
-import org.signserver.statusrepo.StatusRepositorySessionLocal;
 
 /**
  * Test crypto token recording testKey() operations.
@@ -49,7 +48,7 @@ public class TestKeyDebugCryptoToken implements ICryptoToken {
     private String testKey;
     private boolean disableTestKey;
       
-    private StatusRepositorySessionLocal statusSession;
+    private IStatusRepositorySession statusSession;
     
     /**
      * Status repository property to set.
@@ -70,7 +69,8 @@ public class TestKeyDebugCryptoToken implements ICryptoToken {
                                                        Boolean.FALSE.toString()));
     
         try {
-            statusSession = ServiceLocator.getInstance().lookupLocal(StatusRepositorySessionLocal.class);
+            statusSession = ServiceLocator.getInstance().lookupLocal(
+                    IStatusRepositorySession.class);
         } catch (NamingException ex) {
             throw new RuntimeException("Unable to lookup worker session",
                     ex);
@@ -79,7 +79,7 @@ public class TestKeyDebugCryptoToken implements ICryptoToken {
 
     @Override
     public int getCryptoTokenStatus() {
-        return WorkerStatus.STATUS_ACTIVE;
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override

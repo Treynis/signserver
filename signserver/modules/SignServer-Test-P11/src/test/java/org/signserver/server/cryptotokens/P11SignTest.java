@@ -61,18 +61,15 @@ import org.signserver.common.GenericSignResponse;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.KeyTestResult;
 import org.signserver.common.PKCS10CertReqInfo;
-import org.signserver.common.RemoteRequestContext;
+import org.signserver.common.RequestContext;
 import org.signserver.common.SODSignRequest;
 import org.signserver.common.SODSignResponse;
 import org.signserver.common.SignServerException;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.TokenOutOfSpaceException;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.util.PathUtil;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.test.utils.builders.CryptoUtils;
 import org.signserver.testutils.ModulesTestCase;
 
@@ -121,9 +118,8 @@ public class P11SignTest extends ModulesTestCase {
     private final File odfSampleFile;
     private final File ooxmlSampleFile;
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
-    private final GlobalConfigurationSessionRemote globalSession = getGlobalSession();
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
     
     public P11SignTest() throws FileNotFoundException {
         final File home = PathUtil.getAppHome();
@@ -151,8 +147,8 @@ public class P11SignTest extends ModulesTestCase {
 
     private void setupCryptoTokenProperties(final int tokenId, final boolean cache) throws Exception {
         // Setup token
-        workerSession.setWorkerProperty(tokenId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.server.signers.CryptoWorker");
-        workerSession.setWorkerProperty(tokenId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".CLASSPATH", "org.signserver.server.signers.CryptoWorker");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(tokenId, "NAME", CRYPTO_TOKEN_NAME);
         workerSession.setWorkerProperty(tokenId, "SHAREDLIBRARYNAME", sharedLibraryName);
         workerSession.setWorkerProperty(tokenId, "SLOT", slot);
@@ -163,7 +159,7 @@ public class P11SignTest extends ModulesTestCase {
 
     private void setPDFSignerOnlyProperties(final int workerId) throws Exception {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.pdfsigner.PDFSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.pdfsigner.PDFSigner");
         workerSession.setWorkerProperty(workerId, "NAME", "PDFSignerP11");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "CRYPTOTOKEN", CRYPTO_TOKEN_NAME);
@@ -172,8 +168,8 @@ public class P11SignTest extends ModulesTestCase {
 
     private void setPDFSignerWithCryptoProperties(final int workerId, final boolean cache) throws Exception {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.pdfsigner.PDFSigner");
-        workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.pdfsigner.PDFSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(workerId, "NAME", "PDFSignerP11");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", sharedLibraryName);
@@ -191,7 +187,7 @@ public class P11SignTest extends ModulesTestCase {
             
             // Tests generating a CSR
             PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + WORKER_PDF, null);
-            Base64SignerCertReqData csr = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(WORKER_PDF), certReqInfo, false);
+            Base64SignerCertReqData csr = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(WORKER_PDF, certReqInfo, false);
             assertNotNull(csr);
             assertNotNull(csr.getBase64CertReq());
             assertTrue(csr.getBase64CertReq().length > 0);
@@ -202,7 +198,7 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.reloadConfiguration(WORKER_PDF);
             try {
                 certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + WORKER_PDF, null);
-                getWorkerSession().getCertificateRequest(new WorkerIdentifier(WORKER_PDF), certReqInfo, false);
+                getWorkerSession().getCertificateRequest(WORKER_PDF, certReqInfo, false);
                 fail("Should have thrown exception as the DEFAULTKEY does not exist");
             } catch (CryptoTokenOfflineException ok) { // NOPMD
                 // OK
@@ -222,7 +218,7 @@ public class P11SignTest extends ModulesTestCase {
 
             // Tests generating a CSR
             PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + WORKER_PDF, null);
-            Base64SignerCertReqData csr = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(WORKER_PDF), certReqInfo, false);
+            Base64SignerCertReqData csr = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(WORKER_PDF, certReqInfo, false);
             assertNotNull(csr);
             assertNotNull(csr.getBase64CertReq());
             assertTrue(csr.getBase64CertReq().length > 0);
@@ -232,7 +228,7 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.reloadConfiguration(WORKER_PDF);
             try {
                 certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + WORKER_PDF, null);
-                getWorkerSession().getCertificateRequest(new WorkerIdentifier(WORKER_PDF), certReqInfo, false);
+                getWorkerSession().getCertificateRequest(WORKER_PDF, certReqInfo, false);
                 fail("Should have thrown exception as the DEFAULTKEY does not exist");
             } catch (CryptoTokenOfflineException ok) { // NOPMD
                 // OK
@@ -308,7 +304,7 @@ public class P11SignTest extends ModulesTestCase {
     private void pdfSignerTest() throws Exception {
         // Generate CSR
         PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + WORKER_PDF, null);
-        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(WORKER_PDF), certReqInfo, false);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(WORKER_PDF, certReqInfo, false);
 
         // Issue certificate
         PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
@@ -321,7 +317,7 @@ public class P11SignTest extends ModulesTestCase {
         workerSession.reloadConfiguration(WORKER_PDF);
 
         // Test active
-        List<String> errors = workerSession.getStatus(new WorkerIdentifier(WORKER_PDF)).getFatalErrors();
+        List<String> errors = workerSession.getStatus(WORKER_PDF).getFatalErrors();
         assertEquals("errors: " + errors, 0, errors.size());
 
         // Test signing
@@ -341,8 +337,8 @@ public class P11SignTest extends ModulesTestCase {
     
     private void setTimeStampSignerProperties(final int workerId, final boolean cache) throws IOException {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.tsa.TimeStampSigner");
-        workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.tsa.TimeStampSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(workerId, "NAME", "TSSignerP11");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", sharedLibraryName);
@@ -379,7 +375,7 @@ public class P11SignTest extends ModulesTestCase {
     private void tsSigner() throws Exception {
         // Generate CSR
         PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + WORKER_TSA, null);
-        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(WORKER_TSA), certReqInfo, false);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(WORKER_TSA, certReqInfo, false);
 
         // Issue certificate
         PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
@@ -392,7 +388,7 @@ public class P11SignTest extends ModulesTestCase {
         workerSession.reloadConfiguration(WORKER_TSA);
 
         // Test active
-        List<String> errors = workerSession.getStatus(new WorkerIdentifier(WORKER_TSA)).getFatalErrors();
+        List<String> errors = workerSession.getStatus(WORKER_TSA).getFatalErrors();
         assertEquals("errors: " + errors, 0, errors.size());
 
         // Test signing
@@ -400,7 +396,7 @@ public class P11SignTest extends ModulesTestCase {
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
         byte[] requestBytes = timeStampRequest.getEncoded();
         GenericSignRequest signRequest = new GenericSignRequest(567, requestBytes);
-        final GenericSignResponse res = (GenericSignResponse) processSession.process(new WorkerIdentifier(WORKER_TSA), signRequest, new RemoteRequestContext());
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(WORKER_TSA, signRequest, new RequestContext());
         Certificate signercert = res.getSignerCertificate();
         assertNotNull(signercert);
         final TimeStampResponse timeStampResponse = new TimeStampResponse((byte[]) res.getProcessedData());
@@ -412,8 +408,8 @@ public class P11SignTest extends ModulesTestCase {
     
     private void setMRTDSODSignerProperties(final int workerId, final boolean cache) throws IOException {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.mrtdsodsigner.MRTDSODSigner");
-        workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.mrtdsodsigner.MRTDSODSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(workerId, "NAME", "SODSignerP11");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", sharedLibraryName);
@@ -453,7 +449,7 @@ public class P11SignTest extends ModulesTestCase {
     private void mrtdsodSigner(final int workerId) throws Exception {
         // Generate CSR
         PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + workerId, null);
-        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(workerId), certReqInfo, false);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(workerId, certReqInfo, false);
 
         // Issue certificate
         PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
@@ -467,7 +463,7 @@ public class P11SignTest extends ModulesTestCase {
         workerSession.reloadConfiguration(workerId);
 
         // Test active
-        List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+        List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
         assertEquals("errors: " + errors, 0, errors.size());
 
         // Test signing
@@ -476,15 +472,15 @@ public class P11SignTest extends ModulesTestCase {
         dgs.put(2, "Yy==".getBytes());
         dgs.put(3, "Yy==".getBytes());
         final SODSignRequest signRequest = new SODSignRequest(233, dgs);
-        final SODSignResponse res = (SODSignResponse) processSession.process(new WorkerIdentifier(workerId), signRequest, new RemoteRequestContext());
+        final SODSignResponse res = (SODSignResponse) workerSession.process(workerId, signRequest, new RequestContext());
         Certificate signercert = res.getSignerCertificate();
         assertNotNull(signercert);
     }
     
     private void setCMSSignerProperties(final int workerId, final boolean cached) throws IOException {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.cmssigner.CMSSigner");
-        workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.cmssigner.CMSSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(workerId, "NAME", "CMSSignerP11");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", sharedLibraryName);
@@ -524,7 +520,7 @@ public class P11SignTest extends ModulesTestCase {
     private void cmsSigner(final int workerId) throws Exception {
         // Generate CSR
         PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + workerId, null);
-        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(workerId), certReqInfo, false);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(workerId, certReqInfo, false);
 
         // Issue certificate
         PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
@@ -537,7 +533,7 @@ public class P11SignTest extends ModulesTestCase {
         workerSession.reloadConfiguration(workerId);
 
         // Test active
-        List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+        List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
         assertEquals("errors: " + errors, 0, errors.size());
 
         // Test signing
@@ -546,8 +542,8 @@ public class P11SignTest extends ModulesTestCase {
     
     private void setXMLSignerProperties(final int workerId, final boolean cache) throws IOException {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.xmlsigner.XMLSigner");
-        workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.xmlsigner.XMLSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(workerId, "NAME", "XMLSignerP11");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", sharedLibraryName);
@@ -559,7 +555,7 @@ public class P11SignTest extends ModulesTestCase {
 
     private void setXMLSignerPropertiesReferingToken(final int workerId, final String tokenName, final boolean cache) throws IOException {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.xmlsigner.XMLSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.xmlsigner.XMLSigner");
         workerSession.setWorkerProperty(workerId, "NAME", "XMLSignerRefering");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "DEFAULTKEY", existingKey1);
@@ -617,7 +613,7 @@ public class P11SignTest extends ModulesTestCase {
     private void xmlSigner(final int workerId) throws Exception {
         // Generate CSR
         PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + workerId, null);
-        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(workerId), certReqInfo, false);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(workerId, certReqInfo, false);
 
         // Issue certificate
         PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
@@ -630,7 +626,7 @@ public class P11SignTest extends ModulesTestCase {
         workerSession.reloadConfiguration(workerId);
 
         // Test active
-        List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+        List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
         assertEquals("errors: " + errors, 0, errors.size());
 
         // Test signing
@@ -650,8 +646,8 @@ public class P11SignTest extends ModulesTestCase {
     
     private void setODFSignerProperties(final int workerId, final boolean cache) throws IOException {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.odfsigner.ODFSigner");
-        workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.odfsigner.ODFSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(workerId, "NAME", "ODFSignerP11");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", sharedLibraryName);
@@ -691,7 +687,7 @@ public class P11SignTest extends ModulesTestCase {
     private void odfSigner(final int workerId) throws Exception {
         // Generate CSR
         PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + workerId, null);
-        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(workerId), certReqInfo, false);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(workerId, certReqInfo, false);
 
         // Issue certificate
         PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
@@ -704,7 +700,7 @@ public class P11SignTest extends ModulesTestCase {
         workerSession.reloadConfiguration(workerId);
 
         // Test active
-        List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+        List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
         assertEquals("errors: " + errors, 0, errors.size());
 
         // Test signing
@@ -713,8 +709,8 @@ public class P11SignTest extends ModulesTestCase {
     
     private void setOOXMLSignerProperties(final int workerId, final boolean cache) throws IOException {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.ooxmlsigner.OOXMLSigner");
-        workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.ooxmlsigner.OOXMLSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(workerId, "NAME", "OOXMLSignerP11");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", sharedLibraryName);
@@ -752,7 +748,7 @@ public class P11SignTest extends ModulesTestCase {
     private void ooxmlSigner(final int workerId) throws Exception {
         // Generate CSR
         PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + workerId, null);
-        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(workerId), certReqInfo, false);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(workerId, certReqInfo, false);
 
         // Issue certificate
         PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
@@ -765,7 +761,7 @@ public class P11SignTest extends ModulesTestCase {
         workerSession.reloadConfiguration(workerId);
 
         // Test active
-        List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+        List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
         assertEquals("errors: " + errors, 0, errors.size());
 
         // Test signing
@@ -774,8 +770,8 @@ public class P11SignTest extends ModulesTestCase {
 
     private void setMSAuthTimeStampSignerProperties(final int workerId, final boolean cache) throws IOException {
         // Setup worker
-        workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.tsa.MSAuthCodeTimeStampSigner");
-        workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.tsa.MSAuthCodeTimeStampSigner");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(workerId, "NAME", "MSAuthTSSignerP11");
         workerSession.setWorkerProperty(workerId, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", sharedLibraryName);
@@ -814,7 +810,7 @@ public class P11SignTest extends ModulesTestCase {
     private void msauthTSSigner(final int workerId) throws Exception {        
         // Generate CSR
         PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA", "CN=Worker" + workerId, null);
-        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(new WorkerIdentifier(workerId), certReqInfo, false);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) getWorkerSession().getCertificateRequest(workerId, certReqInfo, false);
 
         // Issue certificate
         PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
@@ -827,12 +823,12 @@ public class P11SignTest extends ModulesTestCase {
         workerSession.reloadConfiguration(workerId);
 
         // Test active
-        List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+        List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
         assertEquals("errors: " + errors, 0, errors.size());
 
         // Test signing
         GenericSignRequest signRequest = new GenericSignRequest(678, MSAUTHCODE_REQUEST_DATA.getBytes());
-        final GenericSignResponse res = (GenericSignResponse) processSession.process(new WorkerIdentifier(workerId), signRequest, new RemoteRequestContext());
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(workerId, signRequest, new RequestContext());
         Certificate signercert = res.getSignerCertificate();
         assertNotNull(signercert);
 
@@ -868,9 +864,8 @@ public class P11SignTest extends ModulesTestCase {
         final int workerId = WORKER_CMS;
         try {
              // Setup worker
-    
-            workerSession.setWorkerProperty(workerId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.cmssigner.CMSSigner");
-            workerSession.setWorkerProperty(workerId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+            globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".CLASSPATH", "org.signserver.module.cmssigner.CMSSigner");
+            globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
             globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "DEFAULT.SHAREDLIBRARYNAME", sharedLibraryName);
             globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "DEFAULT.SLOT", slot);
             workerSession.setWorkerProperty(workerId, "NAME", "CMSSignerP11");
@@ -889,7 +884,7 @@ public class P11SignTest extends ModulesTestCase {
     }
     
     private Set<String> getKeyAliases(final int workerId) throws Exception {
-        Collection<KeyTestResult> testResults = workerSession.testKey(new WorkerIdentifier(workerId), "all", pin.toCharArray());
+        Collection<KeyTestResult> testResults = workerSession.testKey(workerId, "all", pin.toCharArray());
         final HashSet<String> results = new HashSet<String>();
         for (KeyTestResult testResult : testResults) {
             results.add(testResult.getAlias());
@@ -914,7 +909,7 @@ public class P11SignTest extends ModulesTestCase {
             
             // If the key already exists, try to remove it first
             if (aliases1.contains(TEST_KEY_ALIAS)) {
-                workerSession.removeKey(new WorkerIdentifier(workerId), TEST_KEY_ALIAS);
+                workerSession.removeKey(workerId, TEST_KEY_ALIAS);
                 aliases1 = getKeyAliases(workerId);
             }
             if (aliases1.contains(TEST_KEY_ALIAS)) {
@@ -922,7 +917,7 @@ public class P11SignTest extends ModulesTestCase {
             }
 
             // Generate a testkey
-            workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+            workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
             
             // Now expect the new TEST_KEY_ALIAS
             Set<String> expected = new HashSet<String>(aliases1);
@@ -931,7 +926,7 @@ public class P11SignTest extends ModulesTestCase {
             assertEquals("new key added", expected, aliases2);
         } finally {
             try {
-                workerSession.removeKey(new WorkerIdentifier(workerId), TEST_KEY_ALIAS);
+                workerSession.removeKey(workerId, TEST_KEY_ALIAS);
             } catch (SignServerException ignored) {}
             removeWorker(workerId);
         }
@@ -956,10 +951,10 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.reloadConfiguration(workerId);
             
             // Generate a key given a key spec
-            workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", spec, 
+            workerSession.generateSignerKey(workerId, "RSA", spec, 
                                             "keywithexponent", pin.toCharArray());
             final Collection<KeyTestResult> testResults =
-                    workerSession.testKey(new WorkerIdentifier(workerId), "keywithexponent", pin.toCharArray());
+                    workerSession.testKey(workerId, "keywithexponent", pin.toCharArray());
             for (final KeyTestResult testResult : testResults) {
                 assertTrue("Testkey successful", testResult.isSuccess());
             }
@@ -968,7 +963,7 @@ public class P11SignTest extends ModulesTestCase {
             final PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA",
                 "CN=test01GenerateKey,C=SE", null);
             Base64SignerCertReqData data = (Base64SignerCertReqData) workerSession
-                .getCertificateRequest(new WorkerIdentifier(workerId), certReqInfo, false, "keywithexponent");
+                .getCertificateRequest(workerId, certReqInfo, false, "keywithexponent");
             final byte[] reqBytes = data.getBase64CertReq();
             final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
@@ -979,7 +974,7 @@ public class P11SignTest extends ModulesTestCase {
                          expected, pubKey.getPublicExponent());
         } finally {
             try {
-                workerSession.removeKey(new WorkerIdentifier(workerId), "keywithexponent");
+                workerSession.removeKey(workerId, "keywithexponent");
             } catch (SignServerException ignored) {}
             removeWorker(workerId);
         }
@@ -1019,7 +1014,7 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.reloadConfiguration(workerId);
             
             // Add a reference key
-            workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS_2, pin.toCharArray());
+            workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS_2, pin.toCharArray());
             
             // Check available aliases
             final int keys = getKeyAliases(workerId).size();
@@ -1030,7 +1025,7 @@ public class P11SignTest extends ModulesTestCase {
             
             // Key generation should fail
             try {
-                workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
                 fail("Should have failed because of no space in token");
             } catch (TokenOutOfSpaceException expected) { // NOPMD
                 // OK
@@ -1042,7 +1037,7 @@ public class P11SignTest extends ModulesTestCase {
             
             // Generate a new key
             try {
-                workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
             } catch (CryptoTokenOfflineException ex) {
                 fail("Should have worked but got: " + ex.getLocalizedMessage());
             }
@@ -1052,17 +1047,17 @@ public class P11SignTest extends ModulesTestCase {
             
             // Key generation should fail
             try {
-                workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
                 fail("Should have failed because of no space in token");
             } catch (TokenOutOfSpaceException expected) { // NOPMD
                 // OK
             }
         } finally {
             try {
-                workerSession.removeKey(new WorkerIdentifier(workerId), TEST_KEY_ALIAS);
+                workerSession.removeKey(workerId, TEST_KEY_ALIAS);
             } catch (SignServerException ignored) {}
             try {
-                workerSession.removeKey(new WorkerIdentifier(workerId), TEST_KEY_ALIAS_2);
+                workerSession.removeKey(workerId, TEST_KEY_ALIAS_2);
             } catch (SignServerException ignored) {}
             removeWorker(workerId);
         }
@@ -1085,7 +1080,7 @@ public class P11SignTest extends ModulesTestCase {
 
             // If the key already exists, try to remove it first
             if (aliases1.contains(TEST_KEY_ALIAS)) {
-                workerSession.removeKey(new WorkerIdentifier(tokenId), TEST_KEY_ALIAS);
+                workerSession.removeKey(tokenId, TEST_KEY_ALIAS);
                 aliases1 = getKeyAliases(tokenId);
             }
             if (aliases1.contains(TEST_KEY_ALIAS)) {
@@ -1093,7 +1088,7 @@ public class P11SignTest extends ModulesTestCase {
             }
 
             // Generate a testkey
-            workerSession.generateSignerKey(new WorkerIdentifier(tokenId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+            workerSession.generateSignerKey(tokenId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
 
             // Now expect the new TEST_KEY_ALIAS
             Set<String> expected = new HashSet<String>(aliases1);
@@ -1103,7 +1098,7 @@ public class P11SignTest extends ModulesTestCase {
 
         } finally {
             try {
-                workerSession.removeKey(new WorkerIdentifier(tokenId), TEST_KEY_ALIAS);
+                workerSession.removeKey(tokenId, TEST_KEY_ALIAS);
             } catch (SignServerException ignored) {}
             removeWorker(tokenId);
         }
@@ -1126,7 +1121,7 @@ public class P11SignTest extends ModulesTestCase {
             
             if (!aliases1.contains(TEST_KEY_ALIAS)) {
                 // Generate a testkey
-                workerSession.generateSignerKey(new WorkerIdentifier(workerId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(workerId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
                 aliases1 = getKeyAliases(workerId);
             }
             if (!aliases1.contains(TEST_KEY_ALIAS)) {
@@ -1134,7 +1129,7 @@ public class P11SignTest extends ModulesTestCase {
             }
             
             // Remove the key
-            workerSession.removeKey(new WorkerIdentifier(workerId), TEST_KEY_ALIAS);
+            workerSession.removeKey(workerId, TEST_KEY_ALIAS);
             
             // Now expect the TEST_KEY_ALIAS to have been removed
             Set<String> aliases2 = getKeyAliases(workerId);
@@ -1163,7 +1158,7 @@ public class P11SignTest extends ModulesTestCase {
 
             if (!aliases1.contains(TEST_KEY_ALIAS)) {
                 // Generate a testkey
-                workerSession.generateSignerKey(new WorkerIdentifier(tokenId), "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
+                workerSession.generateSignerKey(tokenId, "RSA", "1024", TEST_KEY_ALIAS, pin.toCharArray());
                 aliases1 = getKeyAliases(tokenId);
             }
             if (!aliases1.contains(TEST_KEY_ALIAS)) {
@@ -1171,7 +1166,7 @@ public class P11SignTest extends ModulesTestCase {
             }
 
             // Remove the key
-            workerSession.removeKey(new WorkerIdentifier(tokenId), TEST_KEY_ALIAS);
+            workerSession.removeKey(tokenId, TEST_KEY_ALIAS);
 
             // Now expect the TEST_KEY_ALIAS to have been removed
             Set<String> aliases2 = getKeyAliases(tokenId);
@@ -1201,7 +1196,7 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.removeWorkerProperty(workerId, "SHAREDLIBRARYNAME");
             workerSession.reloadConfiguration(workerId);
             
-            final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+            final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
             boolean foundError = false;
             
             for (final String error : errors) {
@@ -1234,7 +1229,7 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", "NonExistingLibrary");
             workerSession.reloadConfiguration(workerId);
 
-            final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+            final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
             boolean foundError = false;
             
             for (final String error : errors) {
@@ -1268,7 +1263,7 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.setWorkerProperty(workerId, "SHAREDLIBRARY", "/opt/lib/libundefinedp11.so");
             workerSession.reloadConfiguration(workerId);
 
-            final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+            final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
             boolean foundError = false;
             
             for (final String error : errors) {
@@ -1304,7 +1299,7 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.setWorkerProperty(workerId, "SHAREDLIBRARY", sharedLibraryPath);
             workerSession.reloadConfiguration(workerId);
 
-            final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+            final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
             boolean foundError = false;
             
             for (final String error : errors) {
@@ -1340,7 +1335,7 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", "SoftHSM");
             workerSession.reloadConfiguration(workerId);
 
-            final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+            final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
             boolean foundError = false;
             
             for (final String error : errors) {
@@ -1377,7 +1372,7 @@ public class P11SignTest extends ModulesTestCase {
             workerSession.setWorkerProperty(workerId, "SHAREDLIBRARYNAME", sharedLibraryName);
             workerSession.reloadConfiguration(workerId);
 
-            final List<String> errors = workerSession.getStatus(new WorkerIdentifier(workerId)).getFatalErrors();
+            final List<String> errors = workerSession.getStatus(workerId).getFatalErrors();
             boolean foundError = false;
             
             for (final String error : errors) {

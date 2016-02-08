@@ -24,8 +24,6 @@ import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.InvalidWorkerIdException;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.WorkerStatus;
 
 /**
@@ -34,7 +32,7 @@ import org.signserver.common.WorkerStatus;
  * @version $Id$
  */
 public class GetStatusCommand extends AbstractCommand {
-
+    
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(GetStatusCommand.class);
 
@@ -84,13 +82,14 @@ public class GetStatusCommand extends AbstractCommand {
                 }
 
                 try {
-                    List<Integer> workers = helper.getWorkerSession().getWorkers(WorkerConfig.WORKERTYPE_ALL);
+                    List<Integer> workers = helper.getWorkerSession().getWorkers(GlobalConfiguration.WORKERTYPE_ALL);
 
                     Collections.sort(workers);
 
                     Iterator<?> iter = workers.iterator();
                     while (iter.hasNext()) {
-                        displayWorkerStatus(helper.getWorkerSession().getStatus(new WorkerIdentifier((Integer) iter.next())), complete);
+                        Integer id = (Integer) iter.next();
+                        displayWorkerStatus(id, helper.getWorkerSession().getStatus(id), complete);
                     }
                 } catch (InvalidWorkerIdException ex) {
                     if (LOG.isDebugEnabled()) {
@@ -98,8 +97,8 @@ public class GetStatusCommand extends AbstractCommand {
                     }
                 } 
             } else {
-                final WorkerIdentifier wi = WorkerIdentifier.createFromIdOrName(args[1]);
-                displayWorkerStatus(helper.getWorkerSession().getStatus(wi), complete);
+                int id = helper.getWorkerId(args[1]);
+                displayWorkerStatus(id, helper.getWorkerSession().getStatus(id), complete);
             }
         } catch (Exception e) {
             if (e instanceof IllegalCommandArgumentsException) {
@@ -110,8 +109,8 @@ public class GetStatusCommand extends AbstractCommand {
         return 0;
     }
     
-    private void displayWorkerStatus(WorkerStatus status, boolean complete) {
-        status.displayStatus(out, complete);
+    private void displayWorkerStatus(int workerid, WorkerStatus status, boolean complete) {
+        status.displayStatus(workerid, out, complete);
         out.println();
     }
 

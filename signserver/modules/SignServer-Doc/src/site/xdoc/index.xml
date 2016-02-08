@@ -29,14 +29,14 @@
 <a href="https://www.primekey.se/service-support/support/?pk_campaign=ssorg&amp;pk_kwd=enterprise_support" target="pk">Enterprise Support</a>
 </div>
 <div class="content first">
-<p><strong>SignServer 3.6.2 is now out!</strong>
+<p><strong>SignServer 3.7.0 is now out!</strong>
         <a href="download.html">Visit the download section to get SignServer.</a><br />
-  <span class="date"> Posted: 2014-11-28</span>
+  <span class="date"> Posted: 2015-12-31</span>
  </p>
     <p>
-        <strong>SignServer Enterprise 3.6.3 is now out!</strong><br/>
+        <strong>SignServer Enterprise 3.7.1 is now out!</strong><br/>
          For entire non-community features, only available in SignServer Enterprise, see the section on <a href="features.html#Enterprise%20Edition%20features">"Enterprise Edition features" in the features list</a>.<br/>
-        <span class="date"> Posted: 2015-04-01</span>
+        <span class="date"> Posted: 2016-01-29</span>
     </p>
 <p style="margin:0 0 .2em 0;"><strong>Main Features of SignServer!</strong></p>
     <div>
@@ -49,7 +49,7 @@
     </div>
 
     <p><a href="features.html">See complete list of features</a><br />
-    <span class="date"> Posted: 2014-10-24</span>
+    <span class="date"> Posted: 2016-01-29</span>
     </p>
 
 <!--
@@ -65,6 +65,10 @@
   <br /><span class="date"> Posted: 2014-10-24</span>
   </p>
   -->
+    <p><strong>EJBCA Tech Blog!</strong> <a href="http://blog.ejbca.org" target="ejbcablog">13 Hardcore EJBCA PKI options explained</a> 
+    <br/>
+    <span class="date"> Posted: 2015-12-07</span>
+    </p>
     <p><strong>Authenticode Code Signing with SignServer!</strong>
     <br/>
     Read our Tech Blog on <a href="http://blog.ejbca.org" target="ejbcablog">Authenticode Code Signing with SignServer</a>, or 

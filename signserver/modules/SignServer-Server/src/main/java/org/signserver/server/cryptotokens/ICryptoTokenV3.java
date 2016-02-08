@@ -47,7 +47,7 @@ import org.signserver.server.IServices;
  * @version $Id$
  */
 public interface ICryptoTokenV3 extends ICryptoTokenV2 {
-    
+
     /** Crypto token parameter with value of type Boolean telling if the crypto instance should be cached or not. */
     String PARAM_CACHEPRIVATEKEY = "CACHEPRIVATEKEY";
     

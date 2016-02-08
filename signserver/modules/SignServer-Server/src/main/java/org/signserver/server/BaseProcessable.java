@@ -399,9 +399,10 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
                 }
                 String className = null;
                 try {
-                    className = config.getCryptoTokenImplementationClass();
+                    className = gc.getCryptoTokenProperty(workerId, GlobalConfiguration.CRYPTOTOKENPROPERTY_CLASSPATH);
+
                     if (log.isDebugEnabled()) {
-                        log.debug("Found cryptotoken class name: " + className);
+                        log.debug("Found cryptotoken classpath: " + className);
                     }
                     if (className == null) {
                         cryptoToken = null;
@@ -1211,7 +1212,7 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
         if (token instanceof ICryptoTokenV3) {
             try {
                 // Add our params with caching support
-                final HashMap<String, Object> newParams = new HashMap<>(params);
+                final HashMap<String, Object> newParams = new HashMap<String, Object>(params);
                 // Add a per-worker instance cache
                 newParams.put(ICryptoTokenV3.PARAM_WORKERCACHE, workerCache);
                 // Request caching for the default key only
@@ -1241,7 +1242,7 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
 
         return result;
     }
-
+    
     /**
      * Releases a previously acquired crypto instance.
      * @param instance to release

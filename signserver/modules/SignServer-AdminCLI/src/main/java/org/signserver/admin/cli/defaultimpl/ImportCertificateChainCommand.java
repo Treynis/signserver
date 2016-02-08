@@ -21,7 +21,6 @@ import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
 import org.signserver.common.OperationUnsupportedException;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.WorkerStatus;
 
 /**
@@ -54,7 +53,7 @@ public class ImportCertificateChainCommand extends AbstractAdminCommand {
         }
 
         try {
-            final WorkerIdentifier wi = WorkerIdentifier.createFromIdOrName(args[0]);
+            final int signerid = getWorkerId(args[0]);
             final String filename = args[1];
             final String alias = args[2];
             String authCode = null;
@@ -74,7 +73,7 @@ public class ImportCertificateChainCommand extends AbstractAdminCommand {
                 bcerts.add(cert.getEncoded());
             }
 
-            getWorkerSession().importCertificateChain(wi, bcerts, alias,
+            getWorkerSession().importCertificateChain(signerid, bcerts, alias,
                     authCode != null ? authCode.toCharArray() : null);
             
             this.getOutputStream().println(DONE);

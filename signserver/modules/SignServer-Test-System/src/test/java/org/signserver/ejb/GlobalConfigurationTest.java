@@ -12,6 +12,7 @@
  *************************************************************************/
 package org.signserver.ejb;
 
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ServiceLocator;
 import static org.junit.Assert.*;
@@ -19,7 +20,6 @@ import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
 
 /**
  * TODO: Document me!
@@ -29,11 +29,12 @@ import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class GlobalConfigurationTest {
 
-    private static GlobalConfigurationSessionRemote globalConfigSession;
+    private static IGlobalConfigurationSession.IRemote globalConfigSession;
 
     @Before
     public void setUp() throws Exception {
-        globalConfigSession = ServiceLocator.getInstance().lookupRemote(GlobalConfigurationSessionRemote.class);
+        globalConfigSession = ServiceLocator.getInstance().lookupRemote(
+                IGlobalConfigurationSession.IRemote.class);
     }
 
     /*

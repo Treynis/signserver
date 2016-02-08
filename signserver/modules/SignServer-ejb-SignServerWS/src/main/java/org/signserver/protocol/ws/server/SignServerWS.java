@@ -26,13 +26,12 @@ import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.ejb.interfaces.ProcessSessionLocal;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
+import org.signserver.common.util.PropertiesConstants;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.healthcheck.HealthCheckUtils;
 import org.signserver.protocol.ws.*;
 import org.signserver.server.CredentialUtils;
-import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
@@ -57,13 +56,10 @@ public class SignServerWS implements ISignServerWS {
     private static final String HTTP_AUTH_BASIC_AUTHORIZATION = "Authorization";
     
     @EJB
-    private GlobalConfigurationSessionLocal globalconfigsession;
+    private IGlobalConfigurationSession.ILocal globalconfigsession;
     
     @EJB
-    private WorkerSessionLocal workersession;
-    
-    @EJB
-    private ProcessSessionLocal processSession;
+    private IWorkerSession.ILocal workersession;
     
     /** EntityManager is conditionally injected from ejb-jar.xml. */
     private EntityManager em;
@@ -72,7 +68,6 @@ public class SignServerWS implements ISignServerWS {
 
     private int minimumFreeMemory = 1;
     
-    @Override
     public Collection<WorkerStatusWS> getStatus(String workerIdOrName)
             throws InvalidWorkerIdException {
         LOG.debug("WS getStatus called");
@@ -89,10 +84,19 @@ public class SignServerWS implements ISignServerWS {
             errors.addAll(HealthCheckUtils.checkMemory(getMinimumFreeMemory()));
         }
 
-        if (!workerIdOrName.equalsIgnoreCase(ISignServerWS.ALLWORKERS)) {
+        int workerId = 0;
+        try {
+            if (!workerIdOrName.equalsIgnoreCase(ISignServerWS.ALLWORKERS)) {
+                workerId = getWorkerId(workerIdOrName);
+            }
+        } catch (IllegalRequestException e) {
+            throw new InvalidWorkerIdException("Worker id or name " + workerIdOrName + " couldn't be found.");
+        }
+
+        if (workerId != 0) {
             // Specified WorkerId
             if (errors.isEmpty()) {
-                errors.addAll(checkSigner(WorkerIdentifier.createFromIdOrName(workerIdOrName)));
+                errors.addAll(checkSigner(workerId));
             }
             WorkerStatusWS resp = new WorkerStatusWS();
             resp.setWorkerName(workerIdOrName);
@@ -109,11 +113,11 @@ public class SignServerWS implements ISignServerWS {
             retval.add(resp);
         } else {
             // All Workers
-            List<Integer> signers = getWorkerSession().getWorkers(WorkerConfig.WORKERTYPE_PROCESSABLE);
+            List<Integer> signers = getWorkerSession().getWorkers(GlobalConfiguration.WORKERTYPE_PROCESSABLE);
             for (Iterator<Integer> iterator = signers.iterator(); iterator.hasNext();) {
                 int next = iterator.next();
                 if (errors.isEmpty()) {
-                    errors.addAll(checkSigner(new WorkerIdentifier(next)));
+                    errors.addAll(checkSigner(next));
                 }
 
                 WorkerStatusWS resp = new WorkerStatusWS();
@@ -134,9 +138,9 @@ public class SignServerWS implements ISignServerWS {
         return retval;
     }
 
-    private List<String> checkSigner(WorkerIdentifier wi) throws InvalidWorkerIdException {
-        final LinkedList<String> result = new LinkedList<>();
-        final WorkerStatus status = getWorkerSession().getStatus(wi);
+    private List<String> checkSigner(int workerId) throws InvalidWorkerIdException {
+        final LinkedList<String> result = new LinkedList<String>();
+        final WorkerStatus status = getWorkerSession().getStatus(workerId);
         for (String error : status.getFatalErrors()) {
             result.add("Worker " + status.getWorkerId() + ": " + error + "\n");
         }
@@ -160,7 +164,7 @@ public class SignServerWS implements ISignServerWS {
 
         // Add credentials to the context
         CredentialUtils.addToRequestContext(requestContext, servletRequest, clientCertificate);
-
+        
         final LogMap logMap = LogMap.getInstance(requestContext);
 
         final String xForwardedFor = servletRequest.getHeader(RequestContext.X_FORWARDED_FOR);
@@ -178,9 +182,9 @@ public class SignServerWS implements ISignServerWS {
             requestContext.put(RequestContext.X_FORWARDED_FOR, xForwardedFor);
         }
         
-        final WorkerIdentifier wi = WorkerIdentifier.createFromIdOrName(workerIdOrName);
+        int workerId = getWorkerId(workerIdOrName);
 
-        ArrayList<Certificate> signerCertificateChain = getSignerCertificateChain(wi);
+        ArrayList<Certificate> signerCertificateChain = getSignerCertificateChain(workerId);
 
         for (Iterator<ProcessRequestWS> iterator = requests.iterator(); iterator.hasNext();) {
             ProcessRequestWS next = iterator.next();
@@ -206,15 +210,10 @@ public class SignServerWS implements ISignServerWS {
             	logMap.put(IWorkerLogger.LOG_FILENAME, fileName);
             }
             
-            if (wi.hasName()) {
-                logMap.put(IWorkerLogger.LOG_WORKER_NAME, wi.getName());
-            }
-            if (wi.hasId()) {
-                logMap.put(IWorkerLogger.LOG_WORKER_ID, String.valueOf(wi.getId()));
-            }
+            logMap.put(IWorkerLogger.LOG_WORKER_NAME,
+                    getWorkerSession().getCurrentWorkerConfig(workerId).getProperty(PropertiesConstants.NAME));
 
-            ProcessResponse resp = getProcessSession().process(new AdminInfo("Client user", null, null),
-                    wi, req, requestContext);
+            ProcessResponse resp = getWorkerSession().process(workerId, req, requestContext);
             ProcessResponseWS wsresp = new ProcessResponseWS();
             try {
                 wsresp.setResponseData(RequestAndResponseManager.serializeProcessResponse(resp));
@@ -237,10 +236,10 @@ public class SignServerWS implements ISignServerWS {
         return retval;
     }
 
-    private ArrayList<Certificate> getSignerCertificateChain(WorkerIdentifier wi) throws InvalidWorkerIdException {
+    private ArrayList<Certificate> getSignerCertificateChain(int workerId) throws InvalidWorkerIdException {
         ArrayList<Certificate> retval = null;
         try {
-            WorkerStatus ws = getWorkerSession().getStatus(wi);
+            WorkerStatus ws = getWorkerSession().getStatus(workerId);
             ProcessableConfig sc = new ProcessableConfig(ws.getActiveSignerConfig());
             Collection<java.security.cert.Certificate> signerCertificateChain = sc.getSignerCertificateChain();
 
@@ -274,6 +273,20 @@ public class SignServerWS implements ISignServerWS {
         return request.getRemoteAddr();
     }
 
+    private int getWorkerId(String workerIdOrName) throws IllegalRequestException {
+        int retval = 0;
+
+        if (workerIdOrName.substring(0, 1).matches("\\d")) {
+            retval = Integer.parseInt(workerIdOrName);
+        } else {
+            retval = getWorkerSession().getWorkerId(workerIdOrName);
+            if (retval == 0) {
+                throw new IllegalRequestException("Error: No worker with the given name could be found");
+            }
+        }
+        return retval;
+    }
+
     private int getMinimumFreeMemory() {
         final String minMemory = CompileTimeSettings.getInstance().getProperty(
                 CompileTimeSettings.HEALTHECK_MINIMUMFREEMEMORY);
@@ -296,15 +309,11 @@ public class SignServerWS implements ISignServerWS {
         return checkDBString;
     }
 
-    private WorkerSessionLocal getWorkerSession() {
+    private IWorkerSession.ILocal getWorkerSession() {
         return workersession;
     }
-    
-    private ProcessSessionLocal getProcessSession() {
-        return processSession;
-    }
 
-    private GlobalConfigurationSessionLocal getGlobalConfigurationSession() {
+    private IGlobalConfigurationSession.ILocal getGlobalConfigurationSession() {
         return globalconfigsession;
     }
 }
