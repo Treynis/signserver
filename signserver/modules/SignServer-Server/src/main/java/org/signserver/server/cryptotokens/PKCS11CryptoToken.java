@@ -75,7 +75,7 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
     private static final Logger LOG = Logger.getLogger(PKCS11CryptoToken.class);
 
     private final KeyStorePKCS11CryptoToken delegate;
-
+    
     /** Our worker cache entry name. */
     private static final String WORKERCACHE_ENTRY = "PKCS11CryptoToken.CRYPTO_INSTANCE";
 
@@ -621,9 +621,9 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
             InvalidAlgorithmParameterException,
             UnsupportedCryptoTokenParameter,
             IllegalRequestException {
-        final PrivateKey privateKey = getPrivateKey(alias);
-        final List<Certificate> certificateChain = getCertificateChain(alias);
-        return new DefaultCryptoInstance(alias, context, delegate.getActivatedKeyStore().getProvider(), privateKey, certificateChain);
+            final PrivateKey privateKey = getPrivateKey(alias);
+            final List<Certificate> certificateChain = getCertificateChain(alias);
+            return new DefaultCryptoInstance(alias, context, delegate.getActivatedKeyStore().getProvider(), privateKey, certificateChain);
     }
 
     @Override
@@ -644,7 +644,7 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
 
         public KeyStore getActivatedKeyStore() throws CryptoTokenOfflineException {
             try {
-                return getKeyStore().getKeyStore(); // TODO: Consider if we should instead use the CachingKeystoreWrapper
+                return getKeyStore();
             } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
                 throw new CryptoTokenOfflineException(ex);
             }

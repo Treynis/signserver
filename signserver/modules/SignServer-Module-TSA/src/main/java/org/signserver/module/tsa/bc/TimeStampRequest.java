@@ -18,6 +18,7 @@ import java.util.Set;
 
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.DERObjectIdentifier;
 import org.bouncycastle.asn1.cmp.PKIFailureInfo;
 import org.bouncycastle.asn1.tsp.TimeStampReq;
 import org.bouncycastle.asn1.x509.Extension;
@@ -183,8 +184,8 @@ public class TimeStampRequest
             Enumeration en = this.getExtensions().oids();
             while(en.hasMoreElements())
             {
-                final ASN1ObjectIdentifier oid = (ASN1ObjectIdentifier) en.nextElement();
-                if (!extensions.contains(oid))
+                String  oid = ((DERObjectIdentifier)en.nextElement()).getId();
+                if (!extensions.contains(new ASN1ObjectIdentifier(oid)))
                 {
                     throw new TSPValidationException("request contains unknown extension.", PKIFailureInfo.unacceptedExtension);
                 }

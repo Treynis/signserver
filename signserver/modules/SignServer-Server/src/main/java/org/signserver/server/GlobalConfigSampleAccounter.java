@@ -23,7 +23,7 @@ import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.ServiceLocator;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 
 /**
  * Sample accounter for demonstration purposes only which holds accounts in
@@ -63,7 +63,7 @@ public class GlobalConfigSampleAccounter implements IAccounter {
     public static final String GLOBALCONFIGSAMPLEACCOUNTER_USERS
             = "GLOBALCONFIGSAMPLEACCOUNTER_USERS";
 
-    private GlobalConfigurationSessionLocal gCSession;
+    private IGlobalConfigurationSession gCSession;
 
     @Override
     public void init(final Properties props) {
@@ -166,10 +166,11 @@ public class GlobalConfigSampleAccounter implements IAccounter {
         }
     }
 
-    private GlobalConfigurationSessionLocal getGlobalConfigurationSession()
+    private IGlobalConfigurationSession getGlobalConfigurationSession()
             throws NamingException {
         if (gCSession == null) {
-            gCSession = ServiceLocator.getInstance().lookupLocal(GlobalConfigurationSessionLocal.class);
+            gCSession = ServiceLocator.getInstance().lookupLocal(
+                    IGlobalConfigurationSession.class);
         }
         return gCSession;
     }

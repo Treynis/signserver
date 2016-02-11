@@ -17,23 +17,20 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.CertStore;
+import java.security.cert.CollectionCertStoreParameters;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import javax.security.auth.x500.X500Principal;
 import org.apache.log4j.Logger;
-import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cms.CMSProcessable;
 import org.bouncycastle.cms.CMSProcessableByteArray;
 import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.CMSSignedDataGenerator;
-import org.bouncycastle.cert.jcajce.JcaCertStore;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
-import org.bouncycastle.cms.CMSTypedData;
-import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
+import org.bouncycastle.cms.CMSSignedGenerator;
+import org.bouncycastle.x509.X509V3CertificateGenerator;
 
 /**
  * Mock implementation of a CA.
@@ -85,23 +82,21 @@ public class MockCA {
         final long currentTime = new Date().getTime();
         final Date firstDate = new Date(currentTime - 24 * 60 * 60 * 1000);
         final Date lastDate = new Date(currentTime + validity * 1000);
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("keystore signing algorithm " + sigAlg);
-        }
-
+        X509V3CertificateGenerator cg = new X509V3CertificateGenerator();
+        // Add all mandatory attributes
+        cg.setSerialNumber(BigInteger.valueOf(firstDate.getTime()));
+        LOG.debug("keystore signing algorithm " + sigAlg);
+        cg.setSignatureAlgorithm(sigAlg);
+        cg.setSubjectDN(new X500Principal(subject));
+        
         if (pubKey == null) {
             throw new Exception("Public key is null");
         }
-        
-        final JcaX509v3CertificateBuilder cb =
-                new JcaX509v3CertificateBuilder(new X500Name(issuer),
-                                             BigInteger.valueOf(firstDate.getTime()),
-                                             firstDate, lastDate,
-                                             new X500Name(subject), pubKey);
-
-        ContentSigner contentSigner = new JcaContentSignerBuilder(sigAlg).setProvider("BC").build(caPrivateKey);
-        return new JcaX509CertificateConverter().getCertificate(cb.build(contentSigner));
+        cg.setPublicKey(pubKey);
+        cg.setNotBefore(firstDate);
+        cg.setNotAfter(lastDate);
+        cg.setIssuerDN(new X500Principal(issuer));
+        return cg.generate(caPrivateKey, "BC");
     }
 
     public X509Certificate issueCertificate(String subject,
@@ -119,19 +114,17 @@ public class MockCA {
                 ? Arrays.asList(cert, caCertificate) : Arrays.asList(cert);
 
         try {
-            final CMSSignedDataGenerator gen = new CMSSignedDataGenerator();
-            final ContentSigner contentSigner =
-                    new JcaContentSignerBuilder("SHA1withRSA").setProvider("BC").build(keyPair.getPrivate());
-            
-            gen.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(
-                     new JcaDigestCalculatorProviderBuilder().setProvider("BC").build())
-                     .build(contentSigner, cert));
-            gen.addCertificates(new JcaCertStore(certs));
-            
-            final CMSTypedData content =
-                    new CMSProcessableByteArray("EJBCA".getBytes());
-            final CMSSignedData s = gen.generate(content);
-            
+            CMSProcessable msg = new CMSProcessableByteArray(
+                    "EJBCA".getBytes());
+            CertStore certStore = CertStore.getInstance("Collection",
+                    new CollectionCertStoreParameters(certs), "BC");
+            CMSSignedDataGenerator gen = new CMSSignedDataGenerator();
+
+            gen.addSigner(keyPair.getPrivate(), caCertificate,
+                    CMSSignedGenerator.DIGEST_SHA1);
+            gen.addCertificatesAndCRLs(certStore);
+            CMSSignedData s = gen.generate(msg, true, "BC");
+
             return s.getEncoded();
         } catch (Exception e) {
             throw new RuntimeException(e);

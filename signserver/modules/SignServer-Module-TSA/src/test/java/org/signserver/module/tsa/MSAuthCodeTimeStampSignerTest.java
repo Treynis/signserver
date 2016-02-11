@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.module.tsa;
 
-import java.io.File;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.cert.Certificate;
@@ -22,45 +21,40 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
+import junit.framework.TestCase;
 import static junit.framework.TestCase.assertEquals;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.ASN1Set;
 import org.bouncycastle.asn1.ASN1TaggedObject;
-import org.bouncycastle.asn1.cms.Attribute;
-import org.bouncycastle.asn1.cms.AttributeTable;
 import org.bouncycastle.asn1.cms.ContentInfo;
-import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
 import org.bouncycastle.asn1.x509.Time;
-import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.X509Extension;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.SignerInformation;
-import org.bouncycastle.cms.SignerInformationStore;
-import org.bouncycastle.cms.SignerInformationVerifier;
-import org.bouncycastle.cms.jcajce.JcaSignerInfoVerifierBuilder;
-import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
 import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.util.CertTools;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GenericSignResponse;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
-import org.signserver.common.RemoteRequestContext;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.server.SignServerContext;
 import org.signserver.server.ZeroTimeSource;
+import org.signserver.server.cryptotokens.HardCodedCryptoToken;
+import org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases;
 import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.log.LogMap;
-import org.signserver.test.utils.CertTools;
 import org.signserver.test.utils.builders.CertBuilder;
 import org.signserver.test.utils.builders.CertExt;
 import org.signserver.test.utils.builders.CryptoUtils;
@@ -68,7 +62,6 @@ import org.signserver.test.utils.builders.CryptoUtils;
 import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
 import org.signserver.test.utils.mock.MockedCryptoToken;
 import org.signserver.test.utils.mock.WorkerSessionMock;
-import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestUtils;
 
 /**
@@ -81,7 +74,7 @@ import org.signserver.testutils.TestUtils;
  * @author Marcus Lundblad
  * @version $Id$
  */
-public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
+public class MSAuthCodeTimeStampSignerTest extends TestCase {
     
     /** Logger for this class */
     private static final Logger LOG = Logger.getLogger(MSAuthCodeTimeStampSignerTest.class);
@@ -103,33 +96,7 @@ public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
     private static final String MESSAGE_DIGEST_OID = "1.2.840.113549.1.9.4";
     private static final String SHA1_OID = "1.3.14.3.2.26";
     private static final String SHA256_OID = "2.16.840.1.101.3.4.2.1";
-    private static final String SIGNING_CERT_OID = "1.2.840.113549.1.9.16.2.12";
 
-    private static byte[] certbytes1 = Base64.decode((
-            "MIIEkTCCAnmgAwIBAgIIeCvAS5OwAJswDQYJKoZIhvcNAQELBQAwTTEXMBUGA1UEAwwORFNTIFJv"
-            + "b3QgQ0EgMTAxEDAOBgNVBAsMB1Rlc3RpbmcxEzARBgNVBAoMClNpZ25TZXJ2ZXIxCzAJBgNVBAYT"
-            + "AlNFMB4XDTExMDUyNzEyMTU1NVoXDTIxMDUyNDEyMTU1NVowSjEUMBIGA1UEAwwLVFMgU2lnbmVy"
-            + "IDExEDAOBgNVBAsMB1Rlc3RpbmcxEzARBgNVBAoMClNpZ25TZXJ2ZXIxCzAJBgNVBAYTAlNFMIIB"
-            + "IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnT38GG8i/bGnuFMwnOdg+caHMkdPBacRdBaI"
-            + "ggwMPfE50SOZ2TLrDEHJotxYda7HS0+tX5dIcalmEYCls/ptHzO5TQpqdRTuTqxp5cMA379yhD0O"
-            + "qTVNAmHrvPj9IytktoAtB/xcjwkRTHagaCmg5SWNcLKyVUct7nbeRA5yDSJQsCAEGHNZbJ50vATg"
-            + "1DQEyKT87GKfSBsclA0WIIIHMt8/SRhpsUZxESayU6YA4KCxVtexF5x+COLB6CzzlRG9JA8WpX9y"
-            + "KgIMsMDAscsJLiLPjhET5hwAFm5ZRfQQG9LI06QNTGqukuTlDbYrQGAUR5ZXW00WNHfgS00CjUCu"
-            + "0QIDAQABo3gwdjAdBgNVHQ4EFgQUOF0FflO2G+IN6c92pCNlPoorGVwwDAYDVR0TAQH/BAIwADAf"
-            + "BgNVHSMEGDAWgBQgeiHe6K27Aqj7cVikCWK52FgFojAOBgNVHQ8BAf8EBAMCB4AwFgYDVR0lAQH/"
-            + "BAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQELBQADggIBADELkeIO9aiKjS/GaBUUhMr+k5UbVeK6"
-            + "9WapU+7gTsWwa9D2vAOhAkfQ1OcUJoZaminv8pcNfo1Ey5qLtxBCmUy1fVomVWOPl6u1w8B6uYgE"
-            + "608hi2bfx28uIeksqpdqUX0Qf6ReUyl+FOh4xNrsyaF81TrIKt8ekq0iD+YAtT/jqgv4bUvs5fgI"
-            + "ms4QOXgMUzNAP7cPU44KxcmR5I5Uy/Ag82hGIz64hZmeIDT0X59kbQvlZqFaiZvYOikoZSFvdM5k"
-            + "SVfItMgp7qmyLxuM/WaXqJWp6Mm+8ZZmcECugd4AEpE7xIiB7M/KEe+X4ItBNTKdAoaxWa+yeuYS"
-            + "7ol9rHt+Nogelj/06ZRQ0x03UqC7uKpgYAICjQEXIjcZofWSTh9KzKNfS1sQyIQ6yNTT2VMdYW9J"
-            + "C2OLKPV4AEJuBw30X8HOciJRRXOq9KRrIA2RSiaC5/3oAYscWuo31Fmj8CWQknXAIb39gPuZRwGO"
-            + "Jbi1tUu2zmRsUNJfAe3hnvk+uxhnyp2vKB2KN5/VQgisx+8doEK/+Nbj/PPG/zASKimWG++5m0JN"
-            + "Y4chIfR43gDDcF+4INof/8V84wbvUF+TpvP/mYM8wC9OkUyRvzqv9vjWOncCdbdjCuqPxDItwm9h"
-            + "hr+PbxsMaBes9rAiV9YT1FnpA++YpCufveFCQPDbCTgJ").getBytes());
-    
-    private static final String KEY_ALIAS_1 = "TS Signer 1";
-    
     @Override
     protected void setUp() throws Exception {
         super.setUp();
@@ -178,26 +145,20 @@ public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
         SignServerUtil.installBCProvider();
         
         final String CRYPTOTOKEN_CLASSNAME =
-                "org.signserver.server.cryptotokens.KeystoreCryptoToken";
+                "org.signserver.server.cryptotokens.HardCodedCryptoToken";
         
         final ProcessRequest signRequest;
         
         final GlobalConfigurationSessionMock globalConfig
                 = new GlobalConfigurationSessionMock();
-        final WorkerSessionMock workerMock = new WorkerSessionMock();
+        final WorkerSessionMock workerMock = new WorkerSessionMock(globalConfig);
         
         final WorkerConfig config = new WorkerConfig();
         config.setProperty("NAME", "TestMSAuthCodeTimeStampSigner");
         config.setProperty("AUTHTYPE", "NOAUTH");
         config.setProperty("TIMESOURCE", "org.signserver.server.ZeroTimeSource");
         config.setProperty("SIGNATUREALGORITHM", signingAlgo);
-        config.setProperty("DEFAULTKEY", KEY_ALIAS_1);
-        config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-        config.setProperty("KEYSTORETYPE", "PKCS12");
-        config.setProperty("KEYSTOREPASSWORD", "foo123");
+        config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_1);
         
         if (includeSigningCertAttr) {
             config.setProperty("INCLUDE_SIGNING_CERTIFICATE_ATTRIBUTE", "true");
@@ -210,7 +171,7 @@ public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
         
         final MSAuthCodeTimeStampSigner worker = new MSAuthCodeTimeStampSigner() {
             @Override
-            protected GlobalConfigurationSessionLocal
+            protected IGlobalConfigurationSession.IRemote
                     getGlobalConfigurationSession() {
                 return globalConfig;
             }
@@ -232,46 +193,53 @@ public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
         // create sample hard-coded request
         signRequest = new GenericSignRequest(REQUEST_ID, requestData);
 
-        GenericSignResponse resp = (GenericSignResponse) workerMock.process(new WorkerIdentifier(SIGNER_ID), signRequest, new RemoteRequestContext());
+        final RequestContext requestContext = new RequestContext();
+        GenericSignResponse resp = (GenericSignResponse) workerMock.process(SIGNER_ID, signRequest, requestContext);
         
         // check that the response contains the needed attributes
         byte[] buf = resp.getProcessedData();
         ASN1Sequence asn1seq = ASN1Sequence.getInstance(Base64.decode(buf));
-        CMSSignedData signedData = new CMSSignedData(asn1seq.getEncoded());
+        
+        ASN1ObjectIdentifier oid = ASN1ObjectIdentifier.getInstance(asn1seq.getObjectAt(0));
         ASN1TaggedObject ato = ASN1TaggedObject.getInstance(asn1seq.getObjectAt(1));
+        
+        assertEquals("Invalid OID in response", SIGNED_DATA_OID, oid.getId());
+        
         ASN1Sequence asn1seq1 = ASN1Sequence.getInstance(ato.getObject());
+
+        ASN1Set asn1set = ASN1Set.getInstance(asn1seq1.getObjectAt(4));
+        ASN1Sequence asn1seq2 = ASN1Sequence.getInstance(asn1set.getObjectAt(0));
+        ASN1TaggedObject ato1 = ASN1TaggedObject.getInstance(asn1seq2.getObjectAt(3));
+        ASN1Sequence asn1seq3 = ASN1Sequence.getInstance(ato1.getObject());
+        ASN1Sequence asn1seq4 = ASN1Sequence.getInstance(asn1seq3.getObjectAt(0));
+        ASN1Sequence asn1seq5 = ASN1Sequence.getInstance(asn1seq3.getObjectAt(1));
+        ASN1Sequence asn1seq6 = ASN1Sequence.getInstance(asn1seq3.getObjectAt(2));
+        
         final X509Certificate cert =
-                (X509Certificate) CertTools.getCertfromByteArray(certbytes1);
+                (X509Certificate) CertTools.getCertfromByteArray(HardCodedCryptoToken.certbytes1);
         // expected serial number
         final BigInteger sn = cert.getSerialNumber();
 
-        // if INCLUDE_SIGNING_CERTIFICATE_ATTRIBUTE is set to false, the attribute should not be included       
-        final SignerInformationStore signerInfos = signedData.getSignerInfos();
-        final SignerInformation si = signerInfos.getSigners().iterator().next();
-        final AttributeTable signedAttributes = si.getSignedAttributes();
-        final Attribute signingCertAttr =
-                signedAttributes.get(new ASN1ObjectIdentifier(SIGNING_CERT_OID));
-        
+        // if INCLUDE_SIGNING_CERTIFICATE_ATTRIBUTE is set to false, the attribute should not be included
         if (!includeSigningCertAttr) {
-            assertNull("No signing cert attribute", signingCertAttr);
+            assertEquals("Number of attributes", 3, asn1seq3.size());
         } else {
-            TestUtils.checkSigningCertificateAttribute(signingCertAttr, cert);
+            final ASN1Sequence scAttr = ASN1Sequence.getInstance(asn1seq3.getObjectAt(3));
+            TestUtils.checkSigningCertificateAttribute(scAttr, cert);
         }
         
-        final Attribute contentTypeAttr =
-                signedAttributes.get(new ASN1ObjectIdentifier(CONTENT_TYPE_OID));
-        assertNotNull("Content type attribute", contentTypeAttr);
+        ASN1ObjectIdentifier ctOID = ASN1ObjectIdentifier.getInstance(asn1seq4.getObjectAt(0));
+        assertEquals("Invalid OID for content type", CONTENT_TYPE_OID, ctOID.getId());
         
-        final Attribute signingTimeAttr =
-                signedAttributes.get(new ASN1ObjectIdentifier(SIGNING_TIME_OID));
-        assertNotNull("Signing time attribute", signingTimeAttr);
+        ASN1ObjectIdentifier stOID = ASN1ObjectIdentifier.getInstance(asn1seq5.getObjectAt(0));
+        assertEquals("Invalid OID for signing time", SIGNING_TIME_OID, stOID.getId());
         
-        final Attribute messageDigestAttr =
-                signedAttributes.get(new ASN1ObjectIdentifier(MESSAGE_DIGEST_OID));
-        assertNotNull("Message digest attribute", messageDigestAttr);
-
+        ASN1ObjectIdentifier mdOID = ASN1ObjectIdentifier.getInstance(asn1seq6.getObjectAt(0));
+        assertEquals("Invalid OID for content type", MESSAGE_DIGEST_OID, mdOID.getId());
+        
         // get signing time from response
-        final ASN1Encodable t = signingTimeAttr.getAttrValues().getObjectAt(0);
+        ASN1Set set = ASN1Set.getInstance(asn1seq5.getObjectAt(1));
+        ASN1Encodable t = set.getObjectAt(0);
         Time t2 = Time.getInstance(t);
         Date d = t2.getDate();
         
@@ -280,13 +248,16 @@ public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
         
         assertEquals("Unexpected signing time in response", d0, d);	
     
-        final AlgorithmIdentifier digAlg =
-                signedData.getDigestAlgorithmIDs().iterator().next();
     
         // check expected signing algo
-        assertEquals("Unexpected digest OID in response", expectedDigestOID, digAlg.getAlgorithm().getId());
+        ASN1Set set1 = ASN1Set.getInstance(asn1seq1.getObjectAt(1));
+        ASN1Sequence asn1seq7 = ASN1Sequence.getInstance(set1.getObjectAt(0));
+        ASN1ObjectIdentifier algOid = ASN1ObjectIdentifier.getInstance(asn1seq7.getObjectAt(0));
+        
+        assertEquals("Unexpected digest OID in response", expectedDigestOID, algOid.getId());
         
         // check that the request is included
+        final CMSSignedData signedData = new CMSSignedData(asn1seq.getEncoded());
         final byte[] content = (byte[]) signedData.getSignedContent()
                 .getContent();
         
@@ -301,11 +272,11 @@ public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
         final X509Certificate signercert = (X509Certificate) resp.getSignerCertificate();
         assertEquals("Serial number", sn, signercert.getSerialNumber());
         assertEquals("Issuer", cert.getIssuerDN(), signercert.getIssuerDN());
-
+        
         // check ContentInfo, according to the Microsoft specification, the contentInfo in the response is
         // identical to the contentInfo in the request
-        final ContentInfo expCi = ContentInfo.getInstance(seq2);
-        final ContentInfo ci = ContentInfo.getInstance(ASN1Sequence.getInstance(asn1seq1.getObjectAt(2)));
+        final ContentInfo expCi = new ContentInfo(seq2);
+        final ContentInfo ci = new ContentInfo(ASN1Sequence.getInstance(asn1seq1.getObjectAt(2)));
         
         assertEquals("Content info should match the request", expCi, ci);
         
@@ -315,12 +286,11 @@ public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
                 = (SignerInformation) signers.iterator().next();
 
         // Verify using the signer's certificate
-        final SignerInformationVerifier verifier =
-            new JcaSignerInfoVerifierBuilder(new JcaDigestCalculatorProviderBuilder().build()).setProvider("BC").build(signercert.getPublicKey());
-        assertTrue("Verification using signer certificate", signer.verify(verifier));
+        assertTrue("Verification using signer certificate",
+                signer.verify(signercert.getPublicKey(), "BC"));
 
         // Check that the time source is being logged
-        LogMap logMap = LogMap.getInstance(workerMock.getLastRequestContext());
+        LogMap logMap = LogMap.getInstance(requestContext);
         assertEquals("timesource", ZeroTimeSource.class.getSimpleName(), logMap.get("TSA_TIMESOURCE"));
         
         assertNotNull("response",
@@ -331,7 +301,6 @@ public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
     
     /**
      * Test of processData method, of class MSAuthCodeTimeStampSigner.
-     * @throws java.lang.Exception
      */
     public void testProcessDataSHA1withRSA() throws Exception {
     	testProcessDataWithAlgo("SHA1withRSA", SHA1_OID, REQUEST_DATA.getBytes(), false, null);
@@ -472,7 +441,7 @@ public class MSAuthCodeTimeStampSignerTest extends ModulesTestCase {
                         setSignatureAlgorithm(signatureAlgorithm);
                 
         if (ekus != null && ekus.length > 0) {
-            certBuilder.addExtension(new CertExt(Extension.extendedKeyUsage, 
+            certBuilder.addExtension(new CertExt(X509Extension.extendedKeyUsage, 
                                                  critical,
                                                  new ExtendedKeyUsage(ekus)));
         }

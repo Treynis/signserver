@@ -13,9 +13,7 @@
 package org.signserver.server.log;
 
 import java.util.Map;
-import org.signserver.common.RequestContext;
-import org.signserver.common.WorkerConfig;
-import org.signserver.server.SignServerContext;
+import java.util.Properties;
 
 /**
  * WorkerLogger not logging anything at all.
@@ -26,9 +24,12 @@ import org.signserver.server.SignServerContext;
 public class NullWorkerLogger implements IWorkerLogger {
 
     @Override
-    public void init(final int workerId, final WorkerConfig config, final SignServerContext context) {}
+    public void init(Properties props) {}
 
     @Override
-    public void log(final AdminInfo adminInfo, final Map<String, String> fields, final RequestContext context) throws WorkerLoggerException {}
+    public void log(final AdminInfo adminInfo, Map<String, String> fields) throws WorkerLoggerException {}
+
+    @Override
+    public void setEjbs(Map<Class<?>, ?> ejbs) {}
 
 }

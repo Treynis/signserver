@@ -20,17 +20,14 @@ import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
-import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.DispatcherProcessSessionLocal;
+import org.signserver.ejb.interfaces.IDispatcherWorkerSession;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.log.AdminInfo;
 
 /**
  * Dispatching requests to the first active worker found.
@@ -51,12 +48,11 @@ public class FirstActiveDispatcher extends BaseDispatcher {
     private static final String PROPERTY_WORKERS = "WORKERS";
 
     /** Workersession. */
-    private DispatcherProcessSessionLocal workerSession;
+    private IDispatcherWorkerSession workerSession;
 
     /** List of workers. */
     private List<String> workers = new LinkedList<String>();
 
-    private String name;
 
     @Override
     public void init(final int workerId, final WorkerConfig config,
@@ -64,8 +60,6 @@ public class FirstActiveDispatcher extends BaseDispatcher {
         try {
             super.init(workerId, config, workerContext, workerEM);
 
-            name = config.getProperty("NAME");
-            
             workers = new LinkedList<String>();
             final String workersValue = config.getProperty(PROPERTY_WORKERS);
             if (workersValue == null) {
@@ -74,7 +68,7 @@ public class FirstActiveDispatcher extends BaseDispatcher {
                 workers.addAll(Arrays.asList(workersValue.split(",")));
             }
             workerSession = ServiceLocator.getInstance().lookupLocal(
-                        DispatcherProcessSessionLocal.class);
+                        IDispatcherWorkerSession.class);
         } catch (NamingException ex) {
             LOG.error("Unable to lookup worker session", ex);
         }
@@ -96,14 +90,15 @@ public class FirstActiveDispatcher extends BaseDispatcher {
         nextContext.put(RequestContext.DISPATCHER_AUTHORIZED_CLIENT, true);
 
         for (String workerName : workers) {
-            workerName = workerName.trim();
             try {
-                if (name.equals(workerName)) {
+                id = workerSession.getWorkerId(workerName);
+                if (id == 0) {
+                    LOG.warn("Non existing worker: \"" + workerName + "\"");
+                } else if (id == workerId) {
                     LOG.warn("Ignoring dispatching to it self (worker "
-                            + name + ")");
+                            + id + ")");
                 } else {
-                    response = workerSession.process(new AdminInfo("Client user", null, null), 
-                            new WorkerIdentifier(workerName), signRequest,
+                    response = workerSession.process(id, signRequest,
                             nextContext);
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Dispatched to worker: "

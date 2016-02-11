@@ -19,10 +19,10 @@ import java.util.TimeZone;
 import javax.naming.NamingException;
 import org.apache.log4j.Logger;
 import org.signserver.common.ServiceLocator;
+import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.statusrepo.common.StatusEntry;
 import org.signserver.statusrepo.common.StatusName;
-import org.signserver.statusrepo.StatusRepositorySessionLocal;
 
 /**
  * ITimeSource taking the current time from the computer clock as long as the 
@@ -43,7 +43,7 @@ public class StatusReadingLocalComputerTimeSource implements ITimeSource {
             StatusReadingLocalComputerTimeSource.class);
 
     /** Status repository session. */
-    private StatusRepositorySessionLocal statusSession;
+    private IStatusRepositorySession statusSession;
 
     private final StatusName insyncPropertyName = StatusName.TIMESOURCE0_INSYNC;
     private final StatusName leapsecondPropertyName = StatusName.LEAPSECOND;
@@ -92,7 +92,8 @@ public class StatusReadingLocalComputerTimeSource implements ITimeSource {
     public void init(final Properties props) {
         final String leapHandling = props.getProperty(LEAPSECOND_HANDLING, LEAPSECOND_HANDLING_DEFAULT);
         try {
-            statusSession = ServiceLocator.getInstance().lookupLocal(StatusRepositorySessionLocal.class);
+            statusSession = ServiceLocator.getInstance().lookupLocal(
+                        IStatusRepositorySession.class);
             leapSecondHandlingStrategy = LeapSecondHandlingStrategy.valueOf(leapHandling);
 
             if (LOG.isDebugEnabled()) {
@@ -213,7 +214,7 @@ public class StatusReadingLocalComputerTimeSource implements ITimeSource {
      * 
      * @param statusSession
      */
-    protected void setStatusSession(final StatusRepositorySessionLocal statusSession) {
+    protected void setStatusSession(final IStatusRepositorySession statusSession) {
         this.statusSession = statusSession;
     }
     

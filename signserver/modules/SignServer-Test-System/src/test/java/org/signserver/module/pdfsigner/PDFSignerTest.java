@@ -23,8 +23,8 @@ import java.security.cert.CertificateParsingException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
-import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.Base64;
+import org.ejbca.util.CertTools;
 import org.junit.After;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
@@ -33,8 +33,7 @@ import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Unit tests for the PDFSigner.
@@ -54,8 +53,7 @@ public class PDFSignerTest extends ModulesTestCase {
     private static final String TESTPDF_2CATALOGS = "2catalogs.pdf";
     private static final String TESTPDF_SIGNED = "pdf/sample-signed.pdf";
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
 
     @Before
     public void setUp() throws Exception {
@@ -176,7 +174,7 @@ public class PDFSignerTest extends ModulesTestCase {
 
     @Test
     public void test02GetStatus() throws Exception {
-        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(WORKERID));
+        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(WORKERID);
         assertTrue(stat.getTokenStatus() == WorkerStatus.STATUS_ACTIVE);
     }
 
@@ -521,7 +519,7 @@ public class PDFSignerTest extends ModulesTestCase {
             CryptoTokenOfflineException, SignServerException {
         final GenericSignRequest request = new GenericSignRequest(1234,
                 data);
-        final GenericSignResponse response = (GenericSignResponse) processSession.process(new WorkerIdentifier(workerId), request, new RemoteRequestContext());
+        final GenericSignResponse response = (GenericSignResponse) workerSession.process(workerId, request, new RequestContext());
         return response;
     }
 

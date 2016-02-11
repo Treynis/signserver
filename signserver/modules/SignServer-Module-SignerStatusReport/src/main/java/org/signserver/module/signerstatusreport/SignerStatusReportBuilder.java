@@ -18,10 +18,10 @@ import java.util.Date;
 import java.util.List;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.KeyUsageCounterHash;
 import org.signserver.server.entities.IKeyUsageCounterDataService;
 import org.signserver.server.entities.KeyUsageCounter;
-import org.signserver.ejb.interfaces.WorkerSession;
 
 /**
  * Builds a signer's status report for the chosen signers in a special format.
@@ -46,10 +46,10 @@ public class SignerStatusReportBuilder implements ReportBuilder {
     /** List of worker names. */
     private List<String> workers;
     
-    private final WorkerSession workerSession;
+    private final IWorkerSession workerSession;
     private final IKeyUsageCounterDataService keyUsageCounterDataService;
     
-    public SignerStatusReportBuilder(List<String> workers, WorkerSession workerSession, IKeyUsageCounterDataService keyUsageCounterDataService) {
+    public SignerStatusReportBuilder(List<String> workers, IWorkerSession workerSession, IKeyUsageCounterDataService keyUsageCounterDataService) {
         this.workers = workers;
         this.workerSession = workerSession;
         this.keyUsageCounterDataService = keyUsageCounterDataService;
@@ -60,9 +60,11 @@ public class SignerStatusReportBuilder implements ReportBuilder {
         final StringBuilder sb = new StringBuilder();
 
         for (String worker : workers) {
-            try {
+            int workerId = workerSession.getWorkerId(worker);
+            if (workerId == 0) {
+                LOG.warn("No such worker: \"" + worker + "\"");
+            } else {
                 LOG.debug("Worker: " + worker);
-                int workerId = workerSession.getWorkerId(worker);
                 String statusString = STATUS_ACTIVE;
                 KeyUsageCounter signings = null;
                 final String pk = getKeyHash(workerId);
@@ -72,7 +74,7 @@ public class SignerStatusReportBuilder implements ReportBuilder {
 
                     WorkerStatus status = null;
                     try {
-                        status = workerSession.getStatus(new WorkerIdentifier(workerId));
+                        status = workerSession.getStatus(workerId);
                     } catch (InvalidWorkerIdException ex) {
                         LOG.error("Invalid worker id: " + workerId, ex);
                     }
@@ -81,7 +83,7 @@ public class SignerStatusReportBuilder implements ReportBuilder {
                     }
                     if (status instanceof StaticWorkerStatus &&
                             ((StaticWorkerStatus) status).getTokenStatus()
-                            == WorkerStatus.STATUS_OFFLINE) {
+                                == WorkerStatus.STATUS_OFFLINE) {
                         statusString = STATUS_OFFLINE;
                     }
 
@@ -105,7 +107,7 @@ public class SignerStatusReportBuilder implements ReportBuilder {
                 Date notAfter = null;
                 try {
                     notBefore = workerSession.getSigningValidityNotBefore(
-                            new WorkerIdentifier(workerId));
+                            workerId);
                 } catch (CryptoTokenOfflineException ignored) {}
                 if (notBefore != null) {
                     sb.append("validityNotBefore=");
@@ -114,7 +116,7 @@ public class SignerStatusReportBuilder implements ReportBuilder {
                 }
                 try {
                     notAfter = workerSession.getSigningValidityNotAfter(
-                            new WorkerIdentifier(workerId));
+                            workerId);
                 } catch (CryptoTokenOfflineException ignored) {}
                 if (notAfter != null) {
                     sb.append("validityNotAfter=");
@@ -125,8 +127,8 @@ public class SignerStatusReportBuilder implements ReportBuilder {
                 if (signings != null) {
                     final long keyUsageLimit = Long.valueOf(
                             workerSession.getCurrentWorkerConfig(workerId)
-                                    .getProperty(
-                                            SignServerConstants.KEYUSAGELIMIT, "-1"));
+                            .getProperty(
+                                SignServerConstants.KEYUSAGELIMIT, "-1"));
                     sb.append("signings=");
                     sb.append(signings.getCounter());
                     sb.append(SEPARATOR);
@@ -136,8 +138,6 @@ public class SignerStatusReportBuilder implements ReportBuilder {
                 }
 
                 sb.append("\n");
-            } catch (InvalidWorkerIdException ex) {
-                LOG.warn("No such worker: \"" + worker + "\"");
             }
         }
         return sb;
@@ -147,7 +147,7 @@ public class SignerStatusReportBuilder implements ReportBuilder {
         String ret = null;
         try {
             final Certificate cert = workerSession
-                    .getSignerCertificate(new WorkerIdentifier(worker));
+                    .getSignerCertificate(worker);
             if (cert != null) {
                 ret = KeyUsageCounterHash.create(cert.getPublicKey());
             }

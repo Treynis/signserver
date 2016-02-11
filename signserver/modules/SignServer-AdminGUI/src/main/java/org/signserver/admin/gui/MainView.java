@@ -95,7 +95,6 @@ import org.signserver.admin.gui.adminws.gen.WsWorkerConfig;
 import org.signserver.admin.gui.adminws.gen.WsWorkerStatus;
 import org.signserver.common.ArchiveMetadata;
 import org.signserver.common.GlobalConfiguration;
-import org.signserver.common.WorkerConfig;
 import org.signserver.common.util.PropertiesDumper;
 
 /**
@@ -162,7 +161,7 @@ public class MainView extends FrameView {
         // Set the application icon
         ResourceMap resourceMap = getResourceMap();
         getFrame().setIconImage(resourceMap.getImageIcon("applicationIcon").getImage());
-
+        
         final int rowHeights = new JComboBox/*<String>*/().getPreferredSize().height;
 
         // workaround a bug in the NetBeans form editor where the download
@@ -2860,7 +2859,7 @@ private void tokenEntriesImportButtonActionPerformed(java.awt.event.ActionEvent 
             InstallCertificatesDialog dlg = new InstallCertificatesDialog(
                     getFrame(), true, selectedWorker, aliases, true);
             if (dlg.showDialog() == InstallCertificatesDialog.OK) {
-                getContext().getTaskService().execute(reloadTokenEntries());
+                getContext().getTaskService().execute(reloadTokenEntries()); 
             }
         }
     }
@@ -3052,7 +3051,7 @@ private void displayLogEntryAction() {
                 Properties globalConfig = toProperties(SignServerAdminGUIApplication.getAdminWS().getGlobalConfiguration());
                 List<Integer> workerIds = SignServerAdminGUIApplication
                         .getAdminWS()
-                        .getWorkers(WorkerConfig.WORKERTYPE_ALL);
+                        .getWorkers(GlobalConfiguration.WORKERTYPE_ALL);
                 int workers = 0;
                 for (Integer workerId : workerIds) {
                     setProgress(workers, 0, workerIds.size());
@@ -3127,7 +3126,7 @@ private void displayLogEntryAction() {
                     }
                     final Collection<AuthorizedClient> authClients = SignServerAdminGUIApplication.getAdminWS().getAuthorizedClients(workerId);
                     final boolean isCryptoWorker = "org.signserver.server.signers.CryptoWorker".equals(globalConfig.getProperty("GLOB.WORKER" + workerId + ".CLASSPATH"));
-                    final boolean hasCrypto = properties.containsKey(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS) || globalConfig.containsKey("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH");
+                    final boolean hasCrypto = globalConfig.containsKey("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH");
                     newSigners.add(new Worker(workerId, name, statusSummary, statusProperties, configProperties, properties, active, authClients, isCryptoWorker, hasCrypto));
                     workers++;
                 }

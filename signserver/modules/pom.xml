@@ -1,24 +1,10 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.signserver</groupId>
     <artifactId>SignServer-Modules</artifactId>
-    <version>4.0.0-SNAPSHOT</version>
+    <version>3.7.2</version>
     <packaging>pom</packaging>
     <name>SignServer Modules</name>
-    <properties>
-        <!-- fixedTime / dist.fixedTime is used for deterministic builds. -->
-        <fixedTime/>
-        <dist.fixedTime>${fixedTime}</dist.fixedTime>
-        <cesecore.version>6.4.1</cesecore.version>
-        <log4j.version>1.2.17</log4j.version>
-        <commons-configuration.version>1.6</commons-configuration.version>
-        <bouncycastle.version>1.53</bouncycastle.version>
-        <bouncycastle.bcpkix.artifact>bcpkix-jdk15on</bouncycastle.bcpkix.artifact>
-        <bouncycastle.bcprov.artifact>bcprov-jdk15on</bouncycastle.bcprov.artifact>
-        <jsign.version>1.2-signserver4</jsign.version>
-        <xades4j.version>1.3.2-signserver4</xades4j.version>
-    </properties>
     <distributionManagement>
         <repository>
             <id>nexus1.lab.primekey.se-releases</id>
@@ -45,6 +31,7 @@
     </profiles>
 
     <modules>
+        <module>SignServer-Lib-EJBCA-util</module>
         <module>SignServer-Common</module>
         <module>SignServer-Entities</module>
         <module>SignServer-ejb</module>
@@ -93,20 +80,19 @@
         <module>SignServer-Test-Performance</module>
         <module>SignServer-war-Healthcheck</module>
         <module>SignServer-Doc</module>
-    <module>SignServer-Doc-web</module>
-  </modules>
+    </modules>
     <dependencies>
         <dependency>
-            <artifactId>${bouncycastle.bcpkix.artifact}</artifactId>
+            <artifactId>bcpkix-jdk15on</artifactId>
             <groupId>org.bouncycastle</groupId>
             <type>jar</type>
-            <version>${bouncycastle.version}</version>
+            <version>1.49</version>
         </dependency>
         <dependency>
-            <artifactId>${bouncycastle.bcprov.artifact}</artifactId>
+            <artifactId>bcprov-jdk15on</artifactId>
             <groupId>org.bouncycastle</groupId>
             <type>jar</type>
-            <version>${bouncycastle.version}</version>
+            <version>1.49</version>
         </dependency>
         <dependency>
             <groupId>commons-lang</groupId>
@@ -125,11 +111,6 @@
             <version>3.2.2</version>
         </dependency>
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>${log4j.version}</version>
-        </dependency>
-        <dependency>
             <groupId>javax</groupId>
             <artifactId>javaee-api</artifactId>
             <version>6.0</version>
@@ -143,8 +124,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>2.3.2</version>
                 <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.6</source>
+                    <target>1.6</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -165,7 +146,7 @@
             <plugin>
                 <groupId>org.signserver.deploytools</groupId>
                 <artifactId>DeployTools-Maven</artifactId>
-                <version>2.0</version>
+                <version>1.1.2</version>
                 <executions>
                     <execution>
                         <id>module-desc</id>

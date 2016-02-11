@@ -16,16 +16,15 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.security.cert.Certificate;
 import java.util.List;
-import org.bouncycastle.util.encoders.Base64;
 
+import org.ejbca.util.Base64;
 import org.junit.After;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.*;
 import org.signserver.testutils.ModulesTestCase;
 import org.junit.Test;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Test for odfsigner. Worker ID of 5678 is hard coded here and used from
@@ -40,8 +39,7 @@ import org.signserver.ejb.interfaces.WorkerSession;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ODFSignerTest extends ModulesTestCase {
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     /**
      * WORKERID used in this test case as defined in
@@ -70,8 +68,8 @@ public class ODFSignerTest extends ModulesTestCase {
 
         GenericSignRequest signRequest = new GenericSignRequest(reqid, Base64.decode(TEST_ODF_DOC.getBytes()));
 
-        GenericSignResponse res = (GenericSignResponse) processSession.process(
-                new WorkerIdentifier(WORKERID), signRequest, new RemoteRequestContext());
+        GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKERID, signRequest, new RequestContext());
         byte[] data = res.getProcessedData();
 
         // Answer to right question
@@ -94,7 +92,7 @@ public class ODFSignerTest extends ModulesTestCase {
 
     @Test
     public void test02GetStatus() throws Exception {
-        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(WORKERID));
+        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(WORKERID);
         assertTrue(stat.getTokenStatus() == WorkerStatus.STATUS_ACTIVE);
     }
 
@@ -109,7 +107,7 @@ public class ODFSignerTest extends ModulesTestCase {
             workerSession.setWorkerProperty(WORKERID, WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS, "2");
             workerSession.reloadConfiguration(WORKERID);
             
-            final List<String> errors = workerSession.getStatus(new WorkerIdentifier(WORKERID)).getFatalErrors();
+            final List<String> errors = workerSession.getStatus(WORKERID).getFatalErrors();
             
             assertTrue("Should contain error", errors.contains(WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS + " is not supported."));
         } finally {

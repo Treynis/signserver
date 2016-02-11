@@ -20,7 +20,7 @@ import java.util.List;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.*;
@@ -30,9 +30,8 @@ import org.signserver.validationservice.common.Validation.Status;
 import org.w3c.dom.Document;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
-import org.signserver.ejb.interfaces.GlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * TODO: Document me!
@@ -48,7 +47,7 @@ public class XMLValidatorTest extends ModulesTestCase {
      * WORKERID used in this test case as defined in
      * junittest-part-config.properties
      */
-    private static final WorkerIdentifier WORKERID = new WorkerIdentifier(5677);
+    private static final int WORKERID = 5677;
 	
     private static final String VALIDATION_WORKER = "TestValidationWorker";
     private static final String SIGNER2_ISSUERDN = "CN=DSS Root CA 10,OU=Testing,O=SignServer,C=SE";
@@ -56,9 +55,8 @@ public class XMLValidatorTest extends ModulesTestCase {
     private static final String SIGNEREC_ISSUERDN = "CN=ECCA";
     private static final String SIGNEREC_SUBJECTDN = "CN=TestXMLSignerEC,OU=Testing,O=SignServer,C=SE";
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
-    private final GlobalConfigurationSession globalSession = getGlobalSession();
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
     
     @Before
     public void setUp() throws Exception {
@@ -68,15 +66,8 @@ public class XMLValidatorTest extends ModulesTestCase {
     @Test
     public void test00SetupDatabase() throws Exception {
         // VALIDATION SERVICE
-        workerSession.setWorkerProperty(17, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.validationservice.server.ValidationServiceWorker");
-        workerSession.setWorkerProperty(17, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.signserver.server.cryptotokens.KeystoreCryptoToken");
-        workerSession.setWorkerProperty(17, "KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" + File.separator +
-                        "test" + File.separator + "dss10" + File.separator +
-                        "dss10_signer1.p12");
-        workerSession.setWorkerProperty(17, "KEYSTORETYPE", "PKCS12");
-        workerSession.setWorkerProperty(17, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(17, "DEFAULTKEY", "Signer 1");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.CLASSPATH", "org.signserver.validationservice.server.ValidationServiceWorker");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.HardCodedCryptoToken");
         workerSession.setWorkerProperty(17, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(17, "NAME", VALIDATION_WORKER);
         workerSession.setWorkerProperty(17, "VAL1.CLASSPATH", "org.signserver.validationservice.server.DummyValidator");
@@ -89,8 +80,8 @@ public class XMLValidatorTest extends ModulesTestCase {
 
         // XMLVALIDATOR
         setProperties(new File(getSignServerHome(), "res/test/test-xmlvalidator-configuration.properties"));
-        workerSession.setWorkerProperty(WORKERID.getId(), "VALIDATIONSERVICEWORKER", VALIDATION_WORKER);
-        workerSession.reloadConfiguration(WORKERID.getId());
+        workerSession.setWorkerProperty(WORKERID, "VALIDATIONSERVICEWORKER", VALIDATION_WORKER);
+        workerSession.reloadConfiguration(WORKERID);
     }
 
     @Test
@@ -109,13 +100,13 @@ public class XMLValidatorTest extends ModulesTestCase {
      * Test validating with a correct signature and certificate.
      * 
      * @param reqid Request ID to use
-     * @param wi Worker ID
+     * @param workerId Worker ID
      * @param xml Document to validate
      * @param expectedSubjectDN Expected subject DN
      * @param expectedIssuerDN Expected issuer DN
      * @throws Exception
      */
-    private void testSigOkCertOk(final int reqid, final WorkerIdentifier wi, final String xml,
+    private void testSigOkCertOk(final int reqid, final int workerId, final String xml,
             final String expectedSubjectDN, final String expectedIssuerDN) throws Exception {
         // OK signature, OK cert
 
@@ -126,7 +117,7 @@ public class XMLValidatorTest extends ModulesTestCase {
 
         try {
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(wi, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(workerId, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -173,7 +164,7 @@ public class XMLValidatorTest extends ModulesTestCase {
             checkXmlWellFormed(new ByteArrayInputStream(data));
 
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(WORKERID, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(WORKERID, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -197,7 +188,7 @@ public class XMLValidatorTest extends ModulesTestCase {
             checkXmlWellFormed(new ByteArrayInputStream(data));
 
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(WORKERID, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(WORKERID, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -217,7 +208,7 @@ public class XMLValidatorTest extends ModulesTestCase {
             checkXmlWellFormed(new ByteArrayInputStream(data));
 
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(WORKERID, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(WORKERID, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -240,8 +231,8 @@ public class XMLValidatorTest extends ModulesTestCase {
             checkXmlWellFormed(new ByteArrayInputStream(data));
 
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(
-                    WORKERID, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(
+                    WORKERID, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -264,8 +255,8 @@ public class XMLValidatorTest extends ModulesTestCase {
             checkXmlWellFormed(new ByteArrayInputStream(data));
 
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(
-                    WORKERID, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(
+                    WORKERID, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -288,8 +279,8 @@ public class XMLValidatorTest extends ModulesTestCase {
             checkXmlWellFormed(new ByteArrayInputStream(data));
 
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(
-                    WORKERID, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(
+                    WORKERID, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -317,8 +308,8 @@ public class XMLValidatorTest extends ModulesTestCase {
             checkXmlWellFormed(new ByteArrayInputStream(data));
 
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(
-                    WORKERID, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(
+                    WORKERID, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -341,9 +332,9 @@ public class XMLValidatorTest extends ModulesTestCase {
 
     @Test
     public void test091DocumentReturnedWithoutSignature() throws Exception {
-        workerSession.setWorkerProperty(WORKERID.getId(), "RETURNDOCUMENT", "true");
-        workerSession.setWorkerProperty(WORKERID.getId(), "STRIPSIGNATURE", "true");
-        workerSession.reloadConfiguration(WORKERID.getId());
+        workerSession.setWorkerProperty(WORKERID, "RETURNDOCUMENT", "true");
+        workerSession.setWorkerProperty(WORKERID, "STRIPSIGNATURE", "true");
+        workerSession.reloadConfiguration(WORKERID);
 
         // Just some validation
         int reqid = 21;
@@ -354,8 +345,8 @@ public class XMLValidatorTest extends ModulesTestCase {
             checkXmlWellFormed(new ByteArrayInputStream(data));
 
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(
-                    WORKERID, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(
+                    WORKERID, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -393,7 +384,7 @@ public class XMLValidatorTest extends ModulesTestCase {
             checkXmlWellFormed(new ByteArrayInputStream(data));
 
             GenericValidationRequest signRequest = new GenericValidationRequest(reqid, data);
-            GenericValidationResponse res = (GenericValidationResponse) processSession.process(WORKERID, signRequest, new RemoteRequestContext());
+            GenericValidationResponse res = (GenericValidationResponse) workerSession.process(WORKERID, signRequest, new RequestContext());
 
             assertTrue("answer to right question", reqid == res.getRequestID());
 
@@ -457,10 +448,20 @@ public class XMLValidatorTest extends ModulesTestCase {
     
     @Test
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(WORKERID.getId());
+        removeWorker(WORKERID);
+
+        workerSession.removeWorkerProperty(WORKERID, "RETURNDOCUMENT");
+        workerSession.removeWorkerProperty(WORKERID, "STRIPSIGNATURE");
+        workerSession.reloadConfiguration(WORKERID);
 
         // Remove validation service worker
-        removeWorker(17);
+        globalSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.CLASSPATH");
+        globalSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.SIGNERTOKEN.CLASSPATH");
+        workerSession.removeWorkerProperty(17, "AUTHTYPE");
+        workerSession.removeWorkerProperty(17, "VAL1.CLASSPATH");
+        workerSession.removeWorkerProperty(17, "VAL1.ISSUER1.CERTCHAIN");
+        workerSession.removeWorkerProperty(17, "VAL1.TESTPROP");
+        workerSession.removeWorkerProperty(17, "VAL1.REVOKED");
     }
 
     private void checkXmlWellFormed(InputStream in) {

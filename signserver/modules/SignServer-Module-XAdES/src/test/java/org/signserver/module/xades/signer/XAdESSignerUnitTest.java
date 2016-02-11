@@ -13,6 +13,8 @@
 package org.signserver.module.xades.signer;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
@@ -33,6 +35,7 @@ import javax.persistence.EntityManager;
 import javax.xml.crypto.dsig.SignatureMethod;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.apache.xml.security.keys.KeyInfo;
 import org.apache.xml.security.keys.content.X509Data;
@@ -797,7 +800,7 @@ public class XAdESSignerUnitTest {
     /** Tests including 3 certificate levels in the document. */
     @Test
     public void testSigningWithIntermediateCert_3levels() throws Exception {
-        LOG.info("testSigningWithIntermediateCert_3levels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "3");
         
@@ -823,7 +826,7 @@ public class XAdESSignerUnitTest {
     /** Tests specifying many more certificates than available to including all 3 certificate levels in the document. */
     @Test
     public void testSigningWithIntermediateCert_99levels() throws Exception {
-        LOG.info("testSigningWithIntermediateCert_99levels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "99");
         
@@ -848,7 +851,7 @@ public class XAdESSignerUnitTest {
     /** Tests including 1 certificate level in the document. */
     @Test
     public void testSigningWithoutIntermediateCert_1levels() throws Exception {
-        LOG.info("testSigningWithoutIntermediateCert_1levels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "1");
         
@@ -873,7 +876,7 @@ public class XAdESSignerUnitTest {
     /** Tests not specifying any level and using the default value of 1 certificate level. */
     @Test
     public void testSigningWithoutIntermediateCert_defaultLevels() throws Exception {
-        LOG.info("testSigningWithoutIntermediateCert_defaultLevels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
         // Note: No INCLUDE_CERTIFICATE_LEVELS set
         
@@ -898,7 +901,7 @@ public class XAdESSignerUnitTest {
     /** Tests including 2 certificate levels in the document. */
     @Test
     public void testSigningWithIntermediateCert_2levels() throws Exception {
-        LOG.info("testSigningWithIntermediateCert_2levels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "2");
         
@@ -928,7 +931,7 @@ public class XAdESSignerUnitTest {
     /** Tests incorrect values for the INCLUDE_CERTIFICATE_LEVELS worker property. */
     @Test
     public void testInit_includeCertificateLevelsProperty() throws Exception {
-        LOG.info("testInit_includeCertificateLevelsProperty");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "0");
         XAdESSigner instance = new MockedXAdESSigner(tokenRSA);

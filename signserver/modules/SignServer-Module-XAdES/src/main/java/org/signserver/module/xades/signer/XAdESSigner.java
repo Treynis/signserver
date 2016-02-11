@@ -48,8 +48,7 @@ import org.signserver.common.GenericSignResponse;
 import org.signserver.common.ISignRequest;
 import org.signserver.common.ServiceLocator;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.InternalProcessSessionLocal;
+import org.signserver.ejb.interfaces.IInternalWorkerSession;
 import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
@@ -166,7 +165,7 @@ public class XAdESSigner extends BaseSigner {
             ExtendedTimeStampTokenProvider.class;
     
     private TimeStampTokenProvider internalTimeStampTokenProvider;
-    private InternalProcessSessionLocal workerSession;
+    private IInternalWorkerSession workerSession;
     
     /** 
      * Electronic signature forms defined in ETSI TS 101 903 V1.4.1 (2009-06)
@@ -238,11 +237,11 @@ public class XAdESSigner extends BaseSigner {
                 } else {
                     // Use worker name/ID of internal TSA
                     try {
-                        internalTimeStampTokenProvider = new InternalTimeStampTokenProvider(new DefaultMessageDigestProvider("BC"), getWorkerSession(), WorkerIdentifier.createFromIdOrName(tsaWorker.trim()), tsaUsername, tsaPassword);
+                        internalTimeStampTokenProvider = new InternalTimeStampTokenProvider(new DefaultMessageDigestProvider("BC"), getWorkerSession(), tsaWorker, tsaUsername, tsaPassword);
                     } catch (NoSuchProviderException ex) {
                         configErrors.add("No such message digest provider: " + ex.getMessage());
-                    }
-                }
+            }
+        }
             }
         }
         
@@ -588,11 +587,11 @@ public class XAdESSigner extends BaseSigner {
         }
     }
 
-    protected InternalProcessSessionLocal getWorkerSession() {
+    protected IInternalWorkerSession getWorkerSession() {
         if (workerSession == null) {
             try {
                 workerSession = ServiceLocator.getInstance().lookupLocal(
-                    InternalProcessSessionLocal.class);
+                    IInternalWorkerSession.class);
             } catch (NamingException ex) {
                 throw new RuntimeException("Unable to lookup worker session",
                         ex);

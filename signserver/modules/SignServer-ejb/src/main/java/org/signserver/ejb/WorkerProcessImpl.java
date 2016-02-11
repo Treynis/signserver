@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.ejb;
 
-import org.signserver.common.WorkerIdentifier;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
@@ -35,22 +34,19 @@ import org.signserver.common.NotGrantedException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.ProcessableConfig;
-import org.signserver.common.RemoteRequestContext;
 import org.signserver.common.RequestContext;
-import org.signserver.common.RequestMetadata;
 import org.signserver.common.SignServerConstants;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.util.PropertiesConstants;
-import org.signserver.ejb.worker.impl.WorkerManagerSingletonBean;
-import org.signserver.ejb.worker.impl.WorkerWithComponents;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
 import org.signserver.server.AccounterException;
 import org.signserver.server.BaseProcessable;
-import org.signserver.server.IAuthorizer;
 import org.signserver.server.IClientCredential;
 import org.signserver.server.IProcessable;
+import org.signserver.server.IWorker;
 import org.signserver.server.KeyUsageCounterHash;
-import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.ValidityTimeUtils;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.ArchiveException;
@@ -67,7 +63,6 @@ import org.signserver.server.log.SignServerServiceTypes;
 import org.signserver.server.log.WorkerLoggerException;
 import org.signserver.server.statistics.Event;
 import org.signserver.server.statistics.StatisticsManager;
-import org.signserver.ejb.interfaces.WorkerSession;
 
 /**
  * Implements the business logic for the process method.
@@ -83,7 +78,9 @@ class WorkerProcessImpl {
 
     private final IKeyUsageCounterDataService keyUsageCounterDataService;
 
-    private final WorkerManagerSingletonBean workerManagerSession;
+    private final IGlobalConfigurationSession.ILocal globalConfigurationSession;
+
+    private final IWorkerManagerSessionLocal workerManagerSession;
 
     private final SecurityEventsLoggerSessionLocal logSession;
 
@@ -91,60 +88,35 @@ class WorkerProcessImpl {
      * Constructs a new instance of WorkerProcessImpl.
      * @param em The EntityManager (if used)
      * @param keyUsageCounterDataService The key usage counter data service
+     * @param globalConfigurationSession The global configuration session
      * @param workerManagerSession The worker manager session
      * @param logSession The log session
      */
-    public WorkerProcessImpl(EntityManager em, IKeyUsageCounterDataService keyUsageCounterDataService, WorkerManagerSingletonBean workerManagerSession, SecurityEventsLoggerSessionLocal logSession) {
+    public WorkerProcessImpl(EntityManager em, IKeyUsageCounterDataService keyUsageCounterDataService, IGlobalConfigurationSession.ILocal globalConfigurationSession, IWorkerManagerSessionLocal workerManagerSession, SecurityEventsLoggerSessionLocal logSession) {
         this.em = em;
         this.keyUsageCounterDataService = keyUsageCounterDataService;
+        this.globalConfigurationSession = globalConfigurationSession;
         this.workerManagerSession = workerManagerSession;
         this.logSession = logSession;
     }
 
-    public ProcessResponse process(WorkerIdentifier wi, ProcessRequest request, RemoteRequestContext remoteContext, AllServicesImpl servicesImpl) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-        // Create a new RequestContext at server-side
-        final RequestContext requestContext = new RequestContext(true);
-
-        if (remoteContext != null) {
-            // Put metadata from the request
-            RequestMetadata metadata = remoteContext.getMetadata();
-            if (metadata != null) {
-                RequestMetadata.getInstance(requestContext).putAll(remoteContext.getMetadata());
-            }
-
-            // Put username/password
-            if (remoteContext.getUsername() != null) {
-                UsernamePasswordClientCredential credential = new UsernamePasswordClientCredential(remoteContext.getUsername(), remoteContext.getPassword());
-                requestContext.put(RequestContext.CLIENT_CREDENTIAL, credential);
-                requestContext.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD, credential);
-            }
-        }
-        
-        // Put transaction ID
-        requestContext.put(RequestContext.TRANSACTION_ID, UUID.randomUUID().toString());
-
-        // Put services
-        requestContext.setServices(servicesImpl);
-        return process(new AdminInfo("Client user", null, null), wi, request, requestContext);
+    /**
+     * @see IWorkerSession#process(int, org.signserver.common.ProcessRequest, org.signserver.common.RequestContext)
+     */
+    public ProcessResponse process(int workerId, ProcessRequest request, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+        return process(new AdminInfo("Client user", null, null), workerId, request, requestContext);
     }
 
     /**
-     * @see WorkerSession#process(int, org.signserver.common.ProcessRequest, org.signserver.common.RequestContext)
+     * @see IWorkerSession.ILocal#process(org.signserver.server.log.AdminInfo, int, org.signserver.common.ProcessRequest, org.signserver.common.RequestContext)
      */
-    public ProcessResponse process(WorkerIdentifier wi, ProcessRequest request, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-        return process(new AdminInfo("Client user", null, null), wi, request, requestContext);
-    }
-
-    /**
-     * @see WorkerSessionLocal#process(org.signserver.server.log.AdminInfo, int, org.signserver.common.ProcessRequest, org.signserver.common.RequestContext)
-     */
-    public ProcessResponse process(final AdminInfo adminInfo, final WorkerIdentifier wi,
+    public ProcessResponse process(final AdminInfo adminInfo, final int workerId,
             final ProcessRequest request, final RequestContext requestContext)
             throws IllegalRequestException, CryptoTokenOfflineException,
             SignServerException {
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug(">process: " + wi);
+            LOG.debug(">process: " + workerId);
         }
 
         // Start time
@@ -163,18 +135,20 @@ class WorkerProcessImpl {
         }
 
         // Store values for request context and logging
+        requestContext.put(RequestContext.WORKER_ID, workerId);
         requestContext.put(RequestContext.TRANSACTION_ID, transactionID);
         requestContext.put(RequestContext.EM, em);
         logMap.put(IWorkerLogger.LOG_TIME, String.valueOf(startTime));
         logMap.put(IWorkerLogger.LOG_ID, transactionID);
+        logMap.put(IWorkerLogger.LOG_WORKER_ID, String.valueOf(workerId));
         logMap.put(IWorkerLogger.LOG_CLIENT_IP,
                 (String) requestContext.get(RequestContext.REMOTE_IP));
 
         // Get worker instance
-        final WorkerWithComponents worker;
-        try {
-            worker = workerManagerSession.getWorkerWithComponents(wi);
-        } catch (NoSuchWorkerException ex) {
+        final IWorker worker = workerManagerSession.getWorker(workerId, globalConfigurationSession);
+
+        if (worker == null) {
+            NoSuchWorkerException ex = new NoSuchWorkerException(String.valueOf(workerId));
             Map<String, Object> details = new LinkedHashMap<String, Object>();
             final String serNo = adminInfo.getCertSerialNumber() != null ? adminInfo.getCertSerialNumber().toString(16) : null;
 
@@ -189,53 +163,39 @@ class WorkerProcessImpl {
                     adminInfo.getSubjectDN(), adminInfo.getIssuerDN(), serNo, null, details);
             throw ex;
         }
-
-        // Store ID now that we are sure we have it
-        final int workerId = worker.getId();
-        requestContext.put(RequestContext.WORKER_ID, workerId);
-        logMap.put(IWorkerLogger.LOG_WORKER_ID, String.valueOf(workerId));
-
-        final WorkerConfig awc = worker.getWorker().getConfig();
+        final WorkerConfig awc = worker.getConfig();
 
         // Log the worker name
         logMap.put(IWorkerLogger.LOG_WORKER_NAME, awc.getProperty(PropertiesConstants.NAME));
 
         // Get worker log instance
-        final IWorkerLogger workerLogger = worker.getWorkerLogger();
+        final IWorkerLogger workerLogger = workerManagerSession.getWorkerLogger(workerId, awc);
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Worker[" + wi + "]: " + "WorkerLogger: "
+            LOG.debug("Worker[" + workerId + "]: " + "WorkerLogger: "
                     + workerLogger);
         }
 
         try {
             // Get processable
-            if (!(worker.getWorker() instanceof IProcessable)) {
+            if (!(worker instanceof IProcessable)) {
                 final IllegalRequestException ex = new IllegalRequestException(
-                        "Worker exists but isn't a processable: " + wi);
+                        "Worker exists but isn't a processable: " + workerId);
                 // auditLog(startTime, workerId, false, requestContext, ex);
-                logException(adminInfo, ex, logMap, workerLogger, requestContext);
+                logException(adminInfo, ex, logMap, workerLogger);
                 throw ex;
             }
-            final IProcessable processable = (IProcessable) worker.getWorker();
+            final IProcessable processable = (IProcessable) worker;
 
             // Check authorization
             logMap.put(IWorkerLogger.LOG_WORKER_AUTHTYPE,
                     processable.getAuthenticationType());
             try {
-                IAuthorizer authorizer = worker.getAuthorizer();
-                if (authorizer == null) {
-                    final SignServerException exception =
-                        new SignServerException("Authorization misconfigured");
-                    logMap.put(IWorkerLogger.LOG_CLIENT_AUTHORIZED,
-                            String.valueOf(false));
-                    logException(adminInfo, exception, logMap, workerLogger, requestContext);
-                    throw exception;
-                } else {
-                    authorizer.isAuthorized(request, requestContext);
-                    logMap.put(IWorkerLogger.LOG_CLIENT_AUTHORIZED,
-                            String.valueOf(true));
-                }
+                workerManagerSession.getAuthenticator(workerId,
+                            processable.getAuthenticationType(),
+                            awc).isAuthorized(request, requestContext);
+                logMap.put(IWorkerLogger.LOG_CLIENT_AUTHORIZED,
+                        String.valueOf(true));
             } catch (AuthorizationRequiredException ex) {
                 throw ex;
             } catch (AccessDeniedException ex) {
@@ -246,7 +206,7 @@ class WorkerProcessImpl {
                         + ex.getMessage(), ex);
                 logMap.put(IWorkerLogger.LOG_CLIENT_AUTHORIZED,
                         String.valueOf(false));
-                logException(adminInfo, ex, logMap, workerLogger, requestContext);
+                logException(adminInfo, ex, logMap, workerLogger);
                 throw exception;
             } catch (SignServerException ex) {
                 final SignServerException exception =
@@ -254,7 +214,7 @@ class WorkerProcessImpl {
                         + ex.getMessage(), ex);
                 logMap.put(IWorkerLogger.LOG_CLIENT_AUTHORIZED,
                         String.valueOf(false));
-                logException(adminInfo, ex, logMap, workerLogger, requestContext);
+                logException(adminInfo, ex, logMap, workerLogger);
                 throw exception;
             }
 
@@ -276,20 +236,9 @@ class WorkerProcessImpl {
                     "FALSE").equalsIgnoreCase("TRUE")) {
                 final CryptoTokenOfflineException exception =
                         new CryptoTokenOfflineException("Error Signer : "
-                        + wi
+                        + workerId
                         + " is disabled and cannot perform any signature operations");
-                logException(adminInfo, exception, logMap, workerLogger, requestContext);
-                throw exception;
-            }
-
-            // Check for errors at EJB level
-            if (worker.hasCreateErrors()) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Worker " + wi + " has create errors: " + worker.getCreateErrors());
-                }
-                final SignServerException exception = new SignServerException("Worker is misconfigured");
-                LOG.error(exception.getMessage(), exception);
-                logException(adminInfo, exception, logMap, workerLogger, requestContext);
+                logException(adminInfo, exception, logMap, workerLogger);
                 throw exception;
             }
 
@@ -300,12 +249,12 @@ class WorkerProcessImpl {
                 keyUsageLimit = Long.valueOf(awc.getProperty(SignServerConstants.KEYUSAGELIMIT, "-1"));
             } catch (NumberFormatException ex) {
                 final SignServerException exception = new SignServerException("Incorrect value in worker property " + SignServerConstants.KEYUSAGELIMIT, ex);
-                logException(adminInfo, exception, logMap, workerLogger, requestContext);
+                logException(adminInfo, exception, logMap, workerLogger);
                 throw exception;
             }
             final boolean keyUsageLimitSpecified = keyUsageLimit != -1;
             if (counterDisabled && keyUsageLimitSpecified) {
-                LOG.error("Worker]" + wi + "]: Configuration error: " +  SignServerConstants.DISABLEKEYUSAGECOUNTER + "=TRUE but " + SignServerConstants.KEYUSAGELIMIT + " is also configured. Key usage counter will still be used.");
+                LOG.error("Worker]" + workerId + "]: Configuration error: " +  SignServerConstants.DISABLEKEYUSAGECOUNTER + "=TRUE but " + SignServerConstants.KEYUSAGELIMIT + " is also configured. Key usage counter will still be used.");
             }
             try {
                 // Check if the signer has a signer certificate and if that
@@ -323,7 +272,7 @@ class WorkerProcessImpl {
             } catch (CryptoTokenOfflineException ex) {
                 final CryptoTokenOfflineException exception =
                         new CryptoTokenOfflineException(ex);
-                logException(adminInfo, exception, logMap, workerLogger, requestContext);
+                logException(adminInfo, exception, logMap, workerLogger);
                 throw exception;
             }
 
@@ -342,7 +291,7 @@ class WorkerProcessImpl {
                         "SignServerException calling signer with id " + workerId
                         + " : " + e.getMessage(), e);
                 LOG.error(exception.getMessage(), exception);
-                logException(adminInfo, exception, logMap, workerLogger, requestContext);
+                logException(adminInfo, exception, logMap, workerLogger);
                 throw exception;
             } catch (IllegalRequestException ex) {
                 final IllegalRequestException exception =
@@ -351,12 +300,12 @@ class WorkerProcessImpl {
 					LOG.info("Illegal request calling signer with id " + workerId
                         + " : " + ex.getMessage());
 				}
-				logException(adminInfo, exception, logMap, workerLogger, requestContext);
+				logException(adminInfo, exception, logMap, workerLogger);
                 throw exception;
             } catch (CryptoTokenOfflineException ex) {
                 final CryptoTokenOfflineException exception =
                         new CryptoTokenOfflineException(ex);
-                logException(adminInfo, exception, logMap, workerLogger, requestContext);
+                logException(adminInfo, exception, logMap, workerLogger);
                 throw exception;
             }
 
@@ -370,7 +319,9 @@ class WorkerProcessImpl {
                             (IClientCredential) requestContext.get(
                                         RequestContext.CLIENT_CREDENTIAL);
 
-                    purchased = worker.getAccounter().purchase(credential, request, res, requestContext);
+                    purchased = workerManagerSession.getAccounter(workerId,
+                                    awc).purchase(credential, request, res,
+                                            requestContext);
 
                     logMap.put(IWorkerLogger.LOG_PURCHASED, String.valueOf(purchased));
                 } catch (AccounterException ex) {
@@ -378,14 +329,14 @@ class WorkerProcessImpl {
                     final SignServerException exception =
                             new SignServerException("Accounter failed: "
                             + ex.getMessage(), ex);
-                    logException(adminInfo, ex, logMap, workerLogger, requestContext);
+                    logException(adminInfo, ex, logMap, workerLogger);
                     throw exception;
                 }
                 if (!purchased) {
                     final String error = "Purchase not granted";
                     logMap.put(IWorkerLogger.LOG_EXCEPTION, error);
                     logMap.put(IWorkerLogger.LOG_PROCESS_SUCCESS, String.valueOf(false));
-                    workerLogger.log(adminInfo, logMap, requestContext);
+                    workerLogger.log(adminInfo, logMap);
                     throw new NotGrantedException(error);
                 }
             } else {
@@ -399,7 +350,7 @@ class WorkerProcessImpl {
                 final Collection<? extends Archivable> archivables = arres.getArchivables();
                 if (archivables != null) {
                     // Archive all Archivables using all ArchiverS
-                    final List<Archiver> archivers = worker.getArchivers();
+                    final List<Archiver> archivers = workerManagerSession.getArchivers(workerId, awc);
                     if (archivers != null) {
                         try {
                             for (Archiver archiver : archivers) {
@@ -438,11 +389,11 @@ class WorkerProcessImpl {
             // Output successfully
             if (LOG.isDebugEnabled()) {
                 if (res instanceof ISignResponse) {
-                    LOG.debug("Worker " + wi + " Processed request "
+                    LOG.debug("Worker " + workerId + " Processed request "
                             + ((ISignResponse) res).getRequestID()
                             + " successfully");
                 } else {
-                    LOG.debug("Worker " + wi
+                    LOG.debug("Worker " + workerId
                             + " Processed request successfully");
                 }
             }
@@ -460,7 +411,7 @@ class WorkerProcessImpl {
             if (logVal == null) {
             	logMap.put(IWorkerLogger.LOG_PROCESS_SUCCESS, String.valueOf(true));
             }
-            workerLogger.log(adminInfo, logMap, requestContext);
+            workerLogger.log(adminInfo, logMap);
 
             LOG.debug("<process");
             return res;
@@ -476,7 +427,7 @@ class WorkerProcessImpl {
             final Collection<ICryptoInstance> cryptoInstances
                     = CryptoInstances.getInstance(requestContext).getAll();
             if (!cryptoInstances.isEmpty()) {
-                LOG.warn("Worker " + wi + " did not release "
+                LOG.warn("Worker " + workerId + " did not release "
                         + cryptoInstances.size() + " crypto instances: "
                         + cryptoInstances);
             }
@@ -488,13 +439,10 @@ class WorkerProcessImpl {
     }
 
     private void logException(final AdminInfo adminInfo, Exception ex, LogMap logMap,
-    		IWorkerLogger workerLogger, RequestContext requestContext) throws WorkerLoggerException {
-        if (workerLogger == null) {
-            throw new WorkerLoggerException("Worker logger misconfigured", ex);
-        }
+    		IWorkerLogger workerLogger) throws WorkerLoggerException {
     	logMap.put(IWorkerLogger.LOG_EXCEPTION, ex.getMessage());
     	logMap.put(IWorkerLogger.LOG_PROCESS_SUCCESS, String.valueOf(false));
-    	workerLogger.log(adminInfo, logMap, requestContext);
+    	workerLogger.log(adminInfo, logMap);
     }
 
     /**
@@ -524,7 +472,7 @@ class WorkerProcessImpl {
                 logMap.put(IWorkerLogger.LOG_SIGNER_CERT_SERIALNUMBER,
                         cert.getSerialNumber().toString(16));
 
-                ValidityTimeUtils.checkSignerValidity(new WorkerIdentifier(workerId), awc, cert);
+                ValidityTimeUtils.checkSignerValidity(workerId, awc, cert);
             } else { // if (cert != null)
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Worker does not have a signing certificate. Worker: "
@@ -603,10 +551,10 @@ class WorkerProcessImpl {
     }
 
     /**
-     * @see org.signserver.ejb.interfaces.WorkerSession#getWorkerId(java.lang.String)
+     * @see org.signserver.ejb.interfaces.IWorkerSession#getWorkerId(java.lang.String)
      */
-    /*public int getWorkerId(String signerName) throws NoSuchWorkerException {
-        return workerManagerSession.getIdFromName(signerName);
-    }*/
+    public int getWorkerId(String signerName) {
+        return workerManagerSession.getIdFromName(signerName, globalConfigurationSession);
+    }
 
 }

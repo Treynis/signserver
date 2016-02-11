@@ -21,7 +21,6 @@ import org.apache.log4j.Logger;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
-import org.signserver.common.WorkerIdentifier;
 
 /**
  * Command used to generate a new signing key.
@@ -114,10 +113,13 @@ public class GenerateKeyCommand extends AbstractAdminCommand {
             }
             validateOptions();
 
+            int signerId = getWorkerId(args[0]);
+            checkThatWorkerIsProcessable(signerId);
+
             LOG.info("Requesting key generation...");
 
             String newAlias = getWorkerSession().generateSignerKey(
-                    WorkerIdentifier.createFromIdOrName(args[0]), keyAlg, keySpec, alias, null);
+                    signerId, keyAlg, keySpec, alias, null);
 
             if (newAlias == null) {
                 out.println("Could not generate key");

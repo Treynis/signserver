@@ -32,9 +32,8 @@ import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.InternalProcessSessionLocal;
+import org.signserver.ejb.interfaces.IInternalWorkerSession;
 import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
@@ -155,7 +154,7 @@ public class PDFSigner extends BaseSigner {
     
     private List<String> configErrors;
 
-    private InternalProcessSessionLocal workerSession;
+    private IInternalWorkerSession workerSession;
 
     private String digestAlgorithm = DEFAULTDIGESTALGORITHM;
     private int minimumPdfVersion;
@@ -726,8 +725,8 @@ public class PDFSigner extends BaseSigner {
             if (tsaUrl != null) {
                 tsc = getTimeStampClient(params.getTsa_url(), params.getTsa_username(), params.getTsa_password());
             } else {
-                tsc = new InternalTSAClient(getProcessSession(),
-                        WorkerIdentifier.createFromIdOrName(params.getTsa_worker()), params.getTsa_username(), params.getTsa_password());
+                tsc = new InternalTSAClient(getWorkerSession(),
+                        params.getTsa_worker(), params.getTsa_username(), params.getTsa_password());
             }
         }
 
@@ -816,11 +815,11 @@ public class PDFSigner extends BaseSigner {
         return fout.toByteArray();
     }
     
-    protected InternalProcessSessionLocal getProcessSession() {
+    protected IInternalWorkerSession getWorkerSession() {
         if (workerSession == null) {
             try {
                 workerSession = ServiceLocator.getInstance().lookupLocal(
-                    InternalProcessSessionLocal.class);
+                    IInternalWorkerSession.class);
             } catch (NamingException ex) {
                 throw new RuntimeException("Unable to lookup worker session",
                         ex);
@@ -867,7 +866,7 @@ public class PDFSigner extends BaseSigner {
 
     static URL getCRLDistributionPoint(final Certificate certificate)
             throws CertificateParsingException {
-        return CertTools.getCrlDistributionPoint(certificate);
+        return org.signserver.module.pdfsigner.org.ejbca.util.CertTools.getCrlDistributionPoint(certificate);
     }
 
     /**

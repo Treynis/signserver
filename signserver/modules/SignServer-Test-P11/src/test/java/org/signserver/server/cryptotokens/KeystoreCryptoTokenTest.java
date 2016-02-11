@@ -36,16 +36,19 @@ import org.signserver.common.CryptoTokenInitializationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
+import org.signserver.common.IllegalRequestException;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.KeyTestResult;
 import org.signserver.common.OperationUnsupportedException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
 import org.signserver.common.QueryException;
+import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.WorkerStatus;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.IServices;
 import org.signserver.server.ServicesImpl;
 import org.signserver.server.log.AdminInfo;
@@ -140,22 +143,22 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
     
     private static class MockedKeystoreInConfig extends KeystoreInConfigCryptoToken {
         
-        private WorkerSessionLocal workerSession;
+        private IWorkerSession.ILocal workerSession;
         
         /**
-        * @return A mocked IServices with the same WorkerSessionLocal as a call
+        * @return A mocked IServices with the same IWorkerSession.ILocal as a call
         * to getWorkerSession() would return
         */
        public IServices getMockedServices() {
            IServices servicesImpl = new ServicesImpl();
-           servicesImpl.put(WorkerSessionLocal.class, getWorkerSession());
+           servicesImpl.put(IWorkerSession.ILocal.class, getWorkerSession());
            return servicesImpl;
        }
     
         @Override
-        protected WorkerSessionLocal getWorkerSession() { // TODO Extract to adaptor
+        protected IWorkerSession.ILocal getWorkerSession() { // TODO Extract to adaptor
             if (workerSession == null) {
-                workerSession = new WorkerSessionLocal() {
+                workerSession = new IWorkerSession.ILocal() {
 
                     private byte[] keystoreData;
 
@@ -165,17 +168,17 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     }
 
                     @Override
-                    public boolean removeKey(AdminInfo adminInfo, WorkerIdentifier signerId, String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException, SignServerException {
+                    public boolean removeKey(AdminInfo adminInfo, int signerId, String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException, SignServerException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public String generateSignerKey(AdminInfo adminInfo, WorkerIdentifier signerId, String keyAlgorithm, String keySpec, String alias, char[] authCode) throws CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public String generateSignerKey(AdminInfo adminInfo, int signerId, String keyAlgorithm, String keySpec, String alias, char[] authCode) throws CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public Collection<KeyTestResult> testKey(AdminInfo adminInfo, WorkerIdentifier signerId, String alias, char[] authCode) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException {
+                    public Collection<KeyTestResult> testKey(AdminInfo adminInfo, int signerId, String alias, char[] authCode) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
@@ -200,17 +203,17 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     }
 
                     @Override
-                    public ICertReqData getCertificateRequest(AdminInfo adminInfo, WorkerIdentifier signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, boolean defaultKey) throws CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public ICertReqData getCertificateRequest(AdminInfo adminInfo, int signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, boolean defaultKey) throws CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public ICertReqData getCertificateRequest(AdminInfo adminInfo, WorkerIdentifier signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters) throws CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public ICertReqData getCertificateRequest(AdminInfo adminInfo, int signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters) throws CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public ICertReqData getCertificateRequest(AdminInfo adminInfo, WorkerIdentifier signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public ICertReqData getCertificateRequest(AdminInfo adminInfo, int signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
@@ -230,12 +233,17 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     }
 
                     @Override
-                    public void uploadSignerCertificateChain(AdminInfo adminInfo, int signerId, List<byte[]> signerCerts, String scope) throws CertificateException {
+                    public void uploadSignerCertificateChain(AdminInfo adminInfo, int signerId, Collection<byte[]> signerCerts, String scope) throws CertificateException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public void importCertificateChain(AdminInfo adminInfo, WorkerIdentifier signerId, List<byte[]> signerCerts, String alias, char[] authenticationCode) throws CryptoTokenOfflineException, CertificateException, OperationUnsupportedException {
+                    public void importCertificateChain(AdminInfo adminInfo, int signerId, List<byte[]> signerCerts, String alias, char[] authenticationCode) throws CryptoTokenOfflineException, CertificateException, OperationUnsupportedException {
+                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                    }
+
+                    @Override
+                    public ProcessResponse process(AdminInfo info, int workerId, ProcessRequest request, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
@@ -255,7 +263,12 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     }
 
                     @Override
-                    public WorkerStatus getStatus(WorkerIdentifier workerId) throws InvalidWorkerIdException {
+                    public ProcessResponse process(int workerId, ProcessRequest request, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                    }
+
+                    @Override
+                    public WorkerStatus getStatus(int workerId) throws InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
@@ -270,12 +283,12 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     }
 
                     @Override
-                    public void activateSigner(WorkerIdentifier signerId, String authenticationCode) throws CryptoTokenAuthenticationFailureException, CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public void activateSigner(int signerId, String authenticationCode) throws CryptoTokenAuthenticationFailureException, CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public boolean deactivateSigner(WorkerIdentifier signerId) throws CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public boolean deactivateSigner(int signerId) throws CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
@@ -310,67 +323,67 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     }
 
                     @Override
-                    public ICertReqData getCertificateRequest(WorkerIdentifier signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters) throws CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public ICertReqData getCertificateRequest(int signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters) throws CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public ICertReqData getCertificateRequest(WorkerIdentifier signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, boolean defaultKey) throws CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public ICertReqData getCertificateRequest(int signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, boolean defaultKey) throws CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public ICertReqData getCertificateRequest(WorkerIdentifier signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public ICertReqData getCertificateRequest(int signerId, ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public Certificate getSignerCertificate(WorkerIdentifier signerId) throws CryptoTokenOfflineException {
+                    public Certificate getSignerCertificate(int signerId) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public byte[] getSignerCertificateBytes(WorkerIdentifier signerId) throws CryptoTokenOfflineException {
+                    public byte[] getSignerCertificateBytes(int signerId) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public List<Certificate> getSignerCertificateChain(WorkerIdentifier signerId) throws CryptoTokenOfflineException {
+                    public List<Certificate> getSignerCertificateChain(int signerId) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public List<byte[]> getSignerCertificateChainBytes(WorkerIdentifier signerId) throws CryptoTokenOfflineException {
+                    public List<byte[]> getSignerCertificateChainBytes(int signerId) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public Date getSigningValidityNotAfter(WorkerIdentifier workerId) throws CryptoTokenOfflineException {
+                    public Date getSigningValidityNotAfter(int workerId) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public Date getSigningValidityNotBefore(WorkerIdentifier workerId) throws CryptoTokenOfflineException {
+                    public Date getSigningValidityNotBefore(int workerId) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public long getKeyUsageCounterValue(WorkerIdentifier workerId) throws CryptoTokenOfflineException {
+                    public long getKeyUsageCounterValue(int workerId) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public boolean removeKey(WorkerIdentifier signerId, String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException, SignServerException {
+                    public boolean removeKey(int signerId, String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException, SignServerException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public String generateSignerKey(WorkerIdentifier signerId, String keyAlgorithm, String keySpec, String alias, char[] authCode) throws CryptoTokenOfflineException, InvalidWorkerIdException {
+                    public String generateSignerKey(int signerId, String keyAlgorithm, String keySpec, String alias, char[] authCode) throws CryptoTokenOfflineException, InvalidWorkerIdException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public Collection<KeyTestResult> testKey(WorkerIdentifier signerId, String alias, char[] authCode) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException {
+                    public Collection<KeyTestResult> testKey(int signerId, String alias, char[] authCode) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
@@ -380,12 +393,12 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     }
 
                     @Override
-                    public void uploadSignerCertificateChain(int signerId, List<byte[]> signerCerts, String scope) throws CertificateException {
+                    public void uploadSignerCertificateChain(int signerId, Collection<byte[]> signerCerts, String scope) throws CertificateException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public void importCertificateChain(WorkerIdentifier signerId, List<byte[]> signerCerts, String alias, char[] authenticationCode) throws CryptoTokenOfflineException, CertificateException, OperationUnsupportedException {
+                    public void importCertificateChain(int signerId, List<byte[]> signerCerts, String alias, char[] authenticationCode) throws CryptoTokenOfflineException, CertificateException, OperationUnsupportedException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
@@ -425,17 +438,17 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     }
 
                     @Override
-                    public TokenSearchResults searchTokenEntries(AdminInfo adminInfo, WorkerIdentifier workerId, int startIndex, int max, QueryCriteria qc, boolean includeData, Map<String, Object> params) throws OperationUnsupportedException {
+                    public TokenSearchResults searchTokenEntries(AdminInfo adminInfo, int workerId, int startIndex, int max, QueryCriteria qc, boolean includeData, Map<String, Object> params) throws OperationUnsupportedException {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
 
                     @Override
-                    public List<Certificate> getSigningCertificateChain(AdminInfo adminInfo, WorkerIdentifier signerId, String alias) throws CryptoTokenOfflineException {
+                    public List<Certificate> getSigningCertificateChain(AdminInfo adminInfo, int signerId, String alias) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet.");
                     }
 
                     @Override
-                    public List<Certificate> getSignerCertificateChain(WorkerIdentifier signerId, String alias) throws CryptoTokenOfflineException {
+                    public List<Certificate> getSignerCertificateChain(int signerId, String alias) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet.");
                     }
                 };

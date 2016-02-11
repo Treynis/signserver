@@ -15,11 +15,9 @@ package org.signserver.server.log;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.log4j.Logger;
-import org.signserver.common.RequestContext;
-import org.signserver.common.WorkerConfig;
-import org.signserver.server.SignServerContext;
 
 /**
  * An IWorkerLogger that appends log lines to a separate file.
@@ -38,8 +36,8 @@ public class FileWorkerLogger implements IWorkerLogger {
     private String logFilePath;
 
     @Override
-    public void init(final int workerId, final WorkerConfig config, final SignServerContext context) {
-        logFilePath = config.getProperty(FILE_PATH_PROPERTY_NAME);
+    public void init(final Properties props) {
+        logFilePath = props.getProperty(FILE_PATH_PROPERTY_NAME);
 
         if (logFilePath == null) {
             LOG.error("Log file path not specified");
@@ -47,7 +45,7 @@ public class FileWorkerLogger implements IWorkerLogger {
     }
 
     @Override
-    public void log(final AdminInfo adminInfo, final Map<String, String> fields, final RequestContext context) throws WorkerLoggerException {
+    public void log(final AdminInfo adminInfo, Map<String, String> fields) throws WorkerLoggerException {
         FileOutputStream fos = null;
 
         try {
@@ -80,5 +78,10 @@ public class FileWorkerLogger implements IWorkerLogger {
                 fos.close();
             } catch (IOException dummy) {} //NOPMD
         }
+    }
+
+    @Override
+    public void setEjbs(Map<Class<?>, ?> ejbs) {
+        // NO-OP for this implementation   
     }
 }
