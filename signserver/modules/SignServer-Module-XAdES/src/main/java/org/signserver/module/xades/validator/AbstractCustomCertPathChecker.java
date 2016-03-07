@@ -51,13 +51,13 @@ import org.bouncycastle.cert.ocsp.OCSPReq;
 import org.bouncycastle.cert.ocsp.OCSPReqBuilder;
 import org.bouncycastle.cert.ocsp.OCSPResp;
 import org.bouncycastle.cert.ocsp.SingleResp;
-import org.bouncycastle.asn1.ocsp.OCSPResponseStatus;
+import org.bouncycastle.ocsp.OCSPRespStatus;
 import org.bouncycastle.operator.DigestCalculatorProvider;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.bc.BcDigestCalculatorProvider;
 import org.bouncycastle.operator.jcajce.JcaContentVerifierProviderBuilder;
 import org.bouncycastle.util.Store;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
@@ -225,7 +225,6 @@ public abstract class AbstractCustomCertPathChecker extends PKIXCertPathChecker 
      * 
      * @param x509Cert - certificate originally passed to validator for validation
      * @param ocspresp - ocsp response received from ocsp responder
-     * @param cACert
      * @throws OCSPException 
      * @throws NoSuchProviderException 
      * @throws IOException 
@@ -235,12 +234,10 @@ public abstract class AbstractCustomCertPathChecker extends PKIXCertPathChecker 
      * @throws CertificateParsingException 
      * @throws CryptoTokenOfflineException 
      * @throws IllegalRequestException 
-     * @throws org.bouncycastle.operator.OperatorCreationException 
-     * @throws java.security.cert.CertificateEncodingException 
      */
     protected void parseAndVerifyOCSPResponse(X509Certificate x509Cert, OCSPResp ocspresp, X509Certificate cACert) throws NoSuchProviderException, OCSPException, NoSuchAlgorithmException, CertStoreException, IOException, SignServerException, CertificateParsingException, IllegalRequestException, CryptoTokenOfflineException, OperatorCreationException, CertificateEncodingException {
        
-        if (ocspresp.getStatus() != OCSPResponseStatus.SUCCESSFUL) {
+        if (ocspresp.getStatus() != OCSPRespStatus.SUCCESSFUL) {
             throw new SignServerException("Unexpected ocsp response status. Response Status Received : " + ocspresp.getStatus());
         }
 

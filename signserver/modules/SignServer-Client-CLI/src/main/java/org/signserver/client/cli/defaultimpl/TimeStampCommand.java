@@ -44,6 +44,7 @@ import org.bouncycastle.util.Selector;
 import org.bouncycastle.util.Store;
 import org.bouncycastle.util.encoders.Base64;
 import org.bouncycastle.util.encoders.Hex;
+import org.ejbca.ui.cli.util.ConsolePasswordReader;
 import org.signserver.cli.CommandLineInterface;
 import org.signserver.cli.spi.AbstractCommand;
 import org.signserver.cli.spi.CommandFailureException;
@@ -351,7 +352,7 @@ public class TimeStampCommand extends AbstractCommand {
      * @return a ConsolePasswordReader that can be used to read passwords
      */
     protected ConsolePasswordReader createConsolePasswordReader() {
-        return new DefaultConsolePasswordReader();
+        return new ConsolePasswordReader();
     }
 
     private void run() throws Exception {
@@ -507,10 +508,10 @@ public class TimeStampCommand extends AbstractCommand {
         if (request.hasExtensions()) {
             out.print("  Extensions: ");
             for (Object oid : request.getExtensionOIDs()) {
-                final ASN1ObjectIdentifier asn1Oid =
-                        (ASN1ObjectIdentifier) oid;
-                out.print("    " + oid + ": ");
-                out.println(new String(Hex.encode(request.getExtension(asn1Oid).getEncoded())));
+                if (oid instanceof String) {
+                    out.print("    " + oid + ": ");
+                    out.println(new String(Hex.encode(request.getExtensionValue((String) oid))));
+                }
             }
         }
                 

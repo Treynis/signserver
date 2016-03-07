@@ -14,7 +14,6 @@ package org.signserver.server;
 
 import java.util.Date;
 import java.util.Properties;
-import org.signserver.common.RequestContext;
 
 /**
  * Interface defining an accurate time source, could be the local computer
@@ -35,8 +34,7 @@ public interface ITimeSource {
 
     /**
      * Main method that should retrieve the current time from the device.
-     * @param context of the request
      * @return an accurate current time or null if it is not available.
      */
-    Date getGenTime(RequestContext context);
+    Date getGenTime();
 }

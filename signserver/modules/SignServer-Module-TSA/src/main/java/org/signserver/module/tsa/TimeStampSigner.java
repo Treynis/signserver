@@ -40,22 +40,21 @@ import org.bouncycastle.operator.DigestCalculatorProvider;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.bc.BcDigestCalculatorProvider;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.bouncycastle.tsp.TSPAlgorithms;
-import org.bouncycastle.tsp.TSPException;
-import org.bouncycastle.tsp.TimeStampToken;
-import org.cesecore.util.Base64;
-import org.signserver.common.*;
 import org.signserver.module.tsa.bc.TimeStampRequest;
-import org.signserver.module.tsa.bc.TimeStampResponse;
 import org.signserver.module.tsa.bc.TimeStampResponseGenerator;
 import org.signserver.module.tsa.bc.TimeStampTokenGenerator;
-import org.signserver.server.IServices;
+import org.bouncycastle.tsp.TSPAlgorithms;
+import org.bouncycastle.tsp.TSPException;
+import org.bouncycastle.tsp.TimeStampResponse;
+import org.bouncycastle.tsp.TimeStampToken;
+import org.ejbca.util.Base64;
+import org.signserver.common.*;
 import org.signserver.server.ITimeSource;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
 import org.signserver.server.signers.BaseSigner;
@@ -192,6 +191,7 @@ public class TimeStampSigner extends BaseSigner {
     public static final String ACCURACYMILLIS = "ACCURACYMILLIS";
     public static final String ACCURACYSECONDS = "ACCURACYSECONDS";
     public static final String ORDERING = "ORDERING";
+    public static final String INCLUDEORDERING = "INCLUDEORDERING";
     public static final String TSA = "TSA";
     public static final String TSA_FROM_CERT = "TSA_FROM_CERT";
     public static final String REQUIREVALIDCHAIN = "REQUIREVALIDCHAIN";
@@ -277,7 +277,8 @@ public class TimeStampSigner extends BaseSigner {
     private boolean includeSigningTimeAttribute;
     
     private boolean ordering;
-   
+    private boolean includeOrdering;
+    
     private List<String> configErrors;
     
     @Override
@@ -337,12 +338,12 @@ public class TimeStampSigner extends BaseSigner {
         // Validate certificates in signer certificate chain
         final String requireValidChain = config.getProperty(REQUIREVALIDCHAIN, Boolean.FALSE.toString());
         if (Boolean.parseBoolean(requireValidChain)) {
-            validChain = validateChain(null);
+            validChain = validateChain();
         }
         
         maxSerialNumberLength = DEFAULT_MAXSERIALNUMBERLENGTH;
         final String maxSerialNumberLengthProp = config.getProperty(MAXSERIALNUMBERLENGTH);
-        
+
         if (maxSerialNumberLengthProp != null) {
             String serialNumberError = null;
             try {
@@ -377,7 +378,12 @@ public class TimeStampSigner extends BaseSigner {
         includeSigningTimeAttribute = Boolean.valueOf(config.getProperty(INCLUDESIGNINGTIMEATTRIBUTE, "true"));
         
         ordering = Boolean.parseBoolean(config.getProperty(ORDERING, "false"));
+        includeOrdering = Boolean.parseBoolean(config.getProperty(INCLUDEORDERING, "false"));
         
+        if (ordering && !includeOrdering) {
+            configErrors.add("INCLUDEORDERING can not be set to \"false\" when ORDERING is set to \"true\"");
+        }
+
         if (hasSetIncludeCertificateLevels && includeCertificateLevels == 0) {
             configErrors.add("Illegal value for property " + WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS + ". Only numbers >= 1 supported.");
         }
@@ -397,9 +403,6 @@ public class TimeStampSigner extends BaseSigner {
      * @param signRequest
      * @param requestContext
      * @return the sign response
-     * @throws IllegalRequestException
-     * @throws CryptoTokenOfflineException
-     * @throws SignServerException
      * @see org.signserver.server.IProcessable#processData(org.signserver.common.ProcessRequest, org.signserver.common.RequestContext)
      */
     @Override
@@ -443,7 +446,7 @@ public class TimeStampSigner extends BaseSigner {
         if (LOG.isDebugEnabled()) {
             LOG.debug("TimeSource: " + timeSrc.getClass().getName());
         }
-        final Date date = timeSrc.getGenTime(requestContext);
+        final Date date = timeSrc.getGenTime();
         final BigInteger serialNumber = getSerialNumber();
 
         // Log values
@@ -454,11 +457,10 @@ public class TimeStampSigner extends BaseSigner {
         logMap.put(ITimeStampLogger.LOG_TSA_TIMESOURCE, timeSrc.getClass().getSimpleName());
 
 
-        Certificate cert = null;
         GenericSignResponse signResponse = null;
         ICryptoInstance crypto = null;
         try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
             final byte[] requestbytes = (byte[]) sReq.getRequestData();
 
             if (requestbytes == null || requestbytes.length == 0) {
@@ -496,25 +498,13 @@ public class TimeStampSigner extends BaseSigner {
             final TimeStampResponseGenerator timeStampResponseGen =
                     getTimeStampResponseGenerator(timeStampTokenGen);
 
-            TimeStampResponse timeStampResponse;
-                 
-            try {
-                timeStampResponse =
-                        timeStampResponseGen.generateGrantedResponse(timeStampRequest,
-                                                                     serialNumber,
-                                                                     date,
-                                                                     includeStatusString ? "Operation Okay" : null);
-            } catch (TSPException e) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Got exception generating response: ", e);
-                }
-                timeStampResponse =
-                        timeStampResponseGen.generateRejectedResponse(e);
-            }
-            
+            final TimeStampResponse timeStampResponse =
+                    timeStampResponseGen.generate(timeStampRequest,
+                    serialNumber,
+                    date, includeStatusString);
+
             final TimeStampToken token = timeStampResponse.getTimeStampToken();
             final byte[] signedbytes = timeStampResponse.getEncoded();
-            cert = crypto.getCertificate();
             
             // Log values for timestamp response
             if (LOG.isDebugEnabled()) {
@@ -550,14 +540,14 @@ public class TimeStampSigner extends BaseSigner {
             if (signRequest instanceof GenericServletRequest) {
                 signResponse = new GenericServletResponse(sReq.getRequestID(),
                         signedbytes,
-                                    cert,
+                                    getSigningCertificate(signRequest, requestContext),
                                     archiveId,
                                     archivables, 
                                     RESPONSE_CONTENT_TYPE);
             } else {
                 signResponse = new GenericSignResponse(sReq.getRequestID(),
                         signedbytes,
-                        cert,
+                        getSigningCertificate(signRequest, requestContext),
                         archiveId,
                         archivables);
             }
@@ -781,7 +771,7 @@ public class TimeStampSigner extends BaseSigner {
             
             SignerInfoGenerator sig = sigb.build(cs, certHolder);
             
-            timeStampTokenGen = new TimeStampTokenGenerator(sig, calc, tSAPolicyOID, true);
+            timeStampTokenGen = new TimeStampTokenGenerator(calc, sig, tSAPolicyOID);
 
             if (config.getProperties().getProperty(ACCURACYMICROS) != null) {
                 timeStampTokenGen.setAccuracyMicros(Integer.parseInt(
@@ -799,6 +789,7 @@ public class TimeStampSigner extends BaseSigner {
             }
 
             timeStampTokenGen.setOrdering(ordering);
+            timeStampTokenGen.setIncludeOrdering(includeOrdering);
 
             if (tsaName != null) {
                 final X500Name x500Name = new X500Name(tsaName);
@@ -916,11 +907,11 @@ public class TimeStampSigner extends BaseSigner {
      * certificate is a trusted certificate as the root certificate is normally 
      * not included.
      */
-    private boolean validateChain(final IServices services) {
+    private boolean validateChain() {
         boolean result = true;
         try {
             final List<Certificate> signingCertificateChain =
-                    getSigningCertificateChain(services);
+                    getSigningCertificateChain();
             if (signingCertificateChain != null) {
                 List<Certificate> chain = (List<Certificate>) signingCertificateChain;
                 for (int i = 0; i < chain.size(); i++) {
@@ -974,9 +965,9 @@ public class TimeStampSigner extends BaseSigner {
     }
 
     @Override
-    protected List<String> getFatalErrors(final IServices services) {
-        final List<String> result = new LinkedList<>();
-        result.addAll(super.getFatalErrors(services));
+    protected List<String> getFatalErrors() {
+        final List<String> result = new LinkedList<String>();
+        result.addAll(super.getFatalErrors());
         result.addAll(configErrors);
         
         try {
@@ -989,7 +980,7 @@ public class TimeStampSigner extends BaseSigner {
             }
 
             // Check if certificat has the required EKU
-            final Certificate certificate = getSigningCertificate(services);
+            final Certificate certificate = getSigningCertificate();
             try {
                 if (certificate instanceof X509Certificate) {
                     final X509Certificate cert = (X509Certificate) certificate;
@@ -1027,9 +1018,7 @@ public class TimeStampSigner extends BaseSigner {
         } 
         
         // check time source
-        final RequestContext context = new RequestContext(true);
-        context.setServices(services);
-        if (timeSource.getGenTime(context) == null) {
+        if (timeSource.getGenTime() == null) {
         	result.add("Time source not available");
         	if (LOG.isDebugEnabled()) {
         		LOG.debug("Signer " + workerId + ": time source not available");

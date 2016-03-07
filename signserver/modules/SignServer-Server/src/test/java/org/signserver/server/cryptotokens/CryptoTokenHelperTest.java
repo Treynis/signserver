@@ -224,7 +224,7 @@ public class CryptoTokenHelperTest extends TestCase {
         final X509Certificate certificate = (X509Certificate) ks.getCertificate(KEYALIAS);
         
         // Test with no parameters: should not change the cert
-        final Map<String, Object> params = new HashMap<>();
+        final Map<String, Object> params = new HashMap<String, Object>();
         CryptoTokenHelper.regenerateCertIfWanted(KEYALIAS, "foo123".toCharArray(), params, ks, "BC");
         X509Certificate certAfter = (X509Certificate) ks.getCertificate(KEYALIAS);
         assertEquals("Same issuer DN", certificate.getIssuerX500Principal().getName(), certAfter.getIssuerX500Principal().getName());

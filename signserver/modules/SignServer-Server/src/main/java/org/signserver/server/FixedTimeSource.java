@@ -14,7 +14,6 @@ package org.signserver.server;
 
 import java.util.Date;
 import java.util.Properties;
-import org.signserver.common.RequestContext;
 
 /**
  * Simple class implementing the ITimeSource interface always returns the
@@ -36,7 +35,7 @@ public class FixedTimeSource implements ITimeSource {
     }
 
     @Override
-    public Date getGenTime(final RequestContext context) {
+    public Date getGenTime() {
         return time;
     }
 

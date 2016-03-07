@@ -146,7 +146,7 @@ public abstract class BaseTimedService extends BaseWorker implements ITimedServi
     @Override
     public WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services) {
         final List<String> fatalErrorsIncludingAdditionalErrors = new LinkedList<String>(additionalFatalErrors);
-        fatalErrorsIncludingAdditionalErrors.addAll(getFatalErrors(services));
+        fatalErrorsIncludingAdditionalErrors.addAll(getFatalErrors());
 
         List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<WorkerStatusInfo.Entry>();
         List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<WorkerStatusInfo.Entry>();
@@ -181,8 +181,8 @@ public abstract class BaseTimedService extends BaseWorker implements ITimedServi
     }
 
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final List<String> errors = new LinkedList<String>(super.getFatalErrors(services));
+    protected List<String> getFatalErrors() {
+        final List<String> errors = new LinkedList<String>(super.getFatalErrors());
         
         errors.addAll(fatalErrors);
         return errors;

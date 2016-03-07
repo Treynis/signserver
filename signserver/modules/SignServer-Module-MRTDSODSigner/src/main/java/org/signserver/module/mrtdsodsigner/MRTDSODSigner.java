@@ -34,15 +34,14 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX500NameUtil;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.*;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
-import org.signserver.server.IServices;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
 /**
@@ -126,12 +125,11 @@ public class MRTDSODSigner extends BaseSigner {
         
         final SODSignRequest sodRequest = (SODSignRequest) signRequest;
 
-        final IServices services = requestContext.getServices();
-        final ICryptoTokenV4 token = getCryptoToken(services);
+        final ICryptoToken token = getCryptoToken();
         // Trying to do a workaround for issue when the PKCS#11 session becomes invalid
         // If autoactivate is on, we can deactivate and re-activate the token.
         synchronized (syncObj) {
-            int status = token.getCryptoTokenStatus(services);
+            int status = token.getCryptoTokenStatus();
             if (log.isDebugEnabled()) {
                 log.debug("Crypto token status: " + status);
             }
@@ -143,9 +141,9 @@ public class MRTDSODSigner extends BaseSigner {
                 }
                 if (pin != null) {
                     log.info("Deactivating and re-activating crypto token.");
-                    token.deactivate(services);
+                    token.deactivate();
                     try {
-                        token.activate(pin, services);
+                        token.activate(pin);
                     } catch (CryptoTokenAuthenticationFailureException e) {
                         throw new CryptoTokenOfflineException(e);
                     }
@@ -161,7 +159,7 @@ public class MRTDSODSigner extends BaseSigner {
         final List<Certificate> certChain;
         ICryptoInstance crypto = null;
         try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
 
             cert = (X509Certificate) getSigningCertificate(crypto);
             if (cert == null) {
@@ -374,8 +372,8 @@ public class MRTDSODSigner extends BaseSigner {
     }
     
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final List<String> errors = super.getFatalErrors(services);
+    protected List<String> getFatalErrors() {
+        final List<String> errors = super.getFatalErrors();
         
         errors.addAll(configErrors);
         return errors;

@@ -20,23 +20,21 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import org.signserver.common.CryptoTokenOfflineException;
-import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.WorkerStatusInfo;
-import org.signserver.common.WorkerType;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
-import org.signserver.server.IServices;
+import org.signserver.ejb.interfaces.IWorkerSession.ILocal;
 import org.signserver.server.WorkerContext;
-import org.signserver.test.utils.mock.MockedServicesImpl;
 import org.signserver.test.utils.mock.WorkerSessionMock;
 import static junit.framework.TestCase.assertTrue;
+import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
 
 /**
  * Unit tests for the the RenewalTimedService.
@@ -66,16 +64,15 @@ public class RenewalTimedServiceUnitTest {
         
         // Without any properties
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.TIMED_SERVICE.name());
         instance.init(workerId, config, workerContext, workerEM);
-        List<String> fatalErrors = instance.getFatalErrors(null);
+        List<String> fatalErrors = instance.getFatalErrors();
         assertTrue("Should contain error but was: " + fatalErrors, fatalErrors.contains("Missing required property: WORKERS"));
 
         // With all required propertues
         config.setProperty("WORKERS", "Worker1");
         instance = new RenewalTimedService();
         instance.init(workerId, config, workerContext, workerEM);
-        fatalErrors = instance.getFatalErrors(null);
+        fatalErrors = instance.getFatalErrors();
         assertEquals("Should not contain errors but was: " + fatalErrors, 0, fatalErrors.size());
     }
 
@@ -103,28 +100,27 @@ public class RenewalTimedServiceUnitTest {
         Date date203 = new Date();
         
         // Mocked services
-        IServices services = new MockedServicesImpl().with(WorkerSessionLocal.class, new MyMockedWorkerSession(Arrays.asList(
+        MyMockedWorkerSession workerSession = new MyMockedWorkerSession(Arrays.asList(
                 new MockedWorker(201, "Worker1", config201, date201),
                 new MockedWorker(202, "Worker2", config202, date202),
                 new MockedWorker(203, "Worker3", config203, date203)
-        )));
+        ));
         
         // Init the service
         int workerId = 103;
         WorkerContext workerContext = null;
         EntityManager workerEM = null;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.TIMED_SERVICE.name());
         config.setProperty("WORKERS", " Worker1 , Worker2,Worker3");
-        RenewalTimedService instance = new RenewalTimedService();
+        RenewalTimedService instance = new MockedRenewalTimedService(workerSession);
         instance.init(workerId, config, workerContext, workerEM);
-        List<String> fatalErrors = instance.getFatalErrors(null);
+        List<String> fatalErrors = instance.getFatalErrors();
         if (!fatalErrors.isEmpty()) {
             throw new Exception("Config errors: " + fatalErrors);
         }
         
         // Get the workers renewal prognose
-        StaticWorkerStatus result = (StaticWorkerStatus) instance.getStatus(additionalFatalErrors, services);
+        StaticWorkerStatus result = (StaticWorkerStatus) instance.getStatus(additionalFatalErrors, null);
         Map<String, String> entries = getEntriesMap(result.getInfo().getCompleteEntries());
         String renewalInfo = entries.get("Workers Renewal Prognose");
         assertNotNull("Expected a \"Workers Renewal Prognose\" but only found: " + entries.keySet(), renewalInfo);
@@ -140,7 +136,7 @@ public class RenewalTimedServiceUnitTest {
     }
     
     private static Map<String, String> getEntriesMap(Collection<WorkerStatusInfo.Entry> entries) {
-        final HashMap<String, String> results = new HashMap<>(entries.size());
+        final HashMap<String, String> results = new HashMap<String, String>(entries.size());
         for (WorkerStatusInfo.Entry entry : entries) {
             results.put(entry.getTitle(), entry.getValue());
         }
@@ -404,26 +400,27 @@ public class RenewalTimedServiceUnitTest {
     private List<RenewalTimedService.RenewalStatus> getRenewalStatusesHelper(Date now, WorkerConfig config201, Date date201, WorkerConfig config202, Date date202, WorkerConfig config203, Date date203) throws Exception {
         final List<String> workers = Arrays.asList("Worker1", "Worker2", "Worker3");
 
+        final MyMockedWorkerSession workerSession = new MyMockedWorkerSession(Arrays.asList(
+                new MockedWorker(201, "Worker1", config201, date201),
+                new MockedWorker(202, "Worker2", config202, date202),
+                new MockedWorker(203, "Worker3", config203, date203)
+        ));
+        
         // Init the service
         int workerId = 104;
         WorkerContext workerContext = null;
         EntityManager workerEM = null;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.TIMED_SERVICE.name());
         config.setProperty("WORKERS", " Worker1 , Worker2,Worker3");
-        RenewalTimedService instance = new RenewalTimedService();
+        RenewalTimedService instance = new MockedRenewalTimedService(workerSession);
         instance.init(workerId, config, workerContext, workerEM);
-        List<String> fatalErrors = instance.getFatalErrors(null);
+        List<String> fatalErrors = instance.getFatalErrors();
         if (!fatalErrors.isEmpty()) {
             throw new Exception("Config errors: " + fatalErrors);
         }
         
         // Get the renewal statuses
-        List<RenewalTimedService.RenewalStatus> result = instance.getRenewalStatuses(workers, now, new MyMockedWorkerSession(Arrays.asList(
-                new MockedWorker(201, "Worker1", config201, date201),
-                new MockedWorker(202, "Worker2", config202, date202),
-                new MockedWorker(203, "Worker3", config203, date203)
-        )));
+        List<RenewalTimedService.RenewalStatus> result = instance.getRenewalStatuses(workers, now, workerSession);
 
         assertEquals("num statuses", 3, result.size());
 
@@ -459,10 +456,11 @@ public class RenewalTimedServiceUnitTest {
 
     private static class MyMockedWorkerSession extends WorkerSessionMock {
 
-        private final HashMap<Integer, MockedWorker> workersById = new HashMap<>();
-        private final HashMap<String, MockedWorker> workersByName = new HashMap<>();
+        private final HashMap<Integer, MockedWorker> workersById = new HashMap<Integer, MockedWorker>();
+        private final HashMap<String, MockedWorker> workersByName = new HashMap<String, MockedWorker>();
 
         public MyMockedWorkerSession(Collection<MockedWorker> workers) {
+            super(new GlobalConfigurationSessionMock());
             for (MockedWorker worker : workers) {
                 workersById.put(worker.id, worker);
                 workersByName.put(worker.name, worker);
@@ -470,11 +468,12 @@ public class RenewalTimedServiceUnitTest {
         }
 
         @Override
-        public int getWorkerId(String workerName) throws InvalidWorkerIdException {
+        public int getWorkerId(String workerName) {
             final int result;
             final MockedWorker worker = workersByName.get(workerName);
             if (worker == null) {
-                throw new InvalidWorkerIdException("No such worker: " + workerName);
+                LOG.error("No such worker: " + workerName);
+                result = 0;
             } else {
                 result = worker.id;
             }
@@ -495,14 +494,9 @@ public class RenewalTimedServiceUnitTest {
         }
 
         @Override
-        public Date getSigningValidityNotAfter(WorkerIdentifier workerId) throws CryptoTokenOfflineException {
+        public Date getSigningValidityNotAfter(int workerId) throws CryptoTokenOfflineException {
             final Date result;
-            final MockedWorker worker;
-            if (workerId.hasId()) {
-                worker = workersById.get(workerId.getId());
-            } else {
-                worker = workersByName.get(workerId.getName());
-            }
+            final MockedWorker worker = workersById.get(workerId);
             if (worker == null) {
                 LOG.error("No such worker: " + workerId);
                 result = null;
@@ -511,6 +505,21 @@ public class RenewalTimedServiceUnitTest {
             }
             return result;
         }
+    }
+    
+    private static class MockedRenewalTimedService extends RenewalTimedService {
+
+        private final IWorkerSession.ILocal workerSession;
+
+        public MockedRenewalTimedService(ILocal workerSession) {
+            this.workerSession = workerSession;
+        }
+        
+        @Override
+        protected ILocal getWorkerSession() throws NamingException {
+            return workerSession;
+        }
+        
     }
     
 }

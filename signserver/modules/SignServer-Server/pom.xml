@@ -5,7 +5,7 @@
   <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer-Modules</artifactId>
-        <version>4.0.0-SNAPSHOT</version>
+        <version>3.7.3-pk1</version>
     </parent>
   <artifactId>SignServer-Server</artifactId>
   <name>SignServer-Server</name>
@@ -29,7 +29,12 @@
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
-      <version>${log4j.version}</version>
+      <version>1.2.14</version>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>SignServer-Lib-EJBCA-Util</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -47,9 +52,9 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.quartz-scheduler</groupId>
+      <groupId>opensymphony</groupId>
       <artifactId>quartz</artifactId>
-      <version>2.2.2</version>
+      <version>1.6.0</version>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
@@ -59,23 +64,13 @@
     <dependency>
       <groupId>commons-configuration</groupId>
       <artifactId>commons-configuration</artifactId>
-      <version>${commons-configuration.version}</version>
+      <version>1.5</version>
     </dependency>
     <dependency>
-        <groupId>org.cesecore</groupId>
-        <artifactId>cesecore-common</artifactId>
-        <version>${cesecore.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>commons-fileupload</groupId>
-      <artifactId>commons-fileupload</artifactId>
-      <version>1.3.1</version>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.openejb</groupId>
-        <artifactId>javaee-api</artifactId>
-        <version>6.0-6</version>
-        <scope>provided</scope>
+      <groupId>javax</groupId>
+      <artifactId>javaee-api</artifactId>
+      <version>6.0</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 </project>

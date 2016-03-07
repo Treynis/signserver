@@ -25,11 +25,11 @@ import java.util.Properties;
 import javax.persistence.EntityManager;
 
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.Validation;
 
 /**
@@ -54,8 +54,9 @@ public class NoRevocationCheckingValidator extends BaseValidator {
      * org.signserver.server.cryptotokens.ICryptoToken)
      */
     @Override
-    public void init(int workerId, int validatorId, Properties props, EntityManager em) throws SignServerException {
-        super.init(workerId, validatorId, props, em);
+    public void init(int workerId, int validatorId, Properties props, EntityManager em,
+            ICryptoToken ct) throws SignServerException {
+        super.init(workerId, validatorId, props, em, ct);
 
     }
 

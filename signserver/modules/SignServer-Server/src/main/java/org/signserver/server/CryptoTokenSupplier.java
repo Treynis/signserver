@@ -13,7 +13,7 @@
 package org.signserver.server;
 
 import org.signserver.common.SignServerException;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 
 /**
  * Supplier of the current crypto token.
@@ -23,11 +23,10 @@ import org.signserver.server.cryptotokens.ICryptoTokenV4;
  */
 public interface CryptoTokenSupplier {
     /**
-     * @param services implementations to use
      * @return the current crypto token (worker) if configured and available,
      * otherwise null
      * @throws SignServerException in case initialization of the crypto token
      * failed
      */
-    ICryptoTokenV4 getCurrentCryptoToken(final IServices services) throws SignServerException;
+    ICryptoToken getCurrentCryptoToken() throws SignServerException;
 }

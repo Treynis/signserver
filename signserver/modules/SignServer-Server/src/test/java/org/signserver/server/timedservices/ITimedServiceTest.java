@@ -19,9 +19,7 @@ import java.util.List;
 import java.util.Set;
 import junit.framework.TestCase;
 import org.signserver.common.ServiceConfig;
-import org.signserver.common.ServiceContext;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerType;
 import org.signserver.server.ServiceExecutionFailedException;
 import org.signserver.server.ServicesImpl;
 
@@ -38,11 +36,11 @@ public class ITimedServiceTest extends TestCase {
     
     private ITimedService createInstance() {
         return new BaseTimedService() {
-            @Override
-            public void work(final ServiceContext context) throws ServiceExecutionFailedException {
-                throw new UnsupportedOperationException("Not supported yet.");
-            }
-        };
+                    @Override
+                    public void work() throws ServiceExecutionFailedException {
+                        throw new UnsupportedOperationException("Not supported yet.");
+                    }
+               };
     }
 
     /**
@@ -59,7 +57,6 @@ public class ITimedServiceTest extends TestCase {
         final ITimedService instance = createInstance();
         
         final WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.TIMED_SERVICE.name());
 
         if (propertyValue != null) {
             config.setProperty(ServiceConfig.WORK_LOG_TYPES, propertyValue);

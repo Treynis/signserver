@@ -70,16 +70,6 @@ public class FileBasedDatabaseManager {
         }
         return metadata;
     }
-
-    /**
-     * Write out the meta data to disk.
-     */
-    public void storeMetadata() {
-        synchronized (this) {
-            final Properties properties = getMetadata();
-            dataService.setProperties(properties);
-        }
-    }
     
     private Properties getMetadataTemplate() {
         final Properties result = new Properties();
