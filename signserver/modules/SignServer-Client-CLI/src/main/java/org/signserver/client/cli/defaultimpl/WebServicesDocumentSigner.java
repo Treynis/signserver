@@ -82,9 +82,8 @@ public class WebServicesDocumentSigner extends AbstractDocumentSigner {
         final long startTime = System.nanoTime();
 
         // RequestContext is used by this API to transfer the metadata
-        RemoteRequestContext context = new RemoteRequestContext();
-        RequestMetadata requestMetadata = new RequestMetadata();
-        context.setMetadata(requestMetadata);
+        RequestContext context = new RequestContext();
+        RequestMetadata requestMetadata = RequestMetadata.getInstance(context);
         
         if (metadata != null) {
             requestMetadata.putAll(metadata);

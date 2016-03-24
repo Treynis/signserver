@@ -13,7 +13,7 @@
 package org.signserver.common;
 
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.internal.UpgradeableDataHashMap;
+import org.ejbca.core.model.UpgradeableDataHashMap;
 
 /**
  * Class containing the actual archive data.

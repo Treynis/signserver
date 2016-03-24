@@ -13,20 +13,21 @@
 package org.signserver.server;
 
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.AuthorizedClient;
 import org.signserver.common.ProcessableConfig;
+import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerConstants;
 import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 import org.signserver.common.WorkerStatusInfo;
-import org.signserver.common.WorkerType;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 
 /**
  * Base class with common methods for workers.
@@ -37,13 +38,30 @@ public abstract class BaseWorker implements IWorker {
 
     /** Logger. */
     private static final Logger LOG = Logger.getLogger(BaseWorker.class);
-
+    
+    /** The global configuration session. */
+    private transient IGlobalConfigurationSession globalConfig;
+    
+    /**
+     * @return The global configuration session.
+     */
+    protected IGlobalConfigurationSession
+            getGlobalConfigurationSession() { // FIXME: Better to somehow inject this
+        if (globalConfig == null) {
+            try {
+                globalConfig = ServiceLocator.getInstance().lookupLocal(
+                        IGlobalConfigurationSession.class);
+            } catch (NamingException e) {
+                LOG.error(e);
+            }
+        }
+        return globalConfig;
+    }
             
     //Private Property constants
     protected int workerId = 0;
     protected WorkerConfig config = null;
     protected WorkerContext workerContext;
-    private List<String> fatalErrors;
     /** 
      * @deprecated This EntityManager was created when the worker was 
      * initialized and is not safe to use from an other transaction. Instead 
@@ -75,21 +93,8 @@ public abstract class BaseWorker implements IWorker {
         if (workerContext != null && workerContext instanceof SignServerContext) {
             this.em = ((SignServerContext) workerContext).getEntityManager();
         }
+
         this.workerEM = workerEM;
-        this.fatalErrors = new LinkedList<>();
-        try {
-            final WorkerType wt = WorkerType.valueOf(config.getProperty(WorkerConfig.TYPE, WorkerType.UNKNOWN.name()));
-            if (wt == WorkerType.UNKNOWN) {
-                final EnumSet<WorkerType> values = EnumSet.allOf(WorkerType.class);
-                values.remove(WorkerType.UNKNOWN);
-                fatalErrors.add("Worker TYPE is unknown. Specify one of " + values.toString());
-            }
-        } catch (IllegalArgumentException ex) {
-            final EnumSet<WorkerType> values = EnumSet.allOf(WorkerType.class);
-            values.remove(WorkerType.UNKNOWN);
-            fatalErrors.add("Incorrect Worker TYPE: " + ex.getMessage() + ". Specify one of " + values.toString());
-        }
-        
     }
 
     protected SignServerContext getSignServerContext() {
@@ -102,6 +107,10 @@ public abstract class BaseWorker implements IWorker {
         return result;
     }
 
+    public void destroy() {
+        LOG.debug("Destroy called");
+    }
+    
     @Override
     public WorkerConfig getConfig() {
         return config;
@@ -117,8 +126,8 @@ public abstract class BaseWorker implements IWorker {
      * in case there are no errors
      * @since SignServer 3.2.3
      */
-    protected List<String> getFatalErrors(IServices services) {
-        return fatalErrors;
+    protected List<String> getFatalErrors() {
+        return Collections.emptyList();
     }
 
     /**
@@ -130,14 +139,14 @@ public abstract class BaseWorker implements IWorker {
      */
     @Override
     public WorkerStatus getStatus(List<String> additionalFatalErrors, final IServices services) {
-        final List<String> errors = new LinkedList<String>(additionalFatalErrors);
-        errors.addAll(getFatalErrors(services));
+        final List<String> fatalErrors = new LinkedList<String>(additionalFatalErrors);
+        fatalErrors.addAll(getFatalErrors());
 
         final List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<WorkerStatusInfo.Entry>();
         final List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<WorkerStatusInfo.Entry>();
 
         // Worker status
-        final boolean active = errors.isEmpty();
+        final boolean active = fatalErrors.isEmpty();
         briefEntries.add(new WorkerStatusInfo.Entry("Worker status", active ? "Active" : "Offline"));
 
         // Disabled or not
@@ -167,7 +176,7 @@ public abstract class BaseWorker implements IWorker {
                 "Worker", 
                 active ? WorkerStatus.STATUS_ACTIVE : WorkerStatus.STATUS_OFFLINE, 
                 briefEntries, 
-                errors, 
+                fatalErrors, 
                 completeEntries, 
                 config));
     }

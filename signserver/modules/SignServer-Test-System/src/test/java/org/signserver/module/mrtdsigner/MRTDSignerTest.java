@@ -26,15 +26,14 @@ import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GenericSignResponse;
 import org.signserver.common.MRTDSignRequest;
 import org.signserver.common.MRTDSignResponse;
-import org.signserver.common.RemoteRequestContext;
+import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.WorkerStatus;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases;
 import org.signserver.testutils.ModulesTestCase;
-import org.signserver.ejb.interfaces.WorkerSession;
 
 /**
  * TODO: Document me!
@@ -44,8 +43,7 @@ import org.signserver.ejb.interfaces.WorkerSession;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class MRTDSignerTest extends ModulesTestCase {
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     @Before
     public void setUp() throws Exception {
@@ -55,11 +53,7 @@ public class MRTDSignerTest extends ModulesTestCase {
     @Test
     public void test00SetupDatabase() throws Exception {
         setProperties(new File(getSignServerHome(), "res/test/test-mrtdsigner-configuration.properties"));
-        workerSession.setWorkerProperty(7890, "KEYSTOREPATH",
-                getSignServerHome() + File.separator + KEYSTORE_SIGNER1_FILE);
-        workerSession.setWorkerProperty(7890, "KEYSTORETYPE", "PKCS12");
-        workerSession.setWorkerProperty(7890, "KEYSTOREPASSWORD", KEYSTORE_PASSWORD);
-        workerSession.setWorkerProperty(7890, "DEFAULTKEY", KEYSTORE_SIGNER1_ALIAS);
+        workerSession.setWorkerProperty(7890, "DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_1);
         workerSession.reloadConfiguration(7890);
     }
 
@@ -76,7 +70,7 @@ public class MRTDSignerTest extends ModulesTestCase {
         signrequests.add(signreq1);
         signrequests.add(signreq2);
 
-        MRTDSignResponse res = (MRTDSignResponse) processSession.process(new WorkerIdentifier(7890), new MRTDSignRequest(reqid, signrequests), new RemoteRequestContext());
+        MRTDSignResponse res = (MRTDSignResponse) workerSession.process(7890, new MRTDSignRequest(reqid, signrequests), new RequestContext());
         assertTrue(res != null);
         assertTrue(reqid == res.getRequestID());
         Certificate signercert = res.getSignerCertificate();
@@ -118,7 +112,7 @@ public class MRTDSignerTest extends ModulesTestCase {
      */
     @Test
     public void test02GetStatus() throws Exception {
-        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(7890));
+        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(7890);
         assertTrue(stat.getTokenStatus() == WorkerStatus.STATUS_ACTIVE);
 
     }
@@ -128,7 +122,7 @@ public class MRTDSignerTest extends ModulesTestCase {
         int reqid = 13;
         byte[] signreq1 = "Hello World".getBytes();
 
-        GenericSignResponse res = (GenericSignResponse) processSession.process(new WorkerIdentifier(7890), new GenericSignRequest(reqid, signreq1), new RemoteRequestContext());
+        GenericSignResponse res = (GenericSignResponse) workerSession.process(7890, new GenericSignRequest(reqid, signreq1), new RequestContext());
         assertTrue(res != null);
         assertTrue(reqid == res.getRequestID());
         Certificate signercert = res.getSignerCertificate();
@@ -153,7 +147,7 @@ public class MRTDSignerTest extends ModulesTestCase {
            workerSession.setWorkerProperty(7890, WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS, "2");
            workerSession.reloadConfiguration(7890);
            
-           final List<String> errors = workerSession.getStatus(new WorkerIdentifier(7890)).getFatalErrors();
+           final List<String> errors = workerSession.getStatus(7890).getFatalErrors();
            
            assertTrue("Should contain error", errors.contains(WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS + " is not supported."));
        } finally {

@@ -25,7 +25,9 @@ import org.cesecore.audit.enums.EventStatus;
 import org.cesecore.audit.log.AuditRecordStorageException;
 import org.cesecore.audit.log.SecurityEventsLoggerSessionLocal;
 import org.signserver.common.*;
-import org.signserver.ejb.worker.impl.WorkerManagerSingletonBean;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.worker.impl.IWorkerManagerSessionLocal;
+import org.signserver.ejb.worker.impl.WorkerManager;
 import org.signserver.server.GlobalConfigurationCache;
 import org.signserver.server.config.entities.FileBasedGlobalConfigurationDataService;
 import org.signserver.server.config.entities.GlobalConfigurationDataBean;
@@ -36,24 +38,20 @@ import org.signserver.server.log.SignServerEventTypes;
 import org.signserver.server.log.SignServerModuleTypes;
 import org.signserver.server.log.SignServerServiceTypes;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
-import org.signserver.ejb.interfaces.GlobalConfigurationSession;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
 
 /**
  * The implementation of the GlobalConfiguration Session Bean.
  * 
- * @see org.signserver.ejb.interfaces.GlobalConfigurationSession           
+ * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession           
  * @version $Id$
  */
 @Stateless
-public class GlobalConfigurationSessionBean implements GlobalConfigurationSessionLocal, GlobalConfigurationSessionRemote {
+public class GlobalConfigurationSessionBean implements IGlobalConfigurationSession.ILocal, IGlobalConfigurationSession.IRemote {
 
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(GlobalConfigurationSessionBean.class);
     
-    @EJB
-    private WorkerManagerSingletonBean workerManagerSession;
+    private IWorkerManagerSessionLocal workerManager;
     
     @EJB
     private SecurityEventsLoggerSessionLocal logSession;
@@ -82,6 +80,7 @@ public class GlobalConfigurationSessionBean implements GlobalConfigurationSessio
             }
             globalConfigurationDataService = new GlobalConfigurationDataService(em);
         }
+        workerManager = new WorkerManager(em, logSession);
     }
     
     private IGlobalConfigurationDataService getGlobalConfigurationDataService() {
@@ -89,7 +88,7 @@ public class GlobalConfigurationSessionBean implements GlobalConfigurationSessio
     }
     
     /**
-     * @see org.signserver.ejb.interfaces.GlobalConfigurationSession#setProperty(String, String, String)
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#setProperty(String, String, String)
      */
     @Override
     public void setProperty(String scope, String key, String value) {
@@ -97,7 +96,7 @@ public class GlobalConfigurationSessionBean implements GlobalConfigurationSessio
     }
 
     /**
-     * @see org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal#setProperty(AdminInfo, String, String, String)
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession.ILocal#setProperty(AdminInfo, String, String, String)
      */    
     @Override
     public void setProperty(AdminInfo adminInfo, String scope, String key,
@@ -129,7 +128,7 @@ public class GlobalConfigurationSessionBean implements GlobalConfigurationSessio
     }
 
     /**
-     * @see org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal#removeProperty(AdminInfo, String, String)
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession.ILocal#removeProperty(AdminInfo, String, String)
      */
     @Override
     public boolean removeProperty(final AdminInfo adminInfo, String scope, String key) {
@@ -153,7 +152,7 @@ public class GlobalConfigurationSessionBean implements GlobalConfigurationSessio
     }
     
     /**
-     * @see org.signserver.ejb.interfaces.GlobalConfigurationSession#removeProperty(String, String)
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#removeProperty(String, String)
      */    
     @Override
     public boolean removeProperty(String scope, String key) {
@@ -162,7 +161,7 @@ public class GlobalConfigurationSessionBean implements GlobalConfigurationSessio
     
 
     /**
-     * @see org.signserver.ejb.interfaces.GlobalConfigurationSession#getGlobalConfiguration()
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession#getGlobalConfiguration()
      */
     @Override
     public GlobalConfiguration getGlobalConfiguration() {
@@ -200,7 +199,7 @@ public class GlobalConfigurationSessionBean implements GlobalConfigurationSessio
     }
 
     /**
-     * @see org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal#resync()
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession.ILocal#resync()
      */
     @Override
     public void resync(final AdminInfo adminInfo) throws ResyncException {
@@ -269,13 +268,13 @@ public class GlobalConfigurationSessionBean implements GlobalConfigurationSessio
     }
     
     /**
-     * @see org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal#reload()
+     * @see org.signserver.ejb.interfaces.IGlobalConfigurationSession.ILocal#reload()
      */
     @Override
     public void reload(final AdminInfo adminInfo) {
         auditLog(adminInfo, SignServerEventTypes.GLOBAL_CONFIG_RELOAD, null, null);
 
-        workerManagerSession.flush();
+        workerManager.flush();
         cache.setCachedGlobalConfig(null);
         getGlobalConfiguration();
 
@@ -312,10 +311,10 @@ public class GlobalConfigurationSessionBean implements GlobalConfigurationSessio
             Map<String, Object> details = new LinkedHashMap<String, Object>();
 
             if (property != null) {
-                details.put(GlobalConfigurationSession.LOG_PROPERTY, property);
+                details.put(IGlobalConfigurationSession.LOG_PROPERTY, property);
             }
             if (value != null) {
-                details.put(GlobalConfigurationSession.LOG_VALUE, value);
+                details.put(IGlobalConfigurationSession.LOG_VALUE, value);
 
             }
             

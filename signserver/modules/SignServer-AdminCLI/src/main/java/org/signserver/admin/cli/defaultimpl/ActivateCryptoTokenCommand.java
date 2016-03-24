@@ -12,11 +12,10 @@
  *************************************************************************/
 package org.signserver.admin.cli.defaultimpl;
 
-import java.io.Console;
 import java.io.IOException;
-
 import java.rmi.RemoteException;
 import org.apache.log4j.Logger;
+import org.ejbca.ui.cli.util.ConsolePasswordReader;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
@@ -24,7 +23,6 @@ import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.StaticWorkerStatus;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.WorkerStatus;
 
 /**
@@ -71,29 +69,25 @@ public class ActivateCryptoTokenCommand extends AbstractAdminCommand {
         }
         
         try {
-            WorkerIdentifier wi = WorkerIdentifier.createFromIdOrName(args[0]);
+            int workerid = getWorkerId(args[0]);
+            checkThatWorkerIsProcessable(workerid);
             String authCode;
             if (args.length > 1) {
                 authCode = args[1];
             } else {
                 getOutputStream().print("Enter authorization code: ");
                 // Read the password, but mask it so we don't display it on the console
-                final Console console = System.console();
-                
-                if (console != null) {
-                    authCode = String.valueOf(console.readPassword());
-                } else {
-                    throw new CommandFailureException("Failed to read password");
-                }
+                ConsolePasswordReader r = new ConsolePasswordReader();
+                authCode = String.valueOf(r.readPassword());
             }
 
-            this.getOutputStream().println(TRYING + wi + "\n");
-            this.getWorkerSession().activateSigner(wi, authCode);
+            this.getOutputStream().println(TRYING + workerid + "\n");
+            this.getWorkerSession().activateSigner(workerid, authCode);
 
             boolean active = false;
             
-            if (getWorkerSession().getStatus(wi) instanceof StaticWorkerStatus) {
-            	active = ((StaticWorkerStatus) getWorkerSession().getStatus(wi)).getTokenStatus() == WorkerStatus.STATUS_ACTIVE;
+            if (getWorkerSession().getStatus(workerid) instanceof StaticWorkerStatus) {
+            	active = ((StaticWorkerStatus) getWorkerSession().getStatus(workerid)).getTokenStatus() == WorkerStatus.STATUS_ACTIVE;
             } else {
             	this.getOutputStream().println("No token available");
             }
@@ -107,6 +101,8 @@ public class ActivateCryptoTokenCommand extends AbstractAdminCommand {
         } catch (InvalidWorkerIdException ex) {
             throw new IllegalCommandArgumentsException(ex.getMessage());
         } catch (RemoteException ex) {
+            throw new UnexpectedCommandFailureException(ex);
+        } catch (IOException ex) {
             throw new UnexpectedCommandFailureException(ex);
         } catch (CryptoTokenAuthenticationFailureException ex) {
             if (LOG.isDebugEnabled()) {

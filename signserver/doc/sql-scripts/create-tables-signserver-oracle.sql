@@ -1,4 +1,4 @@
--- DDL for SignServer 4.0.x on Oracle
+-- DDL for SignServer 3.5.x on Oracle
 -- ------------------------------------------------------
 -- Version: $Id$
 -- Comment:
@@ -42,8 +42,6 @@ CREATE TABLE "GLOBALCONFIGDATA" (
 --
 CREATE TABLE "SIGNERCONFIGDATA" (
 	"SIGNERID" NUMBER(10,0) NOT NULL, 
-        "SIGNERNAME" VARCHAR2(255 CHAR), 
-        "SIGNERTYPE" VARCHAR2(255 CHAR), 
 	"SIGNERCONFIGDATA" CLOB, 
 	PRIMARY KEY ("SIGNERID")
 );

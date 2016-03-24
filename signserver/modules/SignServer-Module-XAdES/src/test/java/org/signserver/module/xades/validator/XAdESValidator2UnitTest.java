@@ -33,6 +33,7 @@ import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.X509KeyUsage;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ejbca.util.CertTools;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -66,11 +67,8 @@ import org.bouncycastle.cert.ocsp.OCSPException;
 import org.bouncycastle.cert.ocsp.OCSPReq;
 import org.bouncycastle.cert.ocsp.RevokedStatus;
 import org.bouncycastle.operator.bc.BcDigestCalculatorProvider;
-import org.cesecore.util.CertTools;
 import org.junit.Before;
 import org.signserver.common.SignServerException;
-import org.signserver.server.ServicesImpl;
-import org.signserver.server.SignServerContext;
 import org.signserver.test.utils.builders.ocsp.OCSPResponseBuilder;
 import org.signserver.test.utils.builders.ocsp.OcspRespObject;
 import org.signserver.test.utils.mock.MockedCryptoToken;
@@ -497,14 +495,13 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer1Cert), 
                 chain1, 
                 "BC");
-        LOG.debug("Chain 1: \n" + new String(CertTools.getPemFromCertificateChain(chain1), "ASCII") + "\n");
+        LOG.debug("Chain 1: \n" + new String(CertTools.getPEMFromCerts(chain1), "ASCII") + "\n");
         
         // Sign a document by signer 1
         XAdESSigner instance = new MockedXAdESSigner(token1);
         WorkerConfig config = new WorkerConfig();
-        instance.init(4712, config, new SignServerContext(), null);
+        instance.init(4712, config, null, null);
         RequestContext requestContext = new RequestContext();
-        requestContext.setServices(new ServicesImpl());
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-201-1");
         GenericSignRequest request = new GenericSignRequest(201, "<test201/>".getBytes("UTF-8"));
         GenericSignResponse response = (GenericSignResponse) instance.processData(request, requestContext);
@@ -534,7 +531,7 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer2Cert), 
                 chain2, 
                 "BC");
-        LOG.debug("Chain 2: \n" + new String(CertTools.getPemFromCertificateChain(chain2)) + "\n");
+        LOG.debug("Chain 2: \n" + new String(CertTools.getPEMFromCerts(chain2)) + "\n");
         
         // Sign a document by signer 2
         instance = new MockedXAdESSigner(token2);
@@ -594,7 +591,7 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer3Cert), 
                 chain3, 
                 "BC");
-        LOG.debug("Chain 3: \n" + new String(CertTools.getPemFromCertificateChain(chain3)) + "\n");
+        LOG.debug("Chain 3: \n" + new String(CertTools.getPEMFromCerts(chain3)) + "\n");
         
         // signer 4, issued by the sub CA2 with an OCSP authority information access in the signer cert
         final KeyPair signer4KeyPair = CryptoUtils.generateRSA(1024);
@@ -619,7 +616,7 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer4Cert), 
                 chain4, 
                 "BC");
-        LOG.debug("Chain 4: \n" + new String(CertTools.getPemFromCertificateChain(chain4)) + "\n");
+        LOG.debug("Chain 4: \n" + new String(CertTools.getPEMFromCerts(chain4)) + "\n");
         
         // ocspSigner 1, OCSP responder issued by the root CA with an ocsp-nocheck in the signer cert
         ocspSigner1KeyPair = CryptoUtils.generateRSA(1024);
@@ -630,7 +627,7 @@ public class XAdESValidator2UnitTest {
                 .setSubject("CN=OCSP Responder 1, O=XAdES Test, C=SE")
                 .addExtension(new CertExt(Extension.basicConstraints, false, new BasicConstraints(false)))
                 .addExtension(new CertExt(Extension.extendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeId.id_kp_OCSPSigning)))
-                .addExtension(new CertExt(OCSPObjectIdentifiers.id_pkix_ocsp_nocheck, false, DERNull.INSTANCE))
+                .addExtension(new CertExt(OCSPObjectIdentifiers.id_pkix_ocsp_nocheck, false, new DERNull()))
                 .build();
         
         // ocspSigner 2, OCSP responder issued by the sub CA2 with an ocsp-nocheck in the signer cert
@@ -642,7 +639,7 @@ public class XAdESValidator2UnitTest {
                 .setSubject("CN=OCSP Responder 2, O=XAdES Test, C=SE")
                 .addExtension(new CertExt(Extension.basicConstraints, false, new BasicConstraints(false)))
                 .addExtension(new CertExt(Extension.extendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeId.id_kp_OCSPSigning)))
-                .addExtension(new CertExt(OCSPObjectIdentifiers.id_pkix_ocsp_nocheck, false, DERNull.INSTANCE))
+                .addExtension(new CertExt(OCSPObjectIdentifiers.id_pkix_ocsp_nocheck, false, new DERNull()))
                 .build();
         
         // Sign a document by signer 3
@@ -692,7 +689,7 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer1Cert), 
                 chain5, 
                 "BC");
-        LOG.debug("Chain 5: \n" + new String(CertTools.getPemFromCertificateChain(chain5)) + "\n");
+        LOG.debug("Chain 5: \n" + new String(CertTools.getPEMFromCerts(chain5)) + "\n");
         
         // Sign a document by signer 5
         instance = new MockedXAdESSigner(token5);
@@ -728,7 +725,7 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "false");
         
         updateCRLs(rootcaCRLEmpty, subca1CRLEmpty);
@@ -755,7 +752,7 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         updateCRLs(rootcaCRLEmpty, subca1CRLEmpty);
@@ -782,7 +779,7 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         updateCRLs(rootcaCRLSubCAAndSigner1Revoked, subca1CRLEmpty);
@@ -807,10 +804,10 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         config.setProperty("REVOCATION_CHECKING", "false");
         
@@ -838,11 +835,11 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         updateCRLs(rootcaCRLEmpty, subca1CRLEmpty);
         
@@ -868,11 +865,11 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         updateCRLs(rootcaCRLEmpty, subca1CRLSigner2Revoked);
         
@@ -897,11 +894,11 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         updateCRLs(rootcaCRLSubCAAndSigner1Revoked, subca1CRLEmpty);
         
@@ -926,11 +923,11 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         updateCRLs(rootcaCRLEmpty, otherCRL);
         
@@ -986,7 +983,7 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1029,7 +1026,7 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1072,7 +1069,7 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1105,7 +1102,7 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1148,7 +1145,7 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1199,8 +1196,8 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4716, config, null, null);
@@ -1251,8 +1248,8 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1304,8 +1301,8 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1356,8 +1353,8 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1390,7 +1387,7 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1425,7 +1422,7 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
@@ -1582,7 +1579,7 @@ public class XAdESValidator2UnitTest {
         try {
             XAdESValidator instance = new XAdESValidator();
             WorkerConfig config = new WorkerConfig();
-            config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+            config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
             config.setProperty("REVOCATION_CHECKING", "false");
 
             updateCRLs(rootcaCRLEmpty, subca1CRLEmpty);

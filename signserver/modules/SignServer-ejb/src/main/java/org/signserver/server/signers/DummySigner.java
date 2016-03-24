@@ -23,7 +23,6 @@ import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerStatus;
-import org.signserver.server.IServices;
 
 /**
  * Dummy Signer used for test and demonstration purposes.
@@ -96,7 +95,7 @@ public class DummySigner extends BaseSigner {
      * @see org.signserver.server.BaseProcessable#activateSigner(java.lang.String)
      */
     @Override
-    public void activateSigner(String authenticationCode, IServices services)
+    public void activateSigner(String authenticationCode)
             throws CryptoTokenAuthenticationFailureException,
             CryptoTokenOfflineException {
         this.active = true;
@@ -106,13 +105,13 @@ public class DummySigner extends BaseSigner {
      * @see org.signserver.server.BaseProcessable#deactivateSigner()
      */
     @Override
-    public boolean deactivateSigner(IServices services) throws CryptoTokenOfflineException {
+    public boolean deactivateSigner() throws CryptoTokenOfflineException {
         this.active = false;
         return true;
     }
 
     @Override
-    public int getCryptoTokenStatus(IServices services) {
+    public int getCryptoTokenStatus() {
         return active ? WorkerStatus.STATUS_ACTIVE : WorkerStatus.STATUS_OFFLINE;
     }    
 }

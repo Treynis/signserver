@@ -67,7 +67,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.xml.namespace.QName;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.admin.gui.SignServerAdminGUIApplication.Protocol;
 import org.signserver.admin.gui.adminws.gen.AdminWS;
 import org.signserver.admin.gui.adminws.gen.AdminWSService;
@@ -119,7 +119,7 @@ public class ConnectDialog extends javax.swing.JDialog {
     
     /** Cache of loaded (PKCS#11 currently only) keystores, to not create a new one when already logged in. */
     private static final Map<String, KeyStore> LOADED_KESTORES = new HashMap<String, KeyStore>();
-
+    
     /** Flag indicating if connection succeeded. */
     private boolean connected;
 
@@ -594,7 +594,7 @@ public class ConnectDialog extends javax.swing.JDialog {
                 if (jRadioButtonRemote.isSelected()) {
                     // WS connection
                     try {
-                        connectOverWS();
+                        connectOverWS();    
                     } catch (Exception ex) {
                         LOG.error("Error connecting", ex);
                         JOptionPane.showMessageDialog(ConnectDialog.this, ExceptionUtils.catCauses(ex, "\n"), "Connect", JOptionPane.ERROR_MESSAGE);
@@ -619,7 +619,7 @@ public class ConnectDialog extends javax.swing.JDialog {
                     try {
                         // Try accessing global configuration to see that we have connection and are authorized
                         ws.getGlobalConfiguration();
-
+                        
                         // All is fine
                         connected = true;
                         dispose();
@@ -630,7 +630,7 @@ public class ConnectDialog extends javax.swing.JDialog {
                         // Check if this is a case of JBoss not running
                         if (ex.getMessage() != null && ex.getMessage().contains("No EJB receiver")) {
                             message.append("SignServer not deployed or application server not running:\n");
-                    }
+                        }
 
                         message.append(ExceptionUtils.catCauses(ex, "\n"));
                         JOptionPane.showMessageDialog(ConnectDialog.this, message.toString(), "Connect", JOptionPane.ERROR_MESSAGE);
@@ -639,7 +639,7 @@ public class ConnectDialog extends javax.swing.JDialog {
                         JOptionPane.showMessageDialog(ConnectDialog.this, ExceptionUtils.catCauses(ex, "\n"), "Connect", JOptionPane.ERROR_MESSAGE);
                     }
                 }
-
+                
                 // Restore for next retry
                 enableControls(true);
                 jLabelProgress.setText("");
@@ -700,187 +700,187 @@ public class ConnectDialog extends javax.swing.JDialog {
                     provider = null;
             }
 
-                // Ask for password
-                char[] authcode;
-                passwordLabel.setText("Enter password for keystore:");
-                passwordField.setText("");
-                JOptionPane.showMessageDialog(
-                        ConnectDialog.this, passwordPanel,
-                        "Connect", JOptionPane.PLAIN_MESSAGE);
-                if (passwordField.getPassword() != null) {
-                    authcode = passwordField.getPassword();
-                } else {
-                    authcode = null;
-                }
-
-                // Other keystores for instance JKS
-                keystore = getLoadedKeystore(getResolvedPath(settings.getKeystoreFile()),
-                        authcode,
-                        settings.getKeystoreType(),
-                        provider);
-
-                // JKS has password on keys and need to be inited with password
-                if (settings.getKeystoreType().equals("JKS")) {
-                    kKeyManagerFactory.init(keystore, authcode);
-                } else {
-                    kKeyManagerFactory.init(keystore, null);
-                }
-            }
-
-            final KeyStore keystoreTrusted;
-            if (TRUSTSTORE_TYPE_PEM.equals(settings.getTruststoreType())) {
-                keystoreTrusted = KeyStore.getInstance("JKS");
-                keystoreTrusted.load(null, null);
-                final Collection certs = CertTools.getCertsFromPEM(
-                        new FileInputStream(getResolvedPath(settings.getTruststoreFile())));
-                int i = 0;
-                for (Object o : certs) {
-                    if (o instanceof Certificate) {
-                        keystoreTrusted.setCertificateEntry("cert-" + i,
-                                (Certificate) o);
-                        i++;
-                    }
-                }
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Loaded " + i + " certs to truststore");
-                }
-            } else if (TRUSTSTORE_TYPE_KEYSTORE.equals(
-                    settings.getTruststoreType())) {
-                keystoreTrusted = KeyStore.getInstance("JKS");
-                keystoreTrusted.load(null, null);
-                final Enumeration<String> aliases = keystore.aliases();
-                int i = 0;
-                while(aliases.hasMoreElements()) {
-                    final String alias = aliases.nextElement();
-                    if (keystore.isCertificateEntry(alias)) {
-                        keystoreTrusted.setCertificateEntry(alias,
-                                keystore.getCertificate(alias));
-                        i++;
-                    }
-                }
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Loaded " + i + " certs to truststore");
-                }
+            // Ask for password
+            char[] authcode;
+            passwordLabel.setText("Enter password for keystore:");
+            passwordField.setText("");
+            JOptionPane.showMessageDialog(
+                    ConnectDialog.this, passwordPanel,
+                    "Connect", JOptionPane.PLAIN_MESSAGE);
+            if (passwordField.getPassword() != null) {
+                authcode = passwordField.getPassword();
             } else {
-                keystoreTrusted = KeyStore.getInstance(settings.getTruststoreType());
-                keystoreTrusted.load(new FileInputStream(getResolvedPath(settings.getTruststoreFile())), settings.getTruststorePassword());
+                authcode = null;
             }
 
-            final TrustManagerFactory tTrustManagerFactory = TrustManagerFactory.getInstance("SunX509");
-            tTrustManagerFactory.init(keystoreTrusted);
+            // Other keystores for instance JKS
+            keystore = getLoadedKeystore(getResolvedPath(settings.getKeystoreFile()),
+                    authcode,
+                    settings.getKeystoreType(),
+                    provider);
 
-            KeyManager[] keyManagers = kKeyManagerFactory.getKeyManagers();
+            // JKS has password on keys and need to be inited with password
+            if (settings.getKeystoreType().equals("JKS")) {
+                kKeyManagerFactory.init(keystore, authcode);
+            } else {
+                kKeyManagerFactory.init(keystore, null);
+            }
+        }
 
-    //        final SSLSocketFactory factory = sslc.getSocketFactory();
-            List<GUIKeyManager> guiKeyManagers = new LinkedList<GUIKeyManager>();
-            for (int i = 0; i < keyManagers.length; i++) {
-                if (keyManagers[i] instanceof X509KeyManager) {
-                    final GUIKeyManager manager = new GUIKeyManager((X509KeyManager) keyManagers[i]);
-                    keyManagers[i] = manager;
-                    guiKeyManagers.add(manager);
+        final KeyStore keystoreTrusted;
+        if (TRUSTSTORE_TYPE_PEM.equals(settings.getTruststoreType())) {
+            keystoreTrusted = KeyStore.getInstance("JKS");
+            keystoreTrusted.load(null, null);
+            final Collection certs = CertTools.getCertsFromPEM(
+                    new FileInputStream(getResolvedPath(settings.getTruststoreFile())));
+            int i = 0;
+            for (Object o : certs) {
+                if (o instanceof Certificate) {
+                    keystoreTrusted.setCertificateEntry("cert-" + i,
+                            (Certificate) o);
+                    i++;
                 }
             }
-
-            // Now construct a SSLContext using these (possibly wrapped)
-            // KeyManagers, and the TrustManagers. We still use a null
-            // SecureRandom, indicating that the defaults should be used.
-            SSLContext context = SSLContext.getInstance("TLS");
-
             if (LOG.isDebugEnabled()) {
-                StringBuilder buff = new StringBuilder();
-                buff.append("Available providers: \n");
-                for (Provider p : Security.getProviders()) {
-                   buff.append(p).append("\n");
-                }
-                LOG.info(buff.toString());
+                LOG.debug("Loaded " + i + " certs to truststore");
             }
+        } else if (TRUSTSTORE_TYPE_KEYSTORE.equals(
+                settings.getTruststoreType())) {
+            keystoreTrusted = KeyStore.getInstance("JKS");
+            keystoreTrusted.load(null, null);
+            final Enumeration<String> aliases = keystore.aliases();
+            int i = 0;
+            while(aliases.hasMoreElements()) {
+                final String alias = aliases.nextElement();
+                if (keystore.isCertificateEntry(alias)) {
+                    keystoreTrusted.setCertificateEntry(alias,
+                            keystore.getCertificate(alias));
+                    i++;
+                }
+            }
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Loaded " + i + " certs to truststore");
+            }
+        } else {
+            keystoreTrusted = KeyStore.getInstance(settings.getTruststoreType());
+            keystoreTrusted.load(new FileInputStream(getResolvedPath(settings.getTruststoreFile())), settings.getTruststorePassword());
+        }
 
-            context.init(keyManagers, tTrustManagerFactory.getTrustManagers(), new SecureRandom());
+        final TrustManagerFactory tTrustManagerFactory = TrustManagerFactory.getInstance("SunX509");
+        tTrustManagerFactory.init(keystoreTrusted);
 
-            // Finally, we get a SocketFactory, and pass it to SimpleSSLClient.
-            SSLSocketFactory factory = context.getSocketFactory();
+        KeyManager[] keyManagers = kKeyManagerFactory.getKeyManagers();
 
-            HttpsURLConnection.setDefaultSSLSocketFactory(factory);
+//        final SSLSocketFactory factory = sslc.getSocketFactory();
+        List<GUIKeyManager> guiKeyManagers = new LinkedList<GUIKeyManager>();
+        for (int i = 0; i < keyManagers.length; i++) {
+            if (keyManagers[i] instanceof X509KeyManager) {
+                final GUIKeyManager manager = new GUIKeyManager((X509KeyManager) keyManagers[i]);
+                keyManagers[i] = manager;
+                guiKeyManagers.add(manager);
+            }
+        }
 
-            final ConnectDialog parent = this;
-            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+        // Now construct a SSLContext using these (possibly wrapped)
+        // KeyManagers, and the TrustManagers. We still use a null
+        // SecureRandom, indicating that the defaults should be used.
+        SSLContext context = SSLContext.getInstance("TLS");
 
-                private X509Certificate verifiedCert = null;
+        if (LOG.isDebugEnabled()) {
+            StringBuilder buff = new StringBuilder();
+            buff.append("Available providers: \n");
+            for (Provider p : Security.getProviders()) {
+               buff.append(p).append("\n");
+            }
+            LOG.info(buff.toString());
+        }
 
-                @Override
-                public boolean verify(String hostname, SSLSession session) {
+        context.init(keyManagers, tTrustManagerFactory.getTrustManagers(), new SecureRandom());
 
-                    if (!DEFAULT_HOSTNAME_VERIFIER.verify(hostname, session)) {
-                        // don't show warning dialog more than once in a row for the same
-                        // host cert
-                        try {
-                            final X509Certificate cert = (X509Certificate) session.getPeerCertificates()[0];
+        // Finally, we get a SocketFactory, and pass it to SimpleSSLClient.
+        SSLSocketFactory factory = context.getSocketFactory();
 
-                            if (verifiedCert != null && verifiedCert.equals(cert)) {
-                                return true;
-                            } else {
-                                final String dn = cert.getSubjectX500Principal().getName();
-                                final String cn = CertTools.getPartFromDN(dn, "CN");
+        HttpsURLConnection.setDefaultSSLSocketFactory(factory);
 
-                                hostnameField.setText(hostname);
-                                commonNameField.setText(cn);
+        final ConnectDialog parent = this;
+        HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
 
-                                final DefaultListModel listModel = new DefaultListModel();
+            private X509Certificate verifiedCert = null;
 
-                                try {
-                                    final Collection<List<?>> altNames = cert.getSubjectAlternativeNames();
+            @Override
+            public boolean verify(String hostname, SSLSession session) {
 
-                                    if (altNames != null) {
-                                        for (final List<?> altName : altNames) {
-                                            final Integer type = (Integer) altName.get(0);
-                                            final Object value = altName.get(1);
-                                            final StringBuilder sb = new StringBuilder();
+                if (!DEFAULT_HOSTNAME_VERIFIER.verify(hostname, session)) {
+                    // don't show warning dialog more than once in a row for the same
+                    // host cert
+                    try {
+                        final X509Certificate cert = (X509Certificate) session.getPeerCertificates()[0];
 
-                                            if (type == 2) {
-                                                sb.append("DNS name: ");
-                                            } else if (type == 7) {
-                                                sb.append("IP address: ");
-                                            }
-                                            sb.append(value.toString());
-                                            listModel.addElement(sb.toString());
+                        if (verifiedCert != null && verifiedCert.equals(cert)) {
+                            return true;
+                        } else {
+                            final String dn = cert.getSubjectX500Principal().getName();
+                            final String cn = CertTools.getPartFromDN(dn, "CN");
+
+                            hostnameField.setText(hostname);
+                            commonNameField.setText(cn);
+
+                            final DefaultListModel listModel = new DefaultListModel();
+
+                            try {
+                                final Collection<List<?>> altNames = cert.getSubjectAlternativeNames();
+
+                                if (altNames != null) {
+                                    for (final List<?> altName : altNames) {
+                                        final Integer type = (Integer) altName.get(0);
+                                        final Object value = altName.get(1);
+                                        final StringBuilder sb = new StringBuilder();
+
+                                        if (type == 2) {
+                                            sb.append("DNS name: ");
+                                        } else if (type == 7) {
+                                            sb.append("IP address: ");
                                         }
-                                    } else {
-                                        subjectAltNamesList.setEnabled(false);
-                                        listModel.addElement("No subject alternative names found in certificate");
+                                        sb.append(value.toString());
+                                        listModel.addElement(sb.toString());
                                     }
-                                } catch (CertificateParsingException e) {
-                                    listModel.addElement("Failed to parse subject alternative names from certificate");
+                                } else {
+                                    subjectAltNamesList.setEnabled(false);
+                                    listModel.addElement("No subject alternative names found in certificate");
                                 }
-
-                                subjectAltNamesList.setModel(listModel);
-
-                                final int result = JOptionPane.showConfirmDialog(parent, hostnameMismatchConfirmPanel,
-                                        "Hostname mismatch", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-                                verifiedCert = cert;
-                                return result == JOptionPane.OK_OPTION;
+                            } catch (CertificateParsingException e) {
+                                listModel.addElement("Failed to parse subject alternative names from certificate");
                             }
-                        } catch (SSLPeerUnverifiedException e) {
-                            JOptionPane.showMessageDialog(parent, "Unable to verify peer",
-                                    "Error", JOptionPane.ERROR_MESSAGE);
-                            return false;
+
+                            subjectAltNamesList.setModel(listModel);
+
+                            final int result = JOptionPane.showConfirmDialog(parent, hostnameMismatchConfirmPanel,
+                                    "Hostname mismatch", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+                            verifiedCert = cert;
+                            return result == JOptionPane.OK_OPTION;
                         }
+                    } catch (SSLPeerUnverifiedException e) {
+                        JOptionPane.showMessageDialog(parent, "Unable to verify peer",
+                                "Error", JOptionPane.ERROR_MESSAGE);
+                        return false;
                     }
-
-                    return true;
                 }
-            });
 
-            AdminWSService service = new AdminWSService(
-                    new URL(urlstr), new QName("http://adminws.signserver.org/", "AdminWSService"));
-            ws = service.getAdminWSPort();
-
-            // Search the key managers for the selected certificate
-            for (GUIKeyManager manager : guiKeyManagers) {
-                adminCertificate = manager.getSelectedCertificate();
-                if (adminCertificate != null) {
-                    break;
-                }
+                return true;
             }
+        });
+
+        AdminWSService service = new AdminWSService(
+                new URL(urlstr), new QName("http://adminws.signserver.org/", "AdminWSService"));
+        ws = service.getAdminWSPort();
+
+        // Search the key managers for the selected certificate
+        for (GUIKeyManager manager : guiKeyManagers) {
+            adminCertificate = manager.getSelectedCertificate();
+            if (adminCertificate != null) {
+                break;
+            }
+        }
     }//GEN-LAST:event_connectButtonActionPerformed
     
     private void truststoreBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_truststoreBrowseButtonActionPerformed
@@ -1225,7 +1225,7 @@ public class ConnectDialog extends javax.swing.JDialog {
         }
         return result;
     }
-
+    
     /**
      * @return True if connecting went fine
      */

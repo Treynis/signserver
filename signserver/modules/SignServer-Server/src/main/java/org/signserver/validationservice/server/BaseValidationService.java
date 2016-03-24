@@ -17,14 +17,14 @@ import java.util.*;
 import java.util.Map.Entry;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.SignServerException;
 import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 import org.signserver.common.WorkerStatusInfo;
 import org.signserver.server.IServices;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 import org.signserver.validationservice.server.validcache.ValidationCache;
 
@@ -43,6 +43,7 @@ public abstract class BaseValidationService implements IValidationService {
     protected int workerId;
     protected WorkerConfig config;
     protected EntityManager em;
+    protected ICryptoToken ct;
     protected HashMap<Integer, IValidator> validators;
     protected ValidationCache validationCache;
 
@@ -52,13 +53,14 @@ public abstract class BaseValidationService implements IValidationService {
      * @see org.signserver.server.IWorker#init(int, org.signserver.common.WorkerConfig, org.signserver.server.WorkerContext, javax.persistence.EntityManager)
      */
     @Override
-    public void init(int workerId, WorkerConfig config, EntityManager em) {
+    public void init(int workerId, WorkerConfig config, EntityManager em, ICryptoToken ct) {
         this.workerId = workerId;
         this.config = config;
         this.em = em;
+        this.ct = ct;
 
         try {
-            validators = ValidationHelper.genValidators(workerId, config, em);
+            validators = ValidationHelper.genValidators(workerId, config, em, ct);
         } catch (SignServerException e) {
             log.error(e.getMessage(), e);
         }
@@ -96,9 +98,7 @@ public abstract class BaseValidationService implements IValidationService {
         final List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<WorkerStatusInfo.Entry>();
 
         // Number of validators
-        if (validators != null) {
-            briefEntries.add(new WorkerStatusInfo.Entry("Number of validators", String.valueOf(validators.size())));
-        }
+        briefEntries.add(new WorkerStatusInfo.Entry("Number of validators", String.valueOf(validators.size())));
 
         // Properties
         final StringBuilder configValue = new StringBuilder();

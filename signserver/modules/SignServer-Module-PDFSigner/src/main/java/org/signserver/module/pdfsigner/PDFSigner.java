@@ -28,19 +28,18 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.InternalProcessSessionLocal;
-import org.signserver.server.IServices;
+import org.signserver.ejb.interfaces.IInternalWorkerSession;
 import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
 import org.signserver.server.signers.BaseSigner;
@@ -155,7 +154,7 @@ public class PDFSigner extends BaseSigner {
     
     private List<String> configErrors;
 
-    private InternalProcessSessionLocal workerSession;
+    private IInternalWorkerSession workerSession;
 
     private String digestAlgorithm = DEFAULTDIGESTALGORITHM;
     private int minimumPdfVersion;
@@ -210,21 +209,17 @@ public class PDFSigner extends BaseSigner {
     
     
     @Override
-    protected List<String> getCryptoTokenFatalErrors(final IServices services) {
-        final List<String> errors = super.getCryptoTokenFatalErrors(services);
+    protected List<String> getCryptoTokenFatalErrors() {
+        final List<String> errors = super.getCryptoTokenFatalErrors();
         
         // according to the PDF specification, only SHA1 is permitted as digest algorithm
         // for DSA public/private keys
-        final RequestContext context = new RequestContext(true);
-        context.setServices(services);
-        ICryptoInstance crypto = null;
         try {
-            final ICryptoTokenV4 token = getCryptoToken(services);    
-            crypto = acquireDefaultCryptoInstance(context);
+            final ICryptoToken token = getCryptoToken();
 
             if (token != null) {
-                final PublicKey pub = crypto.getPublicKey();
-                final PrivateKey priv = crypto.getPrivateKey();
+                final PublicKey pub = token.getPublicKey(ICryptoToken.PURPOSE_SIGN);
+                final PrivateKey priv = token.getPrivateKey(ICryptoToken.PURPOSE_SIGN);
                 
                 if (pub instanceof DSAPublicKey || priv instanceof DSAPrivateKey) {
                     if (!"SHA1".equals(digestAlgorithm)) {
@@ -232,17 +227,12 @@ public class PDFSigner extends BaseSigner {
                     }
                 }
             }
-        } catch (CryptoTokenOfflineException | SignServerException | InvalidAlgorithmParameterException | UnsupportedCryptoTokenParameter | IllegalRequestException e) { // NOPMD
+        } catch (CryptoTokenOfflineException e) { // NOPMD
             // In this case, we can't tell if the keys are DSA
             // appropriate crypto token errors should be handled by the base class
-        } finally {
-            if (crypto != null) {
-                try {
-                    releaseCryptoInstance(crypto, context);
-                } catch (SignServerException ex) {
-                    LOG.warn("Unable to release crypto instance", ex);
-                }
-            }
+        } catch (SignServerException e) { // NOPMD
+            // In this case, we can't tell if the keys are DSA
+            // appropriate crypto token errors should be handled by the base class
         }
 
         return errors;
@@ -292,7 +282,7 @@ public class PDFSigner extends BaseSigner {
         
         ICryptoInstance crypto = null;
         try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
 
             if (params.isRefuseDoubleIndirectObjects()) {
                 checkForDuplicateObjects(pdfbytes);
@@ -320,12 +310,12 @@ public class PDFSigner extends BaseSigner {
             if (signRequest instanceof GenericServletRequest) {
                 signResponse = new GenericServletResponse(sReq.getRequestID(),
                         signedbytes,
-                        crypto.getCertificate(),
+                        getSigningCertificate(signRequest, requestContext),
                         archiveId, archivables, CONTENT_TYPE);
             } else {
                 signResponse = new GenericSignResponse(sReq.getRequestID(),
                         signedbytes, 
-                        crypto.getCertificate(),
+                        getSigningCertificate(signRequest, requestContext),
                         archiveId, archivables);
             }
 
@@ -735,8 +725,8 @@ public class PDFSigner extends BaseSigner {
             if (tsaUrl != null) {
                 tsc = getTimeStampClient(params.getTsa_url(), params.getTsa_username(), params.getTsa_password());
             } else {
-                tsc = new InternalTSAClient(getProcessSession(context.getServices()),
-                        WorkerIdentifier.createFromIdOrName(params.getTsa_worker()), params.getTsa_username(), params.getTsa_password());
+                tsc = new InternalTSAClient(getWorkerSession(),
+                        params.getTsa_worker(), params.getTsa_username(), params.getTsa_password());
             }
         }
 
@@ -825,8 +815,17 @@ public class PDFSigner extends BaseSigner {
         return fout.toByteArray();
     }
     
-    protected InternalProcessSessionLocal getProcessSession(IServices services) {
-        return services.get(InternalProcessSessionLocal.class);
+    protected IInternalWorkerSession getWorkerSession() {
+        if (workerSession == null) {
+            try {
+                workerSession = ServiceLocator.getInstance().lookupLocal(
+                    IInternalWorkerSession.class);
+            } catch (NamingException ex) {
+                throw new RuntimeException("Unable to lookup worker session",
+                        ex);
+            }
+        }
+        return workerSession;
     }
 
     /**
@@ -867,7 +866,7 @@ public class PDFSigner extends BaseSigner {
 
     static URL getCRLDistributionPoint(final Certificate certificate)
             throws CertificateParsingException {
-        return CertTools.getCrlDistributionPoint(certificate);
+        return org.signserver.module.pdfsigner.org.ejbca.util.CertTools.getCrlDistributionPoint(certificate);
     }
 
     /**
@@ -1086,8 +1085,8 @@ public class PDFSigner extends BaseSigner {
     }
 
     @Override
-    protected List<String> getFatalErrors(final IServices services) {
-        final List<String> fatalErrors = super.getFatalErrors(services);
+    protected List<String> getFatalErrors() {
+        final List<String> fatalErrors = super.getFatalErrors();
         
         fatalErrors.addAll(configErrors);
         return fatalErrors;

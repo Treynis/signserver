@@ -20,16 +20,18 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.util.*;
+import javax.naming.NamingException;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.operator.OperatorCreationException;
-import org.cesecore.keys.util.KeyTools;
 import org.cesecore.util.query.QueryCriteria;
+import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.*;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.IServices;
+import org.signserver.server.ServicesImpl;
 import org.signserver.server.log.AdminInfo;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
 
 /**
  * Class that uses a PKCS12 or JKS file on the file system for signing.
@@ -66,7 +68,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     private String keystorepath = null;
     private String keystorepassword = null;
 
-    private volatile KeyStore ks; // Note: Needs volatile as different threads might load the key store at activation time
+    private KeyStore ks;
     private String keystoretype;
     private Properties properties;
 
@@ -75,7 +77,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
 
     private char[] authenticationCode;
 
-    private WorkerSessionLocal workerSession;
+    private IWorkerSession.ILocal workerSession;
     private int workerId;
     private Integer keygenerationLimit;
 
@@ -123,7 +125,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     }
 
     @Override
-    public int getCryptoTokenStatus(final IServices services) {
+    public int getCryptoTokenStatus() {
         if (entries != null && entries.get(PURPOSE_SIGN) != null
                 && (!properties.containsKey(NEXTKEY)
                     || entries.get(PURPOSE_NEXTKEY) != null)) {
@@ -133,10 +135,15 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         return WorkerStatus.STATUS_OFFLINE;
     }
 
+    @Override
+    public int getCryptoTokenStatus(final IServices services) {
+        return getCryptoTokenStatus();
+    }
+
     /**
      * (Re)read from keystore to in-memory representation.
      */
-    private void readFromKeystore(final String authenticationcode, final IServices services)
+    private void readFromKeystore(final String authenticationcode)
             throws KeyStoreException, CertificateException,
                    NoSuchProviderException, NoSuchAlgorithmException,
                    IOException,
@@ -144,7 +151,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         if (authenticationcode != null) {
             this.authenticationCode = authenticationcode.toCharArray();
         }
-        this.ks = getKeystore(keystoretype, keystorepath, authenticationCode, services);
+        this.ks = getKeystore(keystoretype, keystorepath, authenticationCode);
 
         entries = new HashMap<Object, KeyEntry>();
 
@@ -194,8 +201,8 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         if (defaultKey != null) {
             final KeyEntry entry = entries.get(defaultKey);
             if (entry != null) {
-                entries.put(ICryptoTokenV4.PURPOSE_SIGN, entry);
-                entries.put(ICryptoTokenV4.PURPOSE_DECRYPT, entry);
+                entries.put(ICryptoToken.PURPOSE_SIGN, entry);
+                entries.put(ICryptoToken.PURPOSE_DECRYPT, entry);
             } else {
                 LOG.error("Not a private key for alias " + defaultKey);
             }
@@ -205,7 +212,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         if (nextKey != null) {
             final KeyEntry entry = entries.get(nextKey);
             if (entry != null) {
-                entries.put(ICryptoTokenV4.PURPOSE_NEXTKEY, entry);
+                entries.put(ICryptoToken.PURPOSE_NEXTKEY, entry);
             } else {
                 LOG.error("Not a private key for alias " + defaultKey);
             }
@@ -213,7 +220,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     }
     
     @Override
-    public void activate(final String authenticationcode, final IServices services)
+    public void activate(String authenticationcode)
             throws CryptoTokenAuthenticationFailureException,
             CryptoTokenOfflineException {
 
@@ -223,7 +230,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         }
 
         try {
-            readFromKeystore(authenticationcode, services);
+            readFromKeystore(authenticationcode);
         } catch (KeyStoreException e1) {
             LOG.error("Error :", e1);
             throw new CryptoTokenAuthenticationFailureException("KeyStoreException " + e1.getMessage());
@@ -249,7 +256,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     }
 
     @Override
-    public boolean deactivate(final IServices services) {
+    public boolean deactivate() {
         entries = null;
         ks = null;
         if (authenticationCode != null) {
@@ -259,13 +266,14 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         return true;
     }
 
-    private PrivateKey getPrivateKey(int purpose, IServices services)
+    @Override
+    public PrivateKey getPrivateKey(int purpose)
             throws CryptoTokenOfflineException {
 
         if (entries == null) {
             if (keystorepassword != null) {
                 try {
-                    activate(keystorepassword, services);
+                    activate(keystorepassword);
                 } catch (CryptoTokenAuthenticationFailureException e) {
                     throw new CryptoTokenOfflineException("Error trying to autoactivating the keystore, wrong password set? " + e.getMessage());
                 }
@@ -287,21 +295,23 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         return entry.getPrivateKey();
     }
 
-    private PublicKey getPublicKey(int purpose, IServices services) throws
+    @Override
+    public PublicKey getPublicKey(int purpose) throws
             CryptoTokenOfflineException {
-        final Certificate cert = getKeyEntry(purpose, services).getCertificate();
+        final Certificate cert = getKeyEntry(purpose).getCertificate();
         return cert.getPublicKey();
     }
 
-    private String getProvider(int providerUsage) {
+    @Override
+    public String getProvider(int providerUsage) {
         return "BC";
     }
 
-    private KeyEntry getKeyEntry(final Object purposeOrAlias, IServices services) throws CryptoTokenOfflineException {
+    private KeyEntry getKeyEntry(final Object purposeOrAlias) throws CryptoTokenOfflineException {
         if (entries == null) {
             if (keystorepassword != null) {
                 try {
-                    activate(keystorepassword, services);
+                    activate(keystorepassword);
                 } catch (CryptoTokenAuthenticationFailureException e) {
                     throw new CryptoTokenOfflineException(
                         "Error trying to autoactivating the keystore, wrong password set? "
@@ -319,9 +329,19 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         return entry;
     }
 
-    private Certificate getCertificateFromEntries(Object purposeOrAlias, IServices services) throws CryptoTokenOfflineException {
+    @Override
+    public Certificate getCertificate(int purpose) throws CryptoTokenOfflineException {
+        return getCertificateFromEntries(purpose);
+    }
+
+    @Override
+    public List<Certificate> getCertificateChain(int purpose) throws CryptoTokenOfflineException {
+        return getCertificateChainFromEntries(purpose);
+    }
+
+    private Certificate getCertificateFromEntries(Object purposeOrAlias) throws CryptoTokenOfflineException {
         try {
-            final KeyEntry entry = getKeyEntry(purposeOrAlias, services);
+            final KeyEntry entry = getKeyEntry(purposeOrAlias);
             Certificate result = entry.getCertificate();
 
             // Do not return the dummy certificate
@@ -334,12 +354,64 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         }
     }
 
+    private List<Certificate> getCertificateChainFromEntries(Object purposeOrAlias) throws CryptoTokenOfflineException {
+        final KeyEntry entry = getKeyEntry(purposeOrAlias);
+        List<Certificate> result = entry.getCertificateChain();
+        // Do not return the dummy certificate
+        if (result.size() == 1) {
+            if (CryptoTokenHelper.isDummyCertificate(result.get(0))) {
+                result = null;
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public Certificate getCertificate(String alias) throws CryptoTokenOfflineException {
+        return getCertificateFromEntries(alias);
+    }
+
+    @Override
+    public List<Certificate> getCertificateChain(String alias) throws CryptoTokenOfflineException {
+        return getCertificateChainFromEntries(alias);
+    }
+
+    @Override
+    public ICertReqData genCertificateRequest(ISignerCertReqInfo info,
+            final boolean explicitEccParameters, final boolean defaultKey)
+            throws CryptoTokenOfflineException {
+        final int purpose = defaultKey ? PURPOSE_SIGN : PURPOSE_NEXTKEY;
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Purpose: " + purpose);
+        }
+        try {
+            return CryptoTokenHelper.genCertificateRequest(info, getPrivateKey(purpose), getProvider(ICryptoToken.PROVIDERUSAGE_SIGN), getPublicKey(purpose), explicitEccParameters);
+        } catch (IllegalArgumentException ex) {
+            throw new CryptoTokenOfflineException(ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Method not supported
+     */
+    @Override
+    public boolean destroyKey(int purpose) {
+        return false;
+    }
+
+    @Override
+    public Collection<KeyTestResult> testKey(final String alias,
+            final char[] authCode) throws CryptoTokenOfflineException,
+            KeyStoreException {
+        return CryptoTokenHelper.testKey(getKeyStore(), alias, authCode, "BC");
+    }
+
     @Override
     public Collection<KeyTestResult> testKey(final String alias,
             final char[] authCode,
             final IServices services) throws CryptoTokenOfflineException,
             KeyStoreException {
-        return CryptoTokenHelper.testKey(getKeyStore(), alias, authCode, "BC");
+        return testKey(alias, authCode);
     }
 
     @Override
@@ -351,6 +423,11 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         } catch (KeyStoreException ex) {
             throw new CryptoTokenOfflineException(ex);
         }
+    }
+
+    @Override
+    public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode) throws CryptoTokenOfflineException, IllegalArgumentException {
+        throw new UnsupportedOperationException("Old method not supported, use V3 or later");
     }
 
     @Override
@@ -425,7 +502,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             if (TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
                 final ByteArrayOutputStream baos = (ByteArrayOutputStream) os;
                 
-                final WorkerSessionLocal workerSessionLocal = services.get(WorkerSessionLocal.class);
+                final IWorkerSession.ILocal workerSessionLocal = services.get(IWorkerSession.ILocal.class);
                 if (workerSessionLocal == null) {
                     throw new IllegalStateException("No WorkerSession available");
                 }
@@ -440,8 +517,8 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             entries.put(alias, entry);
             if (properties.getProperty(DEFAULTKEY) == null) {
                 properties.setProperty(DEFAULTKEY, alias);
-                entries.put(ICryptoTokenV4.PURPOSE_SIGN, entry);
-                entries.put(ICryptoTokenV4.PURPOSE_DECRYPT, entry);
+                entries.put(ICryptoToken.PURPOSE_SIGN, entry);
+                entries.put(ICryptoToken.PURPOSE_DECRYPT, entry);
             }
 
         } catch (UnsupportedOperationException ex) {
@@ -474,7 +551,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         } catch (IllegalStateException ex) {
             LOG.error(ex, ex);
             throw new CryptoTokenOfflineException(ex);
-        }  catch (UnrecoverableKeyException ex) {
+        } catch (UnrecoverableKeyException ex) {
             LOG.error(ex, ex);
             throw new CryptoTokenOfflineException(ex);
         }
@@ -483,7 +560,6 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     @Override
     public KeyStore getKeyStore() throws UnsupportedOperationException,
             CryptoTokenOfflineException, KeyStoreException {
-        LOG.error("getKeyStore(): " + this);
         if (ks == null) {
             throw new CryptoTokenOfflineException("Not activated");
         }
@@ -491,7 +567,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     }
 
     private KeyStore getKeystore(final String type, final String path,
-            final char[] authCode, final IServices services) throws
+            final char[] authCode) throws
             KeyStoreException, CertificateException, NoSuchProviderException,
             NoSuchAlgorithmException, FileNotFoundException, IOException {
         final KeyStore result;
@@ -515,7 +591,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             } else {
                 // load data from internal worker data...
                 final byte[] keystoreData =
-                        getWorkerSession(services).getKeystoreData(new AdminInfo("Internal", null, null),
+                        getWorkerSession().getKeystoreData(new AdminInfo("Internal", null, null),
                                         this.workerId);
                 if (keystoreData != null) {
                     in = new ByteArrayInputStream(keystoreData);
@@ -523,6 +599,8 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             }
 
             result.load(in, authCode);
+        } catch (NamingException e) {
+            throw new KeyStoreException("Failed to get worker session: " + e.getMessage());
         } finally {
             if (in != null) {
                 try {
@@ -536,7 +614,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     }
 
     @Override
-    public boolean removeKey(final String alias, final IServices services) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
+    public boolean removeKey(String alias) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
         final KeyStore keyStore = getKeyStore();
         boolean result = CryptoTokenHelper.removeKey(keyStore, alias);
         if (result) {
@@ -553,11 +631,15 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
                 if (TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
                     final byte[] data = ((ByteArrayOutputStream) out).toByteArray();
                     
-                    getWorkerSession(services).setKeystoreData(new AdminInfo("Internal", null, null), 
+                    getWorkerSession().setKeystoreData(new AdminInfo("Internal", null, null), 
                                                        this.workerId, data);
                 }
                 
-                readFromKeystore(null, services);
+                readFromKeystore(null);
+            } catch (NamingException ex) {
+                LOG.error("Unable to lookup worker session: " + ex.getMessage(),
+                          ex);
+                throw new SignServerException("Unable to persist key removal");
             } catch (IOException ex) {
                 LOG.error("Unable to persist new keystore after key removal: " + ex.getMessage(), ex);
                 throw new SignServerException("Unable to persist key removal");
@@ -580,21 +662,28 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         return result;
     }
 
-    private PrivateKey getPrivateKey(String alias, IServices services) throws CryptoTokenOfflineException {
-        return getKeyEntry(alias, services).getPrivateKey();
+    @Override
+    public PrivateKey getPrivateKey(String alias) throws CryptoTokenOfflineException {
+        return getKeyEntry(alias).getPrivateKey();
     }
 
-    private PublicKey getPublicKey(String alias, IServices services) throws CryptoTokenOfflineException {
-        return getKeyEntry(alias, services).getCertificate().getPublicKey();
+    @Override
+    public PublicKey getPublicKey(String alias) throws CryptoTokenOfflineException {
+        return getKeyEntry(alias).getCertificate().getPublicKey();
     }
 
+    @Override
+    public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias) throws CryptoTokenOfflineException {
+        return genCertificateRequest(info, explicitEccParameters, keyAlias, new ServicesImpl());
+    }
+    
     @Override
     public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias, IServices services) throws CryptoTokenOfflineException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Alias: " + keyAlias);
         }
         try {
-            return CryptoTokenHelper.genCertificateRequest(info, getPrivateKey(keyAlias, services), getProvider(ICryptoTokenV4.PROVIDERUSAGE_SIGN), getPublicKey(keyAlias, services), explicitEccParameters);
+            return CryptoTokenHelper.genCertificateRequest(info, getPrivateKey(keyAlias), getProvider(ICryptoToken.PROVIDERUSAGE_SIGN), getPublicKey(keyAlias), explicitEccParameters);
         } catch (IllegalArgumentException ex) {
             if (LOG.isDebugEnabled()) {
                 LOG.error("Certificate request error", ex);
@@ -639,12 +728,12 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             if (TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
                 final byte[] data = ((ByteArrayOutputStream) out).toByteArray();
 
-                getWorkerSession(services).setKeystoreData(new AdminInfo("Internal", null, null), 
+                getWorkerSession().setKeystoreData(new AdminInfo("Internal", null, null), 
                                                    this.workerId, data);
             }
                 
             // update in-memory representation
-            KeyEntry entry = getKeyEntry(alias, services);
+            KeyEntry entry = getKeyEntry(alias);
             final Certificate signingCert = certChain.get(0);
             
             if (entry == null) {
@@ -657,9 +746,15 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             throw new CryptoTokenOfflineException(e);
         }   
     }
-
-    protected WorkerSessionLocal getWorkerSession(final IServices services) {
-        return services.get(WorkerSessionLocal.class);
+    
+    
+    
+    protected IWorkerSession.ILocal getWorkerSession() throws NamingException {
+        if (workerSession == null) {
+            workerSession = ServiceLocator.getInstance().lookupLocal(
+                    IWorkerSession.ILocal.class);
+        }
+        return workerSession;
     }
 
     @Override
@@ -669,7 +764,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             InvalidAlgorithmParameterException,
             UnsupportedCryptoTokenParameter,
             IllegalRequestException {
-        final KeyEntry entry = getKeyEntry(alias, context.getServices());
+        final KeyEntry entry = getKeyEntry(alias);
         return new DefaultCryptoInstance(alias, context, ks.getProvider(), entry.getPrivateKey(), entry.getCertificateChain());
     }
 

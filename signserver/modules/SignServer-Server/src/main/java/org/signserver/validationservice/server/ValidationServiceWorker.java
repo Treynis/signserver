@@ -78,7 +78,7 @@ public class ValidationServiceWorker extends BaseProcessable {
                 Class<?> implClass = Class.forName(classPath);
                 retval = (IValidationService) implClass.newInstance();
 
-                retval.init(workerId, config, em);
+                retval.init(workerId, config, em, getCryptoToken());
             }
         } catch (ClassNotFoundException e) {
             error = "Error instatiating Validation Service, check that the TYPE setting of workerid : " + workerId + " have the correct class path.";
@@ -125,10 +125,10 @@ public class ValidationServiceWorker extends BaseProcessable {
     }
 
     @Override
-    protected List<String> getFatalErrors(IServices services) {
+    protected List<String> getFatalErrors() {
         final List<String> errors = new LinkedList<String>();
         
-        errors.addAll(super.getFatalErrors(services));
+        errors.addAll(super.getFatalErrors());
         errors.addAll(fatalErrors);
 
         return errors;

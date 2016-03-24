@@ -25,12 +25,10 @@ import org.signserver.common.CompileTimeSettings;
 import org.signserver.server.log.SignServerEventTypes;
 import org.signserver.server.log.SignServerModuleTypes;
 import org.signserver.server.log.SignServerServiceTypes;
+import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.statusrepo.common.StatusEntry;
 import org.signserver.statusrepo.common.StatusName;
-import org.signserver.statusrepo.StatusRepositorySession;
-import org.signserver.statusrepo.StatusRepositorySessionLocal;
-import org.signserver.statusrepo.StatusRepositorySessionRemote;
 
 /**
  * Session bean offering an interface towards the status repository.
@@ -40,7 +38,7 @@ import org.signserver.statusrepo.StatusRepositorySessionRemote;
  */
 @Stateless
 public class StatusRepositorySessionBean implements
-        StatusRepositorySessionLocal, StatusRepositorySessionRemote {
+        IStatusRepositorySession.ILocal, IStatusRepositorySession.IRemote {
 
     /** Logger for this class. */
     private static final Logger LOG =
@@ -188,13 +186,13 @@ public class StatusRepositorySessionBean implements
         try {
             final Map<String, Object> details = new LinkedHashMap<String, Object>();
 
-            details.put(StatusRepositorySession.LOG_PROPERTY, property);
+            details.put(IStatusRepositorySession.LOG_PROPERTY, property);
 
             if (value != null) {
-                details.put(StatusRepositorySession.LOG_VALUE, value);
+                details.put(IStatusRepositorySession.LOG_VALUE, value);
             }
             if (expiration != null) {
-                details.put(StatusRepositorySession.LOG_EXPIRATION, String.valueOf(expiration));
+                details.put(IStatusRepositorySession.LOG_EXPIRATION, String.valueOf(expiration));
             }
 
             logSession.log(SignServerEventTypes.SET_STATUS_PROPERTY, EventStatus.SUCCESS, SignServerModuleTypes.STATUS_REPOSITORY,

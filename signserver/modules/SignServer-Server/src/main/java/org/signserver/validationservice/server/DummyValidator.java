@@ -22,10 +22,11 @@ import java.util.Map;
 import java.util.Properties;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.Validation;
 
 /**
@@ -52,13 +53,15 @@ public class DummyValidator extends BaseValidator {
      * @param validatorId
      * @param props
      * @param entityManager
+     * @param cryptoToken
      * @throws SignServerException
      * @see org.signserver.validationservice.server.IValidator#init(int, int, java.util.Properties, javax.persistence.EntityManager, org.signserver.server.cryptotokens.ICryptoToken)
      */
     @Override
     public void init(final int workerId, final int validatorId,
-            final Properties props, final EntityManager entityManager) throws SignServerException {
-        super.init(workerId, validatorId, props, em);
+            final Properties props, final EntityManager entityManager,
+            final ICryptoToken cryptoToken) throws SignServerException {
+        super.init(workerId, validatorId, props, em, ct);
 
         if (props.getProperty("TESTPROP") == null) {
             throw new SignServerException(

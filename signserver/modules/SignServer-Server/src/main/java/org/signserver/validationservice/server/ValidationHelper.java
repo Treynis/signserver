@@ -20,7 +20,7 @@ import javax.persistence.EntityManager;
 
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 
 /**
@@ -134,7 +134,7 @@ public class ValidationHelper {
      * @return available validators, never null
      * @throws SignServerException if validators are missconfigured.
      */
-    public static HashMap<Integer, IValidator> genValidators(int workerId, WorkerConfig config, EntityManager em) throws SignServerException {
+    public static HashMap<Integer, IValidator> genValidators(int workerId, WorkerConfig config, EntityManager em, ICryptoToken ct) throws SignServerException {
         HashMap<Integer, IValidator> retval = new HashMap<Integer, IValidator>();
 
         for (int i = 1; i <= SUPPORTED_NUMBER_OF_VALIDATORS; i++) {
@@ -145,7 +145,7 @@ public class ValidationHelper {
                     try {
                         Class<?> c = ValidationHelper.class.getClassLoader().loadClass(classpath);
                         IValidator v = (IValidator) c.newInstance();
-                        v.init(workerId, i, valprops, em);
+                        v.init(workerId, i, valprops, em, ct);
                         retval.put(i, v);
                     } catch (ClassNotFoundException e) {
                         throw new SignServerException("Error validator with validatorId " + i + " with workerId " + workerId + " have got the required setting " + ValidationServiceConstants.VALIDATOR_SETTING_CLASSPATH + " set correctly.");

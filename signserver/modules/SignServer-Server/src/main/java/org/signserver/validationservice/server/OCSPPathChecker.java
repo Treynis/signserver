@@ -21,20 +21,21 @@ import java.security.cert.*;
 import java.util.*;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ocsp.OCSPObjectIdentifiers;
-import org.bouncycastle.asn1.ocsp.OCSPResponseStatus;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaCertStore;
 import org.bouncycastle.cert.ocsp.*;
 import org.bouncycastle.cert.ocsp.jcajce.JcaCertificateID;
+import org.bouncycastle.ocsp.OCSPRespStatus;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentVerifierProviderBuilder;
 import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
 import org.bouncycastle.util.Store;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
 import org.signserver.validationservice.common.Validation;
+//import org.signserver.validationservice.common.X509Certificate;
 
 /**
  * Stateful OCSP PKIX certificate path checker.
@@ -229,17 +230,16 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
      * @throws IOException 
      * @throws CertStoreException 
      * @throws NoSuchAlgorithmException 
+     * @throws NoSuchAlgorithmException 
      * @throws SignServerException 
      * @throws CertificateParsingException 
      * @throws CryptoTokenOfflineException 
      * @throws IllegalRequestException 
-     * @throws org.bouncycastle.operator.OperatorCreationException 
-     * @throws java.security.cert.CertificateEncodingException 
      */
     protected void parseAndVerifyOCSPResponse(X509Certificate x509Cert, byte[] derocspresponse) throws NoSuchProviderException, OCSPException, NoSuchAlgorithmException, CertStoreException, IOException, SignServerException, CertificateParsingException, IllegalRequestException, CryptoTokenOfflineException, OperatorCreationException, CertificateEncodingException {
         //parse received ocsp response
         OCSPResp ocspresp = new OCSPResp(derocspresponse);
-        if (ocspresp.getStatus() != OCSPResponseStatus.SUCCESSFUL) {
+        if (ocspresp.getStatus() != OCSPRespStatus.SUCCESSFUL) {
             throw new SignServerException("Unexpected ocsp response status. Response Status Received : " + ocspresp.getStatus());
         }
 
@@ -344,14 +344,12 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
      * 
      * NOTE : RFC 2560 does not state it should be an end entity certificate ! 
      * 
-     * @param basicOCSPResponse
+     * @param basic ocsp response
      * @return Authorized OCSP Responders certificate if found, null if not found
      * @throws OCSPException 
      * @throws NoSuchProviderException 
      * @throws NoSuchAlgorithmException 
      * @throws CertStoreException 
-     * @throws java.security.cert.CertificateEncodingException 
-     * @throws org.bouncycastle.operator.OperatorCreationException 
      */
     protected X509Certificate getAuthorizedOCSPRespondersCertificateFromOCSPResponse(BasicOCSPResp basicOCSPResponse) throws NoSuchAlgorithmException, NoSuchProviderException, OCSPException, CertStoreException, CertificateEncodingException, OperatorCreationException {
         X509Certificate retCert = null;
@@ -390,7 +388,6 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
      * @return - Authorized ocsp responder's certificate, or null if none found that verifies ocsp response received
      * @throws NoSuchProviderException
      * @throws OCSPException
-     * @throws org.bouncycastle.operator.OperatorCreationException
      */
     protected X509Certificate getAuthorizedOCSPRespondersCertificateFromProperties(BasicOCSPResp basicOCSPResponse) throws NoSuchProviderException, OCSPException, OperatorCreationException {
         log.debug("Searching for Authorized OCSP Responder certificate from PROPERTIES");
@@ -413,7 +410,7 @@ public class OCSPPathChecker extends PKIXCertPathChecker {
      * Since we are implementing stateful checker we ought to override clone method for proper functionality
      * clone is used by certpath builder to backtrack and try another path when potential certificate path reaches dead end.
      * 
-     * @return cloned object 
+     * @throws SignServerException 
      */
     @Override
     public Object clone() {

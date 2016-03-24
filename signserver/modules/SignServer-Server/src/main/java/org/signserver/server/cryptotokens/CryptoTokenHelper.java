@@ -63,12 +63,10 @@ import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
-import org.bouncycastle.util.encoders.Base64;
 import org.bouncycastle.util.encoders.Hex;
 import org.cesecore.certificates.util.AlgorithmConstants;
 import org.cesecore.certificates.util.AlgorithmTools;
 import org.cesecore.keys.token.p11.Pkcs11SlotLabelType;
-import org.cesecore.util.CertTools;
 import org.cesecore.util.QueryParameterException;
 import org.cesecore.util.query.Elem;
 import org.cesecore.util.query.QueryCriteria;
@@ -76,6 +74,8 @@ import org.cesecore.util.query.clauses.Order;
 import org.cesecore.util.query.elems.LogicOperator;
 import org.cesecore.util.query.elems.Operation;
 import org.cesecore.util.query.elems.Term;
+import org.ejbca.util.Base64;
+import org.ejbca.util.CertTools;
 import org.signserver.common.Base64SignerCertReqData;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.ICertReqData;
@@ -235,7 +235,7 @@ public class CryptoTokenHelper {
             final Enumeration<String> e = keyStore.aliases();
             while (e.hasMoreElements()) {
                 final String keyAlias = e.nextElement();
-                if (alias.equalsIgnoreCase(ICryptoTokenV4.ALL_KEYS)
+                if (alias.equalsIgnoreCase(ICryptoToken.ALL_KEYS)
                         || alias.equals(keyAlias)) {
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("checking keyAlias: " + keyAlias);

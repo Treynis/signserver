@@ -25,7 +25,7 @@ import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
 import org.apache.log4j.Logger;
 import org.apache.commons.io.IOUtils;
-import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.util.Base64;
 import org.signserver.client.clientws.ClientWS;
 import org.signserver.client.clientws.ClientWSService;
 import org.signserver.client.clientws.DataResponse;
@@ -129,7 +129,7 @@ public class ClientWSDocumentSigner extends AbstractDocumentSigner {
                 requestMetadata.add(fileNameMetadata);
             }
             
-            final DataResponse response = getWSPort().processData(workerName,
+            final DataResponse response = signServer.processData(workerName,
                     requestMetadata, IOUtils.toByteArray(data));
 
             // Take stop time
@@ -157,9 +157,5 @@ public class ClientWSDocumentSigner extends AbstractDocumentSigner {
             throw new IllegalRequestException("Client request failed: " + ex.getLocalizedMessage(), ex);
         }
 
-    }
-    
-    protected ClientWS getWSPort() {
-        return signServer;
     }
 }

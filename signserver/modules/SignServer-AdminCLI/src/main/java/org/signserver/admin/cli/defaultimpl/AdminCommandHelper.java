@@ -19,14 +19,11 @@ import org.apache.log4j.Logger;
 import org.cesecore.audit.audit.SecurityEventsAuditorSessionRemote;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.common.CESeCoreModules;
-import org.signserver.common.InvalidWorkerIdException;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ServiceLocator;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerType;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
-import org.signserver.statusrepo.StatusRepositorySessionRemote;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.statusrepo.IStatusRepositorySession;
 
 /**
  * Helper class with methods useful for many Command implementations.
@@ -40,14 +37,13 @@ public class AdminCommandHelper {
     private static Logger LOG = Logger.getLogger(AdminCommandHelper.class);
     
     /** The global configuration session. */
-    private GlobalConfigurationSessionRemote globalConfig;
+    private IGlobalConfigurationSession.IRemote globalConfig;
 
     /** The SignSession. */
-    private ProcessSessionRemote processSession;
-    private WorkerSessionRemote workerSession;
+    private IWorkerSession.IRemote signsession;
     
     /** The StatusRepositorySession. */
-    private StatusRepositorySessionRemote statusRepository;
+    private IStatusRepositorySession.IRemote statusRepository;
     
     private SecurityEventsAuditorSessionRemote auditorSession;
     
@@ -56,11 +52,12 @@ public class AdminCommandHelper {
      * @return SignServerSession
      * @throws RemoteException in case the lookup failed
      */
-    public GlobalConfigurationSessionRemote getGlobalConfigurationSession()
+    public IGlobalConfigurationSession.IRemote getGlobalConfigurationSession()
             throws RemoteException {
         if (globalConfig == null) {
             try {
-                globalConfig = ServiceLocator.getInstance().lookupRemote(GlobalConfigurationSessionRemote.class);
+                globalConfig = ServiceLocator.getInstance().lookupRemote(
+                        IGlobalConfigurationSession.IRemote.class);
             } catch (NamingException e) {
                 LOG.error("Error instanciating the GlobalConfigurationSession.", e);
                 throw new RemoteException("Error instanciating the GlobalConfigurationSession", e);
@@ -74,11 +71,12 @@ public class AdminCommandHelper {
      * @return SignServerSession
      * @throws RemoteException in case the lookup failed
      */
-    public StatusRepositorySessionRemote getStatusRepositorySession()
+    public IStatusRepositorySession.IRemote getStatusRepositorySession()
             throws RemoteException {
         if (statusRepository == null) {
             try {
-                statusRepository = ServiceLocator.getInstance().lookupRemote(StatusRepositorySessionRemote.class);
+                statusRepository = ServiceLocator.getInstance().lookupRemote(
+                        IStatusRepositorySession.IRemote.class);
             } catch (NamingException e) {
                 LOG.error("Error instanciating the StatusRepositorySession.", e);
                 throw new RemoteException(
@@ -93,29 +91,17 @@ public class AdminCommandHelper {
      * @return SignServerSession
      * @throws RemoteException in case the lookup failed
      */
-    public ProcessSessionRemote getProcessSession() throws RemoteException {
-        if (processSession == null) {
+    public IWorkerSession.IRemote getWorkerSession() throws RemoteException {
+        if (signsession == null) {
             try {
-                processSession = ServiceLocator.getInstance().lookupRemote(
-                        ProcessSessionRemote.class);
+                signsession = ServiceLocator.getInstance().lookupRemote(
+                        IWorkerSession.IRemote.class);
             } catch (NamingException e) {
                 LOG.error("Error looking up signserver interface");
                 throw new RemoteException("Error looking up signserver interface", e);
             }
         }
-        return processSession;
-    }
-    
-    public WorkerSessionRemote getWorkerSession() throws RemoteException {
-        if (workerSession == null) {
-            try {
-                workerSession = ServiceLocator.getInstance().lookupRemote(WorkerSessionRemote.class);
-            } catch (NamingException e) {
-                LOG.error("Error looking up signserver interface");
-                throw new RemoteException("Error looking up signserver interface", e);
-            }
-        }
-        return workerSession;
+        return signsession;
     }
     
     public SecurityEventsAuditorSessionRemote getAuditorSession() throws RemoteException {
@@ -143,9 +129,8 @@ public class AdminCommandHelper {
         if (workerIdOrName.substring(0, 1).matches("\\d")) {
             retval = Integer.parseInt(workerIdOrName);
         } else {
-            try {
-                retval = getWorkerSession().getWorkerId(workerIdOrName);
-            } catch (InvalidWorkerIdException ex) {
+            retval = getWorkerSession().getWorkerId(workerIdOrName);
+            if (retval == 0) {
                 throw new IllegalCommandArgumentsException("Error: No worker with the given name could be found");
             }
         }
@@ -154,14 +139,13 @@ public class AdminCommandHelper {
     }
 
     /**
-     * Help method that checks that the current worker is a signer.
-     * @param signerid
-     * @throws IllegalCommandArgumentsException 
+     * Help method that checks that the current worker is a signer
+     * @throws Exception 
      * @throws RemoteException 
      */
     public void checkThatWorkerIsProcessable(int signerid) throws RemoteException, IllegalCommandArgumentsException {
-        Collection<Integer> signerIds = getWorkerSession().getWorkers(WorkerType.PROCESSABLE);
-        if (!signerIds.contains(signerid)) {
+        Collection<Integer> signerIds = getWorkerSession().getWorkers(GlobalConfiguration.WORKERTYPE_PROCESSABLE);
+        if (!signerIds.contains(new Integer(signerid))) {
             throw new IllegalCommandArgumentsException("Error: given workerId doesn't seem to point to any processable worker in the system.");
         }
     }

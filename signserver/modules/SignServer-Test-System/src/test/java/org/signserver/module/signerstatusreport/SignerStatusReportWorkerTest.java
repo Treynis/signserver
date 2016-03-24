@@ -20,15 +20,15 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerStatus;
 import org.signserver.web.WebTestCase;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.common.WorkerType;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for SignerStatusReportTimedService.
@@ -73,7 +73,8 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
 
     private SignerStatusReportParser parser = new SignerStatusReportParser();
     
-    private final WorkerSession workerSession = getWorkerSession();
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
 
     @Override
     protected String getServletURL() {
@@ -96,8 +97,8 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
         addDummySigner(WORKERID_SIGNER3, WORKER_SIGNER3, false);
 
         // Setup service
-        workerSession.setWorkerProperty(WORKERID_WORKER, WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
-        workerSession.setWorkerProperty(WORKERID_WORKER, WorkerConfig.IMPLEMENTATION_CLASS,
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+            "WORKER" + WORKERID_WORKER + ".CLASSPATH",
             "org.signserver.module.signerstatusreport.SignerStatusReportWorker");
         
         workerSession.setWorkerProperty(WORKERID_WORKER, "AUTHTYPE", "NOAUTH");
@@ -105,9 +106,9 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
                 WORKER_SIGNER1+","+WORKER_SIGNER2+","+WORKER_SIGNER3);
 
         workerSession.reloadConfiguration(WORKERID_WORKER);
-        workerSession.activateSigner(new WorkerIdentifier(WORKERID_SIGNER1), "foo123");
-        workerSession.activateSigner(new WorkerIdentifier(WORKERID_SIGNER2), "foo123");
-        workerSession.activateSigner(new WorkerIdentifier(WORKERID_SIGNER3), "foo123");
+        workerSession.activateSigner(WORKERID_SIGNER1, "foo123");
+        workerSession.activateSigner(WORKERID_SIGNER2, "foo123");
+        workerSession.activateSigner(WORKERID_SIGNER3, "foo123");
     }
 
     @Test
@@ -147,7 +148,7 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
         // Disable one worker and check the result
 //        workerSession.setWorkerProperty(WORKERID_SIGNER1, "DISABLED", "TRUE");
 //        workerSession.reloadConfiguration(WORKERID_SIGNER1);
-        workerSession.deactivateSigner(new WorkerIdentifier(WORKERID_SIGNER1));
+        workerSession.deactivateSigner(WORKERID_SIGNER1);
         
         
         // Now WORKER1 should be OFFLINE and the other as before
@@ -171,14 +172,14 @@ public class SignerStatusReportWorkerTest extends WebTestCase {
         assertEquals("Worker 3 active", "ACTIVE", status.get(WORKER_SIGNER3).get("status"));
         
         // test that there is no fatal errors before removing the WORKERS property
-        WorkerStatus workerStatus = workerSession.getStatus(new WorkerIdentifier(WORKERID_WORKER));
+        WorkerStatus workerStatus = workerSession.getStatus(WORKERID_WORKER);
         List<String> errors = workerStatus.getFatalErrors();
-        assertTrue("No fatal errors: " + errors, errors.isEmpty());
+        assertTrue("No fatal errors", errors.isEmpty());
         
         // test that removing the WORKERS property results in a fatal error
         workerSession.removeWorkerProperty(WORKERID_WORKER, "WORKERS");
         workerSession.reloadConfiguration(WORKERID_WORKER);
-        workerStatus = workerSession.getStatus(new WorkerIdentifier(WORKERID_WORKER));
+        workerStatus = workerSession.getStatus(WORKERID_WORKER);
         errors = workerStatus.getFatalErrors();
         assertTrue("Should mention missing WORKERS property", errors.contains("Property WORKERS missing"));
 

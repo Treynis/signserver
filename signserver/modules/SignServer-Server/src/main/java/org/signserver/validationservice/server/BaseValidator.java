@@ -13,6 +13,7 @@
 package org.signserver.validationservice.server;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.cert.Certificate;
@@ -21,9 +22,9 @@ import java.security.cert.X509Certificate;
 import java.util.*;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.SignServerException;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 
 /**
@@ -41,6 +42,7 @@ public abstract class BaseValidator implements IValidator {
     protected int validatorId;
     protected Properties props;
     protected EntityManager em;
+    protected ICryptoToken ct;
     private HashMap<String, List<Certificate>> certChainMap;
     private HashMap<Integer, Properties> issuerProperties;
 
@@ -67,11 +69,13 @@ public abstract class BaseValidator implements IValidator {
      * @see org.signserver.validationservice.server.IValidator#init(int, int, java.util.Properties, javax.persistence.EntityManager, org.signserver.server.cryptotokens.ICryptoToken)
      */
     @Override
-    public void init(int workerId, int validatorId, Properties props, EntityManager em) throws SignServerException {
+    public void init(int workerId, int validatorId, Properties props, EntityManager em,
+            ICryptoToken ct) throws SignServerException {
         this.workerId = workerId;
         this.validatorId = validatorId;
         this.props = props;
         this.em = em;
+        this.ct = ct;
     }
 
     /**
@@ -127,7 +131,7 @@ public abstract class BaseValidator implements IValidator {
                                 issuerFound = true;
                                 break;
                             }
-                        } catch (IllegalStateException e) {
+                        } catch (IOException e) {
                             // eat up the exception to continue looping
                             LOG.error(e.getMessage(), e);
                         }
@@ -176,7 +180,7 @@ public abstract class BaseValidator implements IValidator {
             } catch (CertificateException e) {
                 LOG.error("Error constructing certificate chain from setting " + ValidationServiceConstants.VALIDATIONSERVICE_ISSUERCERTCHAIN + " is missing for issuer "
                         + issuerId + ", validator id " + validatorId + ", worker id" + workerId, e);
-            } catch (IllegalStateException e) {
+            } catch (IOException e) {
                 LOG.error("Error constructing certificate chain from setting " + ValidationServiceConstants.VALIDATIONSERVICE_ISSUERCERTCHAIN + " is missing for issuer "
                         + issuerId + ", validator id " + validatorId + ", worker id" + workerId, e);
             }

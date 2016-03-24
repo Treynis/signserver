@@ -19,26 +19,26 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Date;
 import org.bouncycastle.jce.X509KeyUsage;
-import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.keys.util.KeyTools;
+import org.ejbca.util.Base64;
+import org.ejbca.util.keystore.KeyTools;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.cli.CommandLineInterface;
 import org.signserver.client.cli.ClientCLI;
 import org.signserver.client.cli.validationservice.ValidateCertificateCommand;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerUtil;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.testutils.CLITestHelper;
 import static org.signserver.testutils.CLITestHelper.assertPrinted;
 import org.signserver.testutils.TestingSecurityManager;
 import org.signserver.validationservice.server.ValidationTestUtils;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.WorkerConfig;
 import org.signserver.common.util.PathUtil;
 import org.signserver.testutils.ModulesTestCase;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
 
 /**
  * Tests for the ValidateCertificateCommand.
@@ -50,8 +50,8 @@ public class ValidationCLITest extends ModulesTestCase {
 
     private static String signserverhome;
     
-    private static GlobalConfigurationSessionRemote gCSession;
-    private static WorkerSessionRemote sSSession;
+    private static IGlobalConfigurationSession.IRemote gCSession;
+    private static IWorkerSession.IRemote sSSession;
     
     private static String validCert1;
     private static String revokedCert1;
@@ -64,8 +64,10 @@ public class ValidationCLITest extends ModulesTestCase {
     @Before
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
-        gCSession = ServiceLocator.getInstance().lookupRemote(GlobalConfigurationSessionRemote.class);
-        sSSession = ServiceLocator.getInstance().lookupRemote(WorkerSessionRemote.class);
+        gCSession = ServiceLocator.getInstance().lookupRemote(
+                IGlobalConfigurationSession.IRemote.class);
+        sSSession = ServiceLocator.getInstance().lookupRemote(
+                IWorkerSession.IRemote.class);
         signserverhome = PathUtil.getAppHome().getAbsolutePath();
     }
 
@@ -86,19 +88,12 @@ public class ValidationCLITest extends ModulesTestCase {
         validChain1.add(validRootCA1);
         validChain1.add(validSubCA1);
 
-        sSSession.setWorkerProperty(16, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.validationservice.server.ValidationServiceWorker");
-        sSSession.setWorkerProperty(16, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.signserver.server.cryptotokens.KeystoreCryptoToken");
+        gCSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER16.CLASSPATH", "org.signserver.validationservice.server.ValidationServiceWorker");
+        gCSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER16.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.HardCodedCryptoToken");
 
 
         sSSession.setWorkerProperty(16, "AUTHTYPE", "NOAUTH");
         sSSession.setWorkerProperty(16, "NAME", "ValTest");
-        sSSession.setWorkerProperty(16, "KEYSTORETYPE", "PKCS12");
-        sSSession.setWorkerProperty(16, "KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" + File.separator +
-                "test" + File.separator + "dss10" + File.separator +
-                        "dss10_signer1.p12");
-        sSSession.setWorkerProperty(16, "KEYSTOREPASSWORD", "foo123");
-        sSSession.setWorkerProperty(16, "DEFAULTKEY", "Signer 1");
         sSSession.setWorkerProperty(16, "VAL1.CLASSPATH", "org.signserver.validationservice.server.DummyValidator");
         sSSession.setWorkerProperty(16, "VAL1.TESTPROP", "TEST");
         sSSession.setWorkerProperty(16, "VAL1.ISSUER1.CERTCHAIN", ValidationTestUtils.genPEMStringFromChain(validChain1));
@@ -169,7 +164,17 @@ public class ValidationCLITest extends ModulesTestCase {
 
     @Test
     public void test99RemoveDatabase() throws Exception {
-        removeWorker(16);
+
+        gCSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER16.CLASSPATH");
+        gCSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER16.SIGNERTOKEN.CLASSPATH");
+
+        sSSession.removeWorkerProperty(16, "AUTHTYPE");
+        sSSession.removeWorkerProperty(16, "VAL1.CLASSPATH");
+        sSSession.removeWorkerProperty(16, "VAL1.TESTPROP");
+        sSSession.removeWorkerProperty(16, "VAL1.ISSUER1.CERTCHAIN");
+
+
+        sSSession.reloadConfiguration(16);
 
         TestingSecurityManager.remove();
     }
