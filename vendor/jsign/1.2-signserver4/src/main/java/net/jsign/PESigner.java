@@ -147,7 +147,10 @@ public class PESigner {
     
     /**
      * Sign the specified executable file.
-     * @throws Exception
+     * @throws IOException
+     * @throws CMSException
+     * @throws OperatorCreationException
+     * @throws CertificateEncodingException
      */
     public void sign(PEFile file, AlgorithmIdentifier fileDigestAlgorithm, String signatureAlgorithm) throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
         // pad the file on a 8 byte boundary
