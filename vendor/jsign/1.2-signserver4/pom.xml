@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>net.jsign</groupId>
+  <groupId>org.signserver.jsign</groupId>
   <artifactId>jsign</artifactId>
   <name>Jsign - Code signing for Windows executables</name>
   <version>1.2-signserver4</version>
@@ -15,12 +15,26 @@
   </description>
   <url>http://ebourg.github.com/jsign</url>
 
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
   <developers>
     <developer>
       <name>Emmanuel Bourg</name>
       <email>ebourg@apache.org</email>
+      <organizationUrl>https://ebourg.github.com/jsign</organizationUrl>
     </developer>
   </developers>
+  
+  <scm>
+    <connection>scm:git:https://github.com/ebourg/jsign.git</connection>
+    <developerConnection>scm:git:git@github.com:ebourg/jsign.git</developerConnection>
+    <url>https://github.com/ebourg/jsign</url>
+  </scm>
 
   <repositories>
     <repository>
@@ -79,6 +93,7 @@
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.2</version>
         <configuration>
           <source>1.5</source>
           <target>1.5</target>
