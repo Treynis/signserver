@@ -52,7 +52,6 @@ public class MRTDSignRequest extends ProcessRequest implements ISignRequest {
      * 
      * @see org.signserver.common.ProcessRequest#getRequestID()
      */
-    @Override
     public int getRequestID() {
         return requestID;
     }
@@ -60,7 +59,6 @@ public class MRTDSignRequest extends ProcessRequest implements ISignRequest {
     /**
      * Returns the signed data as an ArrayList of document objects to sign.
      */
-    @Override
     public Object getRequestData() {
         return signRequestData;
     }
@@ -69,12 +67,11 @@ public class MRTDSignRequest extends ProcessRequest implements ISignRequest {
         return signatureAlgorithm;
     }
 
-    @Override
     public void parse(DataInput in) throws IOException {
         in.readInt();
         this.requestID = in.readInt();
         int arraySize = in.readInt();
-        this.signRequestData = new ArrayList<>();
+        this.signRequestData = new ArrayList<byte[]>();
         for (int i = 0; i < arraySize; i++) {
             int dataSize = in.readInt();
             byte[] data = new byte[dataSize];
@@ -84,7 +81,6 @@ public class MRTDSignRequest extends ProcessRequest implements ISignRequest {
 
     }
 
-    @Override
     public void serialize(DataOutput out) throws IOException {
         out.writeInt(RequestAndResponseManager.REQUESTTYPE_MRTDSIGNREQUEST);
         out.writeInt(this.requestID);

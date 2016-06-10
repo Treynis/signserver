@@ -27,8 +27,8 @@ import org.signserver.common.GenericValidationResponse;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
-import org.signserver.common.RemoteRequestContext;
 import org.signserver.common.RequestAndResponseManager;
+import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.SignServerUtil;
 import org.signserver.protocol.ws.client.ICommunicationFault;
@@ -121,7 +121,7 @@ public class SigningAndValidationWSBalanced implements ISigningAndValidation {
     }
 
     @Override
-    public ProcessResponse process(String workerIdOrName, ProcessRequest request, RemoteRequestContext context) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+    public ProcessResponse process(String workerIdOrName, ProcessRequest request, RequestContext context) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
         List<ProcessResponse> responses = process(workerIdOrName, Collections.singletonList(request), context);
         if (responses.size() != 1) {
             throw new SignServerException("Unexpected number of responses: " + responses.size());
@@ -129,11 +129,11 @@ public class SigningAndValidationWSBalanced implements ISigningAndValidation {
         return responses.get(0);
     }
 
-    public List<ProcessResponse> process(String workerIdOrName, List<ProcessRequest> requests, RemoteRequestContext context) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+    public List<ProcessResponse> process(String workerIdOrName, List<ProcessRequest> requests, RequestContext context) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
 
         try {
 
-            List<org.signserver.protocol.ws.ProcessRequestWS> list = new LinkedList<>();
+            List<org.signserver.protocol.ws.ProcessRequestWS> list = new LinkedList<org.signserver.protocol.ws.ProcessRequestWS>();
 
             for (ProcessRequest req : requests) {
                 org.signserver.protocol.ws.ProcessRequestWS reqWS = new org.signserver.protocol.ws.ProcessRequestWS();
@@ -148,7 +148,7 @@ public class SigningAndValidationWSBalanced implements ISigningAndValidation {
                 throw new SignServerException("Exception", exception);
             }
 
-            List<ProcessResponse> responses3 = new LinkedList<>();
+            List<ProcessResponse> responses3 = new LinkedList<ProcessResponse>();
 
             for (org.signserver.protocol.ws.ProcessResponseWS resp : resps) {
                 responses3.add(RequestAndResponseManager.parseProcessResponse(resp.getResponseData()));
@@ -164,7 +164,7 @@ public class SigningAndValidationWSBalanced implements ISigningAndValidation {
     @Override
     public GenericSignResponse sign(String signerIdOrName, byte[] document) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
 
-        ProcessResponse resp = process(signerIdOrName, new GenericSignRequest(1, document), new RemoteRequestContext());
+        ProcessResponse resp = process(signerIdOrName, new GenericSignRequest(1, document), new RequestContext());
 
         if (!(resp instanceof GenericSignResponse)) {
             throw new SignServerException("Unexpected response type: " + resp.getClass().getName());
@@ -172,9 +172,8 @@ public class SigningAndValidationWSBalanced implements ISigningAndValidation {
         return (GenericSignResponse) resp;
     }
 
-    @Override
     public GenericValidationResponse validate(String validatorIdOrName, byte[] document) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-        ProcessResponse resp = process(validatorIdOrName, new GenericValidationRequest(1, document), new RemoteRequestContext());
+        ProcessResponse resp = process(validatorIdOrName, new GenericValidationRequest(1, document), new RequestContext());
 
         if (!(resp instanceof GenericValidationResponse)) {
             throw new SignServerException("Unexpected response type: " + resp.getClass().getName());

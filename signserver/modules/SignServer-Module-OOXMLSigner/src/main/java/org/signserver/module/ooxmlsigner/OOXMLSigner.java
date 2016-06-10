@@ -30,12 +30,11 @@ import org.openxml4j.opc.PackageAccess;
 import org.openxml4j.opc.signature.PackageDigitalSignatureManager;
 import org.openxml4j.opc.signature.RelationshipTransformProvider;
 import org.signserver.common.*;
-import org.signserver.server.IServices;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
 /**
@@ -74,7 +73,7 @@ public class OOXMLSigner extends BaseSigner {
 
         super.init(workerId, config, workerContext, workerEM);
         
-        configErrors = new LinkedList<>();
+        configErrors = new LinkedList<String>();
         
         if (hasSetIncludeCertificateLevels) {
             configErrors.add(WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS + " is not supported.");
@@ -120,14 +119,12 @@ public class OOXMLSigner extends BaseSigner {
         PackageDigitalSignatureManager dsm = new PackageDigitalSignatureManager(
                 docxPackage);
 
-        X509Certificate cert = null;
         ICryptoInstance crypto = null;
         try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
-            cert = (X509Certificate) getSigningCertificate(crypto);
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
         
             // sign document
-            dsm.SignDocument(crypto.getPrivateKey(), cert);
+            dsm.SignDocument(crypto.getPrivateKey(), (X509Certificate) getSigningCertificate(crypto));
         } catch (OpenXML4JException e1) {
             throw new SignServerException("Problem signing document", e1);
         } finally {
@@ -149,12 +146,12 @@ public class OOXMLSigner extends BaseSigner {
         if (signRequest instanceof GenericServletRequest) {
             signResponse = new GenericServletResponse(sReq.getRequestID(),
                     signedbytes,
-                    cert,
+                    getSigningCertificate(signRequest, requestContext),
                     archiveId, archivables, CONTENT_TYPE);
         } else {
             signResponse = new GenericSignResponse(sReq.getRequestID(),
                     signedbytes,
-                    cert,
+                    getSigningCertificate(signRequest, requestContext),
                     archiveId, archivables);
         }
 
@@ -166,8 +163,8 @@ public class OOXMLSigner extends BaseSigner {
     }
 
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final List<String> errors = super.getFatalErrors(services);
+    protected List<String> getFatalErrors() {
+        final List<String> errors = super.getFatalErrors();
     
         errors.addAll(configErrors);
         return errors;

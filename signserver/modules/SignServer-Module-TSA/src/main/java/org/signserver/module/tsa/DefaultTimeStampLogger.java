@@ -13,17 +13,14 @@
 package org.signserver.module.tsa;
 
 import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Pattern;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.signserver.common.RequestContext;
-import org.signserver.common.WorkerConfig;
-import org.signserver.server.SignServerContext;
+import org.ejbca.util.IPatternLogger;
 import org.signserver.server.log.AdminInfo;
-import org.signserver.server.log.BaseWorkerLogger;
 import org.signserver.server.log.EjbcaPatternLogger;
 import org.signserver.server.log.IWorkerLogger;
-import org.signserver.server.log.Loggable;
 import org.signserver.server.log.WorkerLoggerException;
 
 /**
@@ -31,7 +28,7 @@ import org.signserver.server.log.WorkerLoggerException;
  *
  * @version $Id$
  */
-public class DefaultTimeStampLogger extends BaseWorkerLogger implements IWorkerLogger {
+public class DefaultTimeStampLogger implements IWorkerLogger {
 
     private Pattern pattern;
     private String orderString;
@@ -77,29 +74,34 @@ public class DefaultTimeStampLogger extends BaseWorkerLogger implements IWorkerL
     }
 
     @Override
-    public void init(final int workerId, final WorkerConfig config, final SignServerContext context) {
+    public void init(Properties properties) {
         
-        this.pattern = Pattern.compile(config.getProperty("LOGPATTERN",
+        this.pattern = Pattern.compile(properties.getProperty("LOGPATTERN",
                 DEFAULT_LOGPATTERN));
-        this.orderString = config.getProperty("LOGORDER", DEFAULT_LOGORDER);
-        this.logDateFormat = config.getProperty("LOGDATEFORMAT", DEFAULT_LOGDATEFORMAT);
-        this.timeZone = config.getProperty("LOGTIMEZONE", DEFAULT_LOGTIMEZONE);
-        this.logLevel = Level.toLevel(config.getProperty("LOGLEVEL_DEFAULT",
+        this.orderString = properties.getProperty("LOGORDER", DEFAULT_LOGORDER);
+        this.logDateFormat = properties.getProperty("LOGDATEFORMAT", DEFAULT_LOGDATEFORMAT);
+        this.timeZone = properties.getProperty("LOGTIMEZONE", DEFAULT_LOGTIMEZONE);
+        this.logLevel = Level.toLevel(properties.getProperty("LOGLEVEL_DEFAULT",
         		DEFAULT_LOGLEVEL), Level.INFO);
     }
 
     @Override
-    public void log(final AdminInfo adminInfo, final Map<String, Loggable> fields, final RequestContext context) throws WorkerLoggerException {
-        final EjbcaPatternLogger pl = new EjbcaPatternLogger(this.pattern.matcher(
+    public void log(final AdminInfo adminInfo, Map<String, String> entries) throws WorkerLoggerException {
+        final IPatternLogger pl = new EjbcaPatternLogger(this.pattern.matcher(
                 this.orderString), this.orderString, ACCOUNTLOG,
                 this.logDateFormat, this.timeZone, this.logLevel);
 
         // TODO: Do a new version of pattern logger instead of this copying
-        for (Map.Entry<String, Loggable> entry : fields.entrySet()) {
-            pl.paramPut(entry.getKey(), entry.getValue().logValue());
+        for (Map.Entry<String, String> entry : entries.entrySet()) {
+            pl.paramPut(entry.getKey(), entry.getValue());
         }
         pl.writeln();
         pl.flush();
+    }
+
+    @Override
+    public void setEjbs(Map<Class<?>, ?> ejbs) {
+        // NO-OP for this implementation        
     }
 
 }

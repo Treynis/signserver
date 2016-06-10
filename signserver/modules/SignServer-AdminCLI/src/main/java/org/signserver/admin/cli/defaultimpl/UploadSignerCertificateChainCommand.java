@@ -17,7 +17,7 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
@@ -76,7 +76,7 @@ public class UploadSignerCertificateChainCommand extends AbstractAdminCommand {
 
             this.getOutputStream().println(TRYING);
 
-            ArrayList<byte[]> bcerts = new ArrayList<>();
+            ArrayList<byte[]> bcerts = new ArrayList<byte[]>();
             Iterator<Certificate> iter = certs.iterator();
             while (iter.hasNext()) {
                 X509Certificate cert = (X509Certificate) iter.next();

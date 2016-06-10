@@ -81,7 +81,6 @@ public class SODSignRequest extends ProcessRequest implements ISignRequest {
     /**
      * @return The request ID
      */
-    @Override
     public int getRequestID() {
         return requestID;
     }
@@ -89,7 +88,6 @@ public class SODSignRequest extends ProcessRequest implements ISignRequest {
     /**
      * @return the signed data as an ArrayList of document objects to sign
      */
-    @Override
     public Object getRequestData() {
         return getDataGroupHashes();
     }
@@ -115,12 +113,11 @@ public class SODSignRequest extends ProcessRequest implements ISignRequest {
         return unicodeVersion;
     }
 
-    @Override
     public void parse(DataInput in) throws IOException {
         in.readInt();
         this.requestID = in.readInt();
         int mapSize = in.readInt();
-        this.dataGroupHashes = new HashMap<>(mapSize);
+        this.dataGroupHashes = new HashMap<Integer, byte[]>(mapSize);
         for (int i = 0; i < mapSize; i++) {
             int key = in.readInt();
             int valueSize = in.readInt();
@@ -146,13 +143,12 @@ public class SODSignRequest extends ProcessRequest implements ISignRequest {
         }
     }
 
-    @Override
     public void serialize(DataOutput out) throws IOException {
         out.writeInt(RequestAndResponseManager.REQUESTTYPE_SODSIGNREQUEST);
         out.writeInt(this.requestID);
         out.writeInt(this.dataGroupHashes.size());
         for(Map.Entry<Integer, byte[]> entry : dataGroupHashes.entrySet()) {
-            out.writeInt(entry.getKey());
+            out.writeInt(entry.getKey().intValue());
             out.writeInt(entry.getValue().length);
             out.write(entry.getValue());
         }

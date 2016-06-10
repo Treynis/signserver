@@ -12,10 +12,8 @@
  *************************************************************************/
 package org.signserver.server.archive;
 
-import java.util.List;
 import org.signserver.common.RequestContext;
 import org.signserver.common.WorkerConfig;
-import org.signserver.server.IServices;
 import org.signserver.server.SignServerContext;
 
 /**
@@ -67,11 +65,4 @@ public interface Archiver {
      * @throws ArchiveException In case the item could not be archived.
      */
     boolean archive(Archivable archivable, RequestContext requestContext) throws ArchiveException;
-    
-    /**
-     * Get a list of fatal errors for the archiver implementation.
-     *
-     * @return A list of fatal errors for the archiver implementation
-     */
-    List<String> getFatalErrors();
 }

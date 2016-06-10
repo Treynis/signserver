@@ -52,7 +52,6 @@ public class GenericSignRequest extends ProcessRequest implements ISignRequest {
     /**
      * @see org.signserver.common.ProcessRequest
      */
-    @Override
     public int getRequestID() {
         return requestID;
     }
@@ -60,12 +59,10 @@ public class GenericSignRequest extends ProcessRequest implements ISignRequest {
     /**
      * @see org.signserver.common.ProcessRequest
      */
-    @Override
     public byte[] getRequestData() {
         return requestData;
     }
 
-    @Override
     public void parse(DataInput in) throws IOException {
         in.readInt();
         this.requestID = in.readInt();
@@ -74,7 +71,6 @@ public class GenericSignRequest extends ProcessRequest implements ISignRequest {
         in.readFully(requestData);
     }
 
-    @Override
     public void serialize(DataOutput out) throws IOException {
         if (requestData == null) {
             throw new IOException("requestData can not be null");

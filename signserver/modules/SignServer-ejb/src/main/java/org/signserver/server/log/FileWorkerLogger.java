@@ -15,11 +15,9 @@ package org.signserver.server.log;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.log4j.Logger;
-import org.signserver.common.RequestContext;
-import org.signserver.common.WorkerConfig;
-import org.signserver.server.SignServerContext;
 
 /**
  * An IWorkerLogger that appends log lines to a separate file.
@@ -27,7 +25,7 @@ import org.signserver.server.SignServerContext;
  * @author Marcus Lundblad
  * @version $Id$
  */
-public class FileWorkerLogger extends BaseWorkerLogger implements IWorkerLogger {
+public class FileWorkerLogger implements IWorkerLogger {
 
     private static final String FILE_PATH_PROPERTY_NAME = "LOG_FILE_PATH";
     
@@ -38,16 +36,16 @@ public class FileWorkerLogger extends BaseWorkerLogger implements IWorkerLogger 
     private String logFilePath;
 
     @Override
-    public void init(final int workerId, final WorkerConfig config, final SignServerContext context) {
-        logFilePath = config.getProperty(FILE_PATH_PROPERTY_NAME);
+    public void init(final Properties props) {
+        logFilePath = props.getProperty(FILE_PATH_PROPERTY_NAME);
 
         if (logFilePath == null) {
-            addFatalError("Log file path not specified");
+            LOG.error("Log file path not specified");
         }
     }
 
     @Override
-    public void log(final AdminInfo adminInfo, final Map<String, Loggable> fields, final RequestContext context) throws WorkerLoggerException {
+    public void log(final AdminInfo adminInfo, Map<String, String> fields) throws WorkerLoggerException {
         FileOutputStream fos = null;
 
         try {
@@ -58,10 +56,10 @@ public class FileWorkerLogger extends BaseWorkerLogger implements IWorkerLogger 
 
         final StringBuilder str = new StringBuilder();
 
-        for (Map.Entry<String, Loggable> entry : fields.entrySet()) {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
             str.append(entry.getKey());
             str.append(": ");
-            str.append(entry.getValue().logValue());
+            str.append(entry.getValue());
             str.append("; ");
         }
 
@@ -80,5 +78,10 @@ public class FileWorkerLogger extends BaseWorkerLogger implements IWorkerLogger 
                 fos.close();
             } catch (IOException dummy) {} //NOPMD
         }
+    }
+
+    @Override
+    public void setEjbs(Map<Class<?>, ?> ejbs) {
+        // NO-OP for this implementation   
     }
 }

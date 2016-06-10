@@ -25,6 +25,7 @@ import java.security.PrivateKey;
 import java.security.cert.*;
 import java.util.*;
 
+import junit.framework.TestCase;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.DERBitString;
@@ -37,8 +38,9 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.signserver.common.*;
 import org.signserver.common.util.PathUtil;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.test.utils.builders.CertBuilder;
 import org.signserver.test.utils.builders.CertBuilderException;
 import org.signserver.test.utils.builders.CertExt;
@@ -46,10 +48,6 @@ import org.signserver.test.utils.builders.CryptoUtils;
 import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
 import org.signserver.test.utils.mock.MockedCryptoToken;
 import org.signserver.test.utils.mock.WorkerSessionMock;
-import org.signserver.testutils.ModulesTestCase;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
-import org.signserver.server.IServices;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
 
 /**
  * Unit tests for PDFSigner.
@@ -60,7 +58,7 @@ import org.signserver.server.cryptotokens.ICryptoTokenV4;
  * @author Markus Kilås
  * @version $Id$
  */
-public class PDFSignerUnitTest extends ModulesTestCase {
+public class PDFSignerUnitTest extends TestCase {
 
     /** Logger for this class. */
     public static final Logger LOG = Logger.getLogger(PDFSignerUnitTest.class);
@@ -73,16 +71,15 @@ public class PDFSignerUnitTest extends ModulesTestCase {
     private static final String AUTHTYPE = "AUTHTYPE";
     
     private static final String CRYPTOTOKEN_CLASSNAME = 
-            "org.signserver.server.cryptotokens.KeystoreCryptoToken";
+            "org.signserver.server.cryptotokens.HardCodedCryptoToken";
     private final String SAMPLE_OWNER123_PASSWORD = "owner123";
     private final String SAMPLE_USER_AAA_PASSWORD = "user\u00e5\u00e4\u00f6";
     private final String SAMPLE_OPEN123_PASSWORD = "open123";
     
     private final String ILLEGAL_DIGEST_FOR_DSA_MESSAGE = "Only SHA1 is permitted as digest algorithm for DSA public/private keys";
     
-    private GlobalConfigurationSessionLocal globalConfig;
-    private WorkerSessionRemote workerSession;
-    private ProcessSessionRemote processSession;
+    private IGlobalConfigurationSession.IRemote globalConfig;
+    private IWorkerSession.IRemote workerSession;
 
     private File sampleOk;
     private File sampleRestricted;
@@ -141,7 +138,7 @@ public class PDFSignerUnitTest extends ModulesTestCase {
                 data);
 
         final GenericSignResponse response = (GenericSignResponse)
-                processSession.process(new WorkerIdentifier(WORKER1), request, new RemoteRequestContext());
+                workerSession.process(WORKER1, request, new RequestContext());
         assertEquals("requestId", 100, response.getRequestID());
 
         Certificate signercert = response.getSignerCertificate();
@@ -155,40 +152,40 @@ public class PDFSignerUnitTest extends ModulesTestCase {
      */
     public void test02SignWithRestrictionsNoPasswordSupplied() throws Exception { 
         try {
-            processSession.process(
-                new WorkerIdentifier(WORKER1),
+            workerSession.process(
+                WORKER1,
                 new GenericSignRequest(200, readFile(sampleRestricted)),
-                new RemoteRequestContext());
+                new RequestContext());
             fail("Should have thrown exception");
         } catch (IllegalRequestException ignored) {
             // OK
         }
         
         try {
-            processSession.process(
-                new WorkerIdentifier(WORKER1),
+            workerSession.process(
+                WORKER1,
                 new GenericSignRequest(200, readFile(sampleOpen123)),
-                new RemoteRequestContext());
+                new RequestContext());
             fail("Should have thrown exception");
         } catch (IllegalRequestException ignored) {
             // OK
         }
         
         try {
-            processSession.process(
-                new WorkerIdentifier(WORKER1),
+            workerSession.process(
+                WORKER1,
                 new GenericSignRequest(200, readFile(sampleOpen123Owner123)),
-                new RemoteRequestContext());
+                new RequestContext());
             fail("Should have thrown exception");
         } catch (IllegalRequestException ignored) {
             // OK
         }
         
         try {
-            processSession.process(
-                new WorkerIdentifier(WORKER1),
+            workerSession.process(
+                WORKER1,
                 new GenericSignRequest(200, readFile(sampleOwner123)),
-                new RemoteRequestContext());
+                new RequestContext());
             fail("Should have thrown exception");
         } catch (IllegalRequestException ignored) {
             // OK
@@ -305,7 +302,7 @@ public class PDFSignerUnitTest extends ModulesTestCase {
         // The sampleOwner123 originally has: ALLOW_FILL_IN,ALLOW_MODIFY_ANNOTATIONS,ALLOW_MODIFY_CONTENTS
         workerSession.removeWorkerProperty(WORKER1, "SET_PERMISSIONS");
         workerSession.reloadConfiguration(WORKER1);
-        Set<String> expected = new HashSet<>(Arrays.asList("ALLOW_FILL_IN", "ALLOW_MODIFY_ANNOTATIONS", "ALLOW_MODIFY_CONTENTS"));
+        Set<String> expected = new HashSet<String>(Arrays.asList("ALLOW_FILL_IN", "ALLOW_MODIFY_ANNOTATIONS", "ALLOW_MODIFY_CONTENTS"));
         Permissions actual = getPermissions(signProtectedPDF(sampleOwner123, SAMPLE_OWNER123_PASSWORD), 
                 SAMPLE_OWNER123_PASSWORD.getBytes("ISO-8859-1"));
         assertEquals(expected, actual.asSet());
@@ -324,7 +321,7 @@ public class PDFSignerUnitTest extends ModulesTestCase {
     }
     
     private void doTestSetPermissions(int workerId, File pdf, String ownerPassword, String userPassword, Collection<String> permissions) throws Exception {
-        Set<String> expected = new HashSet<>(permissions);
+        Set<String> expected = new HashSet<String>(permissions);
         workerSession.setWorkerProperty(workerId, "SET_PERMISSIONS", toString(expected, ","));
         workerSession.reloadConfiguration(workerId);
         String password = ownerPassword == null ? userPassword : ownerPassword;
@@ -345,7 +342,7 @@ public class PDFSignerUnitTest extends ModulesTestCase {
     }
     
     private byte[] doTestRemovePermissions(int workerId, File pdf, String ownerPassword, String userPassword, Collection<String> removePermissions, Collection<String> expected) throws Exception {
-        Set<String> expectedSet = new HashSet<>(expected);
+        Set<String> expectedSet = new HashSet<String>(expected);
         workerSession.setWorkerProperty(workerId, "REMOVE_PERMISSIONS", toString(removePermissions, ","));
         workerSession.reloadConfiguration(workerId);
         byte[] pdfbytes = signProtectedPDF(pdf, ownerPassword == null ? userPassword : ownerPassword);
@@ -1207,13 +1204,13 @@ public class PDFSignerUnitTest extends ModulesTestCase {
 
         final PDFSigner instance = new PDFSigner() {
             @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
+            public ICryptoToken getCryptoToken() throws SignServerException {
                 return null;
             }
         };
         instance.init(WORKER1, workerConfig, null, null);
 
-        final List<String> fatalErrors = instance.getFatalErrors(null);
+        final List<String> fatalErrors = instance.getFatalErrors();
         
         assertTrue("Should contain error",
                 fatalErrors.contains("Can not specify " + PDFSigner.TSA_URL + " and " + PDFSigner.TSA_WORKER + " at the same time."));
@@ -1233,13 +1230,13 @@ public class PDFSignerUnitTest extends ModulesTestCase {
         
         final PDFSigner instance = new PDFSigner() {
             @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
+            public ICryptoToken getCryptoToken() throws SignServerException {
                 return null;
             }
         };
         instance.init(WORKER1, workerConfig, null, null);
 
-        final List<String> fatalErrors = instance.getFatalErrors(null);
+        final List<String> fatalErrors = instance.getFatalErrors();
         
         assertTrue("Should contain error",
                 fatalErrors.contains("Illegal digest algorithm: IllegalHash"));
@@ -1262,7 +1259,7 @@ public class PDFSignerUnitTest extends ModulesTestCase {
         
         instance.init(WORKER2, workerConfig, null, null);
         
-        final List<String> fatalErrors = instance.getFatalErrors(null);
+        final List<String> fatalErrors = instance.getFatalErrors();
         
         assertTrue("Should contain error", fatalErrors.contains(ILLEGAL_DIGEST_FOR_DSA_MESSAGE));
     }
@@ -1283,7 +1280,7 @@ public class PDFSignerUnitTest extends ModulesTestCase {
         
         instance.init(WORKER2, workerConfig, null, null);
         
-        final List<String> fatalErrors = instance.getFatalErrors(null);
+        final List<String> fatalErrors = instance.getFatalErrors();
         
         assertFalse("Should not contain error", fatalErrors.contains(ILLEGAL_DIGEST_FOR_DSA_MESSAGE));
     }
@@ -1305,7 +1302,7 @@ public class PDFSignerUnitTest extends ModulesTestCase {
         
         instance.init(WORKER2, workerConfig, null, null);
         
-        final List<String> fatalErrors = instance.getFatalErrors(null);
+        final List<String> fatalErrors = instance.getFatalErrors();
         
         assertFalse("Should not contain error", fatalErrors.contains(ILLEGAL_DIGEST_FOR_DSA_MESSAGE));
     }
@@ -1340,9 +1337,23 @@ public class PDFSignerUnitTest extends ModulesTestCase {
         public MockedPDFSigner(final MockedCryptoToken mockedToken) {
             this.mockedToken = mockedToken;
         }
+        
+        @Override
+        public Certificate getSigningCertificate(final ProcessRequest request,
+                                                 final RequestContext context)
+                throws CryptoTokenOfflineException {
+            return mockedToken.getCertificate(ICryptoToken.PURPOSE_SIGN);
+        }
 
         @Override
-        public ICryptoTokenV4 getCryptoToken(final IServices services) {
+        public List<Certificate> getSigningCertificateChain(final ProcessRequest request,
+                                                            final RequestContext context)
+                throws CryptoTokenOfflineException {
+            return mockedToken.getCertificateChain(ICryptoToken.PURPOSE_SIGN);
+        }
+
+        @Override
+        public ICryptoToken getCryptoToken() {
             return mockedToken;
         }
     }
@@ -1369,7 +1380,21 @@ public class PDFSignerUnitTest extends ModulesTestCase {
             }
 
             @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) {
+            public Certificate getSigningCertificate(final ProcessRequest request,
+                                                     final RequestContext context)
+                    throws CryptoTokenOfflineException {
+                return signerCertificate;
+            }
+
+            @Override
+            public List<Certificate> getSigningCertificateChain(final ProcessRequest request,
+                                                                final RequestContext context)
+                    throws CryptoTokenOfflineException {
+                return Arrays.asList(certChain);
+            }
+
+            @Override
+            public ICryptoToken getCryptoToken() {
                 return token;
             }
             
@@ -1430,29 +1455,24 @@ public class PDFSignerUnitTest extends ModulesTestCase {
             LOG.debug("\"" + password + "\" " + Arrays.toString(password.toCharArray()));
         }
         
-        RemoteRequestContext context = new RemoteRequestContext();
-        RequestMetadata metadata = new RequestMetadata();
-        metadata.put(RequestContext.METADATA_PDFPASSWORD, password);
-        context.setMetadata(metadata);
-
+        RequestContext context = new RequestContext();
+        RequestMetadata.getInstance(context).put(RequestContext.METADATA_PDFPASSWORD, password);
+        
         final GenericSignResponse response = 
-                (GenericSignResponse) processSession.process(new WorkerIdentifier(WORKER1), 
+                (GenericSignResponse) workerSession.process(WORKER1, 
                 new GenericSignRequest(200, readFile(file)), 
                 context);
         assertNotNull(response);
         return response.getProcessedData();
     }
 
-    private void setupWorkers()
-            throws NoSuchAlgorithmException, NoSuchProviderException,
-                CertBuilderException, CertificateException, FileNotFoundException {
+    private void setupWorkers() throws NoSuchAlgorithmException, NoSuchProviderException, CertBuilderException, CertificateException {
 
         final GlobalConfigurationSessionMock globalMock
                 = new GlobalConfigurationSessionMock();
-        final WorkerSessionMock workerMock = new WorkerSessionMock();
+        final WorkerSessionMock workerMock = new WorkerSessionMock(globalMock);
         globalConfig = globalMock;
         workerSession = workerMock;
-        processSession = workerMock;
 
         // WORKER1
         final MockedCryptoToken token = generateToken(false);
@@ -1460,20 +1480,18 @@ public class PDFSignerUnitTest extends ModulesTestCase {
             final int workerId = WORKER1;
             final WorkerConfig config = new WorkerConfig();
             config.setProperty(NAME, "TestPDFSigner1");
-            config.setProperty("KEYSTOREPATH",
-                    getSignServerHome() + File.separator + "res" + File.separator +
-                            "test" + File.separator + "dss10" + File.separator +
-                            "dss10_signer1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            config.setProperty("DEFAULTKEY", "Signer 1");
-            
             config.setProperty(AUTHTYPE, "NOAUTH");
             
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new PDFSigner() {
                 @Override
-                public ICryptoTokenV4 getCryptoToken(final IServices services) {
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+                        
+                @Override
+                public ICryptoToken getCryptoToken() {
                     return token;
                 }
             });
@@ -1483,11 +1501,17 @@ public class PDFSignerUnitTest extends ModulesTestCase {
 
     private byte[] readFile(File file) throws IOException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(
-                file))) {
+        BufferedInputStream in = null;
+        try {
+            in = new BufferedInputStream(new FileInputStream(
+                file));
             int b;
             while ((b = in.read()) != -1) {
                 bout.write(b);
+            }
+        } finally {
+            if (in != null) {
+                in.close();
             }
         }
         return bout.toByteArray();

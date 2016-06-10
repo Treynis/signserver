@@ -12,30 +12,13 @@
  *************************************************************************/
 package org.signserver.common;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import org.apache.log4j.Logger;
-import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.internal.UpgradeableDataHashMap;
-import org.cesecore.util.CertTools;
-import static org.signserver.common.util.PropertiesConstants.AUTHORIZED_CLIENTS;
-import static org.signserver.common.util.PropertiesConstants.KEYSTORE_DATA;
-import static org.signserver.common.util.PropertiesConstants.SIGNERCERT;
-import static org.signserver.common.util.PropertiesConstants.SIGNERCERTCHAIN;
+import org.ejbca.core.model.UpgradeableDataHashMap;
 
 /**
  * Class representing a signer config. contains to types of data, 
@@ -89,38 +72,11 @@ public class WorkerConfig extends UpgradeableDataHashMap {
      */
     public static final String PROPERTY_ALIASSELECTOR = "ALIASSELECTOR";
     
-    /**
-     * Fully qualified implementation class name for this worker.
-     */
-    public static final String IMPLEMENTATION_CLASS = "IMPLEMENTATION_CLASS";
-    
-    /**
-     * Fully qualified implementation class name for the crypto token.
-     */
-    public static final String CRYPTOTOKEN_IMPLEMENTATION_CLASS = "CRYPTOTOKEN_IMPLEMENTATION_CLASS";
-    
-    /**
-     * Type of worker.
-     * @see WorkerType
-     */
-    public static final String TYPE = "TYPE";
-
     private static String nodeId = null;
-
-    public static final int WORKERTYPE_ALL = 1;
-    /** @see WorkerType#TIMED_SERVICE */
-    public static final int WORKERTYPE_SERVICES = 3;
-    /** @see WorkerType#PROCESSABLE */
-    public static final int WORKERTYPE_PROCESSABLE = 2;
-    public static final int WORKERTYPE_MAILSIGNERS = 4;
     
     @SuppressWarnings("unchecked")
     public WorkerConfig() {
         data.put(PROPERTIES, new Properties());
-        
-        if (get(AUTHORIZED_CLIENTS) == null) {
-            put(AUTHORIZED_CLIENTS, new HashSet<AuthorizedClient>());
-        }
     }
 
     /**
@@ -185,27 +141,17 @@ public class WorkerConfig extends UpgradeableDataHashMap {
         return data;
     }
 
-    @Override
     public float getLatestVersion() {
         return LATEST_VERSION;
     }
 
     @SuppressWarnings("unchecked")
-    @Override
     public void upgrade() {
         if (data.get(WorkerConfig.CLASS) == null) {
             data.put(WorkerConfig.CLASS, this.getClass().getName());
         }
 
-        data.put(WorkerConfig.VERSION, LATEST_VERSION);
-    }
-    
-    public String getImplementationClass() {
-        return getProperty(IMPLEMENTATION_CLASS);
-    }
-    
-    public String getCryptoTokenImplementationClass() {
-        return getProperty(CRYPTOTOKEN_IMPLEMENTATION_CLASS);
+        data.put(WorkerConfig.VERSION, new Float(LATEST_VERSION));
     }
 
     /**
@@ -254,7 +200,7 @@ public class WorkerConfig extends UpgradeableDataHashMap {
      */
     public static Map<String, Object> propertyDiff(final WorkerConfig oldConfig,
             final WorkerConfig newConfig) {
-        final Map<String, Object> result = new HashMap<>();
+        final Map<String, Object> result = new HashMap<String, Object>();
         final Properties oldProps = oldConfig.getProperties();
         final Properties newProps = newConfig.getProperties();
         
@@ -290,246 +236,5 @@ public class WorkerConfig extends UpgradeableDataHashMap {
             configFile = "/etc/signserver/signserver.conf";
         }
         return configFile;
-    }
-
-    /**
-     * @return Number of virtual properties that should not be counted as a
-     * user-specified properties. Having a worker with less then this number of
-     * properties means that it is empty.
-     */
-    public int getVirtualPropertiesNumber() {
-        // NAME and TYPE:
-        return 2;
-    }
-    
-    private void put(String key, Serializable value) {
-        if (value instanceof String) {
-            setProperty(key, (String) value);
-        } else {
-            getData().put(key, value);
-        }
-    }
-
-    private Serializable get(String key) {
-        final String value = getProperty(key);
-        if (value == null) {
-            final Object o = getData().get(key);
-            if (o instanceof Serializable) {
-                return (Serializable) o;
-            } else {
-                return null;
-            }
-        }
-        return value;
-    }
-    
-    /**
-     * Adds a Certificate SN to the collection of authorized clients	  
-     * 
-     * @param client the AuthorizedClient to add
-     */
-    @SuppressWarnings("unchecked")
-    public void addAuthorizedClient(AuthorizedClient client) {
-        ((HashSet<AuthorizedClient>) get(AUTHORIZED_CLIENTS)).add(client);
-    }
-    
-    /**
-     * Removes a Certificate SN from the collection of authorized clients	  
-     * 
-     * @param client the AuthorizedClient to remove
-     * @return true if the client was found and removed
-     */
-    @SuppressWarnings("unchecked")
-    public boolean removeAuthorizedClient(AuthorizedClient client) {
-        final HashSet<AuthorizedClient> authClients =
-                (HashSet<AuthorizedClient>) get(AUTHORIZED_CLIENTS);
-        
-        if (authClients != null) {
-            for (final AuthorizedClient authClient : authClients) {
-                if (authClient.getCertSN().equals(client.getCertSN()) &&
-                    authClient.getIssuerDN().equals(client.getIssuerDN())) {
-                    return authClients.remove(authClient);
-                }
-            }
-        }
-        
-        return false;
-    }
-    
-    /**
-     * 	  
-     * Gets a collection of authorized client certificates
-     * 
-     * @return a Collection of String containing the certificate serial number.
-     */
-    @SuppressWarnings("unchecked")
-    public Collection<AuthorizedClient> getAuthorizedClients() {
-        final ArrayList<AuthorizedClient> result = new ArrayList<>();
-        final HashSet<AuthorizedClient> authClients =
-                (HashSet<AuthorizedClient>) get(AUTHORIZED_CLIENTS);
-        
-        if (authClients != null) {
-            for (final AuthorizedClient client : authClients) {
-                result.add(client);
-            }
-        }
-
-        Collections.sort(result);
-        return result;
-    }
-    
-    /**
-     * Checks if a certificate is in the list of authorized clients
-     * @param clientCertificate
-     * @return true if client is authorized.
-     */
-    @SuppressWarnings("unchecked")
-    public boolean isClientAuthorized(X509Certificate clientCertificate) {
-        final AuthorizedClient client = new AuthorizedClient(clientCertificate.getSerialNumber().toString(16), clientCertificate.getIssuerDN().toString());
-        final HashSet<AuthorizedClient> authClients =
-                (HashSet<AuthorizedClient>) get(AUTHORIZED_CLIENTS);
-
-        return authClients != null && authClients.contains(client);
-    }
-    
-    /**
-     * Method used to fetch a signers certificate from the config
-     * @return the signer certificate stored or null if no certificate have been uploaded.
-     * 
-     */
-    public X509Certificate getSignerCertificate() {
-        X509Certificate result = null;
-        String stringcert = (String) get(SIGNERCERT);
-        if (stringcert == null || stringcert.equals("")) {
-            stringcert = (String) get(WorkerConfig.getNodeId() + "." + SIGNERCERT);
-        }
-
-        if (stringcert != null && !stringcert.equals("")) {
-            Collection<?> certs;
-            try {
-                certs = CertTools.getCertsFromPEM(new ByteArrayInputStream(stringcert.getBytes()));
-                if (certs.size() > 0) {
-                    result = (X509Certificate) certs.iterator().next();
-                }
-            } catch (CertificateException | IllegalStateException e) {
-                LOG.error(e);
-            }
-
-        }
-
-        if (result == null) {
-            // try fetch certificate from certificate chain
-            Collection<?> chain = getSignerCertificateChain();
-            if (chain != null) {
-                Iterator<?> iter = chain.iterator();
-                while (iter.hasNext()) {
-                    X509Certificate next = (X509Certificate) iter.next();
-                    if (next.getBasicConstraints() == -1) {
-                        result = next;
-                    }
-                }
-            }
-        }
-        return result;
-
-    }
-
-    /**
-     * Method used to store a signers certificate in the config
-     * @param signerCert
-     * 
-     */
-    public void setSignerCertificate(X509Certificate signerCert, String scope) {
-        ArrayList<Certificate> list = new ArrayList<>();
-        list.add(signerCert);
-        if (scope.equals(GlobalConfiguration.SCOPE_GLOBAL)) {
-            try {
-                String stringcert =
-                        new String(CertTools.getPemFromCertificateChain(list));
-                put(SIGNERCERT, stringcert);
-            } catch (CertificateException e) {
-                LOG.error(e);
-            }
-        } else {
-            try {
-                String stringcert =
-                        new String(CertTools.getPemFromCertificateChain(list));
-                put(WorkerConfig.getNodeId() + "." + SIGNERCERT, stringcert);
-            } catch (CertificateException e) {
-                LOG.error(e);
-            }
-        }
-
-    }
-    
-    /**
-     * Method used to fetch a signers certificate chain from the config
-     * @return the signer certificate stored or null if no certificates have been uploaded.
-     * 
-     */
-    @SuppressWarnings("unchecked")
-    public List<Certificate> getSignerCertificateChain() {
-        List<Certificate> result = null;
-        String stringcert = (String) get(SIGNERCERTCHAIN);
-        if (stringcert == null || stringcert.equals("")) {
-            stringcert = (String) get(WorkerConfig.getNodeId() + "." + SIGNERCERTCHAIN);
-        }
-
-        if (stringcert != null && !stringcert.equals("")) {
-            try {
-                result = CertTools.getCertsFromPEM(new ByteArrayInputStream(stringcert.getBytes()));
-            } catch (CertificateException | IllegalStateException e) {
-                LOG.error(e);
-            }
-        }
-        return result;
-    }
-    
-    /**
-     * Method used to store a signers certificate in the config
-     * @param signerCert
-     * 
-     */
-    public void setSignerCertificateChain(Collection<Certificate> signerCertificateChain, String scope) {
-        if (scope.equals(GlobalConfiguration.SCOPE_GLOBAL)) {
-            try {
-                String stringcert = new String(CertTools.getPEMFromCerts(signerCertificateChain));
-                put(SIGNERCERTCHAIN, stringcert);
-            } catch (CertificateException e) {
-                LOG.error(e);
-            }
-        } else {
-            try {
-                String stringcert = new String(CertTools.getPEMFromCerts(signerCertificateChain));
-                put(WorkerConfig.getNodeId() + "." + SIGNERCERTCHAIN, stringcert);
-            } catch (CertificateException e) {
-                LOG.error(e);
-            }
-        }
-    }
-    
-    /**
-     * Get the keystore data used by the KeystoreInConfigCryptoToken.
-     * 
-     * @return Keystore data in PKCS#12 format
-     */
-    public byte[] getKeystoreData() {
-        final String keystoreDataString =
-                (String) getData().get(KEYSTORE_DATA);
-        
-        if (keystoreDataString != null) {
-            return Base64.decode(keystoreDataString);
-        }
-        
-        return null;
-    }
-    
-    /**
-     * Set the keystore data used by the KeystoreInConfigCryptoToken.
-     * 
-     * @param keystoreData 
-     */
-    public void setKeystoreData(final byte[] keystoreData) {
-        getData().put(KEYSTORE_DATA, new String(Base64.encode(keystoreData)));
     }
 }

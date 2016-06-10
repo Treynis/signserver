@@ -21,7 +21,6 @@ import java.io.IOException;
 import javax.persistence.EntityManager;
 
 import org.apache.log4j.Logger;
-import org.signserver.common.ServiceContext;
 import org.signserver.common.WorkerConfig;
 import org.signserver.server.ServiceExecutionFailedException;
 import org.signserver.server.WorkerContext;
@@ -56,25 +55,28 @@ public class DummyTimedService extends BaseTimedService {
      * @see org.signserver.server.timedservices.ITimedService#work()
      */
     @Override
-    public void work(final ServiceContext context) throws ServiceExecutionFailedException {
+    public void work() throws ServiceExecutionFailedException {
 
         int currentCount = 0;
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        try (FileInputStream fis = new FileInputStream(outPath)) {
+        try {
+            FileInputStream fis = new FileInputStream(outPath);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
             int next;
             while ((next = fis.read()) != -1) {
                 baos.write(next);
             }
+            fis.close();
             currentCount = Integer.parseInt(new String(baos.toByteArray()));
         } catch (FileNotFoundException e) {
         } catch (IOException e) {
             throw new ServiceExecutionFailedException(e.getClass().getName() + " : " + e.getMessage());
         }
-
         currentCount++;
-        try (FileOutputStream fos = new FileOutputStream(outPath)) {
+        try {
+            FileOutputStream fos = new FileOutputStream(outPath);
             fos.write(("" + currentCount).getBytes());
+            fos.close();
         } catch (IOException e) {
             throw new ServiceExecutionFailedException(e.getClass().getName() + " : " + e.getMessage());
         }

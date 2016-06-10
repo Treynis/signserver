@@ -161,7 +161,7 @@ public class CommandLineInterface {
             Collection<Command> commands = factory.getSubCommands(group);
             if (commands != null) {
                 if (result == null) {
-                    result = new LinkedList<>();
+                    result = new LinkedList<Command>();
                 }
                 result.addAll(commands);
             }
@@ -181,9 +181,9 @@ public class CommandLineInterface {
         out.print("Missing or invalid argument.");
         
         if (commands == null) {
-            commands = new LinkedList<>();
+            commands = new LinkedList<Command>();
             
-            List<String> commandGroups = new LinkedList<>();
+            List<String> commandGroups = new LinkedList<String>();
             Iterator<? extends CommandFactory> iterator = loader.iterator();
             while (iterator.hasNext()) {
                 CommandFactory factory = iterator.next();

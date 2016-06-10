@@ -14,7 +14,7 @@ package org.signserver.server;
 
 import javax.persistence.EntityManager;
 import org.signserver.common.SignServerException;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.entities.IKeyUsageCounterDataService;
 
 /**
@@ -70,10 +70,10 @@ public class SignServerContext extends WorkerContext {
         this.cryptoTokenSupplier = cryptoTokenSupplier;
     }
 
-    public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-        ICryptoTokenV4 result = null;
+    public ICryptoToken getCryptoToken() throws SignServerException {
+        ICryptoToken result = null;
         if (cryptoTokenSupplier != null) {
-            result = cryptoTokenSupplier.getCurrentCryptoToken(services);
+            result = cryptoTokenSupplier.getCurrentCryptoToken();
         }
         return result;
     }

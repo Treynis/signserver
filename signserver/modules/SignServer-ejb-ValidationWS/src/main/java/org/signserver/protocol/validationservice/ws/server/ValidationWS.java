@@ -29,16 +29,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
 import org.apache.log4j.Logger;
-import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.Base64;
+import org.ejbca.util.CertTools;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.ProcessSessionLocal;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.healthcheck.HealthCheckUtils;
 import org.signserver.protocol.validationservice.ws.IValidationWS;
 import org.signserver.protocol.validationservice.ws.ValidationResponse;
 import org.signserver.server.CredentialUtils;
-import org.signserver.server.log.AdminInfo;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
 import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidateResponse;
@@ -62,11 +61,11 @@ public class ValidationWS implements IValidationWS {
     private static final Logger log = Logger.getLogger(ValidationWS.class);
     
     @EJB
-    private WorkerSessionLocal signserversession;
+    private IWorkerSession.ILocal signserversession;
     
     @EJB
-    private ProcessSessionLocal processSession;
-
+    private IGlobalConfigurationSession.ILocal globalconfigsession;
+    
     /** EntityManager is conditionally injected from ejb-jar.xml. */
     private EntityManager em;
 
@@ -74,16 +73,20 @@ public class ValidationWS implements IValidationWS {
      * @see org.signserver.protocol.validationservice.ws.IValidationWS#isValid(String, String, String)
      */
     @WebMethod
-    @Override
-    public ValidationResponse isValid(@WebParam(name = "serviceName") String serviceNameOrId, @WebParam(name = "base64Cert") String base64Cert, @WebParam(name = "certPurposes") String certPurposes) throws IllegalRequestException, SignServerException {
+    public ValidationResponse isValid(@WebParam(name = "serviceName") String serviceName, @WebParam(name = "base64Cert") String base64Cert, @WebParam(name = "certPurposes") String certPurposes) throws IllegalRequestException, SignServerException {
         Certificate reqCert;
+        int workerId = getWorkerId(serviceName);
+
+        if (workerId == 0) {
+            throw new IllegalRequestException("Illegal service name : " + serviceName + " no validation service with such name exists");
+        }
 
         if (base64Cert == null) {
             throw new IllegalRequestException("Error base64Cert parameter cannot be empty, it must contain a Base64 encoded DER encoded certificate.");
         } else {
             try {
                 reqCert = CertTools.getCertfromByteArray(Base64.decode(base64Cert.getBytes()));
-            } catch (CertificateException | IllegalArgumentException e) {
+            } catch (CertificateException e) {
                 throw new IllegalRequestException("Error base64Cert parameter data have bad encoding, check that it contains supported certificate data");
             }
         }
@@ -104,13 +107,11 @@ public class ValidationWS implements IValidationWS {
             MessageContext msgContext = wsContext.getMessageContext();
             CredentialUtils.addToRequestContext(context, (HttpServletRequest) msgContext.get(MessageContext.SERVLET_REQUEST), clientCertificate);
         
-            res = (ValidateResponse) getProcessSession().process(new AdminInfo("Client user", null, null), WorkerIdentifier.createFromIdOrName(serviceNameOrId), req, context);
+            res = (ValidateResponse) getWorkerSession().process(workerId, req, context);
         } catch (CertificateEncodingException e) {
             throw new IllegalRequestException("Error in request, the requested certificate seem to have a unsupported encoding : " + e.getMessage());
         } catch (CryptoTokenOfflineException e) {
             throw new SignServerException("Error using cryptotoken when validating certificate, it seems to be offline : " + e.getMessage());
-        } catch (NoSuchWorkerException ex) {
-            throw new IllegalRequestException(ex.getMessage());
         }
         return new ValidationResponse(res.getValidation(), res.getValidCertificatePurposes());
     }
@@ -125,15 +126,11 @@ public class ValidationWS implements IValidationWS {
         if (serviceName.substring(0, 1).matches("\\d")) {
             retval = Integer.parseInt(serviceName);
         } else {
-            try {
-                retval = getWorkerSession().getWorkerId(serviceName);
-            } catch (InvalidWorkerIdException ex) {
-                retval = 0;
-            }
+            retval = getWorkerSession().getWorkerId(serviceName);
         }
 
         if (retval != 0) {
-            String classPath = getWorkerSession().getCurrentWorkerConfig(retval).getImplementationClass();
+            String classPath = getGlobalConfigurationSession().getGlobalConfiguration().getProperty(GlobalConfiguration.SCOPE_GLOBAL, GlobalConfiguration.WORKERPROPERTY_BASE + retval + GlobalConfiguration.WORKERPROPERTY_CLASSPATH);
             if (classPath == null || !classPath.trim().equals(ValidationServiceWorker.class.getName())) {
                 retval = 0;
             }
@@ -147,7 +144,6 @@ public class ValidationWS implements IValidationWS {
      * @see org.signserver.protocol.validationservice.ws.IValidationWS#getStatus(java.lang.String)
      */
     @WebMethod
-    @Override
     public String getStatus(@WebParam(name = "serviceName") String serviceName) throws IllegalRequestException {
 
         int workerId = getWorkerId(serviceName);
@@ -156,7 +152,7 @@ public class ValidationWS implements IValidationWS {
             throw new IllegalRequestException("Illegal service name : " + serviceName + " no validation service with such name exists");
         }
         final String result;
-        final LinkedList<String> errors = new LinkedList<>();
+        final LinkedList<String> errors = new LinkedList<String>();
 
         if (FileBasedDatabaseManager.getInstance().isUsed()) {
             errors.addAll(FileBasedDatabaseManager.getInstance().getFatalErrors());
@@ -186,9 +182,9 @@ public class ValidationWS implements IValidationWS {
     }
 
     private List<String> checkValidationService(int workerId) {
-        final LinkedList<String> result = new LinkedList<>();
+        final LinkedList<String> result = new LinkedList<String>();
         try {
-            WorkerStatus status = getWorkerSession().getStatus(new WorkerIdentifier(workerId));
+            WorkerStatus status = getWorkerSession().getStatus(workerId);
             for (String error : status.getFatalErrors()) {
                 result.add("Worker " + status.getWorkerId() + ": " + error + "\n");
             }
@@ -238,12 +234,11 @@ public class ValidationWS implements IValidationWS {
         return request.getRemoteAddr();
     }
 
-    private WorkerSessionLocal getWorkerSession() {
+    private IWorkerSession.ILocal getWorkerSession() {
         return signserversession;
     }
-    
-    private ProcessSessionLocal getProcessSession() {
-        return processSession;
-    }
 
+    private IGlobalConfigurationSession.ILocal getGlobalConfigurationSession() {
+        return globalconfigsession;
+    }
 }

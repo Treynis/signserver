@@ -1,36 +1,24 @@
-SignServer 4.0.0
+SignServer 3.7.4
 ----------------
 
+New feature:
+ - Support for qcStatements extension for Qualified Electronic Time-stamps
 
-Notice:
- - Database changes were introduced. See UPGRADE.txt for details.
- - The way to specify a worker's implementation class name in properties form
-   has changed. Previously it was specified as:
-   GLOB.WORKER4711.CLASSPATH=org.signserver.module.pdfsigner.PDFSigner
-   But now it should be specified as a worker property:
-   WORKER4711.IMPLEMENTATION_CLASS=org.signserver.module.pdfsigner.PDFSigner
-   Exported configurations might have to be adapted.
-   SignServer will try to upgrade existing configurations during startup.
- - Each worker configuration should now contain a worker property TYPE,
-   specifying the type of worker such as UNKNOWN, PROCESSABLE, TIMED_SERVICE,
-   SPECIAL or CRYPTO_WORKER.
-   Existing workers will get this worker property populated during the startup.
-   See UPGRADE.txt.
- - Previously deprecated crypto token implementations has been removed: 
-   SoftCryptoToken, HardCodedCryptoToken, OldPKCS11CryptoToken, and
-   PrimeCardHSMCryptoToken.
-   For SoftCryptoToken and HardCodedCryptoToken, used for demonstration purposes,
-   use KeystoreCryptoToken with the supplied sample configuration.
-   For OldPKCS11CryptoToken, configurations should be upgraded to use
-   PKCS11CryptoToken.
- - The TimeStampSigner now generates RFC 5816-compliant time stamps with the
-   ESSCertIDv2 attribute. To get the old behaviour, specify SHA1 as the certificate
-   digest algorithm, using the new CERTIFICATE_DIGEST_ALGORITHM worker property.
+Improvement:
+ - More reliable calculation of free memory in Health Check
 
-See ChangeLog.txt for the full list of changes.
+Bug fixes:
+ - Fixed issue with PostgreSQL
+ - Fixed archive querying when running the GUI locally
+ - A few documentation and sample configuration fixes
+
 
 SignServer 3.7.3
 ----------------
+
+New features:
+ - Added auto-renewal timed service.
+ - Option to specify options for self-signed certificates.
 
 Notice:
  - The renewsigner admin CLI command will no longer prompt for an authcode when
@@ -97,7 +85,7 @@ New features:
 Improvements:
 
 Bug fixes:
- - Crypto token operations in the administration GUI no requires clicking
+ - Crypto token operations in the administration GUI does not require clicking
    outside of the last edited input field to be able to performe the action
    (i.e. when generating keys).
 

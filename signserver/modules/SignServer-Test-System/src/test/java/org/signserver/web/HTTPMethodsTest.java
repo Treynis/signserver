@@ -39,7 +39,6 @@ public class HTTPMethodsTest extends WebTestCase {
 	}
 
 	@Before
-        @Override
 	public void setUp() throws Exception {
 		// set up dummy signer
 		addDummySigner1(true);
@@ -47,7 +46,6 @@ public class HTTPMethodsTest extends WebTestCase {
 	}
 
 	@After
-        @Override
 	public void tearDown() throws Exception {
 		// remove dummy signer
 		removeWorker(getSignerIdDummy1());
@@ -58,7 +56,7 @@ public class HTTPMethodsTest extends WebTestCase {
      */
     @Test
     public void test01HttpPUT() throws Exception {
-        final Map<String, String> fields = new HashMap<>();
+        final Map<String, String> fields = new HashMap<String, String>();
         fields.put("data", "<root/>");
         final int actual = queryStatusReturned(fields, "PUT");
         assertTrue("status returned: " + actual, actual == 403 || actual == 405);
@@ -69,7 +67,7 @@ public class HTTPMethodsTest extends WebTestCase {
      */
     @Test
     public void test02HttpDELETE() throws Exception {
-        final Map<String, String> fields = new HashMap<>();
+        final Map<String, String> fields = new HashMap<String, String>();
         fields.put("data", "<root/>");
         final int actual = queryStatusReturned(fields, "DELETE");
         assertTrue("status returned: " + actual, actual == 403 || actual == 405);
@@ -81,7 +79,7 @@ public class HTTPMethodsTest extends WebTestCase {
 	 */
     @Test
 	public void test03HttpOPTIONS() {
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 
 		assertStatusReturned(fields, "OPTIONS", 403);
@@ -94,7 +92,7 @@ public class HTTPMethodsTest extends WebTestCase {
 	 */
     @Test
 	public void test04HttpTRACE() {
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		useProcess = false;
 		
 		assertStatusReturnedNotEqual(fields, "TRACE", 200);

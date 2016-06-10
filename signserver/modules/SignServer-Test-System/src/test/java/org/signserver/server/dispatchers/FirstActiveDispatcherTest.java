@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.PrivateKey;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
@@ -32,16 +31,16 @@ import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.*;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.testutils.ModulesTestCase;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.test.utils.builders.CertBuilder;
 import org.signserver.test.utils.builders.CryptoUtils;
-import org.signserver.ejb.interfaces.WorkerSession;
 
 /**
  * Tests for the FirstActiveDispatcher.
@@ -70,11 +69,9 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
      */
     private static final String DUMMY_AUTH_CODE = "1234";
     
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     @Before
-    @Override
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
     }
@@ -82,7 +79,7 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
     @Test
     public void test00SetupDatabase() throws Exception {
         Properties conf = new Properties();
-        conf.setProperty("WORKER" + WORKERID_DISPATCHER + ".IMPLEMENTATION_CLASS", "org.signserver.server.dispatchers.FirstActiveDispatcher");
+        conf.setProperty("GLOB.WORKER" + WORKERID_DISPATCHER + ".CLASSPATH", "org.signserver.server.dispatchers.FirstActiveDispatcher");
         conf.setProperty("WORKER" + WORKERID_DISPATCHER + ".NAME", "FirstActiveDispatcher80");
         conf.setProperty("WORKER" + WORKERID_DISPATCHER + ".AUTHTYPE", "NOAUTH");
         conf.setProperty("WORKER" + WORKERID_DISPATCHER + ".WORKERS", "TestXMLSigner81,TestXMLSigner82, TestXMLSigner83");
@@ -94,9 +91,9 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
         // Setup signers with different certificates
         addDummySigner(WORKERID_1, WORKERNAME_1, true);
         addCertificate(issuerKeyPair.getPrivate(), WORKERID_1, WORKERNAME_1);
-        addDummySigner(WORKERID_2, WORKERNAME_2, true);
+        addDummySigner(WORKERID_2, "TestXMLSigner82", true);
         addCertificate(issuerKeyPair.getPrivate(), WORKERID_2, WORKERNAME_2);
-        addDummySigner(WORKERID_3, WORKERNAME_3, true);
+        addDummySigner(WORKERID_3, "TestXMLSigner83", true);
         addCertificate(issuerKeyPair.getPrivate(), WORKERID_3, WORKERNAME_3);
     }
     
@@ -140,7 +137,7 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
     public void test01Dispatched() throws Exception {
         LOG.info("test01Dispatched");
         try {
-            final RemoteRequestContext context = new RemoteRequestContext();
+            final RequestContext context = new RequestContext();
     
             final GenericSignRequest request =
                     new GenericSignRequest(1, "<root/>".getBytes());
@@ -150,7 +147,7 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
             setDispatchedAuthorizerForAllWorkers();
             
             // Send request to dispatcher
-            res = (GenericSignResponse) processSession.process(new WorkerIdentifier(WORKERID_DISPATCHER),
+            res = (GenericSignResponse) workerSession.process(WORKERID_DISPATCHER,
                     request, context);
             
             X509Certificate cert = (X509Certificate) res.getSignerCertificate();
@@ -164,7 +161,7 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
             workerSession.reloadConfiguration(WORKERID_1);
     
             // Send request to dispatcher
-            res = (GenericSignResponse) processSession.process(new WorkerIdentifier(WORKERID_DISPATCHER),
+            res = (GenericSignResponse) workerSession.process(WORKERID_DISPATCHER,
                     request, context);
     
             cert = (X509Certificate) res.getSignerCertificate();
@@ -177,7 +174,7 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
             workerSession.reloadConfiguration(WORKERID_3);
     
             // Send request to dispatcher
-            res = (GenericSignResponse) processSession.process(new WorkerIdentifier(WORKERID_DISPATCHER),
+            res = (GenericSignResponse) workerSession.process(WORKERID_DISPATCHER,
                     request, context);
     
             cert = (X509Certificate) res.getSignerCertificate();
@@ -190,7 +187,7 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
     
             // Send request to dispatcher
             try {
-                processSession.process(new WorkerIdentifier(WORKERID_DISPATCHER), request, context);
+                workerSession.process(WORKERID_DISPATCHER, request, context);
                 fail("Should have got CryptoTokenOfflineException");
             } catch(CryptoTokenOfflineException ex) {
                 // OK
@@ -201,7 +198,7 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
             workerSession.reloadConfiguration(WORKERID_1);
     
             // Send request to dispatcher
-            res = (GenericSignResponse) processSession.process(new WorkerIdentifier(WORKERID_DISPATCHER),
+            res = (GenericSignResponse) workerSession.process(WORKERID_DISPATCHER,
                     request, context);
     
             cert = (X509Certificate) res.getSignerCertificate();
@@ -222,7 +219,7 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
     public void test02Activate() throws Exception {
         LOG.info("test02Activate");
     	try {
-    		workerSession.activateSigner(new WorkerIdentifier(WORKERID_DISPATCHER), DUMMY_AUTH_CODE);
+    		workerSession.activateSigner(WORKERID_DISPATCHER, DUMMY_AUTH_CODE);
     	} catch (Exception e) {
     		LOG.error("Exception thrown", e);
     		fail("Failed to activate the dispatcher");
@@ -237,7 +234,7 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
     public void test03Deactivate() throws Exception {
         LOG.info("test03Deactivate");
     	try {
-    		workerSession.deactivateSigner(new WorkerIdentifier(WORKERID_DISPATCHER));
+    		workerSession.deactivateSigner(WORKERID_DISPATCHER);
     	} catch (Exception e) {
     		LOG.error("Exception thrown", e);
     		fail("Failed to deactive the dispatcher");
@@ -254,13 +251,10 @@ public class FirstActiveDispatcherTest extends ModulesTestCase {
     }
 
     private void addCertificate(PrivateKey issuerPrivateKey, int workerId, String workerName) throws CryptoTokenOfflineException, InvalidWorkerIdException, IOException, CertificateException, OperatorCreationException {
-        Base64SignerCertReqData reqData = (Base64SignerCertReqData) workerSession.getCertificateRequest(new WorkerIdentifier(workerId), new PKCS10CertReqInfo("SHA1withRSA", "CN=" + workerName, null), false);
+        Base64SignerCertReqData reqData = (Base64SignerCertReqData) workerSession.getCertificateRequest(workerId, new PKCS10CertReqInfo("SHA1withRSA", "CN=" + workerName, null), false);
         PKCS10CertificationRequest csr = new PKCS10CertificationRequest(Base64.decode(reqData.getBase64CertReq()));
         X509CertificateHolder cert = new X509v3CertificateBuilder(new X500Name("CN=Issuer"), BigInteger.ONE, new Date(), new Date(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(365)), csr.getSubject(), csr.getSubjectPublicKeyInfo()).build(new JcaContentSignerBuilder("SHA256WithRSA").setProvider("BC").build(issuerPrivateKey));
-        X509Certificate certificate = new JcaX509CertificateConverter().getCertificate(cert);
-
-        workerSession.setWorkerProperty(workerId, "SIGNERCERTCHAIN",
-                new String(CertTools.getPemFromCertificateChain(Arrays.asList((Certificate) certificate))));
+        workerSession.setWorkerProperty(workerId, "SIGNERCERTCHAIN", new String(CertTools.getPEMFromCerts(Arrays.asList(new JcaX509CertificateConverter().getCertificate(cert)))));
         workerSession.reloadConfiguration(workerId);
     }
 

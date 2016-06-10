@@ -134,7 +134,7 @@ public class ViewCertificateFrame extends javax.swing.JFrame {
         }
         fingerprintLabel.setText(fingerprint);
 
-        usages = new ArrayList<>();
+        usages = new ArrayList<String>();
         boolean[] keyUsages = certificate.getKeyUsage();
         if (keyUsages != null) {
             // digitalSignature        (0),
@@ -557,15 +557,15 @@ private void exportButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
                     BufferedOutputStream out = null;
                     try {
                         out = new BufferedOutputStream(new FileOutputStream(file));
-                        try (PEMWriter pemWriter = new PEMWriter(new OutputStreamWriter(out))) {
-                            if (chooser.getFileFilter() == pemFilter) {
-                                pemWriter.writeObject(certificate);
-                            } else {
-                                for (X509Certificate cert : certificates) {
-                                    pemWriter.writeObject(cert);
-                                }
+                        PEMWriter pemWriter = new PEMWriter(new OutputStreamWriter(out));
+                        if (chooser.getFileFilter() == pemFilter) {
+                            pemWriter.writeObject(certificate);
+                        } else {
+                            for (X509Certificate cert : certificates) {
+                                pemWriter.writeObject(cert);
                             }
                         }
+                        pemWriter.close();
                     } finally {
                         IOUtils.closeQuietly(out);
                     }
@@ -587,7 +587,7 @@ private void exportButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
             fields = null;
             
         } else {
-            fields = new ArrayList<>();
+            fields = new ArrayList<Field>();
 
             fields.add(new Field("Version",
                     String.valueOf(certificate.getVersion())));

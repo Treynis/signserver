@@ -42,7 +42,7 @@ public class RequestContext implements Serializable {
      */
     public static String METADATA_PDFPASSWORD = "pdfPassword";
 
-    private HashMap<String, Object> context = new HashMap<>();
+    private HashMap<String, Object> context = new HashMap<String, Object>();
     
     /**
      * Used to fetch the client certificate used for the request if there exists any, otherwise is
@@ -260,7 +260,7 @@ public class RequestContext implements Serializable {
         final RequestContext newContext = new RequestContext();
         
         newContext.services = services;
-        newContext.context = new HashMap<>();
+        newContext.context = new HashMap<String, Object>();
         
         for (final String key : context.keySet()) {
             final Object value = context.get(key);

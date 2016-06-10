@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer-Modules</artifactId>
-        <version>4.0.0-SNAPSHOT</version>
+        <version>3.7.4-pk1</version>
     </parent>
     <artifactId>SignServer-Test-P11</artifactId>
     <name>SignServer-Test-P11</name>
@@ -17,19 +17,28 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <version>4.11</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>commons-lang</groupId>
             <artifactId>commons-lang</artifactId>
+            <version>2.4</version>
         </dependency>
         <dependency>
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
+            <version>1.2.14</version>
         </dependency>
         <dependency>
-            <groupId>org.ejbca.cesecore</groupId>
+            <groupId>org.cesecore</groupId>
             <artifactId>cesecore-common</artifactId>
+            <version>6.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>SignServer-Lib-EJBCA-Util</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -37,8 +46,9 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.openejb</groupId>
+            <groupId>javax</groupId>
             <artifactId>javaee-api</artifactId>
+            <version>6.0</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -47,6 +57,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.16</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
                 </configuration>
@@ -54,6 +65,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
+                <version>2.3.2</version>
                 <executions>
                     <execution>
                         <id>create-test-jar</id>
@@ -82,3 +94,4 @@
         </resources>
     </build>
 </project>
+

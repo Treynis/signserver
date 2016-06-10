@@ -20,7 +20,7 @@ import javax.persistence.EntityManager;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.Validation;
 
 /**
@@ -45,9 +45,10 @@ public interface IValidator {
      * @param props a subset of the worker properties only containing this validators properties, 
      * for instance worker1.val1.propkey will show up as property key 'propkey' in this properies
      * @param em reference to the entity manager
+     * @param ct the extended crypto token used by the validation service.
      * @throws SignServerException if unexpected error occurred during initialization.
      */
-    void init(int workerId, int validatorId, Properties props, EntityManager em) throws SignServerException;
+    void init(int workerId, int validatorId, Properties props, EntityManager em, ICryptoToken ct) throws SignServerException;
 
     /**
      * Main method of a Validation Service responsible for validating certificates.

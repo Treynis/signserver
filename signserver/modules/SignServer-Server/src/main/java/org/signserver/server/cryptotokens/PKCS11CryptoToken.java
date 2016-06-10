@@ -76,7 +76,7 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
     private static final Logger LOG = Logger.getLogger(PKCS11CryptoToken.class);
 
     private final KeyStorePKCS11CryptoToken delegate;
-
+    
     /** Our worker cache entry name. */
     private static final String WORKERCACHE_ENTRY = "PKCS11CryptoToken.CRYPTO_INSTANCE";
 
@@ -247,17 +247,25 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
                     throw new CryptoTokenInitializationFailureException("Incorrect value for " + CryptoTokenHelper.PROPERTY_KEYGENERATIONLIMIT + ": " + ex.getLocalizedMessage());
                 }
             }
-        } catch (org.cesecore.keys.token.CryptoTokenOfflineException | NumberFormatException ex) {
+        } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
             LOG.error("Init failed", ex);
             throw new CryptoTokenInitializationFailureException(ex.getMessage());
         } catch (NoSuchSlotException ex) {
             LOG.error("Slot not found", ex);
+            throw new CryptoTokenInitializationFailureException(ex.getMessage());
+        } catch (NumberFormatException ex) {
+            LOG.error("Init failed", ex);
             throw new CryptoTokenInitializationFailureException(ex.getMessage());
         }
     }
 
     @Override
     public int getCryptoTokenStatus(IServices services) {
+        return getCryptoTokenStatus();
+    }
+
+    @Override
+    public int getCryptoTokenStatus() {
         int result = delegate.getTokenStatus();
 
         if (result == WorkerStatus.STATUS_ACTIVE) {
@@ -279,7 +287,15 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
                         }
                     }
                 }
-            } catch (org.cesecore.keys.token.CryptoTokenOfflineException | NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | SignatureException ex) {
+            } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
+                LOG.error("Error testing activation", ex);
+            } catch (NoSuchAlgorithmException ex) {
+                LOG.error("Error testing activation", ex);
+            } catch (NoSuchProviderException ex) {
+                LOG.error("Error testing activation", ex);
+            } catch (InvalidKeyException ex) {
+                LOG.error("Error testing activation", ex);
+            } catch (SignatureException ex) {
                 LOG.error("Error testing activation", ex);
             }
         }
@@ -288,7 +304,7 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
     }
 
     @Override
-    public void activate(String authenticationcode, IServices services) throws CryptoTokenAuthenticationFailureException, CryptoTokenOfflineException {
+    public void activate(String authenticationcode) throws CryptoTokenAuthenticationFailureException, CryptoTokenOfflineException {
         try {
             delegate.activate(authenticationcode.toCharArray());
         } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
@@ -308,12 +324,30 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
     }
 
     @Override
-    public boolean deactivate(IServices services) throws CryptoTokenOfflineException {
+    public boolean deactivate() throws CryptoTokenOfflineException {
         delegate.deactivate();
         return true;
     }
 
-    private PrivateKey getPrivateKey(String alias) throws CryptoTokenOfflineException {
+    @Override
+    public PrivateKey getPrivateKey(int purpose) throws CryptoTokenOfflineException {
+        final PrivateKey result;
+        if (purpose == ICryptoToken.PURPOSE_NEXTKEY) {
+            result = getPrivateKey(nextKeyAlias);
+        } else {
+            result = getPrivateKey(keyAlias);
+        }
+        return result;
+    }
+
+    @Override
+    public PublicKey getPublicKey(int purpose) throws CryptoTokenOfflineException {
+        final String alias = purpose == ICryptoToken.PURPOSE_NEXTKEY ? nextKeyAlias : keyAlias;
+        return getPublicKey(alias);
+    }
+
+    @Override
+    public PrivateKey getPrivateKey(String alias) throws CryptoTokenOfflineException {
         try {
             return delegate.getPrivateKey(alias);
         } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
@@ -321,15 +355,53 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
         }
     }
 
-    private String getProvider(int providerUsage) {
+    @Override
+    public PublicKey getPublicKey(String alias) throws CryptoTokenOfflineException {
+        try {
+            return delegate.getPublicKey(alias);
+        } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        }
+    }
+
+    @Override
+    public String getProvider(int providerUsage) {
         return delegate.getSignProviderName();
     }
 
-    private List<Certificate> getCertificateChain(String alias) throws CryptoTokenOfflineException {
+    @Override
+    public Certificate getCertificate(int purpose) throws CryptoTokenOfflineException {
+        final String alias = purpose == ICryptoToken.PURPOSE_NEXTKEY ? nextKeyAlias : keyAlias;
+        return getCertificate(alias);
+    }
+
+    @Override
+    public List<Certificate> getCertificateChain(int purpose) throws CryptoTokenOfflineException {
+        final String alias = purpose == ICryptoToken.PURPOSE_NEXTKEY ? nextKeyAlias : keyAlias;
+        return getCertificateChain(alias);
+    }
+
+    @Override
+    public Certificate getCertificate(String alias) throws CryptoTokenOfflineException {
+        try {
+            Certificate result = delegate.getActivatedKeyStore().getCertificate(alias);
+            
+            // Do not return the dummy certificate
+            if (CryptoTokenHelper.isDummyCertificate(result)) {
+                result = null;
+            }
+            return result;
+        } catch (KeyStoreException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        }
+    }
+
+    @Override
+    public List<Certificate> getCertificateChain(String alias) throws CryptoTokenOfflineException {
         try {
             final List<Certificate> result;
             final Certificate[] certChain = delegate.getActivatedKeyStore().getCertificateChain(alias);
-            if (certChain == null) {
+            if (certChain == null || (certChain.length == 1 && CryptoTokenHelper.isDummyCertificate(certChain[0]))) {
                 result = null;
             } else {
                 result = Arrays.asList(certChain);
@@ -342,14 +414,30 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
 
     @Override
     public ICertReqData genCertificateRequest(ISignerCertReqInfo info,
-            final boolean explicitEccParameters, String alias, IServices services)
+            final boolean explicitEccParameters, boolean defaultKey)
+            throws CryptoTokenOfflineException {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("defaultKey: " + defaultKey);
+        }
+        final String alias;
+        if (defaultKey) {
+            alias = keyAlias;
+        } else {
+            alias = nextKeyAlias;
+        }
+        return genCertificateRequest(info, explicitEccParameters, alias);
+    }
+
+    @Override
+    public ICertReqData genCertificateRequest(ISignerCertReqInfo info,
+            final boolean explicitEccParameters, String alias)
             throws CryptoTokenOfflineException {
         if (LOG.isDebugEnabled()) {
             LOG.debug(">genCertificateRequest CESeCorePKCS11CryptoToken");
             LOG.debug("alias: " + alias);
         }
         try {
-            return CryptoTokenHelper.genCertificateRequest(info, delegate.getPrivateKey(alias), getProvider(ICryptoTokenV4.PROVIDERUSAGE_SIGN), delegate.getPublicKey(alias), explicitEccParameters);
+            return CryptoTokenHelper.genCertificateRequest(info, delegate.getPrivateKey(alias), getProvider(ICryptoToken.PROVIDERUSAGE_SIGN), delegate.getPublicKey(alias), explicitEccParameters);
         } catch (org.cesecore.keys.token.CryptoTokenOfflineException e) {
             LOG.error("Certificate request error: " + e.getMessage(), e);
             throw new CryptoTokenOfflineException(e);
@@ -361,15 +449,28 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
         }
     }
 
+    /**
+     * Method not supported.
+     */
     @Override
-    public boolean removeKey(String alias, IServices services) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
+    public boolean destroyKey(int purpose) {
+        return false;
+    }
+
+    @Override
+    public boolean removeKey(String alias) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
         return CryptoTokenHelper.removeKey(getKeyStore(), alias);
     }
 
     @Override
-    public Collection<KeyTestResult> testKey(String alias, char[] authCode, IServices services) throws CryptoTokenOfflineException, KeyStoreException {
+    public Collection<KeyTestResult> testKey(String alias, char[] authCode) throws CryptoTokenOfflineException, KeyStoreException {
         final KeyStore keyStore = delegate.getActivatedKeyStore();
         return CryptoTokenHelper.testKey(keyStore, alias, authCode, keyStore.getProvider().getName());
+    }
+    
+    @Override
+    public Collection<KeyTestResult> testKey(String alias, char[] authCode, IServices services) throws CryptoTokenOfflineException, KeyStoreException {
+        return testKey(alias, authCode);
     }
 
     @Override
@@ -377,6 +478,11 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
         return delegate.getActivatedKeyStore();
     }
 
+    @Override
+    public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode) throws TokenOutOfSpaceException, CryptoTokenOfflineException, IllegalArgumentException {
+        generateKey(keyAlgorithm, keySpec, alias, authCode, null, null);
+    }
+    
     @Override
     public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode, Map<String, Object> params, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
         if (keySpec == null) {
@@ -418,12 +524,33 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
             } else {
                 delegate.generateKeyPair(keySpec, alias);
             }
-            
+         
             if (params != null) {
                 final KeyStore ks = delegate.getActivatedKeyStore();
                 CryptoTokenHelper.regenerateCertIfWanted(alias, authCode, params, ks, ks.getProvider().getName());
             }
-        } catch (InvalidAlgorithmParameterException | org.cesecore.keys.token.CryptoTokenOfflineException | CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException | OperatorCreationException ex) {
+        } catch (InvalidAlgorithmParameterException ex) {
+            LOG.error(ex, ex);
+            throw new CryptoTokenOfflineException(ex);
+        } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
+            LOG.error(ex, ex);
+            throw new CryptoTokenOfflineException(ex);
+        } catch (CertificateException ex) {
+            LOG.error(ex, ex);
+            throw new CryptoTokenOfflineException(ex);
+        } catch (IOException ex) {
+            LOG.error(ex, ex);
+            throw new CryptoTokenOfflineException(ex);
+        } catch (KeyStoreException ex) {
+            LOG.error(ex, ex);
+            throw new CryptoTokenOfflineException(ex);
+        } catch (NoSuchAlgorithmException ex) {
+            LOG.error(ex, ex);
+            throw new CryptoTokenOfflineException(ex);
+        } catch (UnrecoverableKeyException ex) {
+            LOG.error(ex, ex);
+            throw new CryptoTokenOfflineException(ex);
+        } catch (OperatorCreationException ex) {
             LOG.error(ex, ex);
             throw new CryptoTokenOfflineException(ex);
         }
@@ -444,7 +571,13 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
 
             keyStore.setKeyEntry(alias, key, athenticationCode,
                                  certChain.toArray(new Certificate[0]));
-        } catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException ex) {
+        } catch (KeyStoreException ex) {
+            LOG.error(ex, ex);
+            throw new CryptoTokenOfflineException(ex);
+        } catch (NoSuchAlgorithmException ex) {
+            LOG.error(ex, ex);
+            throw new CryptoTokenOfflineException(ex);
+        } catch (UnrecoverableKeyException ex) {
             LOG.error(ex, ex);
             throw new CryptoTokenOfflineException(ex);
         }
@@ -506,18 +639,19 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
             InvalidAlgorithmParameterException,
             UnsupportedCryptoTokenParameter,
             IllegalRequestException {
-        final PrivateKey privateKey = getPrivateKey(alias);
-        final List<Certificate> certificateChain = getCertificateChain(alias);
-        if (certificateChain.size() == 1 && CryptoTokenHelper.isDummyCertificate(certificateChain.get(0))) {
-            return new DefaultCryptoInstance(alias, context, delegate.getActivatedKeyStore().getProvider(), privateKey, certificateChain.get(0).getPublicKey());
-        } else {
+            final PrivateKey privateKey = getPrivateKey(alias);
+            final List<Certificate> certificateChain = getCertificateChain(alias);
             return new DefaultCryptoInstance(alias, context, delegate.getActivatedKeyStore().getProvider(), privateKey, certificateChain);
-        }
     }
 
     @Override
     public void releaseCryptoInstance(ICryptoInstance instance, RequestContext context) {
         // NOP
+    }
+
+    @Override
+    public ICertReqData genCertificateRequest(ISignerCertReqInfo info, boolean explicitEccParameters, String keyAlias, IServices services) throws CryptoTokenOfflineException {
+        return genCertificateRequest(info, explicitEccParameters, keyAlias);
     }
 
     private static class KeyStorePKCS11CryptoToken extends org.cesecore.keys.token.PKCS11CryptoToken {
@@ -528,7 +662,7 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
 
         public KeyStore getActivatedKeyStore() throws CryptoTokenOfflineException {
             try {
-                return getKeyStore().getKeyStore(); // TODO: Consider if we should instead use the CachingKeystoreWrapper
+                return getKeyStore();
             } catch (org.cesecore.keys.token.CryptoTokenOfflineException ex) {
                 throw new CryptoTokenOfflineException(ex);
             }

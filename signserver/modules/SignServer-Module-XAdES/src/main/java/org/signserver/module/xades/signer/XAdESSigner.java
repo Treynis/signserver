@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import javax.xml.crypto.dsig.SignatureMethod;
 import javax.xml.parsers.DocumentBuilder;
@@ -45,16 +46,15 @@ import org.signserver.common.GenericServletResponse;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GenericSignResponse;
 import org.signserver.common.ISignRequest;
+import org.signserver.common.ServiceLocator;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.InternalProcessSessionLocal;
-import org.signserver.server.IServices;
+import org.signserver.ejb.interfaces.IInternalWorkerSession;
 import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
@@ -165,12 +165,7 @@ public class XAdESSigner extends BaseSigner {
             ExtendedTimeStampTokenProvider.class;
     
     private TimeStampTokenProvider internalTimeStampTokenProvider;
-    private InternalProcessSessionLocal workerSession;
-    private WorkerIdentifier tsaWorker;
-    private DefaultMessageDigestProvider mdProvider;
-    private String tsaUrl;
-    private String tsaUsername;
-    private String tsaPassword;
+    private IInternalWorkerSession workerSession;
     
     /** 
      * Electronic signature forms defined in ETSI TS 101 903 V1.4.1 (2009-06)
@@ -214,7 +209,7 @@ public class XAdESSigner extends BaseSigner {
         LOG.trace(">init");
         
         // Configuration errors
-        configErrors = new LinkedList<>();
+        configErrors = new LinkedList<String>();
         
         // PROPERTY_XADESFORM
         Profiles form = null;
@@ -228,12 +223,12 @@ public class XAdESSigner extends BaseSigner {
         // PROPERTY_TSA_URL, PROPERTY_TSA_USERNAME, PROPERTY_TSA_PASSWORD, PROPERTY_TSA_WORKER
         TSAParameters tsa = null;
         if (form == Profiles.T) {
-            tsaUrl = config.getProperties().getProperty(PROPERTY_TSA_URL);
-            tsaUsername = config.getProperties().getProperty(PROPERTY_TSA_USERNAME);
-            tsaPassword = config.getProperties().getProperty(PROPERTY_TSA_PASSWORD);
-            final String tsaWorkerName = config.getProperties().getProperty(PROPERTY_TSA_WORKER);
+            final String tsaUrl = config.getProperties().getProperty(PROPERTY_TSA_URL);
+            final String tsaUsername = config.getProperties().getProperty(PROPERTY_TSA_USERNAME);
+            final String tsaPassword = config.getProperties().getProperty(PROPERTY_TSA_PASSWORD);
+            final String tsaWorker = config.getProperties().getProperty(PROPERTY_TSA_WORKER);
             
-            if (tsaUrl == null && tsaWorkerName == null) {
+            if (tsaUrl == null && tsaWorker == null) {
                 configErrors.add("Property " + PROPERTY_TSA_URL + " or " + PROPERTY_TSA_WORKER + " are required when " + PROPERTY_XADESFORM + " is " + Profiles.T);
             } else {
                 if (tsaUrl != null) {
@@ -241,13 +236,12 @@ public class XAdESSigner extends BaseSigner {
                     tsa = new TSAParameters(tsaUrl, tsaUsername, tsaPassword);
                 } else {
                     // Use worker name/ID of internal TSA
-                    this.tsaWorker = WorkerIdentifier.createFromIdOrName(tsaWorkerName.trim());
                     try {
-                        this.mdProvider = new DefaultMessageDigestProvider("BC");
+                        internalTimeStampTokenProvider = new InternalTimeStampTokenProvider(new DefaultMessageDigestProvider("BC"), getWorkerSession(), tsaWorker, tsaUsername, tsaPassword);
                     } catch (NoSuchProviderException ex) {
                         configErrors.add("No such message digest provider: " + ex.getMessage());
-                    }
-                }
+            }
+        }
             }
         }
         
@@ -259,7 +253,7 @@ public class XAdESSigner extends BaseSigner {
         // TODO: Other configuration options
         final String commitmentTypesProperty = config.getProperties().getProperty(PROPERTY_COMMITMENT_TYPES);
         
-        commitmentTypes = new LinkedList<>();
+        commitmentTypes = new LinkedList<AllDataObjsCommitmentTypeProperty>();
         
         if (commitmentTypesProperty != null) {
             if ("".equals(commitmentTypesProperty)) {
@@ -343,15 +337,13 @@ public class XAdESSigner extends BaseSigner {
             throw new SignServerException("Received a request with no user name set, while configured to get claimed role from user name and no default value for claimed role is set.");
         }
         
-        Certificate cert = null;
         ICryptoInstance crypto = null;
         try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
 
             // Parse
             final XadesSigner signer =
                     createSigner(crypto, parameters, claimedRole, signRequest, requestContext);
-            cert = crypto.getCertificate();
             final DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             dbf.setNamespaceAware(true);
 
@@ -388,7 +380,9 @@ public class XAdESSigner extends BaseSigner {
 
         } catch (SAXException ex) {
             throw new IllegalRequestException("Document parsing error", ex);
-        } catch (IOException | ParserConfigurationException ex) {
+        } catch (IOException ex) {
+            throw new SignServerException("Document parsing error", ex);
+        } catch (ParserConfigurationException ex) {
             throw new SignServerException("Document parsing error", ex);
         } catch (XadesProfileResolutionException ex) {
             throw new SignServerException("Exception in XAdES profile resolution", ex);
@@ -405,10 +399,12 @@ public class XAdESSigner extends BaseSigner {
         final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
         if (signRequest instanceof GenericServletRequest) {
             response = new GenericServletResponse(sReq.getRequestID(), signedbytes,
-                    cert, archiveId, archivables, CONTENT_TYPE);
+                    getSigningCertificate(signRequest, requestContext),
+                    archiveId, archivables, CONTENT_TYPE);
         } else {
             response = new GenericSignResponse(sReq.getRequestID(), signedbytes,
-                    cert, archiveId, archivables);
+                    getSigningCertificate(signRequest, requestContext),
+                    archiveId, archivables);
         }
         
         // The client can be charged for the request
@@ -438,7 +434,7 @@ public class XAdESSigner extends BaseSigner {
             throws SignServerException, XadesProfileResolutionException,
                    CryptoTokenOfflineException, IllegalRequestException {
         // Setup key and certificiates
-        final List<X509Certificate> xchain = new LinkedList<>();
+        final List<X509Certificate> xchain = new LinkedList<X509Certificate>();
         final List<Certificate> chain = this.getSigningCertificateChain(crypto);
         if (chain == null) {
             throw new CryptoTokenOfflineException("No certificate chain");
@@ -461,13 +457,13 @@ public class XAdESSigner extends BaseSigner {
             case T:
                 // add timestamp token provider
                 xsp = new XadesTSigningProfile(kdp);
-                if (tsaUrl != null) {
+                if (internalTimeStampTokenProvider == null) {
                     // Use URL to external TSA
                     xsp = xsp.withTimeStampTokenProvider(timeStampTokenProviderImplementation)
                             .withBinding(TSAParameters.class, params.getTsaParameters());
                 } else {
                     // Use internal TSA
-                    xsp = xsp.withTimeStampTokenProvider(new InternalTimeStampTokenProvider(mdProvider, context.getServices().get(InternalProcessSessionLocal.class), tsaWorker, tsaUsername, tsaPassword));
+                    xsp = xsp.withTimeStampTokenProvider(internalTimeStampTokenProvider);
                 }
 
                 break;
@@ -495,8 +491,8 @@ public class XAdESSigner extends BaseSigner {
     }
 
     @Override
-    protected List<String> getFatalErrors(final IServices services) {
-        final LinkedList<String> errors = new LinkedList<>(super.getFatalErrors(services));
+    protected List<String> getFatalErrors() {
+        final LinkedList<String> errors = new LinkedList<String>(super.getFatalErrors());
         errors.addAll(configErrors);
         return errors;
     }
@@ -591,7 +587,16 @@ public class XAdESSigner extends BaseSigner {
         }
     }
 
-    protected InternalProcessSessionLocal getProcessSession(RequestContext requestContext) {
-        return requestContext.getServices().get(InternalProcessSessionLocal.class);
+    protected IInternalWorkerSession getWorkerSession() {
+        if (workerSession == null) {
+            try {
+                workerSession = ServiceLocator.getInstance().lookupLocal(
+                    IInternalWorkerSession.class);
+            } catch (NamingException ex) {
+                throw new RuntimeException("Unable to lookup worker session",
+                        ex);
+            }
+        }
+        return workerSession;
     }
 }

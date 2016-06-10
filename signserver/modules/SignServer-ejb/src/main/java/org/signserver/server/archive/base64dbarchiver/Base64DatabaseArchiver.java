@@ -30,12 +30,10 @@ import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.ArchiveException;
 import org.signserver.server.archive.Archiver;
 import org.signserver.server.archive.ArchiverInitException;
-import org.signserver.server.archive.BaseArchiver;
 import org.signserver.server.archive.olddbarchiver.ArchiveOfTypes;
 import org.signserver.server.archive.olddbarchiver.entities.ArchiveDataService;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 
 /**
  * Archiver archiving to the database table ArchiveData with the archived bytes
@@ -46,8 +44,8 @@ import org.signserver.server.log.Loggable;
  * @author Markus Kilås
  * @version $Id$
  */
-public class Base64DatabaseArchiver extends BaseArchiver implements Archiver {
-
+public class Base64DatabaseArchiver implements Archiver {
+    
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(Base64DatabaseArchiver.class);
     
@@ -66,7 +64,7 @@ public class Base64DatabaseArchiver extends BaseArchiver implements Archiver {
     @Override
     public void init(int listIndex, WorkerConfig config, SignServerContext context) throws ArchiverInitException {
         if (!context.isDatabaseConfigured()) {
-            addFatalError("Base64DatabaseArchiver requires a database connection.");
+            throw new ArchiverInitException("Base64DatabaseArchiver requires a database connection");
         }
         
         // Configuration of what to archive
@@ -74,13 +72,10 @@ public class Base64DatabaseArchiver extends BaseArchiver implements Archiver {
         try {
             archiveOfTypes = ArchiveOfTypes.valueOf(config.getProperty(propertyArchiveOfType, ArchiveOfTypes.RESPONSE.name()));
         } catch (IllegalArgumentException ex) {
-            final String error =
-                    "Illegal value for worker property " + propertyArchiveOfType;
             if (LOG.isDebugEnabled()) {
-                LOG.debug(error + ": " + ex.getMessage());
+                LOG.debug("Illegal value for worker property " + propertyArchiveOfType + ": " + ex.getMessage());
             }
-
-            addFatalError(error);
+            throw new ArchiverInitException("Illegal value for worker property " + propertyArchiveOfType);
         }
         
         // configuration for using the X-FORWARDED-FOR header to determine source IP
@@ -124,7 +119,7 @@ public class Base64DatabaseArchiver extends BaseArchiver implements Archiver {
             final String uniqueId;
             
             if (useXForwardedFor) {
-                final List<String> ips = new LinkedList<>();
+                final List<String> ips = new LinkedList<String>();
                 final String[] forwardedIps =
                         XForwardedForUtils.getXForwardedForIPs(requestContext, maxForwardedAddresses);
                 
@@ -153,24 +148,15 @@ public class Base64DatabaseArchiver extends BaseArchiver implements Archiver {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Archived with uniqueId: " + uniqueId);
             }
-
-            final LogMap logMap = LogMap.getInstance(requestContext);
-            final Loggable loggable = logMap.get(IWorkerLogger.LOG_ARCHIVE_IDS);
-
-            logMap.put(IWorkerLogger.LOG_ARCHIVE_IDS, new Loggable() {
-                @Override
-                public String logValue() {
-                    final String ids;
-                    
-                    if (loggable == null) {
-                        ids = uniqueId;
-                    } else {
-                        ids = loggable.logValue() + ", " + uniqueId;
-                    }
-                    return ids;
-                }
-            });
-
+            LogMap logMap = LogMap.getInstance(requestContext);
+            String ids = logMap.get(IWorkerLogger.LOG_ARCHIVE_IDS);
+            if (ids == null) {
+                ids = uniqueId;
+            } else {
+                ids = ids + ", " + uniqueId;
+            }
+            logMap.put(IWorkerLogger.LOG_ARCHIVE_IDS, ids);
+            
             archived = true;
         } else {
             archived = false;

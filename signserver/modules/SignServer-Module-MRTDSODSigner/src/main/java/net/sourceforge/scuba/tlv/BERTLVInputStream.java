@@ -217,7 +217,6 @@ public class BERTLVInputStream extends InputStream
 	 * 
 	 * @throws IOException if reading goes wrong
 	 */
-        @Override
 	public int read() throws IOException {
 		int result = in.read();
 		if (result < 0) { return -1; }
@@ -323,7 +322,7 @@ public class BERTLVInputStream extends InputStream
 		 */
 		
 		public State() {
-			state = new Stack<>();
+			state = new Stack<TLStruct>();
 			isAtStartOfTag = true;
 			isAtStartOfLength = false;
 			isReadingValue = false;

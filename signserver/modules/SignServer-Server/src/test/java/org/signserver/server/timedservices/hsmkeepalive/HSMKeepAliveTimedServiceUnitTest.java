@@ -16,9 +16,8 @@ import java.util.Collections;
 import java.util.List;
 import junit.framework.TestCase;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerType;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.ServicesImpl;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
 
 /**
  * Unit test for the HSM keep alive timed service.
@@ -38,7 +37,12 @@ public class HSMKeepAliveTimedServiceUnitTest extends TestCase {
      */
     public void test01missingCryptoTokens() throws Exception {
        final HSMKeepAliveTimedService instance =
-               new HSMKeepAliveTimedService();
+               new HSMKeepAliveTimedService() {
+                    @Override
+                    IWorkerSession getWorkerSession() {
+                        return null;
+                    }
+               };
        
        instance.init(DUMMY_WORKERID, new WorkerConfig(), null, null);
        
@@ -56,9 +60,13 @@ public class HSMKeepAliveTimedServiceUnitTest extends TestCase {
      */
     public void test02emptyCryptoTokens() throws Exception {
         final HSMKeepAliveTimedService instance =
-               new HSMKeepAliveTimedService();
+               new HSMKeepAliveTimedService() {
+                   @Override
+                   IWorkerSession getWorkerSession() {
+                       return null;
+                   }
+               };
         final WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.TIMED_SERVICE.name());
         
         config.setProperty(HSMKeepAliveTimedService.CRYPTOTOKENS, "");
         instance.init(DUMMY_WORKERID, config, null, null);

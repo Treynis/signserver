@@ -34,6 +34,9 @@ import org.signserver.common.OperationUnsupportedException;
 import org.signserver.common.QueryException;
 import org.signserver.common.WorkerStatus;
 import org.signserver.common.DuplicateAliasException;
+import org.signserver.server.cryptotokens.ICryptoToken;
+import org.signserver.server.cryptotokens.ICryptoTokenV3;
+import org.signserver.server.cryptotokens.IKeyGenerator;
 import org.signserver.common.NoSuchAliasException;
 import org.signserver.server.cryptotokens.TokenSearchResults;
 import org.signserver.common.UnsupportedCryptoTokenParameter;
@@ -70,7 +73,7 @@ public interface IProcessable extends IWorker {
      *
      * @param authCode
      */
-    void activateSigner(String authCode, IServices services) throws
+    void activateSigner(String authCode) throws
             CryptoTokenAuthenticationFailureException, CryptoTokenOfflineException;
 
     /**
@@ -78,7 +81,7 @@ public interface IProcessable extends IWorker {
      *
      * Optional method, if not supported throw a CryptoTokenOfflineException
      */
-    boolean deactivateSigner(IServices services) throws CryptoTokenOfflineException;
+    boolean deactivateSigner() throws CryptoTokenOfflineException;
 
     /**
      * Method used to tell the processable worker to create a certificate request using its crypto token.
@@ -87,6 +90,20 @@ public interface IProcessable extends IWorker {
      */
     ICertReqData genCertificateRequest(ISignerCertReqInfo info,
             boolean explicitEccParameters, boolean defaultKey)
+            throws CryptoTokenOfflineException, NoSuchAliasException;
+
+    /**
+     * Generate a certificate request using the worker's crypto token, given
+     * a key alias.
+     * 
+     * @param info Certificate request info
+     * @param explicitEccParameters If explicit ECC parameters should be used
+     * @param keyAlias Key alias in crypto token
+     * @return Certificate request data
+     * @throws CryptoTokenOfflineException 
+     */
+    ICertReqData genCertificateRequest(ISignerCertReqInfo info,
+            boolean explicitEccParameters, String keyAlias)
             throws CryptoTokenOfflineException, NoSuchAliasException;
 
     ICertReqData genCertificateRequest(ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias, IServices services) throws CryptoTokenOfflineException, NoSuchAliasException;
@@ -99,7 +116,27 @@ public interface IProcessable extends IWorker {
      */
     String getAuthenticationType();
 
-    public boolean removeKey(String alias, IServices services) throws CryptoTokenOfflineException, KeyStoreException, SignServerException;
+    /**
+     * Method used to remove a key in the processable worker that shouldn't be used any more
+     *
+     * Optional method, if not supported return false.
+     *
+     * @param purpose on of ICryptoToken.PURPOSE_ constants
+     * @return true if removal was successful.
+     */
+    boolean destroyKey(int purpose);
+
+    /**
+     * @see IKeyGenerator#generateKey(java.lang.String, java.lang.String,
+     *  java.lang.String, char[])
+     */
+    void generateKey(String keyAlgorithm, String keySpec, String alias,
+            char[] authCode) throws
+            CryptoTokenOfflineException,
+            DuplicateAliasException, 
+            NoSuchAlgorithmException,
+            InvalidAlgorithmParameterException,
+            UnsupportedCryptoTokenParameter;;
 
     /**
      * @see ICryptoTokenV3#generateKey(java.lang.String, java.lang.String, java.lang.String, char[], java.util.Map, org.signserver.server.IServices) 
@@ -129,7 +166,7 @@ public interface IProcessable extends IWorker {
      * @see WorkerStatus#STATUS_ACTIVE
      * @see WorkerStatus#STATUS_OFFLINE
      */
-    int getCryptoTokenStatus(IServices services);
+    int getCryptoTokenStatus();
     
     /**
      * Import a signing certificate chain to the signer's crypto token.

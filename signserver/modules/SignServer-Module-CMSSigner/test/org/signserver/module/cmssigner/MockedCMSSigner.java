@@ -17,7 +17,7 @@ import java.util.List;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestContext;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.test.utils.mock.MockedCryptoToken;
 
 /**
@@ -37,18 +37,18 @@ public class MockedCMSSigner extends CMSSigner {
     public Certificate getSigningCertificate(final ProcessRequest request,
                                              final RequestContext context)
             throws CryptoTokenOfflineException {
-        return mockedToken.getCertificate(ICryptoTokenV4.PURPOSE_SIGN);
+        return mockedToken.getCertificate(ICryptoToken.PURPOSE_SIGN);
     }
 
     @Override
     public List<Certificate> getSigningCertificateChain(final ProcessRequest request,
                                                         final RequestContext context)
             throws CryptoTokenOfflineException {
-        return mockedToken.getCertificateChain(ICryptoTokenV4.PURPOSE_SIGN);
+        return mockedToken.getCertificateChain(ICryptoToken.PURPOSE_SIGN);
     }
 
     @Override
-    public ICryptoToken getCryptoToken(services) {
+    public ICryptoToken getCryptoToken() {
         return mockedToken;
     }
 

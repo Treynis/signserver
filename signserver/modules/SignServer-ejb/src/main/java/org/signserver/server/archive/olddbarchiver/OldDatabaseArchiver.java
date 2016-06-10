@@ -32,11 +32,9 @@ import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.ArchiveException;
 import org.signserver.server.archive.Archiver;
 import org.signserver.server.archive.ArchiverInitException;
-import org.signserver.server.archive.BaseArchiver;
 import org.signserver.server.archive.olddbarchiver.entities.ArchiveDataService;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 
 /**
  * Archiver only accepting responses and archiving to the database. 
@@ -44,7 +42,7 @@ import org.signserver.server.log.Loggable;
  * @author Markus Kilås
  * @version $Id$
  */
-public class OldDatabaseArchiver extends BaseArchiver implements Archiver {
+public class OldDatabaseArchiver implements Archiver {
     
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(OldDatabaseArchiver.class);
@@ -64,7 +62,7 @@ public class OldDatabaseArchiver extends BaseArchiver implements Archiver {
     @Override
     public void init(int listIndex, WorkerConfig config, SignServerContext context) throws ArchiverInitException {
         if (!context.isDatabaseConfigured()) {
-            addFatalError("OldDatabaseArchiver requires a database connection");
+            throw new ArchiverInitException("OldDatabaseArchiver requires a database connection");
         }
         
         // Configuration of what to archive
@@ -72,12 +70,10 @@ public class OldDatabaseArchiver extends BaseArchiver implements Archiver {
         try {
             archiveOfTypes = ArchiveOfTypes.valueOf(config.getProperty(propertyArchiveOfType, ArchiveOfTypes.RESPONSE.name()));
         } catch (IllegalArgumentException ex) {
-            final String error =
-                    "Illegal value for worker property " + propertyArchiveOfType;
             if (LOG.isDebugEnabled()) {
-                LOG.debug(error + ": " + ex.getMessage());
+                LOG.debug("Illegal value for worker property " + propertyArchiveOfType + ": " + ex.getMessage());
             }
-            addFatalError(error);
+            throw new ArchiverInitException("Illegal value for worker property " + propertyArchiveOfType);
         }
         
         // configuration for using the X-FORWARDED-FOR header to determine source IP
@@ -126,7 +122,7 @@ public class OldDatabaseArchiver extends BaseArchiver implements Archiver {
             String remoteIp = (String) requestContext.get(RequestContext.REMOTE_IP);
             
             if (useXForwardedFor) {
-                final List<String> ips = new LinkedList<>();
+                final List<String> ips = new LinkedList<String>();
                 final String[] forwardedIps =
                         XForwardedForUtils.getXForwardedForIPs(requestContext, maxForwardedAddresses);
                 
@@ -155,25 +151,15 @@ public class OldDatabaseArchiver extends BaseArchiver implements Archiver {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Archived with uniqueId: " + uniqueId);
             }
-
-            final LogMap logMap = LogMap.getInstance(requestContext);
-            final Loggable loggable = logMap.get(IWorkerLogger.LOG_ARCHIVE_IDS);
-
-            logMap.put(IWorkerLogger.LOG_ARCHIVE_IDS, new Loggable() {
-                @Override
-                public String logValue() {
-                    final String ids;
-
-                    if (loggable == null) {
-                        ids = uniqueId;
-                    } else {
-                        ids = loggable.logValue() + ", " + uniqueId;
-                    }
-                    
-                    return ids;
-                }
-            });
-
+            LogMap logMap = LogMap.getInstance(requestContext);
+            String ids = logMap.get(IWorkerLogger.LOG_ARCHIVE_IDS);
+            if (ids == null) {
+                ids = uniqueId;
+            } else {
+                ids = ids + ", " + uniqueId;
+            }
+            logMap.put(IWorkerLogger.LOG_ARCHIVE_IDS, ids);
+            
             archived = true;
         } else {
             archived = false;

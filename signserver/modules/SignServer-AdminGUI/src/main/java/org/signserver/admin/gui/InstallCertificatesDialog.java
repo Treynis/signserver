@@ -41,7 +41,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
 import javax.xml.ws.soap.SOAPFaultException;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.jdesktop.application.Action;
 import org.jdesktop.application.Application;
 import org.jdesktop.application.Task;
@@ -70,7 +70,7 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
     public static final int OK = 1;
 
     @SuppressWarnings("UseOfObsoleteCollectionType")
-    private static final Vector<String> COLUMN_NAMES = new Vector<>();
+    private static final Vector<String> COLUMN_NAMES = new Vector<String>();
     static {
         COLUMN_NAMES.add("Signer");
         COLUMN_NAMES.add("Key");
@@ -86,7 +86,7 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
     private JCheckBox installInTokenCheckbox = new JCheckBox();
     
     private Map<Integer, Utils.HardCodedAliasValue> savedAliases =
-            new HashMap<>();
+            new HashMap<Integer, Utils.HardCodedAliasValue>();
     
     final BrowseCellEditor editor;
     final AliasCellEditor aliasCellEditor;
@@ -114,16 +114,16 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
         
         initComponents();
 
-        data = new Vector<>();
+        data = new Vector<Vector<Object>>();
 
         if (worker != null) {
             setTitle("Install certificates for " + aliases.size() + " token entries");
             Worker[] workersArray = new Worker[aliases.size()];
             Arrays.fill(workersArray, worker);
-            this.signers = new ArrayList<>(Arrays.asList(workersArray));
+            this.signers = new ArrayList<Worker>(Arrays.asList(workersArray));
             
             for (String a : aliases) {
-                Vector<Object> cols = new Vector<>();
+                Vector<Object> cols = new Vector<Object>();
                 cols.add(worker.getName() + " (" + worker.getWorkerId() + ")");
                 cols.add(a);
                 cols.add("");
@@ -133,11 +133,11 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
             }
         } else {
             setTitle("Install certificates for " + signers.size() + " signers");
-            this.signers = new ArrayList<>(signers);
+            this.signers = new ArrayList<Worker>(signers);
             
             for (int row = 0; row < signers.size(); row++) {
                 Worker signer = signers.get(row);
-                Vector<Object> cols = new Vector<>();
+                Vector<Object> cols = new Vector<Object>();
                 cols.add(signer.getName() + " (" + signer.getWorkerId() + ")");
                 if (signer.getConfiguration().getProperty("NEXTCERTSIGNKEY") != null) {
                     cols.add(new Utils.HardCodedAliasValue(Utils.HardCodedAlias.NEXT_KEY,
@@ -474,7 +474,7 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
 
                         try {
                             if (signerChainFile == null) {
-                                signerChain = new ArrayList<>();
+                                signerChain = new ArrayList<Certificate>();
                             } else {
                                 signerChain = (List<Certificate>) CertTools.getCertsFromPEM(
                                     signerChainFile.getAbsolutePath());
@@ -561,14 +561,42 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
                             LOG.error(error, ex);
                             errors.append(error).append(":\n").append(ex.getMessage());
                             errors.append("\n");
-                        } catch (IOException | CertificateException | CertificateException_Exception ex) {
+                        } catch (IOException ex) {
                             final String error =
                                 "Problem with certificate chain file for signer "
                                 + workerid;
                             LOG.error(error, ex);
                             errors.append(error).append(":\n").append(ex.getMessage());
                             errors.append("\n");
-                        } catch (SOAPFaultException | EJBException | CryptoTokenOfflineException_Exception ex) {
+                        } catch (CertificateException ex) {
+                            final String error =
+                                "Problem with certificate chain file for signer "
+                                + workerid;
+                            LOG.error(error, ex);
+                            errors.append(error).append(":\n").append(ex.getMessage());
+                            errors.append("\n");
+                        } catch (SOAPFaultException ex) {
+                            final String error =
+                                "Operation failed on server side for signer "
+                                + workerid;
+                            LOG.error(error, ex);
+                            errors.append(error).append(":\n").append(ex.getMessage());
+                            errors.append("\n");
+                        } catch (EJBException ex) {
+                            final String error =
+                                "Operation failed on server side for signer "
+                                + workerid;
+                            LOG.error(error, ex);
+                            errors.append(error).append(":\n").append(ex.getMessage());
+                            errors.append("\n");
+                        } catch (CertificateException_Exception ex) {
+                            final String error =
+                                "Problem with certificate chain file for signer "
+                                + workerid;
+                            LOG.error(error, ex);
+                            errors.append(error).append(":\n").append(ex.getMessage());
+                            errors.append("\n");
+                        } catch (CryptoTokenOfflineException_Exception ex) {
                             final String error =
                                 "Operation failed on server side for signer "
                                 + workerid;
@@ -578,7 +606,14 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
                         }
                     }
 
-                } catch (IOException | CertificateException ex) {
+                } catch (IOException ex) {
+                    final String error =
+                            "Problem with signer certificate file for signer "
+                            + workerid;
+                    LOG.error(error, ex);
+                    errors.append(error).append(":\n").append(ex.getMessage());
+                    errors.append("\n");
+                } catch (CertificateException ex) {
                     final String error =
                             "Problem with signer certificate file for signer "
                             + workerid;
@@ -621,7 +656,7 @@ public class InstallCertificatesDialog extends javax.swing.JDialog {
         private List<byte[]> asByteArrayList(
                 final List<Certificate> signerChain)
                 throws CertificateEncodingException {
-            final List<byte[]> result = new LinkedList<>();
+            final List<byte[]> result = new LinkedList<byte[]>();
             for (final Certificate cert : signerChain) {
                 result.add(cert.getEncoded());
             }

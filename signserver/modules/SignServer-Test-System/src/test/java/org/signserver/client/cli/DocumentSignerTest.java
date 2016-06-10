@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Properties;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
+import org.ejbca.ui.cli.util.ConsolePasswordReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
@@ -25,14 +26,13 @@ import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.client.cli.defaultimpl.SignDocumentCommand;
 import org.signserver.common.SignServerUtil;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Test;
 import org.signserver.cli.spi.CommandContext;
 import org.signserver.cli.spi.CommandFactoryContext;
-import org.signserver.client.cli.defaultimpl.ConsolePasswordReader;
 import org.signserver.common.util.PathUtil;
-import org.signserver.ejb.interfaces.WorkerSession;
 
 /**
  * Tests for the signdocument command of Client CLI.
@@ -61,10 +61,9 @@ public class DocumentSignerTest extends ModulesTestCase {
 
     private static File signserverhome;
     
-    private final WorkerSession workerSession = getWorkerSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     @Before
-    @Override
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
         TestingSecurityManager.install();
@@ -73,14 +72,12 @@ public class DocumentSignerTest extends ModulesTestCase {
     }
 
     @After
-    @Override
     public void tearDown() throws Exception {
         TestingSecurityManager.remove();
     }	
 	
     @Test
     public void test00SetupDatabase() throws Exception {
-        LOG.info("test00SetupDatabase");
         // Worker 1
         addDummySigner(WORKERID, "TestXMLSigner", true);
         
@@ -93,7 +90,6 @@ public class DocumentSignerTest extends ModulesTestCase {
 
     @Test
     public void test01missingArguments() throws Exception {
-        LOG.info("test01missingArguments");
         try {
             execute("signdocument");
             fail("Should have thrown exception about missing arguments");
@@ -109,7 +105,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test02signDocumentFromParameter() throws Exception {
-        LOG.info("test02signDocumentFromParameter");
         try {
             String res =
                     new String(execute("signdocument", "-workername", "TestXMLSigner", "-data", "<root/>"));
@@ -133,8 +128,15 @@ public class DocumentSignerTest extends ModulesTestCase {
         LOG.info("test02signDocumentFromFile");
         try {
             final File doc = File.createTempFile("test.xml", null);
-            try (FileOutputStream out = new FileOutputStream(doc)) {
+            FileOutputStream out = null;
+            try {
+                out = new FileOutputStream(doc);
                 out.write("<tag/>".getBytes());
+                out.close();
+            } finally {
+                if (out != null) {
+                    out.close();
+                }
             }
 
             String res =
@@ -221,7 +223,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test04signPDFwithPasswordOverWebservices() throws Exception {
-        LOG.info("test04signPDFwithPasswordOverWebservices");
         try {
             
             byte[] res = execute("signdocument", "-workername", 
@@ -244,7 +245,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test04signPDFwithPasswordOverClientWS() throws Exception {
-        LOG.info("test04signPDFwithPasswordOverClientWS");
         try {
             
             byte[] res = execute("signdocument", "-workername", 
@@ -266,7 +266,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test05signPDFOverWebservicesServletArg() throws Exception {
-        LOG.info("test05signPDFOverWebservicesServletArg");
         try {
             final String res = new String(execute("signdocument", "-workername", "TestXMLSigner",
             		"-data", "<root/>", "-protocol", "WEBSERVICES",
@@ -287,7 +286,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test05signPDFOverClientWSServletArg() throws Exception {
-        LOG.info("test05signPDFOverClientWSServletArg");
         try {
             final String res = new String(execute("signdocument", "-workername", "TestXMLSigner",
             		"-data", "<root/>", "-protocol", "CLIENTWS",
@@ -308,7 +306,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test06signPDFOverWebservicesServletArg2() throws Exception {
-        LOG.info("test06signPDFOverWebservicesServletArg2");
         try {
             final String res = new String(execute("signdocument", "-workername", "TestXMLSigner",
                         "-data", "<root/>", "-protocol", "WEBSERVICES",
@@ -329,7 +326,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test07signPDFOverWebservicesServletArgInvalid() throws Exception {
-        LOG.info("test07signPDFOverWebservicesServletArgInvalid");
         try {
             final String res = new String(execute("signdocument", "-workername", "TestXMLSigner",
                         "-data", "<root/>", "-protocol", "WEBSERVICES",
@@ -351,7 +347,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test07signPDFOverClientWSServletArgInvalid() throws Exception {
-        LOG.info("test07signPDFOverClientWSServletArgInvalid");
         try {
             final String res = new String(execute("signdocument", "-workername", "TestXMLSigner",
                         "-data", "<root/>", "-protocol", "CLIENTWS",
@@ -374,7 +369,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test08signDocumentWithMetadata() throws Exception {
-        LOG.info("test08signDocumentWithMetadata");
         try {
             String res =
                     new String(execute("signdocument", "-workername", "EchoRequestMetadataSigner", "-data", "<root/>",
@@ -394,7 +388,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test09signDocumentWithMetadataMultipleParams() throws Exception {
-        LOG.info("test09signDocumentWithMetadataMultipleParams");
         try {
             String res =
                     new String(execute("signdocument", "-workername", "EchoRequestMetadataSigner", "-data", "<root/>",
@@ -416,7 +409,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test10signDocumentWithMetadataWebservices() throws Exception {
-        LOG.info("test10signDocumentWithMetadataWebservices");
         try {
             String res =
                     new String(execute("signdocument", "-workername", "EchoRequestMetadataSigner", "-data", "<root/>",
@@ -440,7 +432,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test11signDocumentWithMetadataClientWS() throws Exception {
-        LOG.info("test11signDocumentWithMetadataClientWS");
         try {
             String res =
                     new String(execute("signdocument", "-workername", "EchoRequestMetadataSigner", "-data", "<root/>",
@@ -464,7 +455,6 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test12signDocumentInvalidMetadata() throws Exception {
-        LOG.info("test12signDocumentInvalidMetadata");
         try {
             execute("signdocument", "-workername", "EchoRequestMetadataSigner", "-data", "<root/>",
                     "-protocol", "HTTP", "-metadata", "bogus");
@@ -483,9 +473,8 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test13promptForTruststorePassword() throws Exception {
-        LOG.info("test13promptForTruststorePassword");
         // Override the password reading
-        final ArrayList<Boolean> called = new ArrayList<>();
+        final ArrayList<Boolean> called = new ArrayList<Boolean>();
         SignDocumentCommand instance = new SignDocumentCommand() {
             @Override
             public ConsolePasswordReader createConsolePasswordReader() {
@@ -520,9 +509,8 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test13promptForUserPassword() throws Exception {
-        LOG.info("test13promptForUserPassword");
         // Override the password reading
-        final ArrayList<Boolean> called = new ArrayList<>();
+        final ArrayList<Boolean> called = new ArrayList<Boolean>();
         SignDocumentCommand instance = new SignDocumentCommand() {
             @Override
             public ConsolePasswordReader createConsolePasswordReader() {
@@ -557,9 +545,8 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test13promptForKeystorePassword() throws Exception {
-        LOG.info("test13promptForKeystorePassword");
         // Override the password reading
-        final ArrayList<Boolean> called = new ArrayList<>();
+        final ArrayList<Boolean> called = new ArrayList<Boolean>();
         SignDocumentCommand instance = new SignDocumentCommand() {
             @Override
             public ConsolePasswordReader createConsolePasswordReader() {
@@ -592,7 +579,7 @@ public class DocumentSignerTest extends ModulesTestCase {
     public void test13promptForKeystorePasswordAgain() throws Exception {
         LOG.info("test13promptForKeystorePasswordAgain");
         // Override the password reading
-        final ArrayList<Boolean> calls = new ArrayList<>();
+        final ArrayList<Boolean> calls = new ArrayList<Boolean>();
         final String[] passwords = new String[] { "incorrect1", "changeit" };
         SignDocumentCommand instance = new SignDocumentCommand() {
             @Override
@@ -628,7 +615,7 @@ public class DocumentSignerTest extends ModulesTestCase {
     public void test13promptForKeystorePassword3Times() throws Exception {
         LOG.info("test13promptForKeystorePasswordAgain");
         // Override the password reading
-        final ArrayList<Boolean> calls = new ArrayList<>();
+        final ArrayList<Boolean> calls = new ArrayList<Boolean>();
         final String[] passwords = new String[] { "incorrect1", "incorrect2", "incorrect3", "incorrect4", "incorrect5" };
         SignDocumentCommand instance = new SignDocumentCommand() {
             @Override
@@ -664,9 +651,8 @@ public class DocumentSignerTest extends ModulesTestCase {
      */
     @Test
     public void test13promptForUserAndTruststore() throws Exception {
-        LOG.info("test13promptForUserAndTruststore");
         // Override the password reading
-        final ArrayList<Boolean> called = new ArrayList<>();
+        final ArrayList<Boolean> called = new ArrayList<Boolean>();
         SignDocumentCommand instance = new SignDocumentCommand() {
             @Override
             public ConsolePasswordReader createConsolePasswordReader() {
@@ -697,7 +683,6 @@ public class DocumentSignerTest extends ModulesTestCase {
     
     @Test
     public void test99TearDownDatabase() throws Exception {
-        LOG.info("test99TearDownDatabase");
         removeWorker(WORKERID2);
         for (int workerId : WORKERS) {
             removeWorker(workerId);
@@ -709,30 +694,18 @@ public class DocumentSignerTest extends ModulesTestCase {
     }
     
     private byte[] execute(SignDocumentCommand instance, String... args) throws IOException, IllegalCommandArgumentsException, CommandFailureException {
-        byte[] result;
-        final PrintStream origOut = System.out;
-        final PrintStream origErr = System.err;
-        
-        final ByteArrayOutputStream bStdOut = new ByteArrayOutputStream();
-        final PrintStream stdOut = new PrintStream(bStdOut);
-        System.setOut(stdOut);
-        
-        final ByteArrayOutputStream bErrOut = new ByteArrayOutputStream();
-        final PrintStream errOut = new PrintStream(bErrOut);
-        System.setErr(errOut);
-        
-        instance.init(new CommandContext("group1", "signdocument", new CommandFactoryContext(new Properties(), stdOut, errOut)));
+        byte[] output;
+        final ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        final PrintStream out = new PrintStream(bout);
+        System.setOut(out);
+        instance.init(new CommandContext("group1", "signdocument", new CommandFactoryContext(new Properties(), out, System.err)));
         try {
             instance.execute(args);
         } finally {
-            result = bStdOut.toByteArray();
-            System.setOut(origOut);
-            System.setErr(origErr);
-            System.out.write(result);
-            
-            byte[] error = bErrOut.toByteArray();
-            System.err.write(error);
+            output = bout.toByteArray();
+            System.setOut(System.out);
+            System.out.write(output);
         }
-        return result;
+        return output;
     }
 }

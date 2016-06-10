@@ -22,7 +22,7 @@ import java.util.HashMap;
  */
 public class ServicesImpl implements IServices {
 
-    private final HashMap<Class<?>, Object> services = new HashMap<>();
+    private final HashMap<Class<?>, Object> services = new HashMap<Class<?>, Object>();
     
     @Override
     public <T> T get(Class<? extends T> type) {

@@ -16,21 +16,23 @@ import java.util.*;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
-import org.signserver.common.WorkerIdentifier;
+import org.signserver.common.util.PropertiesConstants;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.server.*;
 import org.signserver.server.archive.Archiver;
 import org.signserver.server.archive.ArchiverInitException;
 import org.signserver.server.archive.olddbarchiver.OldDatabaseArchiver;
 import org.signserver.server.config.entities.IWorkerConfigDataService;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.log.AllFieldsWorkerLogger;
 import org.signserver.server.log.IWorkerLogger;
-import org.signserver.server.UnloadableWorker;
 
 /**
- * Loads worker configurations and instantiates the implementations and caches
- * those.
- *
+ * Class used to manage different signers used in the system, uses the configuration in
+ * GlobalConfigurationFileParser as a backup.
+ * 
+ * XXX: Large scary singleton. Consider re-design.
+ * 
  * @author Philip Vendil
  * @version $Id$
  */
@@ -38,207 +40,164 @@ public class WorkerFactory {
 
     /** Logger for this class. */
     public static final Logger LOG = Logger.getLogger(WorkerFactory.class);
-
+    
     private static final String WORKERLOGGER = "WORKERLOGGER";
+    
     private static final String ACCOUNTER = "ACCOUNTER";
+    
+    private static final WorkerFactory INSTANCE = new WorkerFactory();
+    
+    private Map<Integer, IWorker> workerStore;
+    
+    private Map<Integer, IAuthorizer> authenticatorStore;
+    
+    private Map<String, Integer> nameToIdMap;
+    
+    private Map<Integer, IWorkerLogger> workerLoggerStore;
+    
+    private Map<Integer, IAccounter> accounterStore;
+    
+    private final Map<Integer, List<Archiver>> archiversStore  = new HashMap<Integer, List<Archiver>>();
+    
+    private WorkerFactory() {}
 
-    private final IWorkerConfigDataService workerConfigHome;
-    private final SignServerContext workerContext;
-
-    private final WorkerStore cache = new WorkerStore();
-
-    protected WorkerFactory(IWorkerConfigDataService workerConfigHome, SignServerContext workerContext) {
-        this.workerConfigHome = workerConfigHome;
-        this.workerContext = workerContext;
+    protected synchronized static WorkerFactory getInstance() {
+        return INSTANCE;
     }
 
     /**
-     * Method returning a worker given it's id. The signer should be defined in
+     * Method returning a worker given it's id. The signer should be defined in 
      * the global configuration along with it's id.
-     *
+     * 
      * The worker will only be created upon first call, then it's stored in memory until
      * the flush method is called.
-     *
-     * @param wi the Id that should match the one in the config file.
+     * 
+     * @param signerId the Id that should match the one in the config file.
+     * @param workerConfigHome The service interface of the signer config entity bean
+     * @param gCSession
+     * @param workerContext
      * @return A ISigner as defined in the configuration file, or null if no configuration
      * for the specified signerId could be found.
-     * @throws NoSuchWorkerException In case the worker ID does not exist
      */
-    public synchronized IWorker getWorker(WorkerIdentifier wi) throws NoSuchWorkerException {
-        if (LOG.isTraceEnabled()) {
-            LOG.trace(">getWorker(" + wi + ")");
+    public synchronized IWorker getWorker(int workerId, 
+            IWorkerConfigDataService workerConfigHome, 
+            IGlobalConfigurationSession gCSession, 
+            IWorkerManagerSessionLocal workerManagerSession,
+            SignServerContext workerContext) {
+        Integer id = new Integer(workerId);
+
+        loadWorkers(workerConfigHome, gCSession, workerManagerSession, workerContext);
+        IWorker ret = (IWorker) workerStore.get(id);
+        if (ret == null) {
+            LOG.info("Trying to get worker with Id that does not exist: " + workerId);
         }
-        IWorker result = cache.getWorkerOnly(wi);
-        if (result == null) {
-            result = loadWorker(wi);
+        return ret;
+    }
+    
+    /**
+     * Method returning a id of a named Worker
+     * 
+     * 
+     * The worker will only be created upon first call, then it's stored in memory until
+     * the flush method is called.
+     * 
+     * @param workerName the name of a named worker.
+     * @param workerConfigHome The home interface of the signer config entity bean
+     * @return the id of the signer or 0 if no worker with the name is found.
+     */
+    public synchronized int getWorkerIdFromName(String workerName, IWorkerConfigDataService workerConfigHome, IGlobalConfigurationSession gCSession, IWorkerManagerSessionLocal workerManagerSession, SignServerContext workerContext) {
+        int retval = 0;
+        loadWorkers(workerConfigHome, gCSession, workerManagerSession, workerContext);
+        if (nameToIdMap.get(workerName) == null) {
+            return retval;
         }
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("<getWorker(" + wi + "): " + result);
-        }
-        return result;
+
+        retval = ((Integer) nameToIdMap.get(workerName)).intValue();
+        LOG.debug("getSignerIdFromName : returning " + retval);
+        return retval;
     }
 
-    public synchronized WorkerWithComponents getWorkerWithComponents(final WorkerIdentifier wi, final SignServerContext context) throws NoSuchWorkerException {
-        WorkerWithComponents result = cache.getWorkerWithComponents(wi);
-        if (result == null) {
-            result = loadWorkerWithComponents(wi, context);
-        }
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("getWorkerWithComponents(" + wi + ") returning instance: " + result + " containing " + result.getWorker());
-        }
-        return result;
-    }
+    /**
+     * Method to load all available signers
+     */
+    private void loadWorkers(IWorkerConfigDataService workerConfigHome, IGlobalConfigurationSession gCSession, IWorkerManagerSessionLocal workerManagerSession, SignServerContext workerContext) {
+        if (workerStore == null) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Loading workers into WorkerFactory.");
+            }
+            workerStore = new HashMap<Integer, IWorker>();
+            nameToIdMap = new HashMap<String, Integer>();
 
-    private IWorker loadWorker(final WorkerIdentifier wi) throws NoSuchWorkerException {
-        if (LOG.isTraceEnabled()) {
-            LOG.trace(">loadWorker(" + wi + ")");
-        }
-        final int workerId;
-        if (wi.hasId()) {
-            workerId = wi.getId();
-        } else {
-            workerId = workerConfigHome.findId(wi.getName());
-        }
-
-        // Load worker from database
-        IWorker result;
-        WorkerConfig config = workerConfigHome.getWorkerProperties(workerId, false);
-        if (config == null) {
-            throw new NoSuchWorkerException(String.valueOf(workerId));
-        } else {
-            final String className = config.getImplementationClass();
-            if (className == null) {
-                result = new UnloadableWorker("Missing property " + WorkerConfig.IMPLEMENTATION_CLASS);
-            } else {
+            Collection<Integer> workers = workerManagerSession.getWorkers(GlobalConfiguration.WORKERTYPE_ALL, gCSession);
+            GlobalConfiguration gc = gCSession.getGlobalConfiguration();
+            Iterator<Integer> iter = workers.iterator();
+            while (iter.hasNext()) {
+                Integer nextId = (Integer) iter.next();
+                final String classpath = gc.getWorkerClassPath(nextId.intValue());
+                
                 try {
+                    
                     if (LOG.isDebugEnabled()) {
-                        LOG.debug("Loading worker with class name: " + className);
+                        LOG.debug("Loading worker with classpath: " + classpath);
                     }
-                    ClassLoader cl = this.getClass().getClassLoader();
-                    Class<?> implClass = cl.loadClass(className);
-                    result = (IWorker) implClass.newInstance();
+                    if (classpath != null) {
+                        ClassLoader cl = this.getClass().getClassLoader();
+                        Class<?> implClass = cl.loadClass(classpath);
+
+                        Object obj = implClass.newInstance();
+
+                        getWorkerStore().put(nextId, (IWorker) obj);
+
+                        WorkerConfig config = workerConfigHome.getWorkerProperties(nextId.intValue());
+                        if (config.getProperties().getProperty(PropertiesConstants.NAME) != null) {
+                            getNameToIdMap().put(config.getProperties().getProperty(PropertiesConstants.NAME).toUpperCase(), nextId);
+                        }
+                    }
                 } catch (ClassNotFoundException e) {
-                    result = new UnloadableWorker("Worker class not found (is the module included in the build?): " + className + ": " + e.getLocalizedMessage());
+                    LOG.error("Worker class not found (is the module included in the build?): " + classpath);
                 } catch (IllegalAccessException e) {
-                    result = new UnloadableWorker("Could not access worker class: " + className + ": " + e.getLocalizedMessage());
+                    LOG.error("Could not access worker class: " + classpath);
                 } catch (InstantiationException e) {
-                    result = new UnloadableWorker("Could not instantiate worker class: " + className + ": " + e.getLocalizedMessage());
+                    LOG.error("Could not instantiate worker class: " + classpath);
                 }
             }
 
-            initWorker(result, workerId, config);
-
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("loadWorker(" + workerId + "): instance " + result);
+            for (Map.Entry<Integer, IWorker> entry : getWorkerStore().entrySet()) {
+                initWorker(entry.getValue(), entry.getKey(), gCSession, workerConfigHome, workerManagerSession, workerContext);
             }
-
-            cache.putWorkerOnly(workerId, result);
         }
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("<loadWorker(" + wi + "): " + result);
-        }
-        return result;
     }
     
-    private WorkerWithComponents loadWorkerWithComponents(final WorkerIdentifier wi, final SignServerContext context) throws NoSuchWorkerException {
-        final int workerId;
-        if (wi.hasId()) {
-            workerId = wi.getId();
-        } else {
-            workerId = workerConfigHome.findId(wi.getName());
-        }
-        
-        WorkerWithComponents result;
-        if (LOG.isTraceEnabled()) {
-            LOG.trace(">loadWorkerWithComponents(" + workerId + ")");
-        }
-        final IWorker worker = getWorker(wi);
+    private void initWorker(final IWorker worker, final int workerId, final IGlobalConfigurationSession gCSession, final IWorkerConfigDataService workerConfigHome, final IWorkerManagerSessionLocal workerManagerSession, final SignServerContext workerContext) {
+        WorkerConfig config = workerConfigHome.getWorkerProperties(workerId);
 
-        final WorkerConfig config = worker.getConfig();
-        @SuppressWarnings("deprecation")
-        final EntityManager em = context.getEntityManager();
-        final List<String> createErrors = new LinkedList<>();
-
-        // Worker Logger
-        IWorkerLogger workerLogger = null;
-        try {
-            workerLogger = getWorkerLogger(workerId, config, em);
-        } catch (SignServerException ex) {
-            createErrors.add(ex.getLocalizedMessage());
-        }
-
-        // Authorizer
-        IAuthorizer authorizer = null;
-        if (worker instanceof IProcessable) {
-            try {
-                final String authType = ((IProcessable) worker).getAuthenticationType();
-                authorizer = getAuthenticator(workerId, authType, config, em);
-            } catch (SignServerException ex) {
-                createErrors.add(ex.getLocalizedMessage());
-            }
-        }
-
-        // Accounter
-        IAccounter accounter = null;
-        try {
-            accounter = getAccounter(workerId, config, em);
-        } catch (SignServerException ex) {
-            createErrors.add(ex.getLocalizedMessage());
-        }
-
-        // Archivers
-        List<Archiver> archivers = null;
-        try {
-            archivers = getArchivers(workerId, config, context);
-        } catch (SignServerException ex) {
-            createErrors.add(ex.getLocalizedMessage());
-        }
-
-        // Worker with components
-        result = new WorkerWithComponents(workerId, worker, createErrors, workerLogger, authorizer, accounter, archivers);
-        cache.putWorkerWithComponents(workerId, result);
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("<loadWorkerWithComponents(" + workerId + "): " + worker + " in " + result);
-        }
-        return result;
-    }
-
-    private void initWorker(final IWorker worker, final int workerId, final WorkerConfig config) {
-        if (LOG.isTraceEnabled()) {
-            LOG.trace(">initWorker(" + workerId + "," + worker + ")");
-        }
         final String cryptoTokenName = config.getProperty("CRYPTOTOKEN");
         SignServerContext context = workerContext.newInstance();
         if (cryptoTokenName != null) {
             context.setCryptoTokenSupplier(new CryptoTokenSupplier() {
 
                 @Override
-                public ICryptoTokenV4 getCurrentCryptoToken(final IServices services) throws SignServerException {
+                public ICryptoToken getCurrentCryptoToken() throws SignServerException {
                     synchronized (WorkerFactory.this) {
-                        try {
-                            IWorker cryptoWorker = getWorker(new WorkerIdentifier(cryptoTokenName));
+                        Integer cryptoWorkerId = nameToIdMap.get(cryptoTokenName.toUpperCase());
+                        if (cryptoWorkerId != null) {
+                            IWorker cryptoWorker = getWorker(cryptoWorkerId, workerConfigHome, gCSession, workerManagerSession, workerContext.newInstance());
                             if (cryptoWorker instanceof BaseProcessable) {
-                                return ((BaseProcessable) cryptoWorker).getCryptoToken(services);
+                                return ((BaseProcessable) cryptoWorker).getCryptoToken();
                             } else {
-                                if (LOG.isDebugEnabled()) {
-                                    LOG.debug("Not a processable worker: " + cryptoWorker);
-                                }
                                 return null;
                             }
-                        } catch (NoSuchWorkerException ex) {
-                            LOG.info("Unable to get crypto worker: " + cryptoTokenName);
+                        } else {
                             return null;
                         }
                     }
                 }
-
+                
             });
+            
+        }
 
-        }
         worker.init(workerId, config, context, null);
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("<initWorker(" + workerId + ")");
-        }
     }
 
     /**
@@ -247,187 +206,354 @@ public class WorkerFactory {
      *
      */
     public synchronized void flush() {
-        if (LOG.isTraceEnabled()) {
-            LOG.trace(">flush()");
+        if (workerStore != null) {
+            workerStore = null;
+            nameToIdMap = null;
+            authenticatorStore = null;
+            workerLoggerStore = null;
+            accounterStore = null;
         }
-        cache.clearAll();
     }
 
     /**
-     * Method used to force a reload of worker.
-     * @param wi of worker
+     * Method used to force a reload of worker. 
+     * @param id of worker
      */
-    public synchronized void reloadWorker(WorkerIdentifier wi) {
-        if (LOG.isTraceEnabled()) {
-            LOG.trace(">reloadWorker(" + wi + ")");
+    public synchronized void reloadWorker(int id, IWorkerConfigDataService workerConfigHome, IGlobalConfigurationSession gCSession, IWorkerManagerSessionLocal workerManagerSession, SignServerContext workerContext) {
+        if (workerStore == null) {
+            workerStore = new HashMap<Integer, IWorker>();
+            nameToIdMap = new HashMap<String, Integer>();
         }
-        if (wi.hasName() || (wi.hasId() && wi.getId() != null)) {
-            cache.clear(wi);
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("reloadWorker(" + wi + "): removed instance");
-            }
+        if (authenticatorStore == null) {
+            authenticatorStore = new HashMap<Integer, IAuthorizer>();
+        }
+        if (workerLoggerStore == null) {
+            workerLoggerStore = new HashMap<Integer, IWorkerLogger>();
+        }
+        if (accounterStore == null) {
+            accounterStore = new HashMap<Integer, IAccounter>();
         }
 
+        if (id != 0) {
+            // Call destroy on old worker
+            IWorker oldWorker = workerStore.get(id);
+            if (oldWorker instanceof BaseProcessable) {
+                ((BaseProcessable) oldWorker).destroy();
+            }
+
+            workerStore.put(id, null);
+            authenticatorStore.put(id, null);
+            workerLoggerStore.put(id, null);
+            accounterStore.put(id, null);
+            archiversStore.put(id, null);
+            Iterator<String> iter = nameToIdMap.keySet().iterator();
+            while (iter.hasNext()) {
+                String next = (String) iter.next();
+                if (nameToIdMap.get(next) != null
+                        && ((Integer) nameToIdMap.get(next)).intValue() == id) {
+                    iter.remove();
+                }
+            }
+        }
+        GlobalConfiguration gc = gCSession.getGlobalConfiguration();
+
         try {
-            loadWorker(wi);
-        } catch (NoSuchWorkerException ex) {
-            LOG.error("Error reloading worker : " + ex.getMessage());
+            String classpath = gc.getWorkerClassPath(id);
+            if (classpath != null) {
+                WorkerConfig config = workerConfigHome.getWorkerProperties(id);
+                ClassLoader cl = this.getClass().getClassLoader();
+                Class<?> implClass = cl.loadClass(classpath);
+
+                Object obj = implClass.newInstance();
+                if (obj instanceof IProcessable) {
+                    if (config.getProperties().getProperty(PropertiesConstants.NAME) != null) {
+                        getNameToIdMap().put(config.getProperties().getProperty(PropertiesConstants.NAME).toUpperCase(), new Integer(id));
+                    }
+                }
+                initWorker((IWorker) obj, id, gCSession, workerConfigHome, workerManagerSession, workerContext);
+                getWorkerStore().put(new Integer(id), (IWorker) obj);
+            }
+        } catch (ClassNotFoundException e) {
+            LOG.error("Error reloading worker : " + e.getMessage(), e);
+        } catch (IllegalAccessException e) {
+            LOG.error("Error reloading worker : " + e.getMessage(), e);
+        } catch (InstantiationException e) {
+            LOG.error("Error reloading worker : " + e.getMessage(), e);
         }
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("<reloadWorker(" + wi + ")");
-        }
-    }
-    
-    public synchronized Collection<Integer> getCachedWorkerIds() {
-        return cache.keySet();
     }
 
     /**
      * Returns the configured authorizer for the given worker.
-     *
-     * @param workerId id of worker
+     * 
+     * @param workerId id of worker 
      * @param authType one of ISigner.AUTHTYPE_ constants or class path to custom implementation
-     * @param config the worker config
-     * @param em EntityManager to provide
      * @return initialized authorizer.
-     * @throws SignServerException
      */
-    private IAuthorizer getAuthenticator(int workerId, String authType, WorkerConfig config, EntityManager em)
+    public synchronized IAuthorizer getAuthenticator(int workerId, String authType, WorkerConfig config, EntityManager em)
             throws SignServerException {
-        IAuthorizer auth = null;
-        if (authType.equalsIgnoreCase(IProcessable.AUTHTYPE_NOAUTH)) {
-            auth = new NoAuthorizer();
-        } else if (authType.equalsIgnoreCase(IProcessable.AUTHTYPE_CLIENTCERT)) {
-            auth = new ClientCertAuthorizer();
-        } else {
-            try {
-                Class<?> c = this.getClass().getClassLoader().loadClass(authType);
-                auth = (IAuthorizer) c.newInstance();
-            } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-                LOG.error("Error worker with id " + workerId + " misconfiguration, AUTHTYPE setting : " + authType + " is not a correct class path.", e);
-                throw new SignServerException("Error worker with id " + workerId + " misconfiguration, AUTHTYPE setting : " + authType + " is not a correct class path.");
+        if (getAuthenticatorStore().get(workerId) == null) {
+            IAuthorizer auth = null;
+            if (authType.equalsIgnoreCase(IProcessable.AUTHTYPE_NOAUTH)) {
+                auth = new NoAuthorizer();
+            } else if (authType.equalsIgnoreCase(IProcessable.AUTHTYPE_CLIENTCERT)) {
+                auth = new ClientCertAuthorizer();
+            } else {
+                try {
+                    Class<?> c = this.getClass().getClassLoader().loadClass(authType);
+                    auth = (IAuthorizer) c.newInstance();
+                } catch (ClassNotFoundException e) {
+                    LOG.error("Error worker with id " + workerId + " misconfiguration, AUTHTYPE setting : " + authType + " is not a correct class path.", e);
+                    throw new SignServerException("Error worker with id " + workerId + " misconfiguration, AUTHTYPE setting : " + authType + " is not a correct class path.");
+                } catch (InstantiationException e) {
+                    LOG.error("Error worker with id " + workerId + " misconfiguration, AUTHTYPE setting : " + authType + " is not a correct class path.", e);
+                    throw new SignServerException("Error worker with id " + workerId + " misconfiguration, AUTHTYPE setting : " + authType + " is not a correct class path.");
+                } catch (IllegalAccessException e) {
+                    LOG.error("Error worker with id " + workerId + " misconfiguration, AUTHTYPE setting : " + authType + " is not a correct class path.", e);
+                    throw new SignServerException("Error worker with id " + workerId + " misconfiguration, AUTHTYPE setting : " + authType + " is not a correct class path.");
+                }
             }
+            
+            try {
+                auth.init(workerId, config, em);
+            } catch (SignServerException e) {
+                LOG.error("Error initializing authorizer for worker " + workerId + " with authtype " + authType + ", message : " + e.getMessage(), e);
+            }
+            getAuthenticatorStore().put(workerId, auth);
         }
-
-        try {
-            auth.init(workerId, config, em);
-        } catch (SignServerException e) {
-            LOG.error("Error initializing authorizer for worker " + workerId + " with authtype " + authType + ", message : " + e.getMessage(), e);
-        }
-        return auth;
+        return getAuthenticatorStore().get(workerId);
     }
 
-    private IWorkerLogger getWorkerLogger(final int workerId,
+    public synchronized IWorkerLogger getWorkerLogger(final int workerId,
             final WorkerConfig config, final EntityManager em)
             throws SignServerException {
-        IWorkerLogger workerLogger;
-        final String fullClassName = config.getProperty(WORKERLOGGER);
+        IWorkerLogger workerLogger = getWorkerLoggerStore().get(workerId);
+        if (workerLogger == null) {
+            final String fullClassName = config.getProperty(WORKERLOGGER);
 
-        if (fullClassName == null || "".equals(fullClassName)) {
-            workerLogger = new AllFieldsWorkerLogger();
-        } else {
-            try {
-                final Class<?> c = this.getClass().getClassLoader().loadClass(fullClassName);
-                workerLogger = (IWorkerLogger) c.newInstance();
-            } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-                final String error =
-                        "Error worker with id " + workerId
-                        + " misconfiguration, "
-                        + WORKERLOGGER + " setting : "
-                        + fullClassName
-                        + " is not a correct "
-                        + "fully qualified class name "
-                        + "of an IWorkerLogger.";
-                LOG.error(error, e);
-                throw new SignServerException(error);
+            if (fullClassName == null || "".equals(fullClassName)) {
+                workerLogger = new AllFieldsWorkerLogger();
+            } else {
+                try {
+                    final Class<?> c = this.getClass().getClassLoader().loadClass(fullClassName);
+                    workerLogger = (IWorkerLogger) c.newInstance();
+                } catch (ClassNotFoundException e) {
+                    final String error =
+                            "Error worker with id " + workerId
+                            + " misconfiguration, "
+                            + WORKERLOGGER + " setting : "
+                            + fullClassName
+                            + " is not a correct "
+                            + "fully qualified class name "
+                            + "of an IWorkerLogger.";
+                    LOG.error(error, e);
+                    throw new SignServerException(error);
+                } catch (InstantiationException e) {
+                    final String error =
+                            "Error worker with id " + workerId
+                            + " misconfiguration, "
+                            + WORKERLOGGER + " setting : "
+                            + fullClassName
+                            + " is not a correct "
+                            + "fully qualified class name "
+                            + "of an IWorkerLogger.";
+                    LOG.error(error, e);
+                    throw new SignServerException(error);
+
+                } catch (IllegalAccessException e) {
+                    final String error =
+                            "Error worker with id " + workerId
+                            + " misconfiguration, "
+                            + WORKERLOGGER + " setting : "
+                            + fullClassName
+                            + " is not a correct "
+                            + "fully qualified class name "
+                            + "of an IWorkerLogger.";
+                    LOG.error(error, e);
+                    throw new SignServerException(error);
+                }
             }
+            workerLogger.init(config.getProperties());
+            getWorkerLoggerStore().put(workerId, workerLogger);
         }
-        workerLogger.init(workerId, config, workerContext.newInstance());
-        return workerLogger;
+//            return workerLogger;
+        return getWorkerLoggerStore().get(workerId);
     }
 
-    private IAccounter getAccounter(final int workerId,
+    public synchronized IAccounter getAccounter(final int workerId,
             final WorkerConfig config, final EntityManager em)
             throws SignServerException {
-        final IAccounter accounter;
-        final String fullClassName = config.getProperty(ACCOUNTER);
+        IAccounter accounter = getAccounterStore().get(workerId);
+        if (accounter == null) {
+            final String fullClassName = config.getProperty(ACCOUNTER);
 
-        if (fullClassName == null || "".equals(fullClassName)) {
-            accounter = new NoAccounter();
-        } else {
-            try {
-                final Class<?> c = this.getClass().getClassLoader().loadClass(fullClassName);
-                accounter = (IAccounter) c.newInstance();
-            } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-                final String error =
-                        "Error worker with id " + workerId
-                        + " misconfiguration, "
-                        + ACCOUNTER + " setting : "
-                        + fullClassName
-                        + " is not a correct "
-                        + "fully qualified class name "
-                        + "of an IAccounter.";
-                LOG.error(error, e);
-                throw new SignServerException(error);
+            if (fullClassName == null || "".equals(fullClassName)) {
+                accounter = new NoAccounter();
+            } else {
+                try {
+                    final Class<?> c = this.getClass().getClassLoader().loadClass(fullClassName);
+                    accounter = (IAccounter) c.newInstance();
+                } catch (ClassNotFoundException e) {
+                    final String error =
+                            "Error worker with id " + workerId
+                            + " misconfiguration, "
+                            + ACCOUNTER + " setting : "
+                            + fullClassName
+                            + " is not a correct "
+                            + "fully qualified class name "
+                            + "of an IAccounter.";
+                    LOG.error(error, e);
+                    throw new SignServerException(error);
+                } catch (InstantiationException e) {
+                    final String error =
+                            "Error worker with id " + workerId
+                            + " misconfiguration, "
+                            + ACCOUNTER + " setting : "
+                            + fullClassName
+                            + " is not a correct "
+                            + "fully qualified class name "
+                            + "of an IAccounter.";
+                    LOG.error(error, e);
+                    throw new SignServerException(error);
+
+                } catch (IllegalAccessException e) {
+                    final String error =
+                            "Error worker with id " + workerId
+                            + " misconfiguration, "
+                            + ACCOUNTER + " setting : "
+                            + fullClassName
+                            + " is not a correct "
+                            + "fully qualified class name "
+                            + "of an IAccounter.";
+                    LOG.error(error, e);
+                    throw new SignServerException(error);
+                }
             }
+            accounter.init(config.getProperties());
+            getAccounterStore().put(workerId, accounter);
         }
-        accounter.init(config.getProperties());
-        return accounter;
+        return getAccounterStore().get(workerId);
     }
 
-    private List<Archiver> getArchivers(final int workerId,
+    public synchronized List<Archiver> getArchivers(final int workerId,
             final WorkerConfig config, final SignServerContext context)
             throws SignServerException {
-        final List<Archiver> archivers = new LinkedList<>();
-        final String list;
+        List<Archiver> archivers = getArchiversStore().get(workerId);
+        if (archivers == null) {
+            archivers = new LinkedList<Archiver>();
+            final String list;
 
-        // Support for old way of setting archiving and the new one
-        if (config.getProperty(SignServerConstants.ARCHIVE,
-                Boolean.FALSE.toString()).equalsIgnoreCase(Boolean.TRUE.toString())) {
-            list = OldDatabaseArchiver.class.getName();
-        } else {
-            list = config.getProperty(SignServerConstants.ARCHIVERS);
-        }
+            // Support for old way of setting archiving and the new one
+            if (config.getProperty(SignServerConstants.ARCHIVE,
+                    Boolean.FALSE.toString()).equalsIgnoreCase(Boolean.TRUE.toString())) {
+                list = OldDatabaseArchiver.class.getName();
+            } else {
+                list = config.getProperty(SignServerConstants.ARCHIVERS);
+            }
 
-        if (list != null) {
-            int index = 0;
-            for (String className : list.split(",")) {
-                className = className.trim();
+            if (list != null) {
+                int index = 0;
+                for (String className : list.split(",")) {
+                    className = className.trim();
 
-                if (!className.isEmpty()) {
-                    try {
-                        final Class<?> c = this.getClass().getClassLoader().loadClass(className);
-                        final Archiver archiver = (Archiver) c.newInstance();
-                        archivers.add(archiver);
+                    if (!className.isEmpty()) {
                         try {
-                            archiver.init(index, config, context);
-                        } catch (ArchiverInitException e) {
+                            final Class<?> c = this.getClass().getClassLoader().loadClass(className);
+                            final Archiver archiver = (Archiver) c.newInstance();
+                            archivers.add(archiver);
+                            try {
+                                archiver.init(index, config, context);
+                            } catch (ArchiverInitException e) {
+                                final String error =
+                                        "Error worker with id " + workerId
+                                        + " misconfiguration, "
+                                        + "failed to initialize archiver "
+                                        + index + ".";
+                                LOG.error(error, e);
+                                throw new SignServerException(error);
+                            }
+                            index++;
+                        } catch (ClassNotFoundException e) {
                             final String error =
                                     "Error worker with id " + workerId
                                     + " misconfiguration, "
-                                    + "failed to initialize archiver "
-                                    + index + ".";
+                                    + SignServerConstants.ARCHIVERS
+                                    + " setting : "
+                                    + className
+                                    + " is not a correct "
+                                    + "fully qualified class name "
+                                    + "of an Archiver.";
+                            LOG.error(error, e);
+                            throw new SignServerException(error);
+                        } catch (InstantiationException e) {
+                            final String error =
+                                    "Error worker with id " + workerId
+                                    + " misconfiguration, "
+                                    + SignServerConstants.ARCHIVERS
+                                    + " setting : "
+                                    + className
+                                    + " is not a correct "
+                                    + "fully qualified class name "
+                                    + "of an Archiver.";
+                            LOG.error(error, e);
+                            throw new SignServerException(error);
+
+                        } catch (IllegalAccessException e) {
+                            final String error =
+                                    "Error worker with id " + workerId
+                                    + " misconfiguration, "
+                                    + SignServerConstants.ARCHIVERS
+                                    + " setting : "
+                                    + className
+                                    + " is not a correct "
+                                    + "fully qualified class name "
+                                    + "of an Archiver.";
                             LOG.error(error, e);
                             throw new SignServerException(error);
                         }
-                        index++;
-                    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-                        final String error =
-                                "Error worker with id " + workerId
-                                + " misconfiguration, "
-                                + SignServerConstants.ARCHIVERS
-                                + " setting : "
-                                + className
-                                + " is not a correct "
-                                + "fully qualified class name "
-                                + "of an Archiver.";
-                        LOG.error(error, e);
-                        throw new SignServerException(error);
                     }
+                    getArchiversStore().put(workerId, archivers);
                 }
             }
         }
-        return archivers;
+        return getArchiversStore().get(workerId);  // TODO: just return archivers!
     }
 
+    private Map<String, Integer> getNameToIdMap() {
+        if (nameToIdMap == null) {
+            nameToIdMap = new HashMap<String, Integer>();
+        }
+        return nameToIdMap;
+    }
+
+    private Map<Integer, IWorker> getWorkerStore() {
+        if (workerStore == null) {
+            workerStore = new HashMap<Integer, IWorker>();
+        }
+        return workerStore;
+    }
+
+    private Map<Integer, IAuthorizer> getAuthenticatorStore() {
+        if (authenticatorStore == null) {
+            authenticatorStore = new HashMap<Integer, IAuthorizer>();
+        }
+        return authenticatorStore;
+    }
+
+    private Map<Integer, IWorkerLogger> getWorkerLoggerStore() {
+        if (workerLoggerStore == null) {
+            workerLoggerStore = new HashMap<Integer, IWorkerLogger>();
+        }
+        return workerLoggerStore;
+    }
+
+    private Map<Integer, IAccounter> getAccounterStore() {
+        if (accounterStore == null) {
+            accounterStore = new HashMap<Integer, IAccounter>();
+        }
+        return accounterStore;
+    }
+
+    private Map<Integer, List<Archiver>> getArchiversStore() {
+        return archiversStore;
+    }
 }

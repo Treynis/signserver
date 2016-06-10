@@ -42,19 +42,19 @@ import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
 import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.asn1.x509.KeyPurposeId;
-import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.X509Extension;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.cms.SignerInformationVerifier;
 import org.bouncycastle.cms.jcajce.JcaSimpleSignerInfoVerifierBuilder;
 import org.bouncycastle.tsp.*;
-import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.util.Base64;
 import org.junit.After;
-import static org.junit.Assert.assertNotEquals;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.*;
+import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.StatusName;
 import org.signserver.test.utils.builders.CertBuilder;
 import org.signserver.test.utils.builders.CertExt;
@@ -64,9 +64,7 @@ import org.signserver.testutils.TestingSecurityManager;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
-import org.signserver.statusrepo.StatusRepositorySessionRemote;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for the TimeStampSigner.
@@ -81,22 +79,22 @@ public class TimeStampSignerTest extends ModulesTestCase {
             TimeStampSignerTest.class);
 
     /** The status repository session. */
-    private static StatusRepositorySessionRemote repository;
+    private static IStatusRepositorySession.IRemote repository;
 
     /** Worker ID for test worker. */
-    private static final WorkerIdentifier WORKER1 = new WorkerIdentifier(8901);
+    private static final int WORKER1 = 8901;
 
     /** Worker ID for test worker. */
-    private static final WorkerIdentifier WORKER2 = new WorkerIdentifier(8902);
+    private static final int WORKER2 = 8902;
 
     /** Worker ID for test worker. */
-    private static final WorkerIdentifier WORKER3 = new WorkerIdentifier(8903);
+    private static final int WORKER3 = 8903;
 
     /** Worker ID for test worker. */
-    private static final WorkerIdentifier WORKER4 = new WorkerIdentifier(8904);
+    private static final int WORKER4 = 8904;
     
     /** Worker ID for test worker. */
-    private static final WorkerIdentifier WORKER20 = new WorkerIdentifier(8920);
+    private static final int WORKER20 = 8920;
 
     /** BASE64-encoded cert for WORKER1 */
     private static String CERTSTRING = "MIIEkTCCAnmgAwIBAgIIeCvAS5OwAJswDQYJKoZIhvcNAQELBQAwTTEXMBUGA1UEAwwORFNTIFJvb3QgQ0EgMTAxEDAOBgNVBAsMB1Rlc3RpbmcxEzARBgNVBAoMClNpZ25TZXJ2ZXIxCzAJBgNVBAYTAlNFMB4XDTExMDUyNzEyMTU1NVoXDTIxMDUyNDEyMTU1NVowSjEUMBIGA1UEAwwLVFMgU2lnbmVyIDExEDAOBgNVBAsMB1Rlc3RpbmcxEzARBgNVBAoMClNpZ25TZXJ2ZXIxCzAJBgNVBAYTAlNFMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnT38GG8i/bGnuFMwnOdg+caHMkdPBacRdBaIggwMPfE50SOZ2TLrDEHJotxYda7HS0+tX5dIcalmEYCls/ptHzO5TQpqdRTuTqxp5cMA379yhD0OqTVNAmHrvPj9IytktoAtB/xcjwkRTHagaCmg5SWNcLKyVUct7nbeRA5yDSJQsCAEGHNZbJ50vATg1DQEyKT87GKfSBsclA0WIIIHMt8/SRhpsUZxESayU6YA4KCxVtexF5x+COLB6CzzlRG9JA8WpX9yKgIMsMDAscsJLiLPjhET5hwAFm5ZRfQQG9LI06QNTGqukuTlDbYrQGAUR5ZXW00WNHfgS00CjUCu0QIDAQABo3gwdjAdBgNVHQ4EFgQUOF0FflO2G+IN6c92pCNlPoorGVwwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBQgeiHe6K27Aqj7cVikCWK52FgFojAOBgNVHQ8BAf8EBAMCB4AwFgYDVR0lAQH/BAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQELBQADggIBADELkeIO9aiKjS/GaBUUhMr+k5UbVeK69WapU+7gTsWwa9D2vAOhAkfQ1OcUJoZaminv8pcNfo1Ey5qLtxBCmUy1fVomVWOPl6u1w8B6uYgE608hi2bfx28uIeksqpdqUX0Qf6ReUyl+FOh4xNrsyaF81TrIKt8ekq0iD+YAtT/jqgv4bUvs5fgIms4QOXgMUzNAP7cPU44KxcmR5I5Uy/Ag82hGIz64hZmeIDT0X59kbQvlZqFaiZvYOikoZSFvdM5kSVfItMgp7qmyLxuM/WaXqJWp6Mm+8ZZmcECugd4AEpE7xIiB7M/KEe+X4ItBNTKdAoaxWa+yeuYS7ol9rHt+Nogelj/06ZRQ0x03UqC7uKpgYAICjQEXIjcZofWSTh9KzKNfS1sQyIQ6yNTT2VMdYW9JC2OLKPV4AEJuBw30X8HOciJRRXOq9KRrIA2RSiaC5/3oAYscWuo31Fmj8CWQknXAIb39gPuZRwGOJbi1tUu2zmRsUNJfAe3hnvk+uxhnyp2vKB2KN5/VQgisx+8doEK/+Nbj/PPG/zASKimWG++5m0JNY4chIfR43gDDcF+4INof/8V84wbvUF+TpvP/mYM8wC9OkUyRvzqv9vjWOncCdbdjCuqPxDItwm9hhr+PbxsMaBes9rAiV9YT1FnpA++YpCufveFCQPDbCTgJ";
@@ -137,41 +135,39 @@ public class TimeStampSignerTest extends ModulesTestCase {
 
     private Random random = new Random(4711);
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
 
     @Before
-    @Override
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
 
-        repository = ServiceLocator.getInstance().lookupRemote(StatusRepositorySessionRemote.class);
+        repository = ServiceLocator.getInstance().lookupRemote(
+                IStatusRepositorySession.IRemote.class);
     }
 
     /* (non-Javadoc)
      * @see junit.framework.TestCase#tearDown()
      */
     @After
-    @Override
     public void tearDown() throws Exception {
         TestingSecurityManager.remove();
     }
 
     @Test
     public void test00SetupDatabase() throws Exception {        
-        addTimeStampSigner(WORKER1.getId(), "TestTSA1", true);
+        addTimeStampSigner(WORKER1, "TestTSA1", true);
         
-        addTimeStampSigner(WORKER2.getId(), "TestTSA2", true);
-        workerSession.setWorkerProperty(WORKER2.getId(), "ACCEPTEDPOLICIES", "1.2.3");
-        workerSession.reloadConfiguration(WORKER2.getId());
+        addTimeStampSigner(WORKER2, "TestTSA2", true);
+        workerSession.setWorkerProperty(WORKER2, "ACCEPTEDPOLICIES", "1.2.3");
+        workerSession.reloadConfiguration(WORKER2);
         
-        addTimeStampSigner(WORKER3.getId(), "TestTSA3", true);
-        workerSession.setWorkerProperty(WORKER3.getId(), "TIMESOURCE", "org.signserver.server.NullTimeSource");
-        workerSession.reloadConfiguration(WORKER3.getId());
+        addTimeStampSigner(WORKER3, "TestTSA3", true);
+        workerSession.setWorkerProperty(WORKER3, "TIMESOURCE", "org.signserver.server.NullTimeSource");
+        workerSession.reloadConfiguration(WORKER3);
         
-        addTimeStampSigner(WORKER4.getId(), "TestTSA4", true);
-        workerSession.setWorkerProperty(WORKER4.getId(), "TIMESOURCE", "org.signserver.server.StatusReadingLocalComputerTimeSource");
-        workerSession.reloadConfiguration(WORKER4.getId());
+        addTimeStampSigner(WORKER4, "TestTSA4", true);
+        workerSession.setWorkerProperty(WORKER4, "TIMESOURCE", "org.signserver.server.StatusReadingLocalComputerTimeSource");
+        workerSession.reloadConfiguration(WORKER4);
     }
 
     @Test
@@ -193,7 +189,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
      * @return Time stamp response
      * @throws Exception
      */
-    private TimeStampResponse assertSuccessfulTimestamp(WorkerIdentifier worker,
+    private TimeStampResponse assertSuccessfulTimestamp(int worker,
             final boolean includeSigningTime) throws Exception {
         int reqid = random.nextInt();
 
@@ -207,8 +203,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
                 new GenericSignRequest(reqid, requestBytes);
 
 
-        final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                worker, signRequest, new RemoteRequestContext());
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                worker, signRequest, new RequestContext());
 
         assertTrue(reqid == res.getRequestID());
 
@@ -254,7 +250,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
      * @return
      * @throws Exception
      */
-    private byte[] getResponseData(WorkerIdentifier worker) throws Exception {
+    private byte[] getResponseData(int worker) throws Exception {
         int reqid = random.nextInt();
 
         TimeStampRequestGenerator timeStampRequestGenerator =
@@ -267,8 +263,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
                 new GenericSignRequest(reqid, requestBytes);
 
 
-        final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                worker, signRequest, new RemoteRequestContext());
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                worker, signRequest, new RequestContext());
         
         return res.getProcessedData();
     }
@@ -278,7 +274,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test02GetStatus() throws Exception {
-        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(8901));
+        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(8901);
         assertEquals("token status", WorkerStatus.STATUS_ACTIVE, stat.getTokenStatus());
         assertEquals("ALLOK: " + stat.getFatalErrors(), 0, stat.getFatalErrors().size());
     }
@@ -300,8 +296,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
         final GenericSignRequest signRequest = new GenericSignRequest(13,
                 requestBytes);
 
-        final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                WORKER2, signRequest, new RemoteRequestContext());
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER2, signRequest, new RequestContext());
 
         final TimeStampResponse timeStampResponse = new TimeStampResponse(
             (byte[]) res.getProcessedData());
@@ -363,18 +359,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
     	}
     }
     
-    /**
-     * Helper method testing with given request hash algorithm and (optionally
-     * a given certificate digest algorithm.
-     * 
-     * @param hashAlgo
-     * @return
-     * @throws Exception 
-     */
-    private int testWithHash(final ASN1ObjectIdentifier hashAlgo,
-                             final String certDigestAlgo,
-                             final ASN1ObjectIdentifier expectedCertDigestAlgo,
-                             final boolean expectESSCertIDv2) throws Exception {
+    private int testWithHash(final ASN1ObjectIdentifier hashAlgo) throws Exception {
     	int reqid = random.nextInt();
         TimeStampRequestGenerator timeStampRequestGenerator =
                 new TimeStampRequestGenerator();
@@ -386,106 +371,69 @@ public class TimeStampSignerTest extends ModulesTestCase {
         GenericSignRequest signRequest =
                 new GenericSignRequest(reqid, requestBytes);
 
+
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER1, signRequest, new RequestContext());
+
+        final CertificateFactory factory = CertificateFactory.getInstance("X.509");
+        final X509Certificate cert =
+                (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(Base64.decode(CERTSTRING.getBytes())));
+        
+        TimeStampResponse timeStampResponse = null;
         try {
-            if (certDigestAlgo != null) {
-                workerSession.setWorkerProperty(WORKER1.getId(),
-                                                "CERTIFICATE_DIGEST_ALGORITHM",
-                                                certDigestAlgo);
-                workerSession.reloadConfiguration(WORKER1.getId());
-            }
-            
-            final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                    WORKER1, signRequest, new RemoteRequestContext());
+        	// check response
+        	timeStampResponse = new TimeStampResponse((byte[]) res.getProcessedData());
+        	timeStampResponse.validate(timeStampRequest);
+      	
+        	if (timeStampResponse.getStatus() != PKIStatus.GRANTED) {
+        		// return early and don't attempt to get a token
+        		return timeStampResponse.getStatus();
+        	}
+        	
+        	// check the hash value from the response
+        	TimeStampToken token = timeStampResponse.getTimeStampToken();
+        	AlgorithmIdentifier algo = token.getTimeStampInfo().getHashAlgorithm();
+        	assertEquals("Timestamp response is using incorrect hash algorithm", hashAlgo, algo.getAlgorithm()); 	
+        	
+        	Collection signerInfos = token.toCMSSignedData().getSignerInfos().getSigners();
+        	
+        	// there should be one SignerInfo
+        	assertEquals("There should only be one signer in the timestamp response", 1, signerInfos.size());
+        	
+        	for (Object o : signerInfos) {
+        		SignerInformation si = (SignerInformation) o;
+        		
+        		// test the response signature algorithm
+        		assertEquals("Timestamp used unexpected signature algorithm", TSPAlgorithms.SHA1.toString(), si.getDigestAlgOID());
+        		assertEquals("Timestamp is signed with unexpected signature encryption algorithm", "1.2.840.113549.1.1.1", si.getEncryptionAlgOID());
+       		
+        		final AttributeTable attrs = si.getSignedAttributes();
+        		final ASN1EncodableVector scAttrs = attrs.getAll(PKCSObjectIdentifiers.id_aa_signingCertificate);
+        		
+        		assertEquals("Should contain a signingCertificate signed attribute", 1, scAttrs.size());
+        		
+        		TestUtils.checkSigningCertificateAttribute(ASN1Sequence.getInstance(scAttrs.get(0)), cert);
+        	}
 
-            final CertificateFactory factory = CertificateFactory.getInstance("X.509");
-            final X509Certificate cert =
-                    (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(Base64.decode(CERTSTRING.getBytes())));
-
-            TimeStampResponse timeStampResponse = null;
-            try {
-                    // check response
-                    timeStampResponse = new TimeStampResponse((byte[]) res.getProcessedData());
-                    timeStampResponse.validate(timeStampRequest);
-
-                    if (timeStampResponse.getStatus() != PKIStatus.GRANTED) {
-                            // return early and don't attempt to get a token
-                            return timeStampResponse.getStatus();
-                    }
-
-                    // check the hash value from the response
-                    TimeStampToken token = timeStampResponse.getTimeStampToken();
-                    AlgorithmIdentifier algo = token.getTimeStampInfo().getHashAlgorithm();
-                    assertEquals("Timestamp response is using incorrect hash algorithm", hashAlgo, algo.getAlgorithm()); 	
-
-                    Collection signerInfos = token.toCMSSignedData().getSignerInfos().getSigners();
-
-                    // there should be one SignerInfo
-                    assertEquals("There should only be one signer in the timestamp response", 1, signerInfos.size());
-
-                    for (Object o : signerInfos) {
-                            SignerInformation si = (SignerInformation) o;
-
-                            // test the response signature algorithm
-                            assertEquals("Timestamp used unexpected signature algorithm", TSPAlgorithms.SHA1.toString(), si.getDigestAlgOID());
-                            assertEquals("Timestamp is signed with unexpected signature encryption algorithm", "1.2.840.113549.1.1.1", si.getEncryptionAlgOID());
-
-                            final AttributeTable attrs = si.getSignedAttributes();
-                            final ASN1EncodableVector scAttrs =
-                                    attrs.getAll(expectESSCertIDv2 ?
-                                                 PKCSObjectIdentifiers.id_aa_signingCertificateV2 : 
-                                                 PKCSObjectIdentifiers.id_aa_signingCertificate);
-
-                            assertEquals("Should contain a signingCertificate signed attribute", 1, scAttrs.size());
-
-                            final String digestAlg = getBCDigestAlg(certDigestAlgo);
-                            TestUtils.checkSigningCertificateAttribute(
-                                    Attribute.getInstance(scAttrs.get(0)), cert,
-                                    digestAlg, expectESSCertIDv2);
-                    }
-            } catch (TSPException | IOException e) {
-                    fail("Failed to verify response");
-            }
-
-
-            final TimeStampToken token = timeStampResponse.getTimeStampToken();
-
-            try {
-                    final SignerInformationVerifier infoVerifier =
-                            new JcaSimpleSignerInfoVerifierBuilder().setProvider("BC").build((X509Certificate) cert);
-
-                    token.validate(infoVerifier);
-            } catch (TSPException e) {
-                    fail("Failed to validate response token");
-            }
-            
-            return timeStampResponse.getStatus();
-        } finally {
-            workerSession.removeWorkerProperty(WORKER1.getId(),
-                                               "CERTIFICATE_DIGEST_ALGORITHM");
-            workerSession.reloadConfiguration(WORKER1.getId());
-        }
-            
-    }
-    
-    private String getBCDigestAlg(final String alg) {
-        if (alg == null) {
-            return "SHA-256";
+        	
+        } catch (TSPException e) {
+        	fail("Failed to verify response");
+        } catch (IOException e) {
+        	fail("Failed to verify response");
         }
         
-        switch (alg) {
-            case "SHA1":
-                return "SHA-1";
-            case "SHA224":
-                return "SHA-224";
-            case "SHA256":
-                return "SHA-256";
-            case "SHA384":
-                return "SHA-384";
-            case "SHA512":
-                return "SHA-512";
-            default:
-                return null;
+        
+        final TimeStampToken token = timeStampResponse.getTimeStampToken();
+        
+        try {
+        	
+        	token.validate(cert, "BC");
+        	
+        } catch (TSPException e) {
+        	fail("Failed to validate response token");
         }
+       
+        return timeStampResponse.getStatus();
     }
     
     /**
@@ -496,7 +444,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test06HashSHA256() throws Exception {
-    	testWithHash(TSPAlgorithms.SHA256, null, TSPAlgorithms.SHA256, true);
+    	testWithHash(TSPAlgorithms.SHA256);
     }
     
     /**
@@ -507,7 +455,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test07HashSHA512() throws Exception {
-    	testWithHash(TSPAlgorithms.SHA512, null, TSPAlgorithms.SHA256, true);
+    	testWithHash(TSPAlgorithms.SHA512);
     }
     
     /**
@@ -518,7 +466,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test08HashRIPE160() throws Exception {
-    	testWithHash(TSPAlgorithms.RIPEMD160, null, TSPAlgorithms.SHA256, true);
+    	testWithHash(TSPAlgorithms.RIPEMD160);
     }
     
     
@@ -532,10 +480,10 @@ public class TimeStampSignerTest extends ModulesTestCase {
     @Test
     public void test09HashWithNotAllowedAlgorithm() throws Exception {
     	// set accepted algorithms to SHA1
-    	workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.ACCEPTEDALGORITHMS, "SHA1");
-    	workerSession.reloadConfiguration(WORKER1.getId());
+    	workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ACCEPTEDALGORITHMS, "SHA1");
+    	workerSession.reloadConfiguration(WORKER1);
     	
-    	int status = testWithHash(TSPAlgorithms.SHA256, null, TSPAlgorithms.SHA256, true);
+    	int status = testWithHash(TSPAlgorithms.SHA256);
     	assertEquals("Should return status REJECTION", PKIStatus.REJECTION, status);
     }    
     
@@ -548,11 +496,11 @@ public class TimeStampSignerTest extends ModulesTestCase {
     @Test
     public void test10HashWithIllegalAlgorithm() throws Exception {
     	// reset accepted algorithms
-    	workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.ACCEPTEDALGORITHMS);
-    	workerSession.reloadConfiguration(WORKER1.getId());
+    	workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.ACCEPTEDALGORITHMS);
+    	workerSession.reloadConfiguration(WORKER1);
     	
     	ASN1ObjectIdentifier oid = new ASN1ObjectIdentifier(DUMMY_OID);
-    	int status = testWithHash(oid, null, TSPAlgorithms.SHA256, true);
+    	int status = testWithHash(oid);
 
     	assertEquals("Should not accept an invalid hash algorithm", PKIStatus.REJECTION, status);
     }
@@ -566,15 +514,15 @@ public class TimeStampSignerTest extends ModulesTestCase {
     @Test
     public void test11HashWithAllowedAlgorithm() throws Exception {
     	// set accepted algorithms to SHA1
-    	workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.ACCEPTEDALGORITHMS, "SHA1");
-    	workerSession.reloadConfiguration(WORKER1.getId());
+    	workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ACCEPTEDALGORITHMS, "SHA1");
+    	workerSession.reloadConfiguration(WORKER1);
     	
-    	int status = testWithHash(TSPAlgorithms.SHA1, null, TSPAlgorithms.SHA256, true);
+    	int status = testWithHash(TSPAlgorithms.SHA1);
     	assertEquals("Should return status GRANTED", PKIStatus.GRANTED, status);
     }    
     
     
-    private void assertTimeNotAvailable(WorkerIdentifier worker) throws Exception {
+    private void assertTimeNotAvailable(int worker) throws Exception {
         final int reqid = random.nextInt();
 
         final TimeStampRequestGenerator timeStampRequestGenerator =
@@ -587,8 +535,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
                 new GenericSignRequest(reqid, requestBytes);
 
 
-        final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                worker, signRequest, new RemoteRequestContext());
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                worker, signRequest, new RequestContext());
 
         assertTrue(reqid == res.getRequestID());
 
@@ -630,9 +578,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
         
         // Now, don't include the signer certificate in the chain
         // For some reason we need to upload the signer certificate again :S
-        workerSession.uploadSignerCertificate(WORKER2.getId(), subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-        workerSession.uploadSignerCertificateChain(WORKER2.getId(), Arrays.asList(issuer.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
-        workerSession.reloadConfiguration(WORKER2.getId());
+        workerSession.uploadSignerCertificate(WORKER2, subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+        workerSession.uploadSignerCertificateChain(WORKER2, Arrays.asList(issuer.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
+        workerSession.reloadConfiguration(WORKER2);
         
         if (!subject.equals(workerSession.getSignerCertificate(WORKER2))) {
             LOG.info("Subject: " + subject);
@@ -654,8 +602,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
         GenericSignRequest signRequest =
                 new GenericSignRequest(123124, requestBytes);
         try {
-            final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                    WORKER2, signRequest, new RemoteRequestContext());
+            final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                    WORKER2, signRequest, new RequestContext());
 
             final TimeStampResponse timeStampResponse = new TimeStampResponse((byte[]) res.getProcessedData());
             timeStampResponse.validate(timeStampRequest);
@@ -667,9 +615,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
             assertTrue("message should talk about missing signer certificate", ex.getMessage().contains("igner certificate"));
         } finally {
             // Restore
-            workerSession.uploadSignerCertificate(WORKER2.getId(), subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
         }
     }
     
@@ -688,9 +636,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
         
         try {
             // Use the other certificate which will not match the key + the right cert in chain        
-            workerSession.uploadSignerCertificate(WORKER2.getId(), other.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), Arrays.asList(subject.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, other.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, Arrays.asList(subject.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
 
             // Test the status of the worker
             WorkerStatus actualStatus = workerSession.getStatus(WORKER2);
@@ -707,8 +655,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
             GenericSignRequest signRequest =
                     new GenericSignRequest(123124, requestBytes);
             try {
-                final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                        WORKER2, signRequest, new RemoteRequestContext());
+                final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                        WORKER2, signRequest, new RequestContext());
 
                 final TimeStampResponse timeStampResponse = new TimeStampResponse((byte[]) res.getProcessedData());
                 timeStampResponse.validate(timeStampRequest);
@@ -721,9 +669,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
             }
         } finally {
             // Restore
-            workerSession.uploadSignerCertificate(WORKER2.getId(), subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
         }
     }
     
@@ -743,9 +691,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
         
         try {
             // Use the right certificate but the other in the certificate chain
-            workerSession.uploadSignerCertificate(WORKER2.getId(), subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), Arrays.asList(other.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, Arrays.asList(other.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
 
             // Test the status of the worker
             WorkerStatus actualStatus = workerSession.getStatus(WORKER2);
@@ -762,8 +710,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
             GenericSignRequest signRequest =
                     new GenericSignRequest(123124, requestBytes);
             try {
-                final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                        WORKER2, signRequest, new RemoteRequestContext());
+                final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                        WORKER2, signRequest, new RequestContext());
 
                 final TimeStampResponse timeStampResponse = new TimeStampResponse((byte[]) res.getProcessedData());
                 timeStampResponse.validate(timeStampRequest);
@@ -776,13 +724,13 @@ public class TimeStampSignerTest extends ModulesTestCase {
             }
         } finally {
             // Restore
-            workerSession.uploadSignerCertificate(WORKER2.getId(), subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
         }
     }
     
-    private List<byte[]> asListOfByteArrays(List<Certificate> chain) throws CertificateEncodingException {
+    private Collection<byte[]> asListOfByteArrays(List<Certificate> chain) throws CertificateEncodingException {
         ArrayList results = new ArrayList(chain.size());
         for (Certificate c : chain) {
             results.add(c.getEncoded());
@@ -799,7 +747,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
     public void test11RequireValidChain() throws Exception {
     
         // First make sure we don't have this property set
-        workerSession.removeWorkerProperty(WORKER1.getId(), "REQUIREVALIDCHAIN");
+        workerSession.removeWorkerProperty(WORKER1, "REQUIREVALIDCHAIN");
         
         // Setup an invalid chain
         final List<Certificate> chain = workerSession.getSignerCertificateChain(WORKER1);
@@ -812,12 +760,12 @@ public class TimeStampSignerTest extends ModulesTestCase {
             // An not strictly valid chain as it contains an additional certificate at the end
             // (In same use cases this might be okey but now we are testing the 
             //  strict checking with the REQUIREVALIDCHAIN property set)
-            List<Certificate> ourChain = new LinkedList<>();
+            List<Certificate> ourChain = new LinkedList<Certificate>();
             ourChain.addAll(chain);
             ourChain.add(other);
-            workerSession.uploadSignerCertificate(WORKER1.getId(), subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER1.getId(), asListOfByteArrays(ourChain), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER1.getId());
+            workerSession.uploadSignerCertificate(WORKER1, subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER1, asListOfByteArrays(ourChain), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER1);
             
             // Test the status of the worker: should be ok as we aren't doing strict checking
             WorkerStatus actualStatus = workerSession.getStatus(WORKER1);
@@ -826,8 +774,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
             assertTokenGranted(WORKER1);
             
             // Now change to strict checking
-            workerSession.setWorkerProperty(WORKER1.getId(), "REQUIREVALIDCHAIN", "true");
-            workerSession.reloadConfiguration(WORKER1.getId());
+            workerSession.setWorkerProperty(WORKER1, "REQUIREVALIDCHAIN", "true");
+            workerSession.reloadConfiguration(WORKER1);
             
             // Test the status of the worker: should be offline as we don't have a valid chain
             actualStatus = workerSession.getStatus(WORKER1);
@@ -837,9 +785,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
             
         } finally {
             // Restore
-            workerSession.uploadSignerCertificate(WORKER1.getId(), subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER1.getId(), asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER1.getId());
+            workerSession.uploadSignerCertificate(WORKER1, subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER1, asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER1);
         }
         
     }
@@ -860,18 +808,18 @@ public class TimeStampSignerTest extends ModulesTestCase {
         
         // Certificate with non-critical id_kp_timeStamping
         boolean critical = false;
-        final X509Certificate certEku = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=With non-critical EKU").setSubjectPublicKey(subject.getPublicKey()).addExtension(new CertExt(Extension.extendedKeyUsage, critical, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build());
+        final X509Certificate certEku = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=With non-critical EKU").setSubjectPublicKey(subject.getPublicKey()).addExtension(new CertExt(X509Extension.extendedKeyUsage, critical, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build());
         
         // OK: Certificate with critical id_kp_timeStamping
         critical = true;
-        final X509Certificate certCritEku = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=With critical EKU").setSubjectPublicKey(subject.getPublicKey()).addExtension(new CertExt(Extension.extendedKeyUsage, critical, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build());
+        final X509Certificate certCritEku = new JcaX509CertificateConverter().getCertificate(new CertBuilder().setSubject("CN=With critical EKU").setSubjectPublicKey(subject.getPublicKey()).addExtension(new CertExt(X509Extension.extendedKeyUsage, critical, new ExtendedKeyUsage(KeyPurposeId.id_kp_timeStamping))).build());
         
         // Certificate with additional extended key usage, besides id_kp_timeStamping
         final X509Certificate certCritEkuAndAdditional =
                 new JcaX509CertificateConverter().getCertificate(new CertBuilder().
                         setSubject("CN=With critical EKU").
                         setSubjectPublicKey(subject.getPublicKey()).
-                        addExtension(new CertExt(Extension.extendedKeyUsage, 
+                        addExtension(new CertExt(X509Extension.extendedKeyUsage, 
                             critical,
                             new ExtendedKeyUsage(new KeyPurposeId[] {KeyPurposeId.id_kp_timeStamping,
                                                                      KeyPurposeId.id_kp_emailProtection}
@@ -881,9 +829,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
         
         try {
             // Fail: No id_kp_timeStamping
-            workerSession.uploadSignerCertificate(WORKER2.getId(), certNoEku.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), Arrays.asList(certNoEku.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, certNoEku.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, Arrays.asList(certNoEku.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
             WorkerStatus actualStatus = workerSession.getStatus(WORKER2);
             List<String> errors = actualStatus.getFatalErrors();
             String errorsString = errors.toString();
@@ -894,16 +842,16 @@ public class TimeStampSignerTest extends ModulesTestCase {
             assertTrue("error should talk about missing critical extension: " + errorsString, errorsString.contains("critical")); // Will need adjustment if language changes
             
             // Ok: Certificate with critical id_kp_timeStamping
-            workerSession.uploadSignerCertificate(WORKER2.getId(), certCritEku.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), Arrays.asList(certCritEku.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, certCritEku.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, Arrays.asList(certCritEku.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
             actualStatus = workerSession.getStatus(WORKER2);
             assertEquals(0, actualStatus.getFatalErrors().size());
             
             // Fail: No non-critical id_kp_timeStamping
-            workerSession.uploadSignerCertificate(WORKER2.getId(), certEku.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), Arrays.asList(certEku.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, certEku.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, Arrays.asList(certEku.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
             actualStatus = workerSession.getStatus(WORKER2);
             errorsString = errors.toString();
             // should be error as the signer certificate is missing id_kp_timeStamping
@@ -912,9 +860,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
             assertTrue("errorString: " + errorsString, errorsString.contains("critical"));  // Will need adjustment if language changes
         
             // Fail: Additional EKU
-            workerSession.uploadSignerCertificate(WORKER2.getId(), certCritEkuAndAdditional.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), Arrays.asList(certCritEkuAndAdditional.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, certCritEkuAndAdditional.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, Arrays.asList(certCritEkuAndAdditional.getEncoded()), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
             actualStatus = workerSession.getStatus(WORKER2);
             // should be error as the signer certificate is missing id_kp_timeStamping
             assertEquals(1, actualStatus.getFatalErrors().size());
@@ -926,16 +874,16 @@ public class TimeStampSignerTest extends ModulesTestCase {
             
         } finally {
             // Restore
-            workerSession.uploadSignerCertificate(WORKER2.getId(), subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.uploadSignerCertificateChain(WORKER2.getId(), asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
-            workerSession.reloadConfiguration(WORKER2.getId());
+            workerSession.uploadSignerCertificate(WORKER2, subject.getEncoded(), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.uploadSignerCertificateChain(WORKER2, asListOfByteArrays(chain), GlobalConfiguration.SCOPE_GLOBAL);
+            workerSession.reloadConfiguration(WORKER2);
         }
     }
     
     /** Tests issuance of time-stamp token when an EC key is specified. */
     @Test
     public void test20BasicTimeStampECDSA() throws Exception {
-        final int workerId = WORKER20.getId();
+        final int workerId = WORKER20;
         try {
             // Setup signer
             final File keystore = new File(getSignServerHome(), "res/test/dss10/dss10_signer5ec.p12");
@@ -976,7 +924,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
     /** Tests issuance of time-stamp token when an DSA key is specified. */
     @Test
     public void test21BasicTimeStampDSA() throws Exception {
-        final int workerId = WORKER20.getId();
+        final int workerId = WORKER20;
         try {
             // Setup signer
             final File keystore = new File(getSignServerHome(), "res/test/dss10/dss10_tssigner6dsa.jks");
@@ -1013,8 +961,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
                 new GenericSignRequest(reqid, requestBytes);
 
         try {
-            final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                WORKER1, signRequest, new RemoteRequestContext());
+            final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER1, signRequest, new RequestContext());
         } catch (IllegalRequestException e) {
             // expected
         } catch (Exception e) {
@@ -1035,8 +983,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
                 new GenericSignRequest(reqid, requestBytes);
 
         try {
-            final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                WORKER1, signRequest, new RemoteRequestContext());
+            final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER1, signRequest, new RequestContext());
         } catch (IllegalRequestException e) {
             // expected
         } catch (Exception e) {
@@ -1057,8 +1005,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
                 new GenericSignRequest(reqid, requestBytes);
 
         try {
-            final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                WORKER1, signRequest, new RemoteRequestContext());
+            final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER1, signRequest, new RequestContext());
         } catch (IllegalRequestException e) {
             // expected
         } catch (Exception e) {
@@ -1085,8 +1033,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test26StatusStringExcluded() throws Exception {
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.INCLUDESTATUSSTRING, "FALSE");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.INCLUDESTATUSSTRING, "FALSE");
+        workerSession.reloadConfiguration(WORKER1);
         
         final TimeStampResponse response = assertSuccessfulTimestamp(WORKER1, true);
         
@@ -1109,8 +1057,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
         final GenericSignRequest signRequest = new GenericSignRequest(13,
                 requestBytes);
 
-        final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                WORKER2, signRequest, new RemoteRequestContext());
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER2, signRequest, new RequestContext());
 
         final TimeStampResponse timeStampResponse = new TimeStampResponse(
             (byte[]) res.getProcessedData());
@@ -1125,8 +1073,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test28StatusStringExcludedFailure() throws Exception {
-        workerSession.setWorkerProperty(WORKER2.getId(), TimeStampSigner.INCLUDESTATUSSTRING, "FALSE");
-        workerSession.reloadConfiguration(WORKER2.getId());
+        workerSession.setWorkerProperty(WORKER2, TimeStampSigner.INCLUDESTATUSSTRING, "FALSE");
+        workerSession.reloadConfiguration(WORKER2);
         // WORKER2 has ACCEPTEDPOLICIES=1.2.3
         // Create an request with another policy (1.2.3.5 != 1.2.3)
         final TimeStampRequest timeStampRequest = new TimeStampRequest(
@@ -1137,13 +1085,13 @@ public class TimeStampSignerTest extends ModulesTestCase {
         final GenericSignRequest signRequest = new GenericSignRequest(13,
                 requestBytes);
 
-        final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                WORKER2, signRequest, new RemoteRequestContext());
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER2, signRequest, new RequestContext());
 
         final TimeStampResponse timeStampResponse = new TimeStampResponse(
             (byte[]) res.getProcessedData());
         
-        assertNotEquals("Operation Okey", timeStampResponse.getStatusString());
+        assertNull(timeStampResponse.getStatusString());
     }
     
     /**
@@ -1152,8 +1100,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test29NoDefaultPolicyOID() throws Exception {
-        workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.DEFAULTTSAPOLICYOID);
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.DEFAULTTSAPOLICYOID);
+        workerSession.reloadConfiguration(WORKER1);
         
         final WorkerStatus status = workerSession.getStatus(WORKER1);
         final List<String> errors = status.getFatalErrors();
@@ -1162,8 +1110,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
                 errors.contains("No default TSA policy OID has been configured"));
         
         // restore
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3");
+        workerSession.reloadConfiguration(WORKER1);
     }
     
     /**
@@ -1172,8 +1120,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test30BogusDefaultPolicyOID() throws Exception {
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.DEFAULTTSAPOLICYOID, "foobar");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.DEFAULTTSAPOLICYOID, "foobar");
+        workerSession.reloadConfiguration(WORKER1);
         
         final WorkerStatus status = workerSession.getStatus(WORKER1);
         final String errors = status.getFatalErrors().toString();
@@ -1182,8 +1130,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
                 errors.contains("TSA policy OID foobar is invalid"));
         
         // restore
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3");
+        workerSession.reloadConfiguration(WORKER1);
     }
     
     /**
@@ -1204,9 +1152,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test32ExplicitTSAName() throws Exception {
-        workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA_FROM_CERT);
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA, "CN=test");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.TSA_FROM_CERT);
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.TSA, "CN=test");
+        workerSession.reloadConfiguration(WORKER1);
         
         final TimeStampResponse response = assertSuccessfulTimestamp(WORKER1, true);
         final GeneralName name = response.getTimeStampToken().getTimeStampInfo().getTsa();
@@ -1215,8 +1163,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
         assertEquals("TSA included", expectedName, name);
         
         // restore
-        workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA);
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.TSA);
+        workerSession.reloadConfiguration(WORKER1);
     }
     
     /**
@@ -1227,9 +1175,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test34TSANameFromCert() throws Exception {
-       workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA);
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA_FROM_CERT, "true");
-       workerSession.reloadConfiguration(WORKER1.getId());
+       workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.TSA);
+       workerSession.setWorkerProperty(WORKER1, TimeStampSigner.TSA_FROM_CERT, "true");
+       workerSession.reloadConfiguration(WORKER1);
        
        final TimeStampResponse response = assertSuccessfulTimestamp(WORKER1, true);
        final GeneralName name = response.getTimeStampToken().getTimeStampInfo().getTsa();
@@ -1242,8 +1190,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
        assertTrue("TSA name content equals cert", Arrays.equals(certName.getEncoded(), name.getEncoded()));
        
        // restore
-       workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA_FROM_CERT);
-       workerSession.reloadConfiguration(WORKER1.getId());
+       workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.TSA_FROM_CERT);
+       workerSession.reloadConfiguration(WORKER1);
     }
     
     /**
@@ -1252,9 +1200,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test35TSANameExplicitAndFromCert() throws Exception {
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA, "CN=test");
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA_FROM_CERT, "true");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.TSA, "CN=test");
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.TSA_FROM_CERT, "true");
+        workerSession.reloadConfiguration(WORKER1);
         
         final WorkerStatus status = workerSession.getStatus(WORKER1);
         final List<String> errors = status.getFatalErrors();
@@ -1264,9 +1212,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
                         TimeStampSigner.TSA + " worker property at the same time"));
         
         // restore
-        workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA);
-        workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.TSA_FROM_CERT);
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.TSA);
+        workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.TSA_FROM_CERT);
+        workerSession.reloadConfiguration(WORKER1);
     }
     
     /**
@@ -1275,8 +1223,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test36noSigningTimeAttribute() throws Exception {
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.INCLUDESIGNINGTIMEATTRIBUTE, "false");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.INCLUDESIGNINGTIMEATTRIBUTE, "false");
+        workerSession.reloadConfiguration(WORKER1);
         
         assertSuccessfulTimestamp(WORKER1, false);
     }
@@ -1287,8 +1235,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
      */
     @Test
     public void test37explicitlyIncludeSigningTime() throws Exception {
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.INCLUDESIGNINGTIMEATTRIBUTE, "true");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.INCLUDESIGNINGTIMEATTRIBUTE, "true");
+        workerSession.reloadConfiguration(WORKER1);
         
         assertSuccessfulTimestamp(WORKER1, true);
     }
@@ -1320,8 +1268,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
     @Test
     public void test38orderingDefault() throws Exception {
         // reset ORDERING property
-        workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.ORDERING);
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING);
+        workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.ORDERING);
+        workerSession.reloadConfiguration(WORKER1);
         
         final byte[] res = getResponseData(WORKER1);
         final ASN1Sequence seq = extractTstInfoSeq(res);
@@ -1343,8 +1292,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
     @Test
     public void test39orderingTrue() throws Exception {
         // reset ORDERING property
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.ORDERING, "true");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ORDERING, "true");
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING, "true");
+        workerSession.reloadConfiguration(WORKER1);
         
         final byte[] res = getResponseData(WORKER1);
         final ASN1Sequence seq = extractTstInfoSeq(res);
@@ -1359,8 +1309,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
         } catch (Exception e) {
             fail("Unexpected exception");
         } finally {
-            workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.ORDERING);
-            workerSession.reloadConfiguration(WORKER1.getId());
+            workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.ORDERING);
+            workerSession.reloadConfiguration(WORKER1);
         }
     }
     
@@ -1373,8 +1323,9 @@ public class TimeStampSignerTest extends ModulesTestCase {
     @Test
     public void test40orderingFalse() throws Exception {
         // reset ORDERING property
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.ORDERING, "false");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING);
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ORDERING, "false");
+        workerSession.reloadConfiguration(WORKER1);
         
         final byte[] res = getResponseData(WORKER1);
         final ASN1Sequence seq = extractTstInfoSeq(res);
@@ -1389,21 +1340,52 @@ public class TimeStampSignerTest extends ModulesTestCase {
         } catch (Exception e) {
             fail("Unexpected exception");
         } finally {
-            workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.ORDERING);
-            workerSession.reloadConfiguration(WORKER1.getId());
+            workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.ORDERING);
+            workerSession.reloadConfiguration(WORKER1);
         }
     }
     
     /**
-     * Test that the ordering field is included when ORDERING == true.
+     * Test that the ordering field is included when ORDERING == false and INCLUDEORDERING == true.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void test41IncludeOrderingOrderingFalse() throws Exception {
+        // reset ORDERING property
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ORDERING, "false");
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING, "true");
+        workerSession.reloadConfiguration(WORKER1);
+        
+        final byte[] res = getResponseData(WORKER1);
+        final ASN1Sequence seq = extractTstInfoSeq(res);
+        final ASN1Encodable o = seq.getObjectAt(5);
+
+        try {
+            final ASN1Boolean b = ASN1Boolean.getInstance(o);
+            assertEquals("Ordering should be set to false", ASN1Boolean.FALSE, b);
+        } catch (IllegalArgumentException e) {
+            fail("Ordering should be included");
+        } catch (Exception e) {
+            fail("Unexpected exception");
+        } finally {
+            workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.ORDERING);
+            workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING);
+            workerSession.reloadConfiguration(WORKER1);
+        }
+    }
+    
+    /**
+     * Test that the ordering field is included when ORDERING == true and INCLUDEORDERING == true.
      * 
      * @throws Exception
      */
     @Test
     public void test42IncludeOrderingOrderingTrue() throws Exception {
         // reset ORDERING property
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.ORDERING, "true");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ORDERING, "true");
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING, "true");
+        workerSession.reloadConfiguration(WORKER1);
         
         final byte[] res = getResponseData(WORKER1);
         final ASN1Sequence seq = extractTstInfoSeq(res);
@@ -1417,21 +1399,23 @@ public class TimeStampSignerTest extends ModulesTestCase {
         } catch (Exception e) {
             fail("Unexpected exception");
         } finally {
-            workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.ORDERING);
-            workerSession.reloadConfiguration(WORKER1.getId());
+            workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.ORDERING);
+            workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING);
+            workerSession.reloadConfiguration(WORKER1);
         }
     }
     
     /**
-     * Test that the ordering field is not included when ORDERING == false.
+     * Test that the ordering field is not included when ORDERING == false and INCLUDEORDERING == false.
      * 
      * @throws Exception
      */
     @Test
     public void test43NotIncludeOrderingOrderingFalse() throws Exception {
         // reset ORDERING property
-        workerSession.setWorkerProperty(WORKER1.getId(), TimeStampSigner.ORDERING, "false");
-        workerSession.reloadConfiguration(WORKER1.getId());
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ORDERING, "false");
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING, "false");
+        workerSession.reloadConfiguration(WORKER1);
 
         final byte[] res = getResponseData(WORKER1);
         final ASN1Sequence seq = extractTstInfoSeq(res);
@@ -1445,11 +1429,27 @@ public class TimeStampSignerTest extends ModulesTestCase {
         } catch (Exception e) {
             fail("Unexpected exception");
         } finally {
-            workerSession.removeWorkerProperty(WORKER1.getId(), TimeStampSigner.ORDERING);
-            workerSession.reloadConfiguration(WORKER1.getId());
+            workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.ORDERING);
+            workerSession.removeWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING);
+            workerSession.reloadConfiguration(WORKER1);
         }
     }
-
+    
+    /**
+     * Test that setting INCLUDEORDERING false and ORDERING true results in a configuration errror.
+     * @throws Exception
+     */
+    @Test
+    public void test44NotIncludeOrderingOrderingTrue() throws Exception {
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.ORDERING, "true");
+        workerSession.setWorkerProperty(WORKER1, TimeStampSigner.INCLUDEORDERING, "false");
+        workerSession.reloadConfiguration(WORKER1);
+        
+        final List<String> errors = workerSession.getStatus(WORKER1).getFatalErrors();
+        assertTrue("Should mention incompatible configuration values.",
+                errors.contains("INCLUDEORDERING can not be set to \"false\" when ORDERING is set to \"true\""));
+    }
+    
     /**
      * Test that setting INCLUDE_CERTIFICATE_LEVELS to 0 is not supported.
      * 
@@ -1458,8 +1458,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
     @Test
     public void test45IncludeCertificateLevels0NotAllowed() throws Exception {
        try {
-           workerSession.setWorkerProperty(WORKER1.getId(), WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS, "0");
-           workerSession.reloadConfiguration(WORKER1.getId());
+           workerSession.setWorkerProperty(WORKER1, WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS, "0");
+           workerSession.reloadConfiguration(WORKER1);
            
            final List<String> errors = workerSession.getStatus(WORKER1).getFatalErrors();
            
@@ -1468,68 +1468,12 @@ public class TimeStampSignerTest extends ModulesTestCase {
                                    WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS +
                                    ". Only numbers >= 1 supported."));
        } finally {
-           workerSession.removeWorkerProperty(WORKER1.getId(), WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS);
-           workerSession.reloadConfiguration(WORKER1.getId());
+           workerSession.removeWorkerProperty(WORKER1, WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS);
+           workerSession.reloadConfiguration(WORKER1);
        }
     }
-    
-    /**
-     * Test timestamping with certificate digest method SHA1.
-     * Checks that the ESSCertID attribute (not v2) is used in the response.
-     * 
-     * @throws Exception 
-     */
-    @Test
-    public void test46CertificateDigestMethodSHA1() throws Exception {
-    	testWithHash(TSPAlgorithms.SHA256, "SHA1", TSPAlgorithms.SHA1, false);
-    }
-    
-    /**
-     * Test with certificate digest method SHA256 explicitly set as a worker
-     * property.
-     * Also checks that the v2 signing cert attribute is included.
-     * 
-     * @throws Exception 
-     */
-    @Test
-    public void test47CertificateDigestMethodSHA256Explicit() throws Exception {
-        testWithHash(TSPAlgorithms.SHA256, "SHA256", TSPAlgorithms.SHA256, true);
-    }
 
-    /**
-     * Test with certificate digest method SHA384.
-     * Also checks that the v2 signing cert attribute is included.
-     * 
-     * @throws Exception 
-     */
-    @Test
-    public void test48CertificateDigestMethodSHA384() throws Exception {
-        testWithHash(TSPAlgorithms.SHA256, "SHA384", TSPAlgorithms.SHA384, true);
-    }
-    
-    /**
-     * Test with certificate digest method SHA512.
-     * Also checks that the v2 signing cert attribute is included.
-     * 
-     * @throws Exception 
-     */
-    @Test
-    public void test49CertificateDigestMethodSHA512() throws Exception {
-        testWithHash(TSPAlgorithms.SHA256, "SHA512", TSPAlgorithms.SHA512, true);
-    }
-    
-    /**
-     * Test with certificate digest method SHA224.
-     * Also checks that the v2 signing cert attribute is used.
-     * 
-     * @throws Exception 
-     */
-    @Test
-    public void test50CertificateDigestMethodSHA224() throws Exception {
-        testWithHash(TSPAlgorithms.SHA256, "SHA224", TSPAlgorithms.SHA224, true);
-    }
-
-    private void assertTokenGranted(WorkerIdentifier wi) throws Exception {
+    private void assertTokenGranted(int workerId) throws Exception {
         TimeStampRequestGenerator timeStampRequestGenerator =
                     new TimeStampRequestGenerator();
         timeStampRequestGenerator.setCertReq(true);
@@ -1539,8 +1483,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
         GenericSignRequest signRequest =
                 new GenericSignRequest(123124, requestBytes);
         try {
-            final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                    wi, signRequest, new RemoteRequestContext());
+            final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                    workerId, signRequest, new RequestContext());
 
             final TimeStampResponse timeStampResponse = new TimeStampResponse((byte[]) res.getProcessedData());
             timeStampResponse.validate(timeStampRequest);
@@ -1551,7 +1495,7 @@ public class TimeStampSignerTest extends ModulesTestCase {
         }
     }
     
-    private void assertTokenNotGranted(WorkerIdentifier wi) throws Exception {
+    private void assertTokenNotGranted(int workerId) throws Exception {
         TimeStampRequestGenerator timeStampRequestGenerator =
                     new TimeStampRequestGenerator();
         timeStampRequestGenerator.setCertReq(true);
@@ -1561,8 +1505,8 @@ public class TimeStampSignerTest extends ModulesTestCase {
         GenericSignRequest signRequest =
                 new GenericSignRequest(123124, requestBytes);
         try {
-            final GenericSignResponse res = (GenericSignResponse) processSession.process(
-                    wi, signRequest, new RemoteRequestContext());
+            final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                    workerId, signRequest, new RequestContext());
 
             final TimeStampResponse timeStampResponse = new TimeStampResponse((byte[]) res.getProcessedData());
             timeStampResponse.validate(timeStampRequest);
@@ -1575,10 +1519,10 @@ public class TimeStampSignerTest extends ModulesTestCase {
 
     @Test
     public void test99TearDownDatabase() throws Exception {
-        removeWorker(WORKER1.getId());
-        removeWorker(WORKER2.getId());
-        removeWorker(WORKER3.getId());
-        removeWorker(WORKER4.getId());
+        removeWorker(WORKER1);
+        removeWorker(WORKER2);
+        removeWorker(WORKER3);
+        removeWorker(WORKER4);
     }
 
 }

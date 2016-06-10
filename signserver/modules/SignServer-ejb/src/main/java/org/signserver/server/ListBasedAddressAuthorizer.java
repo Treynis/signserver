@@ -29,7 +29,6 @@ import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.util.XForwardedForUtils;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 
 /**
  * Authorizer with the ability to accept or deny remote and
@@ -72,7 +71,7 @@ public class ListBasedAddressAuthorizer implements IAuthorizer {
             throws SignServerException {
         this.workerId = workerId;
         
-        fatalErrors = new LinkedList<>();
+        fatalErrors = new LinkedList<String>();
         
         whitelistedDirectAddresses = config.getProperty(PROPERTY_WHITELISTED_DIRECT_ADDRESSES);
         blacklistedDirectAddresses = config.getProperty(PROPERTY_BLACKLISTED_DIRECT_ADDRESSES);
@@ -116,7 +115,7 @@ public class ListBasedAddressAuthorizer implements IAuthorizer {
      * @return A set of InetAddress objects representing the list
      */
     private Set<InetAddress> splitAddresses(final String addresses, final String component) {
-        final Set<InetAddress> res = new HashSet<>();
+        final Set<InetAddress> res = new HashSet<InetAddress>();
         final String[] addressArr = addresses.split(",");
         
         for (String address : addressArr) {
@@ -241,17 +240,7 @@ public class ListBasedAddressAuthorizer implements IAuthorizer {
     private void logRemoteAddress(final String remoteAddress, final String[] forwardedAddresses,
             final RequestContext requestContext) {
         final LogMap logMap = LogMap.getInstance(requestContext);
-        logMap.put(IAuthorizer.LOG_REMOTEADDRESS, new Loggable() {
-            @Override
-            public String logValue() {
-                return remoteAddress;
-            }
-        });
-        logMap.put(IAuthorizer.LOG_FORWARDED_ADDRESS, new Loggable() {
-            @Override
-            public String logValue() {
-                return StringUtils.join(forwardedAddresses, ",");
-            }
-        });
+        logMap.put(IAuthorizer.LOG_REMOTEADDRESS, remoteAddress);
+        logMap.put(IAuthorizer.LOG_FORWARDED_ADDRESS, StringUtils.join(forwardedAddresses, ","));
     }
 }

@@ -14,6 +14,7 @@ package org.signserver.module.mrtdsigner;
 
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -30,12 +31,10 @@ import javax.persistence.EntityManager;
 
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
-import org.signserver.server.IServices;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
-import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
 /**
@@ -61,7 +60,7 @@ public class MRTDSigner extends BaseSigner {
             WorkerContext workerContext, EntityManager workerEM) {
         super.init(workerId, config, workerContext, workerEM);
         
-        configErrors = new LinkedList<>();
+        configErrors = new LinkedList<String>();
         
         if (hasSetIncludeCertificateLevels) {
             configErrors.add(WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS + " is not supported.");
@@ -77,7 +76,6 @@ public class MRTDSigner extends BaseSigner {
      * @return returns a MRTDSignResponse with the same number of signatures as requested.
      *
      */
-    @Override
     public ProcessResponse processData(ProcessRequest signRequest,
             RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
 
@@ -92,58 +90,51 @@ public class MRTDSigner extends BaseSigner {
             throw new IllegalRequestException("Signature request data cannot be null.");
         }
 
-        ICryptoInstance crypto = null;
-        try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+        if (signRequest instanceof MRTDSignRequest) {
+            MRTDSignRequest req = (MRTDSignRequest) signRequest;
 
-            if (signRequest instanceof MRTDSignRequest) {
-                MRTDSignRequest req = (MRTDSignRequest) signRequest;
+            ArrayList<byte[]> genSignatures = new ArrayList<byte[]>();
 
-                ArrayList<byte[]> genSignatures = new ArrayList<>();
+            Iterator<?> iterator = ((ArrayList<?>) req.getRequestData()).iterator();
+            while (iterator.hasNext()) {
 
-                Iterator<?> iterator = ((ArrayList<?>) req.getRequestData()).iterator();
-                while (iterator.hasNext()) {
-
-                    byte[] data = null;
-                    try {
-                        data = (byte[]) iterator.next();
-                    } catch (Exception e) {
-                        throw new IllegalRequestException("Signature request data must be an ArrayList of byte[]");
-                    }
-
-                    genSignatures.add(encrypt(data, signRequest, requestContext, crypto));
+                byte[] data = null;
+                try {
+                    data = (byte[]) iterator.next();
+                } catch (Exception e) {
+                    throw new IllegalRequestException("Signature request data must be an ArrayList of byte[]");
                 }
 
-                ret = new MRTDSignResponse(req.getRequestID(), genSignatures,
-                                           getSigningCertificate(crypto));
-
-            } else if (signRequest instanceof GenericSignRequest) {
-                GenericSignRequest req = (GenericSignRequest) signRequest;
-
-                byte[] bytes = req.getRequestData();
-                final String archiveId = createArchiveId(bytes, (String) requestContext.get(RequestContext.TRANSACTION_ID));
-
-                byte[] signedbytes = encrypt(bytes, signRequest, requestContext, crypto);
-                final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
-
-                if (signRequest instanceof GenericServletRequest) {
-                    ret = new GenericServletResponse(sReq.getRequestID(), signedbytes,
-                                                     getSigningCertificate(crypto),
-                                                     archiveId, archivables, CONTENT_TYPE);
-                } else {
-                    ret = new GenericSignResponse(sReq.getRequestID(), signedbytes,
-                                                  getSigningCertificate(crypto),
-                                                  archiveId, archivables);
-                }
-
-                // The client can be charged for the request
-                requestContext.setRequestFulfilledByWorker(true);
-            } else {
-                throw new IllegalRequestException("Sign request with id: " + sReq.getRequestID() + " is of the wrong type: "
-                        + sReq.getClass().getName() + " should be MRTDSignRequest or GenericSignRequest");
+                genSignatures.add(encrypt(data, signRequest, requestContext));
             }
-        } finally {
-            releaseCryptoInstance(crypto, requestContext);
+
+            ret = new MRTDSignResponse(req.getRequestID(), genSignatures,
+                                       getSigningCertificate(signRequest, requestContext));
+
+        } else if (signRequest instanceof GenericSignRequest) {
+            GenericSignRequest req = (GenericSignRequest) signRequest;
+
+            byte[] bytes = req.getRequestData();
+            final String archiveId = createArchiveId(bytes, (String) requestContext.get(RequestContext.TRANSACTION_ID));
+
+            byte[] signedbytes = encrypt(bytes, signRequest, requestContext);
+            final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
+
+            if (signRequest instanceof GenericServletRequest) {
+                ret = new GenericServletResponse(sReq.getRequestID(), signedbytes,
+                                                 getSigningCertificate(signRequest, requestContext),
+                                                 archiveId, archivables, CONTENT_TYPE);
+            } else {
+                ret = new GenericSignResponse(sReq.getRequestID(), signedbytes,
+                                              getSigningCertificate(signRequest, requestContext),
+                                              archiveId, archivables);
+            }
+            
+            // The client can be charged for the request
+            requestContext.setRequestFulfilledByWorker(true);
+        } else {
+            throw new IllegalRequestException("Sign request with id: " + sReq.getRequestID() + " is of the wrong type: "
+                    + sReq.getClass().getName() + " should be MRTDSignRequest or GenericSignRequest");
         }
         if (log.isTraceEnabled()) {
             log.trace("<processData");
@@ -152,7 +143,7 @@ public class MRTDSigner extends BaseSigner {
     }
 
     private byte[] encrypt(final byte[] data, final ProcessRequest request,
-                           final RequestContext context, final ICryptoInstance crypto)
+                           final RequestContext context)
             throws CryptoTokenOfflineException, SignServerException, IllegalRequestException {
         Cipher c;
         try {
@@ -160,13 +151,18 @@ public class MRTDSigner extends BaseSigner {
             // It may be possible to use that, if the data is already padded correctly when it is sent as input, but only for 
             // PKCS#1, not PSS. Sun's PKCS#11 provider does not supoprt PSS (OAEP) padding yet as of 2009-08-14.
             // The below (plain RSA) works for soft keystores and PrimeCardHSM
-            c = Cipher.getInstance("RSA", crypto.getProvider());
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException e) {
+            c = Cipher.getInstance("RSA", getCryptoToken().getProvider(ICryptoToken.PROVIDERUSAGE_SIGN));
+        } catch (NoSuchAlgorithmException e) {
+            throw new EJBException(e);
+        } catch (NoSuchProviderException e) {
+            throw new EJBException(e);
+        } catch (NoSuchPaddingException e) {
             throw new EJBException(e);
         }
 
         try {
-            c.init(Cipher.ENCRYPT_MODE, crypto.getPrivateKey());
+            c.init(Cipher.ENCRYPT_MODE,
+                   getPrivateKey(ICryptoToken.PURPOSE_SIGN, request, context));
         } catch (InvalidKeyException e) {
             throw new EJBException(e);
         }
@@ -174,7 +170,9 @@ public class MRTDSigner extends BaseSigner {
         byte[] result;
         try {
             result = c.doFinal(data);
-        } catch (IllegalBlockSizeException | BadPaddingException e) {
+        } catch (IllegalBlockSizeException e) {
+            throw new EJBException(e);
+        } catch (BadPaddingException e) {
             throw new EJBException(e);
         }
         return result;
@@ -183,8 +181,8 @@ public class MRTDSigner extends BaseSigner {
 
 
     @Override
-    protected List<String> getFatalErrors(final IServices services) {
-        final List<String> errors = super.getFatalErrors(services);
+    protected List<String> getFatalErrors() {
+        final List<String> errors = super.getFatalErrors();
         
         errors.addAll(configErrors);
         return errors;

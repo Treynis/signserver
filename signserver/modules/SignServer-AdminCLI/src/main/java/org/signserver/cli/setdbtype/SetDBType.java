@@ -71,64 +71,66 @@ public class SetDBType {
     }
 
     private static void replaceEntityMappings(File signserverearpath, File entityMappingXML) throws ZipException, IOException {
-        ByteArrayOutputStream baos;
-        ZipOutputStream tempZip;
-        try (ZipInputStream earFile = new ZipInputStream(new FileInputStream(signserverearpath))) {
-            baos = new ByteArrayOutputStream();
-            tempZip = new ZipOutputStream(baos);
-            ZipEntry next = earFile.getNextEntry();
-            while (next != null) {
-                ByteArrayOutputStream content = new ByteArrayOutputStream();
-                byte[] data = new byte[30000];
-                int numberread;
-                while ((numberread = earFile.read(data)) != -1) {
-                    content.write(data, 0, numberread);
-                }
-                if (next.getName().equals("signserver-ejb.jar")) {
-                    content = replaceEntityMappings(content, entityMappingXML);
-                    next = new ZipEntry("signserver-ejb.jar");
-                }
-                
-                tempZip.putNextEntry(next);
-                tempZip.write(content.toByteArray());
-                next = earFile.getNextEntry();
-                
+        ZipInputStream earFile = new ZipInputStream(new FileInputStream(signserverearpath));
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ZipOutputStream tempZip = new ZipOutputStream(baos);
+        ZipEntry next = earFile.getNextEntry();
+        while (next != null) {
+            ByteArrayOutputStream content = new ByteArrayOutputStream();
+            byte[] data = new byte[30000];
+            int numberread;
+            while ((numberread = earFile.read(data)) != -1) {
+                content.write(data, 0, numberread);
             }
+            if (next.getName().equals("signserver-ejb.jar")) {
+                content = replaceEntityMappings(content, entityMappingXML);
+                next = new ZipEntry("signserver-ejb.jar");
+            }
+
+            tempZip.putNextEntry(next);
+            tempZip.write(content.toByteArray());
+            next = earFile.getNextEntry();
+
         }
+        earFile.close();
         tempZip.close();
 
-        try (FileOutputStream fos = new FileOutputStream(signserverearpath)) {
-            fos.write(baos.toByteArray());
-        }
+        FileOutputStream fos = new FileOutputStream(signserverearpath);
+        fos.write(baos.toByteArray());
+        fos.close();
     }
 
     private static ByteArrayOutputStream replaceEntityMappings(ByteArrayOutputStream content, File entityMappingXML) throws IOException {
         JarInputStream jarInputStream = new JarInputStream(new ByteArrayInputStream(content.toByteArray()));
         ByteArrayOutputStream retval = new ByteArrayOutputStream();
-        try (JarOutputStream tempJar = new JarOutputStream(retval)) {
-            HashSet<String> insertedNames = new HashSet<>();
-            JarEntry jarEntry = jarInputStream.getNextJarEntry();
-            while (jarEntry != null) {
-                if (!insertedNames.contains(jarEntry.getName())) {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    InputStream is = jarInputStream;
-                    if (jarEntry.getName().equals("META-INF/entity-mappings.xml")) {
-                        jarEntry = new JarEntry("META-INF/entity-mappings.xml");
-                        is = new FileInputStream(entityMappingXML);
-                    }
-                    byte[] data = new byte[30000];
-                    int numberread;
-                    while ((numberread = is.read(data)) != -1) {
-                        baos.write(data, 0, numberread);
-                    }
-                    
-                    tempJar.putNextEntry(jarEntry);
-                    insertedNames.add(jarEntry.getName());
-                    tempJar.write(baos.toByteArray());
+        JarOutputStream tempJar = new JarOutputStream(retval);
+
+        HashSet<String> insertedNames = new HashSet<String>();
+
+        JarEntry jarEntry = jarInputStream.getNextJarEntry();
+        while (jarEntry != null) {
+            if (!insertedNames.contains(jarEntry.getName())) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                InputStream is = jarInputStream;
+                if (jarEntry.getName().equals("META-INF/entity-mappings.xml")) {
+                    jarEntry = new JarEntry("META-INF/entity-mappings.xml");
+                    is = new FileInputStream(entityMappingXML);
                 }
-                jarEntry = jarInputStream.getNextJarEntry();
+                byte[] data = new byte[30000];
+                int numberread;
+                while ((numberread = is.read(data)) != -1) {
+                    baos.write(data, 0, numberread);
+                }
+
+                tempJar.putNextEntry(jarEntry);
+                insertedNames.add(jarEntry.getName());
+                tempJar.write(baos.toByteArray());
             }
+            jarEntry = jarInputStream.getNextJarEntry();
         }
+
+        tempJar.close();
 
         return retval;
     }

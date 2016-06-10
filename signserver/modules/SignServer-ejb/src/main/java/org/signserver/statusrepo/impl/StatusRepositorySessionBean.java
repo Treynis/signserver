@@ -16,9 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.ejb.EJB;
 import javax.ejb.EJBException;
-import javax.ejb.Lock;
-import javax.ejb.LockType;
-import javax.ejb.Singleton;
+import javax.ejb.Stateless;
 import org.apache.log4j.Logger;
 import org.cesecore.audit.enums.EventStatus;
 import org.cesecore.audit.log.AuditRecordStorageException;
@@ -27,12 +25,10 @@ import org.signserver.common.CompileTimeSettings;
 import org.signserver.server.log.SignServerEventTypes;
 import org.signserver.server.log.SignServerModuleTypes;
 import org.signserver.server.log.SignServerServiceTypes;
+import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.statusrepo.common.StatusEntry;
 import org.signserver.statusrepo.common.StatusName;
-import org.signserver.statusrepo.StatusRepositorySession;
-import org.signserver.statusrepo.StatusRepositorySessionLocal;
-import org.signserver.statusrepo.StatusRepositorySessionRemote;
 
 /**
  * Session bean offering an interface towards the status repository.
@@ -40,9 +36,9 @@ import org.signserver.statusrepo.StatusRepositorySessionRemote;
  * @version $Id$
  * @author Markus Kilås
  */
-@Singleton
+@Stateless
 public class StatusRepositorySessionBean implements
-        StatusRepositorySessionLocal, StatusRepositorySessionRemote {
+        IStatusRepositorySession.ILocal, IStatusRepositorySession.IRemote {
 
     /** Logger for this class. */
     private static final Logger LOG =
@@ -71,7 +67,6 @@ public class StatusRepositorySessionBean implements
      * @return The value if existing and not expired, otherwise null
      */
     @Override
-    @Lock(value=LockType.READ)
     public StatusEntry getValidEntry(String key) throws NoSuchPropertyException {
         try {
             final StatusEntry result;
@@ -103,7 +98,6 @@ public class StatusRepositorySessionBean implements
      * @param value The value to set
      */
     @Override
-    @Lock(value=LockType.WRITE)
     public void update(final String key, final String value) throws NoSuchPropertyException {
         update(key, value, 0L);
     }
@@ -117,19 +111,20 @@ public class StatusRepositorySessionBean implements
      * @param newValue The value to set
      */
     @Override
-    @Lock(value=LockType.WRITE)
     public void update(final String key, final String newValue,
             final long expiration) throws NoSuchPropertyException {
         try {
             final long currentTime = System.currentTimeMillis();
             final StatusName name = StatusName.valueOf(key);
             final StatusEntry oldEntry;
-
-            // Get the old value
-            oldEntry = repository.get(name);
-            // Set the new value
-            repository.set(name, new StatusEntry(currentTime, newValue, expiration));
-
+            
+            synchronized (repository) { // Synchronization only for writes so we can detect changes
+                // Get the old value
+                oldEntry = repository.get(name);
+                // Set the new value
+                repository.set(name, new StatusEntry(currentTime, newValue, expiration));
+            }
+            
             if (shouldLog(logUpdates, oldEntry, newValue)) {
                 auditLog(key, newValue, expiration);
             }
@@ -183,22 +178,21 @@ public class StatusRepositorySessionBean implements
      * @return An unmodifiable map of all properties
      */
     @Override
-    @Lock(value=LockType.READ)
     public Map<String, StatusEntry> getAllEntries() {
         return repository.getEntries();
     }
     
     private void auditLog(String property, String value, Long expiration) {
         try {
-            final Map<String, Object> details = new LinkedHashMap<>();
+            final Map<String, Object> details = new LinkedHashMap<String, Object>();
 
-            details.put(StatusRepositorySession.LOG_PROPERTY, property);
+            details.put(IStatusRepositorySession.LOG_PROPERTY, property);
 
             if (value != null) {
-                details.put(StatusRepositorySession.LOG_VALUE, value);
+                details.put(IStatusRepositorySession.LOG_VALUE, value);
             }
             if (expiration != null) {
-                details.put(StatusRepositorySession.LOG_EXPIRATION, String.valueOf(expiration));
+                details.put(IStatusRepositorySession.LOG_EXPIRATION, String.valueOf(expiration));
             }
 
             logSession.log(SignServerEventTypes.SET_STATUS_PROPERTY, EventStatus.SUCCESS, SignServerModuleTypes.STATUS_REPOSITORY,

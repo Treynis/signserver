@@ -43,12 +43,12 @@ import  org.signserver.common.GlobalConfiguration;
 public class GlobalConfigurationFrame extends javax.swing.JFrame {
 
     private static final Vector<String> COLUMN_NAMES
-            = new Vector<>(Arrays.asList(new String[] {
+            = new Vector<String>(Arrays.asList(new String[] {
         "Property",
         "Value"
     }));
 
-    private Vector<Vector<String>> properties = new Vector<>();
+    private Vector<Vector<String>> properties = new Vector<Vector<String>>();
 
     /** Creates new form GlobalConfigurationFrame */
     public GlobalConfigurationFrame() {
@@ -271,7 +271,10 @@ public class GlobalConfigurationFrame extends javax.swing.JFrame {
         } catch (AdminNotAuthorizedException_Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Authorization denied", JOptionPane.ERROR_MESSAGE);
-        } catch (SOAPFaultException | EJBException ex) {
+        } catch (SOAPFaultException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
+        } catch (EJBException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                 "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
         }
@@ -329,7 +332,10 @@ public class GlobalConfigurationFrame extends javax.swing.JFrame {
         } catch (AdminNotAuthorizedException_Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Authorization denied", JOptionPane.ERROR_MESSAGE);
-        } catch (SOAPFaultException | EJBException ex) {
+        } catch (SOAPFaultException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
+        } catch (EJBException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                 "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
         }
@@ -366,7 +372,10 @@ public class GlobalConfigurationFrame extends javax.swing.JFrame {
         } catch (AdminNotAuthorizedException_Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Authorization denied", JOptionPane.ERROR_MESSAGE);
-        } catch (SOAPFaultException | EJBException ex) {
+        } catch (SOAPFaultException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
+        } catch (EJBException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                 "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
         }
@@ -425,7 +434,7 @@ public class GlobalConfigurationFrame extends javax.swing.JFrame {
             // Runs on the EDT.  Update the GUI based on
             // the result computed by doInBackground().
 
-            properties = new Vector<>();
+            properties = new Vector<Vector<String>>();
 
             if (result != null) {
                 final List<WsGlobalConfiguration.Config.Entry> list = result.getConfig().getEntry();
@@ -437,7 +446,7 @@ public class GlobalConfigurationFrame extends javax.swing.JFrame {
                 });
                 
                 for (WsGlobalConfiguration.Config.Entry oldEntry : list) {
-                    final Vector<String> entry = new Vector<>();
+                    final Vector<String> entry = new Vector<String>();
                     entry.add((String) oldEntry.getKey());
                     entry.add((String) oldEntry.getValue());
                     properties.add(entry);

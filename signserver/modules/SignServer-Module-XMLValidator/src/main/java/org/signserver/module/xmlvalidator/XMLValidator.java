@@ -18,8 +18,7 @@ import java.io.IOException;
 import java.security.Provider;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
-import java.util.LinkedList;
-import java.util.List;
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import javax.xml.crypto.MarshalException;
 import javax.xml.crypto.dsig.XMLSignature;
@@ -36,10 +35,8 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.ProcessSessionLocal;
-import org.signserver.server.IServices;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.log.AdminInfo;
 import org.signserver.server.validators.BaseValidator;
 import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidateResponse;
@@ -79,30 +76,22 @@ public class XMLValidator extends BaseValidator {
     static final String PROP_STRIPSIGNATURE = "STRIPSIGNATURE";
     
     /** Worker session. */
-    private ProcessSessionLocal processSession;
+    private IWorkerSession workersession;
     
-    // Configuration errors
-    private final LinkedList<String> configErrors = new LinkedList<>();
-    
-    private String validationServiceWorker;
+    /** ID of validation service worker used for validating certificates. */
+    private transient int validationServiceWorkerId;
 
     @Override
     public void init(final int workerId, final WorkerConfig config,
             final WorkerContext workerContext, final EntityManager workerEM) {
         super.init(workerId, config, workerContext, workerEM);
-        
-        // Required property: VALIDATIONSERVICEWORKER
-        validationServiceWorker = config.getProperty(PROP_VALIDATIONSERVICEWORKER);
-        if (validationServiceWorker == null || validationServiceWorker.trim().isEmpty()) {
-            configErrors.add("Missing required property: " + PROP_VALIDATIONSERVICEWORKER);
-        }
+
+        getWorkerSession();
+        getValidationServiceWorkerId();
     }
 
     @Override
     public ProcessResponse processData(ProcessRequest signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-        if (!configErrors.isEmpty()) {
-            throw new SignServerException("Worker is misconfigured");
-        }
 
         // Check that the request contains a valid GenericSignRequest object with a byte[].
         if (!(signRequest instanceof GenericValidationRequest)) {
@@ -116,7 +105,7 @@ public class XMLValidator extends BaseValidator {
 
         byte[] data = (byte[]) sReq.getRequestData();
 
-        GenericValidationResponse response = validate(sReq.getRequestID(), data, requestContext);
+        GenericValidationResponse response = validate(sReq.getRequestID(), data);
         
         // The client can be charged for the request
         requestContext.setRequestFulfilledByWorker(true);
@@ -124,7 +113,7 @@ public class XMLValidator extends BaseValidator {
         return response;
     }
 
-    private GenericValidationResponse validate(final int requestId, byte[] data, RequestContext requestContext) throws SignServerException {
+    private GenericValidationResponse validate(final int requestId, byte[] data) throws SignServerException {
 
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(true);
@@ -143,7 +132,11 @@ public class XMLValidator extends BaseValidator {
             dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
 
             doc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(data));
-        } catch (ParserConfigurationException | SAXException | IOException ex) {
+        } catch (ParserConfigurationException ex) {
+            throw new SignServerException("Document parsing error", ex);
+        } catch (SAXException ex) {
+            throw new SignServerException("Document parsing error", ex);
+        } catch (IOException ex) {
             throw new SignServerException("Document parsing error", ex);
         }
         NodeList nl = doc.getElementsByTagNameNS(XMLSignature.XMLNS, "Signature");
@@ -156,7 +149,11 @@ public class XMLValidator extends BaseValidator {
         XMLSignatureFactory fac;
         try {
             fac = XMLSignatureFactory.getInstance("DOM", (Provider) Class.forName(providerName).newInstance());
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (IllegalAccessException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (ClassNotFoundException e) {
             throw new SignServerException("Problem with JSR105 provider", e);
         }
 
@@ -207,8 +204,9 @@ public class XMLValidator extends BaseValidator {
             }
 
             try {
-                LOG.info("Requesting certificate validation from worker: " + PROP_VALIDATIONSERVICEWORKER);
-                response = getProcessSession(requestContext).process(new AdminInfo("Client user", null, null), WorkerIdentifier.createFromIdOrName(validationServiceWorker), vr, new RequestContext());
+                final int validationWorkerId = getValidationServiceWorkerId();
+                LOG.info("Requesting certificate validation from worker: " + validationWorkerId);
+                response = getWorkerSession().process(validationWorkerId, vr, new RequestContext());
                 LOG.info("ProcessResponse: " + response);
 
                 if (response == null) {
@@ -231,7 +229,11 @@ public class XMLValidator extends BaseValidator {
                     validCertificate = true;
                 }
 
-            } catch (IllegalRequestException | CryptoTokenOfflineException | SignServerException e) {
+            } catch (IllegalRequestException e) {
+                LOG.warn("Error validating certificate", e);
+            } catch (CryptoTokenOfflineException e) {
+                LOG.warn("Error validating certificate", e);
+            } catch (SignServerException e) {
                 LOG.warn("Error validating certificate", e);
             }
             LOG.info("Request " + requestId + " valid certificate: " + validCertificate);
@@ -253,6 +255,24 @@ public class XMLValidator extends BaseValidator {
         }
 
         return new GenericValidationResponse(requestId, validSignature && validCertificate, vresponse, processedBytes);
+    }
+
+    private int getValidationServiceWorkerId() {
+        if (validationServiceWorkerId < 1) {
+            validationServiceWorkerId = getWorkerSession().getWorkerId(
+                    config.getProperties().getProperty(PROP_VALIDATIONSERVICEWORKER));
+
+            if (validationServiceWorkerId < 1) {
+                LOG.warn("XMLValidator[" + workerId + "] "
+                        + "Could not find worker for property "
+                        + PROP_VALIDATIONSERVICEWORKER + ": "
+                        + config.getProperties().getProperty(PROP_VALIDATIONSERVICEWORKER));
+            } else {
+                LOG.info("XMLValidator[" + workerId + "] "
+                        + "Will use validation service worker: " + validationServiceWorkerId);
+            }
+        }
+        return validationServiceWorkerId;
     }
 
     private byte[] unwrapSignature(Document doc, String tagName) throws TransformerConfigurationException, TransformerException {
@@ -277,16 +297,16 @@ public class XMLValidator extends BaseValidator {
     /**
      * @return The worker session. Can be overridden for instance by unit tests.
      */
-    protected ProcessSessionLocal getProcessSession(RequestContext requestContext) {
-        return requestContext.getServices().get(ProcessSessionLocal.class);
+    protected IWorkerSession getWorkerSession() {
+        if (workersession == null) {
+            try {
+                workersession = ServiceLocator.getInstance().lookupLocal(
+                        IWorkerSession.class);
+            } catch (NamingException ne) {
+                throw new RuntimeException(ne);
+            }
+        }
+        return workersession;
     }
 
-    @Override
-    protected List<String> getFatalErrors(final IServices services) {
-        // Add our errors to the list of errors
-        final LinkedList<String> errors = new LinkedList<>(
-                super.getFatalErrors(services));
-        errors.addAll(configErrors);
-        return errors;
-    }
 }

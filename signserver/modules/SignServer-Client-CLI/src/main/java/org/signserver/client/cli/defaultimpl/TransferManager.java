@@ -18,7 +18,7 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.LinkedList;
 import org.apache.log4j.Logger;
-import org.signserver.cli.spi.CommandFailureException;
+import org.ejbca.ui.cli.util.ConsolePasswordReader;
 
 /**
  * Manager responsible for all the file transfer threads.
@@ -33,7 +33,7 @@ public class TransferManager {
     private static final Logger LOG = Logger.getLogger(TransferManager.class);
 
     /** Queue of files to process. */
-    private final LinkedList<File> files = new LinkedList<>();
+    private final LinkedList<File> files = new LinkedList<File>();
     
     /** The username (if password auth). */
     private final String username;
@@ -207,8 +207,8 @@ public class TransferManager {
                 out.flush();
                 try {
                     password = new String(passwordReader.readPassword());
-                } catch (CommandFailureException e) {
-                    LOG.error("Failed to obtain password from console: " + e.getLocalizedMessage());
+                } catch (IOException ex) {
+                    LOG.error("Failed to obtain password from console: " + ex.getLocalizedMessage());
                     abort();
                     return;
                 }

@@ -53,7 +53,7 @@ public class OCSPResponseBuilder {
     private Date producedAt;
     private X509CertificateHolder[] chain;
     
-    private Set<OcspRespObject> responses = new HashSet<>();
+    private Set<OcspRespObject> responses = new HashSet<OcspRespObject>();
     
     private OCSPResponseStatus responseStatus;
     
@@ -68,7 +68,7 @@ public class OCSPResponseBuilder {
     
     private boolean noResponse;
     private byte[] nonce;
-    private Set<OcspExt> extensions = new HashSet<>();
+    private Set<OcspExt> extensions = new HashSet<OcspExt>();
     
     private BasicOCSPResp buildBasicOCSPResp() throws OCSPResponseBuilderException {
         try {
@@ -95,7 +95,13 @@ public class OCSPResponseBuilder {
             
             BasicOCSPResp response = gen.build(contentSigner, getChain(), getProducedAt());
             return response;
-        } catch (OCSPException | NoSuchAlgorithmException | NoSuchProviderException | OperatorCreationException ex) {
+        } catch (OCSPException ex) {
+            throw new OCSPResponseBuilderException(ex);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new OCSPResponseBuilderException(ex);
+        } catch (NoSuchProviderException ex) {
+            throw new OCSPResponseBuilderException(ex);
+        } catch (OperatorCreationException ex) {
             throw new OCSPResponseBuilderException(ex);
         }
     }
@@ -129,7 +135,11 @@ public class OCSPResponseBuilder {
             }
             
             return result;
-        } catch (CertBuilderException | CertificateException | OCSPException ex) {
+        } catch (CertBuilderException ex) {
+            throw new OCSPResponseBuilderException(ex);
+        } catch (CertificateException ex) {
+            throw new OCSPResponseBuilderException(ex);
+        } catch (OCSPException ex) {
             throw new OCSPResponseBuilderException(ex);
         }
     }

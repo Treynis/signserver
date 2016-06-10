@@ -193,9 +193,9 @@ public class HTTPDocumentValidator extends AbstractDocumentValidator {
             final String response = os.toString();
             
             if ("VALID".equals(response)) {
-                out.write(("Valid: " + Boolean.TRUE).getBytes());
+                out.write(("Valid: " + Boolean.TRUE.booleanValue()).getBytes());
             } else {
-                out.write(("Valid: " + Boolean.FALSE).getBytes());
+                out.write(("Valid: " + Boolean.FALSE.booleanValue()).getBytes());
             }
             out.write("\n".getBytes());            
             

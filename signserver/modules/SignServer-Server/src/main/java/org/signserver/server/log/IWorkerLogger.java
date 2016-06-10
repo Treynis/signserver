@@ -12,12 +12,8 @@
  *************************************************************************/
 package org.signserver.server.log;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import org.signserver.common.RequestContext;
-import org.signserver.common.WorkerConfig;
-import org.signserver.server.SignServerContext;
 
 /**
  * Logger for events (transactions) performed by a worker processing a request.
@@ -76,25 +72,22 @@ public interface IWorkerLogger {
 
     /**
      * Method called after creation of instance.
-     * @param workerId for this worker
-     * @param config for this worker
-     * @param context can contain dependencies such as an EntityManager (to only use during initialization).
+     * @param props the signers properties.
      */
-    void init(int workerId, WorkerConfig config, SignServerContext context);
+    void init(Properties props);
 
     /**
      * Write out the log line. What fields that are placed in the actual log
      * and in which order etc is up to the implementing IWorkerLogger.
      * @param fields Fields that potentially could be placed in the log entry.
-     * @param requestContext the request context
      * @throws WorkerLoggerException In case there is a problem writing the log.
      */
-    void log(final AdminInfo adminInfo, Map<String, Loggable> fields, RequestContext requestContext) throws WorkerLoggerException;
-
+    void log(final AdminInfo adminInfo, Map<String,String> fields) throws WorkerLoggerException;
+    
     /**
-     * Return a list of fatal errors for the logger implementation.
+     * Sets EJB session mapping.
      * 
-     * @return A list of errors, or empty if there's no fatal errors
+     * @param ejbs EJB map
      */
-    List<String> getFatalErrors();
+    void setEjbs(final Map<Class<?>, ?> ejbs);
 }

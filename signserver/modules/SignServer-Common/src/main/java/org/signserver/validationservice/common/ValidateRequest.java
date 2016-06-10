@@ -19,7 +19,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestAndResponseManager;
 
@@ -89,7 +89,6 @@ public class ValidateRequest extends ProcessRequest {
         return retval;
     }
 
-    @Override
     public void parse(DataInput in) throws IOException {
         in.readInt();
         int dataSize = in.readInt();
@@ -103,7 +102,6 @@ public class ValidateRequest extends ProcessRequest {
         }
     }
 
-    @Override
     public void serialize(DataOutput out) throws IOException {
         out.writeInt(RequestAndResponseManager.RESPONSETYPE_VALIDATE);
         out.writeInt(certificateData.length);

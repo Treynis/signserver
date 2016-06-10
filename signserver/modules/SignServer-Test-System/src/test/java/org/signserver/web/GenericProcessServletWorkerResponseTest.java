@@ -52,7 +52,6 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
 	}
 
 	@Before
-        @Override
 	public void setUp() throws Exception {
 		addDummySigner1(true);
 		currentWorkerName = this.getSignerNameDummy1();
@@ -63,7 +62,6 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
 	}
 
 	@After
-        @Override
 	public void tearDown() throws Exception {
 		removeWorker(getSignerIdDummy1());
 	}
@@ -73,7 +71,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
 	 */
         @Test
 	public void test01HttpStatus200() {
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		
 		assertStatusReturned(fields, 200);
@@ -85,7 +83,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
 	 */
         @Test
 	public void test02HttpStatus200_overrideRequestParamWorkerName() {
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerName", UNEXISTING_WORKER_NAME);
 		
@@ -98,7 +96,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
 	 */
         @Test
 	public void test03HttpStatus200_overrideRequestParamWorkerId() {
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerId", String.valueOf(UNEXISTING_WORKER_ID));
 		
@@ -111,7 +109,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
         @Test
 	public void test04HttpStatus404() {
 		currentWorkerName = UNEXISTING_WORKER_NAME;
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		
 		assertStatusReturned(fields, 404);
@@ -126,7 +124,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
         @Test
 	public void test05HttpStatus404_setCorrectWorkerNameRequestParam() {
 		currentWorkerName = UNEXISTING_WORKER_NAME;
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerName", getSignerNameDummy1());
 		
@@ -142,7 +140,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
         @Test
 	public void test06HttpStatus404_setCorrectWorkerIdRequestParam() {
 		currentWorkerName = UNEXISTING_WORKER_NAME;
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerId", String.valueOf(getSignerIdDummy1()));
 		
@@ -158,7 +156,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
         @Test
 	public void test07HttpStatus404_setCorrectWorkerIdAndNameRequestParam() {
 		currentWorkerName = UNEXISTING_WORKER_NAME;
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerId", String.valueOf(getSignerIdDummy1()));
 		fields.put("workerName", getSignerNameDummy1());
@@ -173,7 +171,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
         @Test
 	public void test08HttpStatus404_emptyWorkerName() {
 		currentWorkerName = "";
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		
 		assertStatusReturned(fields, 404);
@@ -187,7 +185,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
         @Test
 	public void test09HttpStatus404_emptyWorkerNameWithWorkerNameRequestParam() {
 		currentWorkerName = "";
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerName", getSignerNameDummy1());
 		
@@ -202,7 +200,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
         @Test
 	public void test10HttpStatus404_emptyWorkerNameWithWorkerIdRequestParam() {
 		currentWorkerName = "";
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerId", String.valueOf(getSignerIdDummy1()));
 		
@@ -218,7 +216,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
 	public void test11HttpStatus404_emptyWorkerNameNoSlash() {
 		trailingSlash = false;
 		currentWorkerName = "";
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		
 		assertStatusReturned(fields, 404);
@@ -234,7 +232,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
 	public void test12HttpStatus404_emptyWorkerNameNoSlashWithWorkerNameRequestParam() {
 		trailingSlash = false;
 		currentWorkerName = "";
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerName", getSignerNameDummy1());
 		
@@ -250,7 +248,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
 	public void test13HttpStatus404_emptyWorkerNameNoSlashWithWorkerIdRequestParam() {
 		trailingSlash = false;
 		currentWorkerName = "";
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerId", String.valueOf(getSignerIdDummy1()));
 		
@@ -264,7 +262,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
         @Test
 	public void test14HttpStatus404_extraSlashBeforeWorkerName() {
 		extraSlashBeforeWorkerName = true;
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		
 		assertStatusReturned(fields, 404);
@@ -281,7 +279,7 @@ public class GenericProcessServletWorkerResponseTest extends WebTestCase {
 	public void test15HttpStatus404_extraSlashBeforeServletName() {
 		extraSlashBeforeServletName = true;
 		currentWorkerName = UNEXISTING_WORKER_NAME;
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 		fields.put("workerName", getSignerNameDummy1());
 	}
