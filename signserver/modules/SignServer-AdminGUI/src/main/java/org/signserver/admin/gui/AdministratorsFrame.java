@@ -30,6 +30,7 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.xml.ws.soap.SOAPFaultException;
 import org.apache.log4j.Logger;
+import org.ejbca.util.CertTools;
 import org.jdesktop.application.Action;
 import org.jdesktop.application.Task;
 import org.signserver.admin.gui.adminws.gen
@@ -37,7 +38,6 @@ import org.signserver.admin.gui.adminws.gen
 import org.signserver.admin.gui.adminws.gen.WsGlobalConfiguration;
 import org.signserver.common.ClientEntry;
 import  org.signserver.common.GlobalConfiguration;
-import org.signserver.common.SignServerUtil;
 
 /**
  * Frame for viewing and editing global configuration properties.
@@ -533,7 +533,10 @@ public class AdministratorsFrame extends javax.swing.JFrame {
         } catch (AdminNotAuthorizedException_Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Authorization denied", JOptionPane.ERROR_MESSAGE);
-        } catch (SOAPFaultException | EJBException ex) {
+        } catch (SOAPFaultException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
+        } catch (EJBException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                 "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
         }
@@ -621,7 +624,10 @@ public class AdministratorsFrame extends javax.swing.JFrame {
         } catch (AdminNotAuthorizedException_Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Authorization denied", JOptionPane.ERROR_MESSAGE);
-        } catch (SOAPFaultException | EJBException ex) {
+        } catch (SOAPFaultException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
+        } catch (EJBException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                 "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
         }
@@ -671,7 +677,10 @@ public class AdministratorsFrame extends javax.swing.JFrame {
         } catch (AdminNotAuthorizedException_Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Authorization denied", JOptionPane.ERROR_MESSAGE);
-        } catch (SOAPFaultException | EJBException ex) {
+        } catch (SOAPFaultException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
+        } catch (EJBException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                 "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
         }
@@ -726,7 +735,10 @@ public class AdministratorsFrame extends javax.swing.JFrame {
         } catch (AdminNotAuthorizedException_Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                     "Authorization denied", JOptionPane.ERROR_MESSAGE);
-        } catch (SOAPFaultException | EJBException ex) {
+        } catch (SOAPFaultException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
+        } catch (EJBException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(),
                 "Operation failed on server side", JOptionPane.ERROR_MESSAGE);
         }
@@ -743,8 +755,7 @@ public class AdministratorsFrame extends javax.swing.JFrame {
     /** @return The issuer DN formatted as expected by the AdminWS */
     private String getIssuerDN(X509Certificate certificate) {
         String dn = certificate.getIssuerX500Principal().getName();
-        SignServerUtil.BasicX509NameTokenizer tok =
-                new SignServerUtil.BasicX509NameTokenizer(dn);
+        CertTools.BasicX509NameTokenizer tok = new CertTools.BasicX509NameTokenizer(dn);
         StringBuilder buf = new StringBuilder();
         while (tok.hasMoreTokens()) {
             final String token = tok.nextToken();
@@ -776,7 +787,7 @@ public class AdministratorsFrame extends javax.swing.JFrame {
             List<Entry> result = null;
 
             try {
-               result = new ArrayList<>(parseAdmins().values());
+               result = new ArrayList<Entry>(parseAdmins().values());
             } catch (final AdminNotAuthorizedException_Exception ex) {
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
@@ -852,7 +863,7 @@ public class AdministratorsFrame extends javax.swing.JFrame {
         }
 
         final LinkedHashMap<ClientEntry, Entry> entryMap =
-                new LinkedHashMap<>();
+                new LinkedHashMap<ClientEntry, Entry>();
 
         // Admins
         if (admins != null && admins.contains(";")) {

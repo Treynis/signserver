@@ -58,13 +58,11 @@ public abstract class ProcessRequest implements Externalizable {
      */
     public abstract void serialize(DataOutput out) throws IOException;
 
-    @Override
     public void readExternal(ObjectInput in) throws IOException,
             ClassNotFoundException {
         parse(in);
     }
 
-    @Override
     public void writeExternal(ObjectOutput out) throws IOException {
         serialize(out);
     }

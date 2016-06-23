@@ -27,7 +27,6 @@ import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 
 /**
  * Authorizer only accepting requests from certain IP addresses.
@@ -79,8 +78,8 @@ public class RemoteAddressAuthorizer implements IAuthorizer {
 
     // allow the test (same package) to set the allow list manually
     void setAllowFromProperty(final String allowFromProperty) {
-        allowFromAddresses = new HashSet<>();
-        fatalErrors = new LinkedList<>();
+        allowFromAddresses = new HashSet<InetAddress>();
+        fatalErrors = new LinkedList<String>();
 
         if (allowFromProperty != null) {
             final String[] allowFromStrings = allowFromProperty.split(",");
@@ -128,13 +127,7 @@ public class RemoteAddressAuthorizer implements IAuthorizer {
             throw new AccessDeniedException("Remote address not authorized");
         }
         
-        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_REMOTEADDRESS,
-                        new Loggable() {
-                            @Override
-                            public String toString() {
-                                return remote;
-                            }
-                        });
+        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_REMOTEADDRESS, remote);
     }
 
     // allow test (same package) to run the authorization functionallity directly

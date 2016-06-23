@@ -50,7 +50,7 @@ import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
@@ -112,13 +112,13 @@ public class XMLSigner extends BaseSigner {
 
         // Check that the request contains a valid GenericSignRequest object with a byte[].
         if (!(signRequest instanceof GenericSignRequest)) {
-            throw new IllegalRequestException("Received request wasn't an expected GenericSignRequest.");
+            throw new IllegalRequestException("Received request wasn't a expected GenericSignRequest.");
         }
         
         final ISignRequest sReq = (ISignRequest) signRequest;
         
         if (!(sReq.getRequestData() instanceof byte[])) {
-            throw new IllegalRequestException("Received request data wasn't an expected byte[].");
+            throw new IllegalRequestException("Received request data wasn't a expected byte[].");
         }
 
         byte[] data = (byte[]) sReq.getRequestData();
@@ -129,7 +129,11 @@ public class XMLSigner extends BaseSigner {
         XMLSignatureFactory fac;
         try {
             fac = XMLSignatureFactory.getInstance("DOM", (Provider) Class.forName(providerName).newInstance());
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (IllegalAccessException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (ClassNotFoundException e) {
             throw new SignServerException("Problem with JSR105 provider", e);
         }
 
@@ -137,14 +141,14 @@ public class XMLSigner extends BaseSigner {
         Document doc;
         ICryptoInstance crypto = null;
         try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
 
             // Get certificate chain and signer certificate
             final List<Certificate> certs = getSigningCertificateChain(crypto);
             if (certs == null) {
                 throw new IllegalArgumentException("Null certificate chain. This signer needs a certificate.");
             }
-            List<X509Certificate> x509CertChain = new LinkedList<>();
+            List<X509Certificate> x509CertChain = new LinkedList<X509Certificate>();
             for (Certificate c : includedCertificates(certs)) {
                 if (c instanceof X509Certificate) {
                     x509CertChain.add((X509Certificate) c);
@@ -171,7 +175,9 @@ public class XMLSigner extends BaseSigner {
                         fac.newSignatureMethod(getSignatureMethod(sigAlg), null),
                         Collections.singletonList(ref));
 
-            } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException ex) {
+            } catch (InvalidAlgorithmParameterException ex) {
+                throw new SignServerException("XML signing algorithm error", ex);
+            } catch (NoSuchAlgorithmException ex) {
                 throw new SignServerException("XML signing algorithm error", ex);
             }
 
@@ -181,7 +187,7 @@ public class XMLSigner extends BaseSigner {
                 KeyInfoFactory kif = fac.getKeyInfoFactory();
                 X509Data x509d = kif.newX509Data(x509CertChain);
 
-                List<XMLStructure> kviItems = new LinkedList<>();
+                List<XMLStructure> kviItems = new LinkedList<XMLStructure>();
                 kviItems.add(x509d);
                 ki = kif.newKeyInfo(kviItems);
             }
@@ -204,7 +210,9 @@ public class XMLSigner extends BaseSigner {
                 doc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(data));
             } catch (SAXException ex) {
                 throw new IllegalRequestException("Document parsing error", ex);
-            } catch (ParserConfigurationException | IOException ex) {
+            } catch (ParserConfigurationException ex) {
+                throw new SignServerException("Document parsing error", ex);
+            } catch (IOException ex) {
                 throw new SignServerException("Document parsing error", ex);
             }
             DOMSignContext dsc = new DOMSignContext(privKey, doc.getDocumentElement());
@@ -212,7 +220,9 @@ public class XMLSigner extends BaseSigner {
             XMLSignature signature = fac.newXMLSignature(si, ki);
             try {
                 signature.sign(dsc);
-            } catch (MarshalException | XMLSignatureException ex) {
+            } catch (MarshalException ex) {
+                throw new SignServerException("Signature generation error", ex);
+            } catch (XMLSignatureException ex) {
                 throw new SignServerException("Signature generation error", ex);
             }
         } finally {

@@ -28,7 +28,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.log4j.Logger;
-import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.util.Base64;
 import org.signserver.common.AccessDeniedException;
 import org.signserver.common.AuthorizationRequiredException;
 import org.signserver.common.CryptoTokenOfflineException;
@@ -39,12 +39,9 @@ import org.signserver.common.RequestMetadata;
 import org.signserver.common.SODSignRequest;
 import org.signserver.common.SODSignResponse;
 import org.signserver.common.SignServerException;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.ProcessSessionLocal;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.CredentialUtils;
-import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.LogMap;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
 
 /**
  * SODProcessServlet is a Servlet that takes data group hashes from a htto post and puts them in a Map for passing
@@ -86,17 +83,10 @@ public class SODProcessServlet extends AbstractProcessServlet {
     private static final String UNICODE_PROPERTY_NAME = "unicodeVersion";
     
     @EJB
-    private ProcessSessionLocal processSession;
-    
-    @EJB
-    private WorkerSessionLocal workerSession;
+    private IWorkerSession.ILocal workersession;
 
-    private ProcessSessionLocal getProcessSession() {
-        return processSession;
-    }
-    
-    private WorkerSessionLocal getWorkerSession() {
-        return workerSession;
+    private IWorkerSession.ILocal getWorkerSession() {
+        return workersession;
     }
 
     @Override
@@ -118,7 +108,7 @@ public class SODProcessServlet extends AbstractProcessServlet {
             LOG.trace(">doPost()");
         }
 
-        WorkerIdentifier wi = null;
+        int workerId = 1;
         String ldsVersion;
         String unicodeVersion;
 
@@ -126,23 +116,18 @@ public class SODProcessServlet extends AbstractProcessServlet {
             (String) req.getAttribute(ServletUtils.WORKERNAME_PROPERTY_OVERRIDE);
 
         if (workerNameOverride != null) {
-            wi = new WorkerIdentifier(workerNameOverride);
+            workerId = getWorkerSession().getWorkerId(workerNameOverride);
         } else {
-            String name = req.getParameter(WORKERNAME_PROPERTY_NAME);
+            final String name = req.getParameter(WORKERNAME_PROPERTY_NAME);
             if (name != null) {
                 LOG.debug("Found a signerName in the request: " + name);
-                wi = new WorkerIdentifier(name);
+                workerId = getWorkerSession().getWorkerId(name);
             }
-            String id = req.getParameter(WORKERID_PROPERTY_NAME);
+            final String id = req.getParameter(WORKERID_PROPERTY_NAME);
             if (id != null) {
                 LOG.debug("Found a signerId in the request: " + id);
-                wi = new WorkerIdentifier(Integer.parseInt(id));
+                workerId = Integer.parseInt(id);
             }
-        }
-        
-        if (wi == null) {
-            res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing worker name or ID");
-            return;
         }
 
         final MetaDataHolder metadataHolder = new MetaDataHolder();
@@ -153,14 +138,14 @@ public class SODProcessServlet extends AbstractProcessServlet {
         String displayCert = req.getParameter(DISPLAYCERT_PROPERTY_NAME);
         String downloadCert = req.getParameter(DOWNLOADCERT_PROPERTY_NAME);
         if ((displayCert != null) && (displayCert.length() > 0)) {
-            LOG.info("Received display cert request for worker " + wi + ", from IP " + remoteAddr);
-            displaySignerCertificate(res, wi);
+            LOG.info("Received display cert request for worker " + workerId + ", from ip " + remoteAddr);
+            displaySignerCertificate(res, workerId);
         } else if ((downloadCert != null) && (downloadCert.length() > 0)) {
-            LOG.info("Received download cert request for worker " + wi + ", from IP " + remoteAddr);
-            sendSignerCertificate(res, wi);
+            LOG.info("Received download cert request for worker " + workerId + ", from ip " + remoteAddr);
+            sendSignerCertificate(res, workerId);
         } else {
             // If the command is to process the signing request, do that.
-            LOG.info("Received HTTP process request for worker " + wi + ", from IP " + remoteAddr);
+            LOG.info("Received HTTP process request for worker " + workerId + ", from ip " + remoteAddr);
 
             boolean base64Encoded = true;
             String encoding = req.getParameter(ENCODING_PROPERTY_NAME);
@@ -174,7 +159,7 @@ public class SODProcessServlet extends AbstractProcessServlet {
             }
 
             // Collect all [dataGroup1, dataGroup2, ..., dataGroupN]
-            Map<Integer, byte[]> dataGroups = new HashMap<>(16);
+            Map<Integer, byte[]> dataGroups = new HashMap<Integer, byte[]>(16);
             Enumeration en = req.getParameterNames();
             while (en.hasMoreElements()) {
                 Object o = en.nextElement();
@@ -266,8 +251,7 @@ public class SODProcessServlet extends AbstractProcessServlet {
                 
                 addRequestMetaData(metadataHolder, metadata);
 
-                response = (SODSignResponse) getProcessSession().process(new AdminInfo("Client user", null, null),
-                        wi, signRequest, context);
+                response = (SODSignResponse) getWorkerSession().process(workerId, signRequest, context);
 
                 if (response.getRequestID() != requestId) {
                     LOG.error("Response ID " + response.getRequestID()
@@ -287,7 +271,7 @@ public class SODProcessServlet extends AbstractProcessServlet {
                     LOG.debug("Sending back HTTP 401: " + e.getLocalizedMessage());
                 }
 
-                final String httpAuthBasicRealm = "SignServer Worker " + (wi.hasName() ? wi.getName() : String.valueOf(wi.getId()));
+                final String httpAuthBasicRealm = "SignServer Worker " + workerId;
 
                 res.setHeader(CredentialUtils.HTTP_AUTH_BASIC_WWW_AUTHENTICATE,
                         "Basic realm=\"" + httpAuthBasicRealm + "\"");
@@ -313,18 +297,18 @@ public class SODProcessServlet extends AbstractProcessServlet {
     } //doPost
 
     private void displaySignerCertificate(final HttpServletResponse response,
-            final WorkerIdentifier wi) throws IOException {
+            final int workerId) throws IOException {
         LOG.debug(">displaySignerCertificate()");
         Certificate cert = null;
         try {
-            cert = getWorkerSession().getSignerCertificate(wi);
+            cert = getWorkerSession().getSignerCertificate(workerId);
         } catch (CryptoTokenOfflineException ignored) {
         }
         response.setContentType(CONTENT_TYPE_TEXT);
         if (cert == null) {
             response.getWriter().print(
                     "No signing certificate found for worker with id "
-                    + wi);
+                    + workerId);
         } else {
             response.getWriter().print(cert);
         }
@@ -332,18 +316,18 @@ public class SODProcessServlet extends AbstractProcessServlet {
     }
 
     private void sendSignerCertificate(final HttpServletResponse response,
-            final WorkerIdentifier wi) throws IOException {
+            final int workerId) throws IOException {
         LOG.debug(">sendSignerCertificate()");
         Certificate cert = null;
         try {
-            cert = getWorkerSession().getSignerCertificate(wi);
+            cert = getWorkerSession().getSignerCertificate(workerId);
         } catch (CryptoTokenOfflineException ignored) {
         }
         try {
             if (cert == null) {
                 response.getWriter().print(
                         "No signing certificate found for worker with id "
-                        + wi);
+                        + workerId);
             } else {
                 byte[] bytes;
                 bytes = cert.getEncoded();

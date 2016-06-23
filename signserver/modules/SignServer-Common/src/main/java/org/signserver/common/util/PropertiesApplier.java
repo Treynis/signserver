@@ -21,7 +21,6 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.signserver.common.AuthorizedClient;
-import org.signserver.common.WorkerConfig;
 import static org.signserver.common.util.PropertiesConstants.GENID;
 import static org.signserver.common.util.PropertiesConstants.OLDWORKER_PREFIX;
 import static org.signserver.common.util.PropertiesConstants.WORKER_PREFIX;
@@ -59,7 +58,7 @@ public abstract class PropertiesApplier {
     /**
      * Hold the worker IDs updated-
      */
-    private SortedSet<Integer> workerIds = new TreeSet<>();
+    private SortedSet<Integer> workerIds = new TreeSet<Integer>();
     
     private String error;
  
@@ -91,7 +90,6 @@ public abstract class PropertiesApplier {
                     translateWorkerDatas(parser.getAddAuthorizedClients());
             final Map<Integer, List<AuthorizedClient>> removeAuthorizedClients =
                     translateWorkerDatas(parser.getRemoveAuthorizedClients());
-            final ArrayList<PropertiesParser.WorkerProperty> delayedSetWorkerProperties = new ArrayList<>();
             
             // apply the configuration
             for (final PropertiesParser.GlobalProperty prop : setGlobalProperties.keySet()) {
@@ -102,19 +100,7 @@ public abstract class PropertiesApplier {
                 removeGlobalProperty(prop.getScope(), prop.getKey());
             }
             
-            // apply set worker properties
             for (final PropertiesParser.WorkerProperty prop : setWorkerProperties.keySet()) {
-                if (prop.getKey().equalsIgnoreCase(WorkerConfig.TYPE)) {
-                    // Apply the TYPE properties last so we are sure the IMPLEMENTATION_CLASS has been added first
-                    delayedSetWorkerProperties.add(prop);
-                } else {
-                    // All other properties can be applied now
-                    setWorkerProperty(Integer.parseInt(prop.getWorkerIdOrName()), prop.getKey(), setWorkerProperties.get(prop));
-                }
-            }
-
-            // apply delayed set worker properties
-            for (final PropertiesParser.WorkerProperty prop : delayedSetWorkerProperties) {
                 setWorkerProperty(Integer.parseInt(prop.getWorkerIdOrName()), prop.getKey(), setWorkerProperties.get(prop));
             }
             
@@ -160,7 +146,7 @@ public abstract class PropertiesApplier {
             final Map<PropertiesParser.GlobalProperty, String> properties)
             throws PropertiesApplierException {
         final Map<PropertiesParser.GlobalProperty, String> result =
-                new HashMap<>();
+                new HashMap<PropertiesParser.GlobalProperty, String>();
         
         for (final PropertiesParser.GlobalProperty prop : properties.keySet()) {
             result.put(new PropertiesParser.GlobalProperty(prop.getScope(),
@@ -183,7 +169,7 @@ public abstract class PropertiesApplier {
      */
     private List<PropertiesParser.GlobalProperty> translateGlobalProperties(final List<PropertiesParser.GlobalProperty> properties)
         throws PropertiesApplierException {
-        final List<PropertiesParser.GlobalProperty> result = new LinkedList<>();
+        final List<PropertiesParser.GlobalProperty> result = new LinkedList<PropertiesParser.GlobalProperty>();
         
         for (final PropertiesParser.GlobalProperty prop : properties) {
             result.add(new PropertiesParser.GlobalProperty(prop.getScope(), translateGlobalPropertyKey(prop.getKey())));
@@ -204,7 +190,7 @@ public abstract class PropertiesApplier {
             final Map<PropertiesParser.WorkerProperty, String> workerProperties)
             throws PropertiesApplierException {
         final Map<PropertiesParser.WorkerProperty, String> result =
-                new HashMap<>();
+                new HashMap<PropertiesParser.WorkerProperty, String>();
         
         for (final PropertiesParser.WorkerProperty prop : workerProperties.keySet()) {
             result.put(new PropertiesParser.WorkerProperty(Integer.toString(translateWorkerPropertyKey(prop.getWorkerIdOrName())),
@@ -225,7 +211,7 @@ public abstract class PropertiesApplier {
      */
     private List<PropertiesParser.WorkerProperty> translateWorkerProperties(final List<PropertiesParser.WorkerProperty> workerProperties)
         throws PropertiesApplierException {
-        final List<PropertiesParser.WorkerProperty> result = new LinkedList<>();
+        final List<PropertiesParser.WorkerProperty> result = new LinkedList<PropertiesParser.WorkerProperty>();
         
         for (final PropertiesParser.WorkerProperty prop : workerProperties) {
             result.add(new PropertiesParser.WorkerProperty(Integer.toString(translateWorkerPropertyKey(prop.getWorkerIdOrName())),
@@ -245,7 +231,7 @@ public abstract class PropertiesApplier {
      */
     private <T> Map<Integer, T> translateWorkerDatas(final Map<String, T> signerDataLists)
         throws PropertiesApplierException {
-        final Map<Integer, T> result = new HashMap<>();
+        final Map<Integer, T> result = new HashMap<Integer, T>();
         
         for (final String workerNameOrId : signerDataLists.keySet()) {           
             result.put(translateWorkerPropertyKey(workerNameOrId), signerDataLists.get(workerNameOrId));
@@ -436,7 +422,7 @@ public abstract class PropertiesApplier {
      * @return List of worker IDs
      */
     public List<Integer> getWorkerIds() {
-        return new ArrayList<>(workerIds);
+        return new ArrayList<Integer>(workerIds);
     }
     
     /**

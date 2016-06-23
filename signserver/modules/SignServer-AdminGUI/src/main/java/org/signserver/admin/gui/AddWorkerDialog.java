@@ -843,21 +843,23 @@ public class AddWorkerDialog extends javax.swing.JDialog {
         final String workerId =
                 ((JTextField) workerIdComboBox.getEditor().getEditorComponent())
                 .getText();
-        final String workerClassName = workerImplementationField.getText();
-        final String tokenClassName = tokenImplementationField.getText();
+        final String classPath = workerImplementationField.getText();
+        final String tokenClassPath = tokenImplementationField.getText();
         final String workerName = workerNameField.getText();
         final String workerPrefix =
                 PropertiesConstants.WORKER_PREFIX + workerId;
        
-        // insert IMPLEMENTATION_CLASS property
-        properties.setProperty(workerPrefix + "." + PropertiesConstants.IMPLEMENTATION_CLASS,
-                workerClassName);
+        // insert CLASSPATH global property
+        properties.setProperty(PropertiesConstants.GLOBAL_PREFIX_DOT +
+                workerPrefix + "." + PropertiesConstants.CLASSPATH,
+                classPath);
         
-        if (tokenClassName != null && !tokenClassName.isEmpty()) {
-            // insert CRYPTOTOKEN_IMPLEMENTATION_CLASS property
-            properties.setProperty(workerPrefix + "."
-                    + PropertiesConstants.CRYPTOTOKEN_IMPLEMENTATION_CLASS,
-                    tokenClassName);
+        if (tokenClassPath != null && !tokenClassPath.isEmpty()) {
+            // insert SIGNERTOKEN.CLASSPATH global property
+            properties.setProperty(PropertiesConstants.GLOBAL_PREFIX_DOT +
+                    workerPrefix + "." + PropertiesConstants.SIGNERTOKEN +
+                    "." + PropertiesConstants.CLASSPATH,
+                    tokenClassPath);
         }
         
         // insert NAME worker property   
@@ -1044,8 +1046,12 @@ public class AddWorkerDialog extends javax.swing.JDialog {
                     for (final int workerId : modifiedWorkers) {
                         SignServerAdminGUIApplication.getAdminWS().reloadConfiguration(workerId);
                     }
-                } catch (AdminNotAuthorizedException_Exception | SOAPFaultException | EJBException e) {
+                } catch (AdminNotAuthorizedException_Exception e) {
                     return "Error reloading workers: " + e.getMessage();
+                }  catch (SOAPFaultException ex) {
+                    return "Error reloading workers: " + ex.getMessage();
+                } catch (EJBException ex) {
+                    return "Error reloading workers: " + ex.getMessage();
                 }
             }
 

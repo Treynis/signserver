@@ -26,7 +26,6 @@ import org.signserver.server.IProcessable;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.cryptotokens.CryptoTokenHelper;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 
 /**
  * Alias selector implementation selecting a key alias based
@@ -56,10 +55,10 @@ public class AuthorizedUsernameAliasSelector implements AliasSelector {
             throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
         if (requestContext != null) {
             final LogMap logMap = LogMap.getInstance(requestContext);
-            final Object loggable = logMap.get(IAuthorizer.LOG_USERNAME);
+            final String username = logMap.get(IAuthorizer.LOG_USERNAME);
             
-            if (loggable != null) {
-                return prefix + loggable.toString();
+            if (username != null) {
+                return prefix + username;
             } else {
                 return null;
             }

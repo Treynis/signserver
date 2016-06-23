@@ -56,7 +56,7 @@ public class StatisticsEntry implements Delayed {
         if (event.getCustomData() != null) {
             for (String next : event.getCustomData().keySet()) {
                 if (customData == null) {
-                    customData = new HashMap<>();
+                    customData = new HashMap<String, Integer>();
                 }
                 if (customData.get(next) == null) {
                     customData.put(next, event.getCustomData().get(next));

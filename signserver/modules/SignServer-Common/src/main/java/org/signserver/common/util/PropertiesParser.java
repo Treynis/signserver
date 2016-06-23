@@ -12,11 +12,10 @@
  *************************************************************************/
 package org.signserver.common.util;
 
-import org.bouncycastle.util.encoders.Base64;
 import java.util.*;
+import org.ejbca.util.Base64;
 import org.signserver.common.AuthorizedClient;
 import org.signserver.common.GlobalConfiguration;
-import org.signserver.common.WorkerConfig;
 import static org.signserver.common.util.PropertiesConstants.*;
 
 /**
@@ -132,18 +131,18 @@ public class PropertiesParser {
 
     }
     
-    private final List<String> errors = new LinkedList<>();
-    private final List<String> messages = new LinkedList<>();
-    private final Map<GlobalProperty, String> setGlobalProperties = new HashMap<>();
-    private final List<GlobalProperty> removeGlobalProperties = new LinkedList<>();
-    private final Map<WorkerProperty, String> setWorkerProperties = new HashMap<>();
-    private final List<WorkerProperty> removeWorkerProperties = new LinkedList<>();
+    private final List<String> errors = new LinkedList<String>();
+    private final List<String> messages = new LinkedList<String>();
+    private final Map<GlobalProperty, String> setGlobalProperties = new HashMap<GlobalProperty, String>();
+    private final List<GlobalProperty> removeGlobalProperties = new LinkedList<GlobalProperty>();
+    private final Map<WorkerProperty, String> setWorkerProperties = new HashMap<WorkerProperty, String>();
+    private final List<WorkerProperty> removeWorkerProperties = new LinkedList<WorkerProperty>();
     
-    private final Map<String, List<AuthorizedClient>> addAuthorizedClients = new HashMap<>();
-    private final Map<String, List<AuthorizedClient>> removeAuthorizedClients = new HashMap<>();
+    private final Map<String, List<AuthorizedClient>> addAuthorizedClients = new HashMap<String, List<AuthorizedClient>>();
+    private final Map<String, List<AuthorizedClient>> removeAuthorizedClients = new HashMap<String, List<AuthorizedClient>>();
     
-    private final Map<String, byte[]> signerCertificates = new HashMap<>();
-    private final Map<String, List<byte[]>> signerCertificateChains = new HashMap<>();
+    private final Map<String, byte[]> signerCertificates = new HashMap<String, byte[]>();
+    private final Map<String, List<byte[]>> signerCertificateChains = new HashMap<String, List<byte[]>>();
 
     /**
      * Parse a set of properties.
@@ -221,20 +220,6 @@ public class PropertiesParser {
     private void setGlobalProperty(String scope, String key, String value) {
         messages.add("Setting the global property " + key + " to " + value + " with scope " + scope);
         setGlobalProperties.put(new GlobalProperty(scope, key), value);
-        
-        // For backwards compatibility: If the old global config property for IMPLEMENTATION_CLASS is specified, we also set the new property
-        // Note: this logic is somewhat duplicated in SetPropertiesHelper
-        if (key.startsWith(WORKER_PREFIX)) {
-            String strippedKey = key.substring(WORKER_PREFIX.length());
-            String workerId = strippedKey.substring(0, strippedKey.indexOf('.'));
-             
-            if (key.endsWith(".SIGNERTOKEN.CLASSPATH")) {
-                setWorkerProperty(workerId, CRYPTOTOKEN_IMPLEMENTATION_CLASS, value);
-            } else if (key.endsWith(".CLASSPATH")) {
-                setWorkerProperty(workerId, IMPLEMENTATION_CLASS, value);
-                setWorkerProperty(workerId, WorkerConfig.TYPE, ""); // Empty type so it will be auto-detected
-            }
-        }
     }
 
     private void removeGlobalProperty(String scope, String key) {
@@ -246,7 +231,7 @@ public class PropertiesParser {
         List<T> datas = map.get(workerIdOrName);
         
         if (datas == null) {
-            datas = new LinkedList<>();
+            datas = new LinkedList<T>();
             map.put(workerIdOrName, datas);
         }
         
@@ -273,7 +258,7 @@ public class PropertiesParser {
             } else {
                 if (propertykey.startsWith(DOT_SIGNERCERTCHAIN.substring(1))) {
                     String certs[] = propertyvalue.split(";");
-                    ArrayList<byte[]> chain = new ArrayList<>();
+                    ArrayList<byte[]> chain = new ArrayList<byte[]>();
                     for (String base64cert : certs) {
                         if (!base64cert.trim().isEmpty()) {
                             byte[] cert = Base64.decode(base64cert.getBytes());

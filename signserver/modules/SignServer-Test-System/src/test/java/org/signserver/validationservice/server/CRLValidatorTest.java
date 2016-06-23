@@ -26,27 +26,25 @@ import java.util.Date;
 import java.util.List;
 import org.bouncycastle.asn1.x509.CRLDistPoint;
 import org.bouncycastle.jce.X509KeyUsage;
-import org.cesecore.certificates.crl.RevokedCertInfo;
-import org.cesecore.keys.util.KeyTools;
-import org.cesecore.util.CertTools;
+import org.ejbca.core.model.ca.crl.RevokedCertInfo;
+import org.ejbca.util.CertTools;
+import org.ejbca.util.keystore.KeyTools;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.RequestContext;
 import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerUtil;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
 import org.signserver.validationservice.common.ValidationServiceConstants;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.RemoteRequestContext;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.common.WorkerType;
 import org.signserver.common.util.PathUtil;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.testutils.ModulesTestCase;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
 
 /**
  * Tests for the CRL Validator.
@@ -55,11 +53,10 @@ import org.signserver.ejb.interfaces.WorkerSessionRemote;
  * @version $Id$
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class CRLValidatorTest extends ModulesTestCase {
+public class CRLValidatorTest {
 
-    private static WorkerSessionRemote sSSession;
-    private final ProcessSessionRemote processSession = getProcessSession();
-
+    private static IGlobalConfigurationSession.IRemote gCSession;
+    private static IWorkerSession.IRemote sSSession;
     private File signServerHome;
     /** RootCA1 */
     private static X509Certificate certRootCA1;
@@ -87,10 +84,14 @@ public class CRLValidatorTest extends ModulesTestCase {
     private static X509CRL crlRootCA2;
 
     @Before
-    @Override
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
-        sSSession = ServiceLocator.getInstance().lookupRemote(WorkerSessionRemote.class);
+
+        gCSession = ServiceLocator.getInstance().lookupRemote(
+                IGlobalConfigurationSession.IRemote.class);
+        sSSession = ServiceLocator.getInstance().lookupRemote(
+                IWorkerSession.IRemote.class);
+
         signServerHome = PathUtil.getAppHome();
     }
 
@@ -100,7 +101,7 @@ public class CRLValidatorTest extends ModulesTestCase {
         File cdpFile1 = new File(signServerHome, "tmp" + File.separator + "rootca1.crl");
         URL cdpUrl1 = cdpFile1.toURI().toURL();
         CRLDistPoint crlDistPointCA1WithUrl = ValidationTestUtils.generateDistPointWithUrl(cdpUrl1);
-        ArrayList<X509Certificate> chain1 = new ArrayList<>();
+        ArrayList<X509Certificate> chain1 = new ArrayList<X509Certificate>();
 
         KeyPair keysRootCA1 = KeyTools.genKeys("1024", "RSA");
         certRootCA1 = ValidationTestUtils.genCert("CN=RootCA1", "CN=RootCA1", keysRootCA1.getPrivate(), keysRootCA1.getPublic(),
@@ -131,21 +132,21 @@ public class CRLValidatorTest extends ModulesTestCase {
         certEndEntity8KeyUsageSig = ValidationTestUtils.genCert("CN=EndEntity8", "CN=RootCA1", keysRootCA1.getPrivate(), keysEndEntity8.getPublic(),
                 new Date(0), new Date(System.currentTimeMillis() + 1000000), false, X509KeyUsage.digitalSignature | X509KeyUsage.nonRepudiation, crlDistPointCA1WithUrl);
 
-        ArrayList<RevokedCertInfo> revoked = new ArrayList<>();
-        revoked.add(new RevokedCertInfo("fingerprint".getBytes(),
-                certEndEntity2.getSerialNumber().toByteArray(),
-                new Date().getTime(),
-                RevokedCertInfo.REVOCATION_REASON_UNSPECIFIED,
-                new Date(System.currentTimeMillis() + 1000000).getTime()));
+        ArrayList<RevokedCertInfo> revoked = new ArrayList<RevokedCertInfo>();
+        revoked.add(new RevokedCertInfo("fingerprint", certEndEntity2.getSerialNumber(), new Date(),
+                RevokedCertInfo.REVOKATION_REASON_UNSPECIFIED, new Date(System.currentTimeMillis() + 1000000)));
 
-        crlRootCA1 =
-                ValidationTestUtils.genCRL(certRootCA1, keysRootCA1.getPrivate(),
-                                           crlDistPointCA1WithUrl.getDistributionPoints()[0],
-                                           revoked, 24, 1);
+        crlRootCA1 = ValidationTestUtils.genCRL(certRootCA1, keysRootCA1.getPrivate(), crlDistPointCA1WithUrl.getDistributionPoints()[0], revoked, 24, 1);
 
-        try ( // Write CRL to file
-                OutputStream out = new FileOutputStream(cdpFile1)) {
+        // Write CRL to file
+        OutputStream out = null;
+        try {
+            out = new FileOutputStream(cdpFile1);
             out.write(crlRootCA1.getEncoded());
+        } finally {
+            if (out != null) {
+                out.close();
+            }
         }
         assertTrue(cdpFile1.exists());
         assertTrue(cdpFile1.canRead());
@@ -155,7 +156,7 @@ public class CRLValidatorTest extends ModulesTestCase {
         File cdpFile2 = new File(signServerHome, "tmp" + File.separator + "rootca2.crl");
         URL cdpUrl2 = cdpFile2.toURI().toURL();
         CRLDistPoint crlDistPointCA2WithIssuer = ValidationTestUtils.generateDistPointWithIssuer("CN=RootCA2");
-        ArrayList<X509Certificate> chain2 = new ArrayList<>();
+        ArrayList<X509Certificate> chain2 = new ArrayList<X509Certificate>();
 
         KeyPair keysRootCA2 = KeyTools.genKeys("1024", "RSA");
         certRootCA2 = ValidationTestUtils.genCert("CN=RootCA2", "CN=RootCA2", keysRootCA2.getPrivate(), keysRootCA2.getPublic(),
@@ -169,34 +170,29 @@ public class CRLValidatorTest extends ModulesTestCase {
         certEndEntity4 = ValidationTestUtils.genCert("CN=EndEntity4", "CN=RootCA2", keysRootCA2.getPrivate(), keysEndEntity4.getPublic(),
                 new Date(0), new Date(System.currentTimeMillis() + 1000000), false, 0, crlDistPointCA2WithIssuer);
 
-        ArrayList<RevokedCertInfo> revoked2 = new ArrayList<>();
-        revoked2.add(new RevokedCertInfo("fingerprint2".getBytes(),
-                certEndEntity4.getSerialNumber().toByteArray(),
-                new Date().getTime(),
-                RevokedCertInfo.REVOCATION_REASON_UNSPECIFIED,
-                new Date(System.currentTimeMillis() + 1000000).getTime()));
+        ArrayList<RevokedCertInfo> revoked2 = new ArrayList<RevokedCertInfo>();
+        revoked2.add(new RevokedCertInfo("fingerprint2", certEndEntity4.getSerialNumber(), new Date(),
+                RevokedCertInfo.REVOKATION_REASON_UNSPECIFIED, new Date(System.currentTimeMillis() + 1000000)));
 
         crlRootCA2 = ValidationTestUtils.genCRL(certRootCA2, keysRootCA2.getPrivate(), crlDistPointCA2WithIssuer.getDistributionPoints()[0], revoked2, 24, 1);
 
-        try ( // Write CRL to file
-                OutputStream out2 = new FileOutputStream(cdpFile2)) {
+        // Write CRL to file
+        OutputStream out2 = null;
+        try {
+            out2 = new FileOutputStream(cdpFile2);
             out2.write(crlRootCA2.getEncoded());
+        } finally {
+            if (out2 != null) {
+                out2.close();
+            }
         }
         assertTrue(cdpFile2.exists());
         assertTrue(cdpFile2.canRead());
         chain2.add(certRootCA2);
 
         // Setup worker
-        sSSession.setWorkerProperty(15, WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
-        sSSession.setWorkerProperty(15, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.validationservice.server.ValidationServiceWorker");
-        sSSession.setWorkerProperty(15, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.signserver.server.cryptotokens.KeystoreCryptoToken");
-        sSSession.setWorkerProperty(15, "KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" + File.separator +
-                "test" + File.separator + "dss10" + File.separator +
-                "dss10_signer1.p12");
-        sSSession.setWorkerProperty(15, "KEYSTORETYPE", "PKCS12");
-        sSSession.setWorkerProperty(15, "KEYSTOREPASSWORD", "foo123");
-        sSSession.setWorkerProperty(15, "DEFAULTKEY", "Signer 1");
+        gCSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER15.CLASSPATH", "org.signserver.validationservice.server.ValidationServiceWorker");
+        gCSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER15.SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.HardCodedCryptoToken");
         sSSession.setWorkerProperty(15, "AUTHTYPE", "NOAUTH");
         sSSession.setWorkerProperty(15, "VAL1.CLASSPATH", "org.signserver.validationservice.server.CRLValidator");
         sSSession.setWorkerProperty(15, "VAL1.ISSUER1.CERTCHAIN", ValidationTestUtils.genPEMStringFromChain(chain1));
@@ -213,7 +209,7 @@ public class CRLValidatorTest extends ModulesTestCase {
     @Test
     public void test01NotRevoked() throws Exception {
         ValidateRequest req = new ValidateRequest(certEndEntity1, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
-        ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+        ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
@@ -233,7 +229,7 @@ public class CRLValidatorTest extends ModulesTestCase {
     @Test
     public void test02Revoked() throws Exception {
         ValidateRequest req = new ValidateRequest(certEndEntity2, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
-        ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+        ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
@@ -257,7 +253,7 @@ public class CRLValidatorTest extends ModulesTestCase {
     @Test
     public void test03NotRevokedDPWithIssuer() throws Exception {
         ValidateRequest req = new ValidateRequest(certEndEntity3, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
-        ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+        ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
@@ -277,7 +273,7 @@ public class CRLValidatorTest extends ModulesTestCase {
     @Test
     public void test04RevokedDPWithIssuer() throws Exception {
         ValidateRequest req = new ValidateRequest(certEndEntity4, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
-        ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+        ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
@@ -300,7 +296,7 @@ public class CRLValidatorTest extends ModulesTestCase {
     @Test
     public void test05Expired() throws Exception {
         ValidateRequest req = new ValidateRequest(certEndEntity5Expired, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
-        ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+        ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
@@ -319,7 +315,7 @@ public class CRLValidatorTest extends ModulesTestCase {
     @Test
     public void test06NotYetValid() throws Exception {
         ValidateRequest req = new ValidateRequest(certEndEntity6NotYetValid, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
-        ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+        ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
@@ -338,7 +334,7 @@ public class CRLValidatorTest extends ModulesTestCase {
     @Test
     public void test07WrongIssuer() throws Exception {
         ValidateRequest req = new ValidateRequest(certEndEntity7WrongIssuer, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
-        ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+        ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertTrue(val != null);
@@ -359,7 +355,7 @@ public class CRLValidatorTest extends ModulesTestCase {
         // First: test one certificate that has CERTPURPOSE_ELECTRONIC_SIGNATURE and see that it works
         {
             ValidateRequest req = new ValidateRequest(certEndEntity8KeyUsageSig, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
-            ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+            ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
             Validation val = res.getValidation();
             assertTrue(val != null);
@@ -374,7 +370,7 @@ public class CRLValidatorTest extends ModulesTestCase {
         // Second: test one certificate without CERTPURPOSE_ELECTRONIC_SIGNATURE and see that it fails
         {
             ValidateRequest req = new ValidateRequest(certEndEntity1, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
-            ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+            ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
             Validation val = res.getValidation();
             assertTrue(val != null);
@@ -401,7 +397,7 @@ public class CRLValidatorTest extends ModulesTestCase {
         sSSession.reloadConfiguration(15);
 
         ValidateRequest req = new ValidateRequest(certEndEntity3, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
-        ValidateResponse res = (ValidateResponse) processSession.process(new WorkerIdentifier(15), req, new RemoteRequestContext());
+        ValidateResponse res = (ValidateResponse) sSSession.process(15, req, new RequestContext());
 
         Validation val = res.getValidation();
         assertNotNull(val);
@@ -419,6 +415,16 @@ public class CRLValidatorTest extends ModulesTestCase {
     // TODO: Add more tests for the CRLValidator here
     @Test
     public void test99RemoveDatabase() throws Exception {
-        removeWorker(15);
+        gCSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER15.CLASSPATH");
+        gCSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER15.SIGNERTOKEN.CLASSPATH");
+
+        sSSession.removeWorkerProperty(15, "AUTHTYPE");
+        sSSession.removeWorkerProperty(15, "VAL1.CLASSPATH");
+        sSSession.removeWorkerProperty(15, "VAL1.ISSUER1.CERTCHAIN");
+        sSSession.removeWorkerProperty(15, "VAL1.ISSUER1.CRLPATHS");
+        sSSession.removeWorkerProperty(15, "VAL1.ISSUER2.CERTCHAIN");
+        sSSession.removeWorkerProperty(15, "VAL1.ISSUER2.CRLPATHS");
+
+        sSSession.reloadConfiguration(15);
     }
 }

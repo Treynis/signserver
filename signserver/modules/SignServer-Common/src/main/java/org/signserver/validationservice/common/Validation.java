@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 
 /**
  * Base validation VO containing the status of a specific certificate.
@@ -112,7 +112,7 @@ public class Validation implements Serializable {
             this.certificateData = certificate.getEncoded();
 
             if (cAChain != null) {
-                this.cAChainData = new ArrayList<>();
+                this.cAChainData = new ArrayList<byte[]>();
                 for (Certificate cert : cAChain) {
                     cAChainData.add(0, cert.getEncoded());
                 }
@@ -172,7 +172,7 @@ public class Validation implements Serializable {
      */
     public List<Certificate> getCAChain() {
         if (cAChain == null && cAChainData != null) {
-            cAChain = new ArrayList<>();
+            cAChain = new ArrayList<Certificate>();
             for (byte[] certData : cAChainData) {
                 try {
                     Certificate cACert = CertTools.getCertfromByteArray(certData);
@@ -217,7 +217,7 @@ public class Validation implements Serializable {
 
         revokationReason = in.readInt();
 
-        cAChainData = new ArrayList<>();
+        cAChainData = new ArrayList<byte[]>();
         size = in.readInt();
         for (int i = 0; i < size; i++) {
             int dataLen = in.readInt();

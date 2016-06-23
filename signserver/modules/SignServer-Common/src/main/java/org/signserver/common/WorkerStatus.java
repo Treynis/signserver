@@ -49,7 +49,7 @@ public abstract class WorkerStatus implements Serializable {
     
     private static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
     
-    private List<String> fatalErrors = new LinkedList<>();
+    private List<String> fatalErrors = new LinkedList<String>();
 
     public WorkerStatus() {
         try {
@@ -67,6 +67,14 @@ public abstract class WorkerStatus implements Serializable {
         this.workerId = workerId;
     }
 
+    /** 
+     * @deprecated Use the constructor taking a list of errors
+     */
+    @Deprecated
+    public WorkerStatus(int workerId, WorkerConfig config) {
+       this(workerId, Collections.<String>emptyList(), config); 
+    }
+    
     public WorkerStatus(int workerId, List<String> fatalErrors, WorkerConfig config) {
         this.workerId = workerId;
         this.fatalErrors.addAll(fatalErrors);
@@ -118,7 +126,7 @@ public abstract class WorkerStatus implements Serializable {
      * Method all inheriting workers must implement. It responsible for writing the status for that specific
      * type of worker in the CLI
      */
-    public abstract void displayStatus(PrintStream out, boolean complete);
+    public abstract void displayStatus(int workerId, PrintStream out, boolean complete);
 
     public static void printCert(X509Certificate cert, PrintStream out) {
         out.println(INDENT1 + INDENT2 + "Subject DN:     " + cert.getSubjectDN().toString());
@@ -160,7 +168,7 @@ public abstract class WorkerStatus implements Serializable {
         if (legacyStatus == null) {
             results = fatalErrors;
         } else {
-            results = new LinkedList<>(fatalErrors);
+            results = new LinkedList<String>(fatalErrors);
             results.add(legacyStatus);
         }
         

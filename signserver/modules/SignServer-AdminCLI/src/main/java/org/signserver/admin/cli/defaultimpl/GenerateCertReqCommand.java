@@ -20,7 +20,6 @@ import org.signserver.cli.spi.UnexpectedCommandFailureException;
 import org.signserver.common.Base64SignerCertReqData;
 import org.signserver.common.InvalidWorkerIdException;
 import org.signserver.common.PKCS10CertReqInfo;
-import org.signserver.common.WorkerIdentifier;
 
 /**
  * Commands that requests a signer to generate a PKCS10 certificate request 
@@ -49,7 +48,6 @@ public class GenerateCertReqCommand extends AbstractAdminCommand {
         return HELP;
     }
 
-    @Override
     public int execute(String... args) throws IllegalCommandArgumentsException, CommandFailureException, UnexpectedCommandFailureException {
         if (args.length < 4 || args.length > 7) {
             throw new IllegalCommandArgumentsException(HELP);
@@ -110,7 +108,16 @@ public class GenerateCertReqCommand extends AbstractAdminCommand {
                 }
             }
 
-            final WorkerIdentifier id = WorkerIdentifier.createFromIdOrName(workerid);
+            final int id;
+            if (workerid.substring(0, 1).matches("\\d")) {
+                id = Integer.parseInt(workerid);
+            } else {
+                // named worker is requested
+                id = getWorkerSession().getWorkerId(workerid);
+                if (id == 0) {
+                    throw new IllegalCommandArgumentsException(FAIL);
+                }
+            }
 
             PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo(sigAlg, dn, null);
             final Base64SignerCertReqData reqData;
@@ -124,18 +131,20 @@ public class GenerateCertReqCommand extends AbstractAdminCommand {
             if (reqData == null) {
                 throw new Exception("Base64SignerCertReqData returned was null. Unable to generate certificate request.");
             }
-            try (FileOutputStream fos = new FileOutputStream(filename)) {
-                fos.write("-----BEGIN CERTIFICATE REQUEST-----\n".getBytes());
-                fos.write(reqData.getBase64CertReq());
-                fos.write("\n-----END CERTIFICATE REQUEST-----\n".getBytes());
-            }
+            FileOutputStream fos = new FileOutputStream(filename);
+            fos.write("-----BEGIN CERTIFICATE REQUEST-----\n".getBytes());
+            fos.write(reqData.getBase64CertReq());
+            fos.write("\n-----END CERTIFICATE REQUEST-----\n".getBytes());
+            fos.close();
 
             getOutputStream().println(SUCCESS + filename);
             return 0;
-        } catch (InvalidWorkerIdException | FileNotFoundException ex) {
+        } catch (InvalidWorkerIdException ex) {
             throw new IllegalCommandArgumentsException(ex.getMessage());
         } catch (IllegalCommandArgumentsException e) {
             throw e;
+        } catch (FileNotFoundException ex) {
+            throw new IllegalCommandArgumentsException(ex.getMessage());
         } catch (Exception e) {
             throw new UnexpectedCommandFailureException(e);
         }

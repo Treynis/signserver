@@ -87,7 +87,7 @@ class CertificateAndKeySelector extends KeySelector {
 
         SignatureMethod signatureMethod = (SignatureMethod) method;
 
-        List<X509Certificate> foundCerts = new LinkedList<>();
+        List<X509Certificate> foundCerts = new LinkedList<X509Certificate>();
 
         for (Object o1 : keyInfo.getContent()) {
             log.trace("o1: " + o1);
@@ -145,7 +145,6 @@ class CertificateAndKeySelector extends KeySelector {
 
         return new KeySelectorResult() {
 
-            @Override
             public Key getKey() {
                 return choosenCert.getPublicKey();
             }

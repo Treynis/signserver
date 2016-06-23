@@ -35,8 +35,6 @@ import static junit.framework.TestCase.fail;
 import org.apache.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.encoders.Hex;
-import org.cesecore.keys.token.CachingKeyStoreWrapper;
-import org.cesecore.keys.util.KeyStoreTools;
 
 /**
  * Tests that the hard token properties are set correctly for PKCS11 crypto tokens.
@@ -226,7 +224,7 @@ public class CryptoTokenHelperTest extends TestCase {
         final X509Certificate certificate = (X509Certificate) ks.getCertificate(KEYALIAS);
         
         // Test with no parameters: should not change the cert
-        final Map<String, Object> params = new HashMap<>();
+        final Map<String, Object> params = new HashMap<String, Object>();
         CryptoTokenHelper.regenerateCertIfWanted(KEYALIAS, "foo123".toCharArray(), params, ks, "BC");
         X509Certificate certAfter = (X509Certificate) ks.getCertificate(KEYALIAS);
         assertEquals("Same issuer DN", certificate.getIssuerX500Principal().getName(), certAfter.getIssuerX500Principal().getName());
@@ -284,57 +282,8 @@ public class CryptoTokenHelperTest extends TestCase {
         assertEquals("New validity time about 2 hour", 2L, TimeUnit.MILLISECONDS.toHours(certAfter.getNotAfter().getTime() - certAfter.getNotBefore().getTime()));
     }
 
-    /**
-     * Tests that a certificate generate by CESeCore code is detected to be a
-     * dummy certificate.
-     * @throws Exception 
-     */
-    public void testDummyCertificateFromSignServer() throws Exception {
-        LOG.info("testDummyCertificateFromSignServer");
-        
-        Security.addProvider(new BouncyCastleProvider());
-        
-        KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
-        ks.load(null, null);
-        KeyStoreTools cesecoreTool = new KeyStoreTools(new CachingKeyStoreWrapper(ks, false), "BC");
-        cesecoreTool.generateKeyPair("1024", "entry1");
-        
-        X509Certificate certificate = (X509Certificate) ks.getCertificate("entry1");
-        assertTrue("dummy cert: " + certificate.getSubjectX500Principal().getName(), 
-                CryptoTokenHelper.isDummyCertificate(certificate));
-    }
-    
-    /**
-     * Tests that a certificate generate by createDummyCertificate is detected to
-     * be a dummy certificate.
-     * @throws Exception 
-     */
-    public void testDummyCertificateFromCreateDummyCertificate() throws Exception {
-        LOG.info("testDummyCertificateFromCreateDummyCertificate");
-        
-        Security.addProvider(new BouncyCastleProvider());
-        
-        final KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "BC");    
-        kpg.initialize(1024);
-        KeyPair keyPair = kpg.generateKeyPair();
-        
-        X509Certificate certificate = CryptoTokenHelper.createDummyCertificate("entry1", "SHA256withRSA", keyPair, "BC");
-        
-        assertTrue("dummy cert: " + certificate.getSubjectX500Principal().getName(), 
-                CryptoTokenHelper.isDummyCertificate(certificate));
-    }
-    
-    /**
-     * Tests that dummy DNs are detected correctly.
-     * @throws Exception 
-     */
-    public void testDummyCertificateDN() throws Exception {
-        assertTrue("contains SignServer marker", CryptoTokenHelper.isDummyCertificateDN("CN=Anything, L=_SignServer_DUMMY_CERT_, O=anything"));
-        assertTrue("is CESeCore DN", CryptoTokenHelper.isDummyCertificateDN("CN=some guy, L=around, C=US"));
-        assertFalse("not SignServer", CryptoTokenHelper.isDummyCertificateDN("CN=Anything, O=anything"));
-        assertFalse("not CESeCore DN", CryptoTokenHelper.isDummyCertificateDN("CN=other guy, L=around, C=US"));
-        assertFalse("not CESeCore DN", CryptoTokenHelper.isDummyCertificateDN("CN=some guy, L=Stockholm, C=US"));
-        assertFalse("not CESeCore DN", CryptoTokenHelper.isDummyCertificateDN("CN=some guy, L=around, C=SE"));
-    }
+    // TODO: Tests for dummy certificates temporarly moved to
+    // SignServer-Test-System but can be moved back after upgrading to
+    // BC >= 1.50
 
 }

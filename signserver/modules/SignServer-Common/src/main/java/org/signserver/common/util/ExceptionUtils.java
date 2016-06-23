@@ -33,7 +33,7 @@ public class ExceptionUtils {
      * @return String with all messages concatenated
      */
     public static String catCauses(Throwable ex, String separator) {
-        final List<String> causes = new LinkedList<>();
+        final List<String> causes = new LinkedList<String>();
         Throwable cause = ex;
         while (cause != null) {
             final String causeMessage = cause.getMessage();

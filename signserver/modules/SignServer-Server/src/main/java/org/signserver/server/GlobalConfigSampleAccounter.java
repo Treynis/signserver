@@ -23,7 +23,7 @@ import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.ServiceLocator;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 
 /**
  * Sample accounter for demonstration purposes only which holds accounts in
@@ -63,7 +63,7 @@ public class GlobalConfigSampleAccounter implements IAccounter {
     public static final String GLOBALCONFIGSAMPLEACCOUNTER_USERS
             = "GLOBALCONFIGSAMPLEACCOUNTER_USERS";
 
-    private GlobalConfigurationSessionLocal gCSession;
+    private IGlobalConfigurationSession gCSession;
 
     @Override
     public void init(final Properties props) {
@@ -80,88 +80,99 @@ public class GlobalConfigSampleAccounter implements IAccounter {
                 + (String) context.get(RequestContext.TRANSACTION_ID));
         }
 
-        // Read global configuration values
-        final GlobalConfiguration config =
-                getGlobalConfigurationSession(context).getGlobalConfiguration();
-        final String usersMapping =
-                config.getProperty(GlobalConfiguration.SCOPE_GLOBAL,
-                GLOBALCONFIGSAMPLEACCOUNTER_USERS);
-        final String accountsMapping =
-                config.getProperty(GlobalConfiguration.SCOPE_GLOBAL,
-                GLOBALCONFIGSAMPLEACCOUNTER_ACCOUNTS);
+        try {
+            // Read global configuration values
+            final GlobalConfiguration config =
+                    getGlobalConfigurationSession().getGlobalConfiguration();
+            final String usersMapping =
+                    config.getProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                    GLOBALCONFIGSAMPLEACCOUNTER_USERS);
+            final String accountsMapping =
+                    config.getProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                    GLOBALCONFIGSAMPLEACCOUNTER_ACCOUNTS);
 
-        // Parse users "table"
-        final Map<String, String> usersTable =
-                parseCredentialMapping(usersMapping);
+            // Parse users "table"
+            final Map<String, String> usersTable =
+                    parseCredentialMapping(usersMapping);
 
-        // Parse accounts "table"
-        final Map<String, Integer> accountsTable =
-                parseAccountMapping(accountsMapping);
+            // Parse accounts "table"
+            final Map<String, Integer> accountsTable =
+                    parseAccountMapping(accountsMapping);
 
-        // Get username (or certificate serial number) from request
-        final String key;
-        if (credential instanceof CertificateClientCredential) {
-            final CertificateClientCredential certCred =
-                    (CertificateClientCredential) credential;
+            // Get username (or certificate serial number) from request
+            final String key;
+            if (credential instanceof CertificateClientCredential) {
+                final CertificateClientCredential certCred =
+                        (CertificateClientCredential) credential;
 
-            key = certCred.getSerialNumber() + "," + certCred.getIssuerDN();
-        } else if (credential instanceof UsernamePasswordClientCredential) {
-            final UsernamePasswordClientCredential passCred =
-                    (UsernamePasswordClientCredential) credential;
+                key = certCred.getSerialNumber() + "," + certCred.getIssuerDN();
+            } else if (credential instanceof UsernamePasswordClientCredential) {
+                final UsernamePasswordClientCredential passCred =
+                        (UsernamePasswordClientCredential) credential;
 
-            key = passCred.getUsername() + "," + passCred.getPassword();
-        } else if (credential == null) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("No credential");
+                key = passCred.getUsername() + "," + passCred.getPassword();
+            } else if (credential == null) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("No credential");
+                }
+                key = null;
+
+            } else {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Unknown credential type: "
+                        + credential.getClass().getName());
+                }
+                key = null;
             }
-            key = null;
 
-        } else {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Unknown credential type: "
-                    + credential.getClass().getName());
+            // Get account
+            final String accountNo = usersTable.get(key);
+
+            // No account for user given the credential supplied
+            if (accountNo == null) {
+                return false;
             }
-            key = null;
+
+            // Get current balance
+            Integer balance = accountsTable.get(accountNo);
+
+            // No account
+            if (balance == null) {
+                return false;
+            }
+
+            // Purchase
+            balance -= 1;
+            accountsTable.put(accountNo, balance);
+
+            // No funds
+            if (balance  < 0) {
+                // Purchase not granted
+                return false;
+            }
+
+            // Store the new balance
+            getGlobalConfigurationSession().setProperty(
+                    GlobalConfiguration.SCOPE_GLOBAL,
+                    GLOBALCONFIGSAMPLEACCOUNTER_ACCOUNTS,
+                    storeAccountMapping(accountsTable));
+
+            // Purchase granted
+            return true;
+
+        } catch (NamingException ex) {
+            throw new AccounterException(
+                    "Unable to connect to accounter internal database", ex);
         }
-
-        // Get account
-        final String accountNo = usersTable.get(key);
-
-        // No account for user given the credential supplied
-        if (accountNo == null) {
-            return false;
-        }
-
-        // Get current balance
-        Integer balance = accountsTable.get(accountNo);
-
-        // No account
-        if (balance == null) {
-            return false;
-        }
-
-        // Purchase
-        balance -= 1;
-        accountsTable.put(accountNo, balance);
-
-        // No funds
-        if (balance  < 0) {
-            // Purchase not granted
-            return false;
-        }
-
-        // Store the new balance
-        getGlobalConfigurationSession(context).setProperty(
-                GlobalConfiguration.SCOPE_GLOBAL,
-                GLOBALCONFIGSAMPLEACCOUNTER_ACCOUNTS,
-                storeAccountMapping(accountsTable));
-
-        // Purchase granted
-        return true;
     }
 
-    private GlobalConfigurationSessionLocal getGlobalConfigurationSession(RequestContext context) {
-        return context.getServices().get(GlobalConfigurationSessionLocal.class);
+    private IGlobalConfigurationSession getGlobalConfigurationSession()
+            throws NamingException {
+        if (gCSession == null) {
+            gCSession = ServiceLocator.getInstance().lookupLocal(
+                    IGlobalConfigurationSession.class);
+        }
+        return gCSession;
     }
 
     private Map<String, String> parseCredentialMapping(String mapping) {
@@ -169,7 +180,7 @@ public class GlobalConfigSampleAccounter implements IAccounter {
             return Collections.emptyMap();
         }
         final String[] entries = mapping.split(";");
-        final Map<String, String> result = new HashMap<>();
+        final Map<String, String> result = new HashMap<String, String>();
         for (String entry : entries) {
             final String[] keyvalue = entry.trim().split(":");
             if (keyvalue.length == 2) {
@@ -200,7 +211,7 @@ public class GlobalConfigSampleAccounter implements IAccounter {
             return Collections.emptyMap();
         }
         final String[] entries = mapping.split(";");
-        final Map<String, Integer> result = new HashMap<>();
+        final Map<String, Integer> result = new HashMap<String, Integer>();
         for (String entry : entries) {
             final String[] keyvalue = entry.trim().split(":");
             if (keyvalue.length == 2) {

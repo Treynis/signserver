@@ -42,7 +42,7 @@ import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.cmp.PKIStatus;
 import org.bouncycastle.tsp.*;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.test.random.FailedException;
 import org.signserver.test.random.Task;
 import org.signserver.test.random.WorkerSpec;
@@ -62,14 +62,14 @@ public class Sign implements Task {
     private static final Logger LOG = Logger.getLogger(Sign.class);
     
     private final WorkerSpec signer;
-    private final ProcessSessionRemote workerSession;
+    private final IWorkerSession.IRemote workerSession;
     private final Random random;
     private int counter;    
     private final RequestContextPreProcessor preProcessor;
     
     private static final String TESTXML1 = "<doc>Some sample XML to sign</doc>";
 
-    public Sign(final WorkerSpec signerId, final ProcessSessionRemote workerSession, final Random random, final RequestContextPreProcessor preProcessor) {
+    public Sign(final WorkerSpec signerId, final IWorkerSession.IRemote workerSession, final Random random, final RequestContextPreProcessor preProcessor) {
         this.signer = signerId;
         this.workerSession = workerSession;
         this.random = random;
@@ -95,7 +95,7 @@ public class Sign implements Task {
     
     private void process(final WorkerSpec signer, final int reqid) throws FailedException, IllegalRequestException, CryptoTokenOfflineException, SignServerException {
         final ProcessResponse result;
-        final RemoteRequestContext requestContext = new RemoteRequestContext();
+        final RequestContext requestContext = new RequestContext();
         if (preProcessor != null) {
             preProcessor.preProcess(requestContext);
         }
@@ -103,7 +103,7 @@ public class Sign implements Task {
             case xml: {
                 // Process
                 final GenericSignRequest signRequest = new GenericSignRequest(reqid, TESTXML1.getBytes());
-                final ProcessResponse response = workerSession.process(new WorkerIdentifier(signer.getWorkerId()), signRequest, requestContext);
+                final ProcessResponse response = workerSession.process(signer.getWorkerId(), signRequest, requestContext);
 
                 // Check result
                 GenericSignResponse res = (GenericSignResponse) response;
@@ -126,7 +126,7 @@ public class Sign implements Task {
 
                     GenericSignRequest signRequest =
                             new GenericSignRequest(reqid, requestBytes);
-                    final GenericSignResponse res = (GenericSignResponse) workerSession.process(new WorkerIdentifier(signer.getWorkerId()), signRequest, requestContext);
+                    final GenericSignResponse res = (GenericSignResponse) workerSession.process(signer.getWorkerId(), signRequest, requestContext);
 
                     // Check result
                     if (reqid != res.getRequestID()) {
@@ -180,7 +180,11 @@ public class Sign implements Task {
             dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
 
             doc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(xml.getBytes("UTF-8")));
-        } catch (ParserConfigurationException | SAXException | IOException ex) {
+        } catch (ParserConfigurationException ex) {
+            throw new FailedException("Document parsing error", ex);
+        } catch (SAXException ex) {
+            throw new FailedException("Document parsing error", ex);
+        } catch (IOException ex) {
             throw new FailedException("Document parsing error", ex);
         }
         NodeList nl = doc.getElementsByTagNameNS(XMLSignature.XMLNS, "Signature");
@@ -192,7 +196,11 @@ public class Sign implements Task {
         XMLSignatureFactory fac;
         try {
             fac = XMLSignatureFactory.getInstance("DOM", (Provider) Class.forName(providerName).newInstance());
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (IllegalAccessException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (ClassNotFoundException e) {
             throw new SignServerException("Problem with JSR105 provider", e);
         }
 
@@ -206,7 +214,9 @@ public class Sign implements Task {
             if (!signature.validate(valContext)) {
                 throw new FailedException("Signature verification failed");
             }
-        } catch (MarshalException | XMLSignatureException ex) {
+        } catch (MarshalException ex) {
+            throw new FailedException("XML signature validation error", ex);
+        } catch (XMLSignatureException ex) {
             throw new FailedException("XML signature validation error", ex);
         }
     }
@@ -232,7 +242,6 @@ public class Sign implements Task {
                     final PublicKey key = ((X509Certificate) o).getPublicKey();
                     if (algEquals(method.getAlgorithm(), key.getAlgorithm())) {
                         return new KeySelectorResult() {
-                            @Override
                             public Key getKey() {
                                 return key;
                             }

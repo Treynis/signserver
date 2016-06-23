@@ -19,10 +19,9 @@ import org.apache.log4j.Logger;
 import org.signserver.cli.spi.AbstractCommand;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.common.AuthorizedClient;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
-import org.signserver.statusrepo.StatusRepositorySessionRemote;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession.IRemote;
+import org.signserver.statusrepo.IStatusRepositorySession;
 
 /**
  * Implements methods useful for Commands.
@@ -38,14 +37,10 @@ public abstract class AbstractAdminCommand extends AbstractCommand {
     private AdminCommandHelper delegate = new AdminCommandHelper();
 
     /**
-     * @see AdminCommandHelper#getProcessSession()
+     * @see AdminCommandHelper#getWorkerSession()
      */
-    protected WorkerSessionRemote getWorkerSession() throws RemoteException {
+    protected IRemote getWorkerSession() throws RemoteException {
         return delegate.getWorkerSession();
-    }
-    
-    protected ProcessSessionRemote getProcessSession() throws RemoteException {
-        return delegate.getProcessSession();
     }
 
     /**
@@ -58,14 +53,14 @@ public abstract class AbstractAdminCommand extends AbstractCommand {
     /**
      * @see AdminCommandHelper#getStatusRepositorySession() 
      */
-    protected StatusRepositorySessionRemote getStatusRepositorySession() throws RemoteException {
+    protected IStatusRepositorySession.IRemote getStatusRepositorySession() throws RemoteException {
         return delegate.getStatusRepositorySession();
     }
 
     /**
      * @see AdminCommandHelper#getGlobalConfigurationSession() 
      */
-    protected GlobalConfigurationSessionRemote getGlobalConfigurationSession() throws RemoteException {
+    protected IGlobalConfigurationSession.IRemote getGlobalConfigurationSession() throws RemoteException {
         return delegate.getGlobalConfigurationSession();
     }
 

@@ -18,9 +18,8 @@ import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.NotGrantedException;
 import org.signserver.common.ProcessResponse;
-import org.signserver.common.RemoteRequestContext;
+import org.signserver.common.RequestContext;
 import org.signserver.common.RequestMetadata;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.server.archive.test1archiver.Test1Signer;
 import org.signserver.testutils.ModulesTestCase;
 
@@ -131,20 +130,18 @@ public class AccounterTest extends ModulesTestCase {
      */
     private ProcessResponse signSomething(final boolean success, UsernamePasswordClientCredential credential) throws Exception {
         final String testDocument = "<document/>";
-        RemoteRequestContext context = new RemoteRequestContext();
-        RequestMetadata metadata = new RequestMetadata();
+        RequestContext context = new RequestContext();
         if (!success) {
-            metadata.put(Test1Signer.METADATA_FAILREQUEST, "true");
+            RequestMetadata.getInstance(context).put(Test1Signer.METADATA_FAILREQUEST, "true");
         }
         if (credential != null) {
-            context.setUsername(credential.getUsername());
-            context.setPassword(credential.getPassword());
+            context.put(RequestContext.CLIENT_CREDENTIAL, credential);
+            context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD, credential);
         }
-        context.setMetadata(metadata);
         
         final GenericSignRequest signRequest =
                 new GenericSignRequest(371, testDocument.getBytes());
-        final ProcessResponse process = getProcessSession().process(new WorkerIdentifier(getSignerIdDummy1()),  signRequest, 
+        final ProcessResponse process = getWorkerSession().process(getSignerIdDummy1(),  signRequest, 
                 context);
         
         return process;

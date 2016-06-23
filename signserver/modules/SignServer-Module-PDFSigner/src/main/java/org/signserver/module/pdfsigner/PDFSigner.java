@@ -28,22 +28,20 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.InternalProcessSessionLocal;
-import org.signserver.server.IServices;
+import org.signserver.ejb.interfaces.IInternalWorkerSession;
 import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 import org.signserver.server.signers.BaseSigner;
 import org.signserver.server.statistics.Event;
 import org.signserver.validationservice.server.ValidationUtils;
@@ -156,7 +154,7 @@ public class PDFSigner extends BaseSigner {
     
     private List<String> configErrors;
 
-    private InternalProcessSessionLocal workerSession;
+    private IInternalWorkerSession workerSession;
 
     private String digestAlgorithm = DEFAULTDIGESTALGORITHM;
     private int minimumPdfVersion;
@@ -166,7 +164,7 @@ public class PDFSigner extends BaseSigner {
             WorkerContext workerContext, EntityManager workerEntityManager) {
         super.init(signerId, config, workerContext, workerEntityManager);
 
-        configErrors = new LinkedList<>();
+        configErrors = new LinkedList<String>();
         
         // Check properties for archive to disk
         if (StringUtils.equalsIgnoreCase("TRUE",
@@ -211,21 +209,17 @@ public class PDFSigner extends BaseSigner {
     
     
     @Override
-    protected List<String> getCryptoTokenFatalErrors(final IServices services) {
-        final List<String> errors = super.getCryptoTokenFatalErrors(services);
+    protected List<String> getCryptoTokenFatalErrors() {
+        final List<String> errors = super.getCryptoTokenFatalErrors();
         
         // according to the PDF specification, only SHA1 is permitted as digest algorithm
         // for DSA public/private keys
-        final RequestContext context = new RequestContext(true);
-        context.setServices(services);
-        ICryptoInstance crypto = null;
         try {
-            final ICryptoTokenV4 token = getCryptoToken(services);    
-            crypto = acquireDefaultCryptoInstance(context);
+            final ICryptoToken token = getCryptoToken();
 
             if (token != null) {
-                final PublicKey pub = crypto.getPublicKey();
-                final PrivateKey priv = crypto.getPrivateKey();
+                final PublicKey pub = token.getPublicKey(ICryptoToken.PURPOSE_SIGN);
+                final PrivateKey priv = token.getPrivateKey(ICryptoToken.PURPOSE_SIGN);
                 
                 if (pub instanceof DSAPublicKey || priv instanceof DSAPrivateKey) {
                     if (!"SHA1".equals(digestAlgorithm)) {
@@ -233,17 +227,12 @@ public class PDFSigner extends BaseSigner {
                     }
                 }
             }
-        } catch (CryptoTokenOfflineException | SignServerException | InvalidAlgorithmParameterException | UnsupportedCryptoTokenParameter | IllegalRequestException e) { // NOPMD
+        } catch (CryptoTokenOfflineException e) { // NOPMD
             // In this case, we can't tell if the keys are DSA
             // appropriate crypto token errors should be handled by the base class
-        } finally {
-            if (crypto != null) {
-                try {
-                    releaseCryptoInstance(crypto, context);
-                } catch (SignServerException ex) {
-                    LOG.warn("Unable to release crypto instance", ex);
-                }
-            }
+        } catch (SignServerException e) { // NOPMD
+            // In this case, we can't tell if the keys are DSA
+            // appropriate crypto token errors should be handled by the base class
         }
 
         return errors;
@@ -259,7 +248,6 @@ public class PDFSigner extends BaseSigner {
      * @see org.signserver.server.IProcessable#processData(org.signserver.common.ProcessRequest,
      *      org.signserver.common.RequestContext)
      */
-    @Override
     public ProcessResponse processData(ProcessRequest signRequest,
             RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {        
@@ -267,14 +255,14 @@ public class PDFSigner extends BaseSigner {
         // with a byte[].
         if (!(signRequest instanceof GenericSignRequest)) {
             throw new IllegalRequestException(
-                    "Received request wasn't an expected GenericSignRequest.");
+                    "Received request wasn't a expected GenericSignRequest.");
         }
         
         final ISignRequest sReq = (ISignRequest) signRequest;
         
         if (!(sReq.getRequestData() instanceof byte[])) {
             throw new IllegalRequestException(
-                    "Received request data wasn't an expected byte[].");
+                    "Received request data wasn't a expected byte[].");
         }
 
         // Log values
@@ -294,7 +282,7 @@ public class PDFSigner extends BaseSigner {
         
         ICryptoInstance crypto = null;
         try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
 
             if (params.isRefuseDoubleIndirectObjects()) {
                 checkForDuplicateObjects(pdfbytes);
@@ -306,24 +294,12 @@ public class PDFSigner extends BaseSigner {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Password was null or empty");
                 }
-                logMap.put(IWorkerLogger.LOG_PDF_PASSWORD_SUPPLIED,
-                           new Loggable() {
-                               @Override
-                               public String toString() {
-                                   return Boolean.FALSE.toString();
-                               }
-                           });
+                logMap.put(IWorkerLogger.LOG_PDF_PASSWORD_SUPPLIED, Boolean.FALSE.toString());
             } else {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Password length was " + password.length + " bytes");
                 }
-                logMap.put(IWorkerLogger.LOG_PDF_PASSWORD_SUPPLIED,
-                           new Loggable() {
-                               @Override
-                               public String toString() {
-                                   return Boolean.TRUE.toString();
-                               }
-                           });
+                logMap.put(IWorkerLogger.LOG_PDF_PASSWORD_SUPPLIED, Boolean.TRUE.toString());
             }
             
             byte[] signedbytes =
@@ -334,12 +310,12 @@ public class PDFSigner extends BaseSigner {
             if (signRequest instanceof GenericServletRequest) {
                 signResponse = new GenericServletResponse(sReq.getRequestID(),
                         signedbytes,
-                        crypto.getCertificate(),
+                        getSigningCertificate(signRequest, requestContext),
                         archiveId, archivables, CONTENT_TYPE);
             } else {
                 signResponse = new GenericSignResponse(sReq.getRequestID(),
                         signedbytes, 
-                        crypto.getCertificate(),
+                        getSigningCertificate(signRequest, requestContext),
                         archiveId, archivables);
             }
 
@@ -359,9 +335,7 @@ public class PDFSigner extends BaseSigner {
         } catch (UnsupportedEncodingException ex) {
             throw new IllegalRequestException("The supplied password could not be read: " + ex.getMessage(), ex);
         } catch (IOException e) {
-            // fallback for IOException
-            throw new IllegalRequestException("Could not sign document: "
-                    + e.getMessage(), e);
+            throw new IllegalRequestException("Could not sign document: " + e.getMessage(), e);
         } finally {
             releaseCryptoInstance(crypto, requestContext);
         }
@@ -503,8 +477,8 @@ public class PDFSigner extends BaseSigner {
     		Calendar cal, PDFSignerParameters params, Certificate[] certChain, TSAClient tsc, byte[] ocsp,
     		PdfSignatureAppearance sap) throws IOException, DocumentException, SignServerException {
      
-        final HashMap<PdfName, Integer> exc = new HashMap<>();
-        exc.put(PdfName.CONTENTS, size * 2 + 2);
+        final HashMap<PdfName, Integer> exc = new HashMap<PdfName, Integer>();
+        exc.put(PdfName.CONTENTS, Integer.valueOf(size * 2 + 2));
         sap.preClose(exc);
 
 
@@ -751,8 +725,8 @@ public class PDFSigner extends BaseSigner {
             if (tsaUrl != null) {
                 tsc = getTimeStampClient(params.getTsa_url(), params.getTsa_username(), params.getTsa_password());
             } else {
-                tsc = new InternalTSAClient(getProcessSession(context.getServices()),
-                        WorkerIdentifier.createFromIdOrName(params.getTsa_worker()), params.getTsa_username(), params.getTsa_password());
+                tsc = new InternalTSAClient(getWorkerSession(),
+                        params.getTsa_worker(), params.getTsa_username(), params.getTsa_password());
             }
         }
 
@@ -780,7 +754,11 @@ public class PDFSigner extends BaseSigner {
         PdfPKCS7 sgn;
         try {
             sgn = new PdfPKCS7(privKey, certChain, crlList, digestAlgorithm, null, false);
-        } catch (InvalidKeyException | NoSuchProviderException | NoSuchAlgorithmException e) {
+        } catch (InvalidKeyException e) {
+            throw new SignServerException("Error constructing PKCS7 package", e);
+        } catch (NoSuchProviderException e) {
+            throw new SignServerException("Error constructing PKCS7 package", e);
+        } catch (NoSuchAlgorithmException e) {
             throw new SignServerException("Error constructing PKCS7 package", e);
         }
 
@@ -837,8 +815,17 @@ public class PDFSigner extends BaseSigner {
         return fout.toByteArray();
     }
     
-    protected InternalProcessSessionLocal getProcessSession(IServices services) {
-        return services.get(InternalProcessSessionLocal.class);
+    protected IInternalWorkerSession getWorkerSession() {
+        if (workerSession == null) {
+            try {
+                workerSession = ServiceLocator.getInstance().lookupLocal(
+                    IInternalWorkerSession.class);
+            } catch (NamingException ex) {
+                throw new RuntimeException("Unable to lookup worker session",
+                        ex);
+            }
+        }
+        return workerSession;
     }
 
     /**
@@ -851,7 +838,7 @@ public class PDFSigner extends BaseSigner {
     private CRL[] getCrlsForChain(final Collection<Certificate> certChain)
             throws SignServerException {
 
-        List<CRL> retCrls = new ArrayList<>();
+        List<CRL> retCrls = new ArrayList<CRL>();
         for (Certificate currCert : certChain) {
             CRL currCrl = null;
             try {
@@ -879,7 +866,7 @@ public class PDFSigner extends BaseSigner {
 
     static URL getCRLDistributionPoint(final Certificate certificate)
             throws CertificateParsingException {
-        return CertTools.getCrlDistributionPoint(certificate);
+        return org.signserver.module.pdfsigner.org.ejbca.util.CertTools.getCrlDistributionPoint(certificate);
     }
 
     /**
@@ -919,7 +906,7 @@ public class PDFSigner extends BaseSigner {
         }
 
         // Fill in fields that can be used to construct path and filename
-        final Map<String, String> fields = new HashMap<>();
+        final Map<String, String> fields = new HashMap<String, String>();
         fields.put("WORKERID", String.valueOf(workerId));
         fields.put("WORKERNAME", config.getProperty("NAME"));
         fields.put("REMOTEIP", (String) requestContext.get(RequestContext.REMOTE_IP));
@@ -1049,7 +1036,7 @@ public class PDFSigner extends BaseSigner {
             LOG.debug(">checkForDuplicateObjects");
         }
         final PRTokeniser tokens = new PRTokeniser(pdfbytes);
-        final Set<String> idents = new HashSet<>();
+        final Set<String> idents = new HashSet<String>();
         final byte[] line = new byte[16];
 
         while (tokens.readLineSegment(line)) {
@@ -1098,8 +1085,8 @@ public class PDFSigner extends BaseSigner {
     }
 
     @Override
-    protected List<String> getFatalErrors(final IServices services) {
-        final List<String> fatalErrors = super.getFatalErrors(services);
+    protected List<String> getFatalErrors() {
+        final List<String> fatalErrors = super.getFatalErrors();
         
         fatalErrors.addAll(configErrors);
         return fatalErrors;

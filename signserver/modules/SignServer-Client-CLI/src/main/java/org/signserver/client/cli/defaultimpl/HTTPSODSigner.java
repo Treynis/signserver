@@ -79,7 +79,6 @@ public class HTTPSODSigner extends AbstractSODSigner {
         this.metadata = metadata;
     }
 
-    @Override
     protected void doSign(final Map<Integer,byte[]> dataGroups, final String encoding,
             final OutputStream out) throws IllegalRequestException,
                 CryptoTokenOfflineException, SignServerException,

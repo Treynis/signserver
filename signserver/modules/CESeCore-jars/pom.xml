@@ -4,12 +4,13 @@
   <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer-Modules</artifactId>
-        <version>4.0.0-SNAPSHOT</version>
+        <version>3.7.4</version>
     </parent>
   
   <artifactId>SignServer-CESeCore-jars</artifactId>
   
   <name>SignServer-CESeCore-jars</name>
+  <url>http://maven.apache.org</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <staticDescriptor>12_module.cesecore.properties</staticDescriptor>

@@ -17,14 +17,12 @@ import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.AuthorizationRequiredException;
 import org.signserver.common.GenericSignRequest;
+import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerUtil;
 import org.signserver.testutils.ModulesTestCase;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.RemoteRequestContext;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for the UsernameAuthorizer.
@@ -39,11 +37,9 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
     private static final Logger LOG = Logger.getLogger(
             UsernameAuthorizerTest.class);
     
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
 
     @Before
-    @Override
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
     }
@@ -66,14 +62,14 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
      */
     @Test
     public void test01AuthorizationRequired() throws Exception {
-        final RemoteRequestContext context = new RemoteRequestContext();
+        final RequestContext context = new RequestContext();
 
         final GenericSignRequest request =
                 new GenericSignRequest(1, "<root/>".getBytes());
 
         // Without username password
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
             fail("No AuthorizationRequiredException thrown");
         } catch (AuthorizationRequiredException ok) {
             // OK
@@ -82,11 +78,51 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
             fail("Exception: " + ex.getMessage());
         }
 
-        // With wrong username
-        context.setUsername("non-existing-username");
-        context.setPassword("");
+        // With other type of credentials (in general credential holder)
+        context.put(RequestContext.CLIENT_CREDENTIAL, new DummyCredential());
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
+            fail("No AuthorizationRequiredException thrown");
+        } catch (AuthorizationRequiredException ok) {
+            // OK
+        } catch (Exception ex) {
+            LOG.error("Wrong type of exception", ex);
+            fail("Exception: " + ex.getMessage());
+        }
+        
+        // With other type of credentials (password credential holder)
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD, new DummyCredential());
+        try {
+            workerSession.process(getSignerIdDummy1(), request, context);
+            fail("No AuthorizationRequiredException thrown");
+        } catch (AuthorizationRequiredException ok) {
+            // OK
+        } catch (Exception ex) {
+            LOG.error("Wrong type of exception", ex);
+            fail("Exception: " + ex.getMessage());
+        }
+        
+        // With other type of credentials (in both general and password holder)
+        context.put(RequestContext.CLIENT_CREDENTIAL, new DummyCredential());
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD, new DummyCredential());
+        try {
+             workerSession.process(getSignerIdDummy1(), request, context);
+             fail("No AuthorizationRequiredException thrown");
+        } catch (AuthorizationRequiredException ok) {
+            // OK
+        } catch (Exception ex) {
+            LOG.error("Wrong type of exception", ex);
+            fail("Exception: " + ex.getMessage());
+        }
+
+        // With wrong username
+        final UsernamePasswordClientCredential cred 
+                = new UsernamePasswordClientCredential("non-existing-username",
+                        "");
+        context.put(RequestContext.CLIENT_CREDENTIAL, cred);
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD, cred);
+        try {
+            workerSession.process(getSignerIdDummy1(), request, context);
             fail("No AuthorizationRequiredException thrown");
         } catch (AuthorizationRequiredException ok) {
             // OK
@@ -106,15 +142,15 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
         workerSession.setWorkerProperty(getSignerIdDummy1(), "ACCEPT_USERNAMES", "user1;user2;user3");
         workerSession.reloadConfiguration(getSignerIdDummy1());
 
-        final RemoteRequestContext context = new RemoteRequestContext();
+        final RequestContext context = new RequestContext();
         final GenericSignRequest request =
                 new GenericSignRequest(1, "<root/>".getBytes());
 
         // With correct username user1
-        context.setUsername("user1");
-        context.setPassword("");
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD,
+                new UsernamePasswordClientCredential("user1", ""));
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
         } catch (AuthorizationRequiredException ex) {
             fail("Username not accepted!");
         } catch (Exception ex) {
@@ -123,10 +159,11 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
         }
 
         // With wrong username
-        context.setUsername("non-extising-username2");
-        context.setPassword("");
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD,
+                new UsernamePasswordClientCredential("non-extising-username2",
+                ""));
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
             fail("No AuthorizationRequiredException thrown");
         } catch (AuthorizationRequiredException ok) {
             // OK
@@ -136,10 +173,10 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
         }
 
         // With correct username user2
-        context.setUsername("user2");
-        context.setPassword("");
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD,
+                new UsernamePasswordClientCredential("user2", ""));
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
         } catch (AuthorizationRequiredException ex) {
             fail("Username not accepted!");
         } catch (Exception ex) {
@@ -148,10 +185,10 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
         }
 
         // With correct username user3
-        context.setUsername("user3");
-        context.setPassword(null);
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD,
+                new UsernamePasswordClientCredential("user3", ""));
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
         } catch (AuthorizationRequiredException ex) {
             fail("Username not accepted!");
         } catch (Exception ex) {
@@ -160,10 +197,11 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
         }
 
         // With wrong username
-        context.setUsername("");
-        context.setPassword("");
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD,
+                new UsernamePasswordClientCredential("",
+                ""));
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
             fail("No AuthorizationRequiredException thrown");
         } catch (AuthorizationRequiredException ok) {
             // OK
@@ -173,23 +211,11 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
         }
 
         // With wrong username
-        context.setUsername(null);
-        context.setPassword("");
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD,
+                new UsernamePasswordClientCredential(null,
+                ""));
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
-            fail("No AuthorizationRequiredException thrown");
-        } catch (AuthorizationRequiredException ok) {
-            // OK
-        } catch (Exception ex) {
-            LOG.error("Wrong type of exception", ex);
-            fail("Exception: " + ex.getMessage());
-        }
-        
-        // With wrong username
-        context.setUsername(null);
-        context.setPassword(null);
-        try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
             fail("No AuthorizationRequiredException thrown");
         } catch (AuthorizationRequiredException ok) {
             // OK
@@ -210,15 +236,15 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
         workerSession.removeWorkerProperty(getSignerIdDummy1(), "ACCEPT_USERNAMES");
         workerSession.reloadConfiguration(getSignerIdDummy1());
 
-        final RemoteRequestContext context = new RemoteRequestContext();
+        final RequestContext context = new RequestContext();
         final GenericSignRequest request =
                 new GenericSignRequest(1, "<root/>".getBytes());
 
         // With correct username anything1
-        context.setUsername("anything1");
-        context.setPassword("");
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD,
+                new UsernamePasswordClientCredential("anything1", ""));
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
         } catch (AuthorizationRequiredException ex) {
             fail("Username not accepted!");
         } catch (Exception ex) {
@@ -227,10 +253,10 @@ public class UsernameAuthorizerTest extends ModulesTestCase {
         }
 
         // With correct username anything2
-        context.setUsername("anything2");
-        context.setPassword("");
+        context.put(RequestContext.CLIENT_CREDENTIAL_PASSWORD,
+                new UsernamePasswordClientCredential("anything2", ""));
         try {
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, context);
+            workerSession.process(getSignerIdDummy1(), request, context);
         } catch (AuthorizationRequiredException ex) {
             fail("Username not accepted!");
         } catch (Exception ex) {

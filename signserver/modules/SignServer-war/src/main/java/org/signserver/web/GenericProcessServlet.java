@@ -20,6 +20,9 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import javax.ejb.EJB;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -30,9 +33,10 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.ProcessSessionLocal;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.CredentialUtils;
 import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.IWorkerLogger;
@@ -40,8 +44,6 @@ import org.signserver.server.log.LogMap;
 import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.server.log.Loggable;
 
 /**
  * GenericProcessServlet is a general Servlet passing on it's request info to the worker configured by either
@@ -84,10 +86,22 @@ public class GenericProcessServlet extends AbstractProcessServlet {
     private final Random random = new Random();
 
     @EJB
-    private ProcessSessionLocal processSession;
+    private IWorkerSession.ILocal workersession;
     
     @EJB
-    private GlobalConfigurationSessionLocal globalSession;
+    private IGlobalConfigurationSession.ILocal globalSession;
+
+    private IWorkerSession.ILocal getWorkerSession() {
+        if (workersession == null) {
+            try {
+                Context context = new InitialContext();
+                workersession = (org.signserver.ejb.interfaces.IWorkerSession.ILocal) context.lookup(IWorkerSession.ILocal.JNDI_NAME);
+            } catch (NamingException e) {
+                LOG.error(e);
+            }
+        }
+        return workersession;
+    }
 
     /**
      * Handles http post.
@@ -103,7 +117,7 @@ public class GenericProcessServlet extends AbstractProcessServlet {
             throws IOException, ServletException {
         LOG.debug(">doPost()");
 
-        WorkerIdentifier wi = null;
+        int workerId = 1;
         byte[] data = null;
         String fileName = null;
         String pdfPassword = null;
@@ -115,13 +129,13 @@ public class GenericProcessServlet extends AbstractProcessServlet {
         }
 
         final String workerNameOverride =
-                        (String) req.getAttribute(ServletUtils.WORKERNAME_PROPERTY_OVERRIDE);
-
+        		(String) req.getAttribute(ServletUtils.WORKERNAME_PROPERTY_OVERRIDE);
+     
         if (workerNameOverride != null) {
-            wi = new WorkerIdentifier(workerNameOverride);
-            workerRequest = true;
+        	workerId = getWorkerSession().getWorkerId(workerNameOverride);
+        	workerRequest = true;
         }
-
+        
         final long maxUploadSize = getMaxUploadSize();
 
         ProcessType processType = ProcessType.signDocument;
@@ -153,19 +167,19 @@ public class GenericProcessServlet extends AbstractProcessServlet {
                                         LOG.debug("Found a signerName in the request: "
                                                 + item.getString());
                                     }
-                                    wi = new WorkerIdentifier(item.getString());
+                                    workerId = getWorkerSession().getWorkerId(item.getString());
                                 } else if (WORKERID_PROPERTY_NAME.equals(item.getFieldName())) {
                                     if (LOG.isDebugEnabled()) {
                                         LOG.debug("Found a signerId in the request: "
                                                 + item.getString());
                                     }
                                     try {
-                                        wi = new WorkerIdentifier(Integer.parseInt(item.getString()));
+                                        workerId = Integer.parseInt(item.getString());
                                     } catch (NumberFormatException ignored) {
                                     }
                                 }
                             }
-
+                            
                             final String itemFieldName = item.getFieldName();
 
                             if (PDFPASSWORD_PROPERTY_NAME.equals(itemFieldName)) {
@@ -175,11 +189,11 @@ public class GenericProcessServlet extends AbstractProcessServlet {
                                 pdfPassword = item.getString("ISO-8859-1");
                             } else if (PROCESS_TYPE_PROPERTY_NAME.equals(itemFieldName)) {
                                 final String processTypeAttribute = item.getString("ISO-8859-1");
-
+                                
                                 if (LOG.isDebugEnabled()) {
                                     LOG.debug("Found process type in the request: " + processTypeAttribute);
                                 }
-
+                                
                                 if (processTypeAttribute != null) {
                                     try {
                                         processType = ProcessType.valueOf(processTypeAttribute);
@@ -246,19 +260,19 @@ public class GenericProcessServlet extends AbstractProcessServlet {
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Found a signerName in the request: " + name);
                     }
-                    wi = new WorkerIdentifier(name);
+                    workerId = getWorkerSession().getWorkerId(name);
                 }
                 String id = req.getParameter(WORKERID_PROPERTY_NAME);
                 if (id != null) {
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Found a signerId in the request: " + id);
                     }
-                    wi = new WorkerIdentifier(Integer.parseInt(id));
+                    workerId = Integer.parseInt(id);
                 }
             }
-
+        	
             final Enumeration<String> params = req.getParameterNames();
-
+            
             while (params.hasMoreElements()) {
                 final String property = params.nextElement();
                 if (PDFPASSWORD_PROPERTY_NAME.equals(property)) {
@@ -276,11 +290,11 @@ public class GenericProcessServlet extends AbstractProcessServlet {
                    }
                }
             }
-
-
-
+            
+            
+            
             final String processTypeAttribute = (String) req.getParameter(PROCESS_TYPE_PROPERTY_NAME);
-
+            
             if (processTypeAttribute != null) {
                 try {
                     processType = ProcessType.valueOf(processTypeAttribute);
@@ -326,16 +340,15 @@ public class GenericProcessServlet extends AbstractProcessServlet {
                     LOG.debug("Request Content-type: " + req.getContentType());
                 }
 
-                ByteArrayOutputStream os;
-                try ( // Get an input stream and read the bytes from the stream
-                        InputStream in = req.getInputStream()) {
-                    os = new ByteArrayOutputStream();
-                    int len;
-                    byte[] buf = new byte[1024];
-                    while ((len = in.read(buf)) > 0) {
-                        os.write(buf, 0, len);
-                    }
+                // Get an input stream and read the bytes from the stream
+                InputStream in = req.getInputStream();
+                ByteArrayOutputStream os = new ByteArrayOutputStream();
+                int len;
+                byte[] buf = new byte[1024];
+                while ((len = in.read(buf)) > 0) {
+                    os.write(buf, 0, len);
                 }
+                in.close();
                 os.close();
                 data = os.toByteArray();
             }
@@ -344,19 +357,15 @@ public class GenericProcessServlet extends AbstractProcessServlet {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Request of type: " + processType.name());
         }
-
+        
         // Limit the maximum size of input
         if (data.length > maxUploadSize) {
             LOG.error("Content length exceeds " + maxUploadSize + ", not processed: " + req.getContentLength());
             res.sendError(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
                     "Maximum content length is " + maxUploadSize + " bytes");
         } else {
-            if (wi == null) {
-                res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing worker name or ID");
-            } else {
-                processRequest(req, res, wi, data, fileName, pdfPassword, processType,
+            processRequest(req, res, workerId, data, fileName, pdfPassword, processType,
                     metadataHolder);
-            }
         }
 
         LOG.debug("<doPost()");
@@ -378,12 +387,12 @@ public class GenericProcessServlet extends AbstractProcessServlet {
         LOG.debug("<doGet()");
     } // doGet
 
-    private void processRequest(final HttpServletRequest req, final HttpServletResponse res, final WorkerIdentifier wi, final byte[] data,
-            final String fileName, final String pdfPassword, final ProcessType processType,
+    private void processRequest(final HttpServletRequest req, final HttpServletResponse res, final int workerId, final byte[] data,
+            String fileName, final String pdfPassword, final ProcessType processType,
             final MetaDataHolder metadataHolder) throws java.io.IOException, ServletException {
         final String remoteAddr = req.getRemoteAddr();
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Received HTTP process request for worker " + wi + ", from IP " + remoteAddr);
+            LOG.debug("Received HTTP process request for worker " + workerId + ", from ip " + remoteAddr);
         }
 
         // Client certificate
@@ -407,13 +416,9 @@ public class GenericProcessServlet extends AbstractProcessServlet {
         final String xForwardedFor = req.getHeader(RequestContext.X_FORWARDED_FOR);
         
         // Add HTTP specific log entries
-        logMap.put(IWorkerLogger.LOG_REQUEST_FULLURL, new Loggable() {
-            @Override
-            public String toString() {
-                return req.getRequestURL().append("?").append(req.getQueryString()).toString();
-            }
-        });
-        logMap.put(IWorkerLogger.LOG_REQUEST_LENGTH, data.length);
+        logMap.put(IWorkerLogger.LOG_REQUEST_FULLURL, req.getRequestURL().append("?").append(req.getQueryString()).toString());
+        logMap.put(IWorkerLogger.LOG_REQUEST_LENGTH,
+                String.valueOf(data.length));
         logMap.put(IWorkerLogger.LOG_FILENAME, fileName);
         logMap.put(IWorkerLogger.LOG_XFORWARDEDFOR, xForwardedFor);
 
@@ -422,12 +427,11 @@ public class GenericProcessServlet extends AbstractProcessServlet {
         }
         
         // Store filename for use by archiver etc
-        String strippedFileName = fileName;
         if (fileName != null) {
-            strippedFileName = stripPath(fileName);
+            fileName = stripPath(fileName);
         }
-        context.put(RequestContext.FILENAME, strippedFileName);
-        context.put(RequestContext.RESPONSE_FILENAME, strippedFileName);
+        context.put(RequestContext.FILENAME, fileName);
+        context.put(RequestContext.RESPONSE_FILENAME, fileName);
 
         // PDF Password
         if (pdfPassword != null) {
@@ -448,7 +452,7 @@ public class GenericProcessServlet extends AbstractProcessServlet {
             switch (processType) {
             case signDocument:
                 final GenericServletResponse servletResponse =
-                    (GenericServletResponse) processSession.process(new AdminInfo("Client user", null, null), wi,
+                    (GenericServletResponse) getWorkerSession().process(new AdminInfo("Client user", null, null), workerId,
                         new GenericServletRequest(requestId, data, req), context);
                
                 if (servletResponse.getRequestID() != requestId) { // TODO: Is this possible to get at all?
@@ -471,7 +475,7 @@ public class GenericProcessServlet extends AbstractProcessServlet {
                 break;
             case validateDocument:
                 final GenericValidationResponse validationResponse =
-                    (GenericValidationResponse) processSession.process(new AdminInfo("Client user", null, null), wi, 
+                    (GenericValidationResponse) getWorkerSession().process(new AdminInfo("Client user", null, null), workerId, 
                             new GenericValidationRequest(requestId, data), context);
                     
                 responseText = validationResponse.isValid() ? "VALID" : "INVALID";
@@ -495,7 +499,7 @@ public class GenericProcessServlet extends AbstractProcessServlet {
                 
                     final String certPurposes = req.getParameter(CERT_PURPOSES_PROPERTY_NAME);
                     final ValidateResponse certValidationResponse =
-                            (ValidateResponse) processSession.process(new AdminInfo("Client user", null, null), wi,
+                            (ValidateResponse) getWorkerSession().process(new AdminInfo("Client user", null, null), workerId,
                                     new ValidateRequest(cert, certPurposes), context);
                     final Validation validation = certValidationResponse.getValidation();
                     
@@ -538,7 +542,7 @@ public class GenericProcessServlet extends AbstractProcessServlet {
         } catch (AuthorizationRequiredException e) {
             LOG.debug("Sending back HTTP 401: " + e.getLocalizedMessage());
 
-            final String httpAuthBasicRealm = "SignServer Worker " + wi;
+            final String httpAuthBasicRealm = "SignServer Worker " + workerId;
 
             res.setHeader(CredentialUtils.HTTP_AUTH_BASIC_WWW_AUTHENTICATE,
                     "Basic realm=\"" + httpAuthBasicRealm + "\"");
@@ -551,7 +555,9 @@ public class GenericProcessServlet extends AbstractProcessServlet {
             res.sendError(HttpServletResponse.SC_NOT_FOUND, "Worker Not Found");
         } catch (IllegalRequestException e) {
             res.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
-        } catch (CryptoTokenOfflineException | ServiceUnavailableException e) {
+        } catch (CryptoTokenOfflineException e) {
+            res.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, e.getMessage());
+        } catch (ServiceUnavailableException e) {
             res.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, e.getMessage());
         } catch (NotGrantedException e) {
             res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage());

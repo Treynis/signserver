@@ -12,8 +12,6 @@
  *************************************************************************/
 package org.signserver.common.util;
 
-import org.cesecore.util.CertTools;
-import org.cesecore.util.Base64;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.security.cert.Certificate;
@@ -26,7 +24,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import org.apache.log4j.Logger;
+import org.ejbca.util.Base64;
+import org.ejbca.util.CertTools;
 import org.signserver.common.AuthorizedClient;
+import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.ProcessableConfig;
+import org.signserver.common.WorkerConfig;
 import static org.signserver.common.util.PropertiesConstants.*;
 
 /**
@@ -117,7 +120,9 @@ public class PropertiesDumper {
                 if (!certs.isEmpty()) {
                     result = (X509Certificate) certs.iterator().next();
                 }
-            } catch (CertificateException | IllegalStateException e) {
+            } catch (CertificateException e) {
+                LOG.error(e);
+            } catch (IOException e) {
                 LOG.error(e);
             }
         }
@@ -131,7 +136,9 @@ public class PropertiesDumper {
         if (stringcert != null && !stringcert.isEmpty()) {
             try {
                 result = CertTools.getCertsFromPEM(new ByteArrayInputStream(stringcert.getBytes()));
-            } catch (CertificateException | IllegalStateException e) {
+            } catch (CertificateException e) {
+                LOG.error(e);
+            } catch (IOException e) {
                 LOG.error(e);
             }
         }

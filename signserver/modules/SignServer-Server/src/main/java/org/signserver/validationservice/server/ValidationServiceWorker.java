@@ -52,7 +52,7 @@ public class ValidationServiceWorker extends BaseProcessable {
     @Override
     public void init(int workerId, WorkerConfig config, WorkerContext workerContext, EntityManager workerEntityManager) {
         super.init(workerId, config, workerContext, workerEntityManager);
-        fatalErrors = new LinkedList<>();
+        fatalErrors = new LinkedList<String>();
         
         try {
             validationService = createValidationService(config);
@@ -78,9 +78,15 @@ public class ValidationServiceWorker extends BaseProcessable {
                 Class<?> implClass = Class.forName(classPath);
                 retval = (IValidationService) implClass.newInstance();
 
-                retval.init(workerId, config, em);
+                retval.init(workerId, config, em, getCryptoToken());
             }
-        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+        } catch (ClassNotFoundException e) {
+            error = "Error instatiating Validation Service, check that the TYPE setting of workerid : " + workerId + " have the correct class path.";
+            LOG.error(error, e);
+        } catch (IllegalAccessException e) {
+            error = "Error instatiating Validation Service, check that the TYPE setting of workerid : " + workerId + " have the correct class path.";
+            LOG.error(error, e);
+        } catch (InstantiationException e) {
             error = "Error instatiating Validation Service, check that the TYPE setting of workerid : " + workerId + " have the correct class path.";
             LOG.error(error, e);
         }
@@ -119,10 +125,10 @@ public class ValidationServiceWorker extends BaseProcessable {
     }
 
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final List<String> errors = new LinkedList<>();
+    protected List<String> getFatalErrors() {
+        final List<String> errors = new LinkedList<String>();
         
-        errors.addAll(super.getFatalErrors(services));
+        errors.addAll(super.getFatalErrors());
         errors.addAll(fatalErrors);
 
         return errors;

@@ -26,7 +26,6 @@ import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 
 /**
  * Authorizer requiring only a username (and no password as that is assumed to
@@ -122,7 +121,7 @@ public class UsernameAuthorizer implements IAuthorizer {
     private void loadAccounts(final String value) {
         LOG.trace(">loadAccounts");
 
-        acceptUsernames = new HashSet<>();
+        acceptUsernames = new HashSet<String>();
 
         if (value == null) {
             LOG.warn("No ACCEPT_USERNAMES specified");
@@ -151,18 +150,12 @@ public class UsernameAuthorizer implements IAuthorizer {
 
     private static void logUsername(final String username,
             final RequestContext requestContext) {
-        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_USERNAME,
-                    new Loggable() {
-                        @Override
-                        public String toString() {
-                            return username;
-                        }
-                    });
+        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_USERNAME, username);
     }
 
     @Override
     public List<String> getFatalErrors() {
-        final LinkedList<String> fatalErrors = new LinkedList<>();
+        final LinkedList<String> fatalErrors = new LinkedList<String>();
         if (configError != null) {
             fatalErrors.add(configError);
         }

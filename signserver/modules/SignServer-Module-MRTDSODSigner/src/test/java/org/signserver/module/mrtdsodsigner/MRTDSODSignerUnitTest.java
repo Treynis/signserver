@@ -29,26 +29,20 @@ import org.bouncycastle.asn1.ASN1Object;
 import org.bouncycastle.asn1.util.ASN1Dump;
 import org.bouncycastle.cert.jcajce.JcaX500NameUtil;
 import org.bouncycastle.jce.ECKeyUtil;
-import org.cesecore.keys.util.KeyTools;
-import org.junit.FixMethodOrder;
-import org.junit.runners.MethodSorters;
+import org.ejbca.util.CertTools;
+import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SODSignRequest;
 import org.signserver.common.SODSignResponse;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.ejb.interfaces.ProcessSessionLocal;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
-import org.signserver.test.utils.CertTools;
+import org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases;
 import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
 import org.signserver.test.utils.mock.WorkerSessionMock;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
-import org.signserver.server.IServices;
-import org.signserver.server.log.AdminInfo;
-import org.signserver.test.utils.mock.MockedServicesImpl;
 
 /**
  * Unit tests for MRTDSODSigner.
@@ -59,7 +53,6 @@ import org.signserver.test.utils.mock.MockedServicesImpl;
  * @author Markus Kilås
  * @version $Id$
  */
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class MRTDSODSignerUnitTest extends TestCase {
 
     /** Logger for this class. */
@@ -139,10 +132,8 @@ public class MRTDSODSignerUnitTest extends TestCase {
     private String keystore4Password;
     private String keystore4DefaultKey;
     
-    private GlobalConfigurationSessionLocal globalConfig;
-    private WorkerSessionRemote workerSession;
-    private ProcessSessionLocal processSession;
-    private IServices services;
+    private IGlobalConfigurationSession.IRemote globalConfig;
+    private IWorkerSession.IRemote workerSession;
 
     
     public MRTDSODSignerUnitTest() {
@@ -202,9 +193,9 @@ public class MRTDSODSignerUnitTest extends TestCase {
      * @throws Exception
      */
     public void test01SODFile() throws Exception {
-    	Map<Integer, byte[]> dataGroupHashes = new HashMap<>();
-    	dataGroupHashes.put(1, "12345".getBytes());
-    	dataGroupHashes.put(4, "abcdef".getBytes());
+    	Map<Integer, byte[]> dataGroupHashes = new HashMap<Integer, byte[]>();
+    	dataGroupHashes.put(Integer.valueOf(1), "12345".getBytes());
+    	dataGroupHashes.put(Integer.valueOf(4), "abcdef".getBytes());
 
     	// RSA
     	KeyPair keys = KeyTools.genKeys("1024", "RSA");
@@ -240,13 +231,13 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test02SignData() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
         signHelper(WORKER1, 12, dataGroups1, false, "SHA256", "SHA256withRSA");
 
         // DG3, DG7, DG8, DG13 and default values
-        Map<Integer, byte[]> dataGroups2 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups2 = new LinkedHashMap<Integer, byte[]>();
         dataGroups2.put(3, digestHelper("Dummy Value 3".getBytes(), "SHA256"));
         dataGroups2.put(7, digestHelper("Dummy Value 4".getBytes(), "SHA256"));
         dataGroups2.put(8, digestHelper("Dummy Value 5".getBytes(), "SHA256"));
@@ -254,13 +245,13 @@ public class MRTDSODSignerUnitTest extends TestCase {
         signHelper(WORKER1, 13, dataGroups2, false, "SHA256", "SHA256withRSA");
 
         // DG1, DG2 with the other worker which uses SHA512 and SHA512withRSA
-        Map<Integer, byte[]> dataGroups3 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups3 = new LinkedHashMap<Integer, byte[]>();
         dataGroups3.put(1, digestHelper("Dummy Value 7".getBytes(), "SHA512"));
         dataGroups3.put(2, digestHelper("Dummy Value 8".getBytes(), "SHA512"));
         signHelper(WORKER2, 14, dataGroups3, false, "SHA512", "SHA512withRSA");
 
         // DG1, DG2 with the other worker which uses SHA512 and SHA512withRSA
-        Map<Integer, byte[]> dataGroups4 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups4 = new LinkedHashMap<Integer, byte[]>();
         dataGroups4.put(1, digestHelper("Dummy Value 9".getBytes(), "SHA256"));
         dataGroups4.put(2, digestHelper("Dummy Value 10".getBytes(), "SHA256"));
         signHelper(WORKER18, 14, dataGroups3, false, "SHA256", "SHA256withECDSA");
@@ -274,13 +265,13 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test03SignUnhashedData() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, "Dummy Value 1".getBytes());
         dataGroups1.put(2, "Dummy Value 2".getBytes());
         signHelper(WORKER3, 15, dataGroups1, true, "SHA256", "SHA256withRSA");
 
         // DG3, DG7, DG8, DG13 and default values
-        Map<Integer, byte[]> dataGroups2 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups2 = new LinkedHashMap<Integer, byte[]>();
         dataGroups2.put(3, "Dummy Value 3".getBytes());
         dataGroups2.put(7, "Dummy Value 4".getBytes());
         dataGroups2.put(8, "Dummy Value 5".getBytes());
@@ -288,7 +279,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
         signHelper(WORKER3, 16, dataGroups2, true, "SHA256", "SHA256withRSA");
 
         // DG1, DG2 with the other worker which uses SHA512 and SHA512withRSA
-        Map<Integer, byte[]> dataGroups3 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups3 = new LinkedHashMap<Integer, byte[]>();
         dataGroups3.put(1, "Dummy Value 7".getBytes());
         dataGroups3.put(2, "Dummy Value 8".getBytes());
         signHelper(WORKER4, 17, dataGroups3, true, "SHA512", "SHA512withRSA");
@@ -296,7 +287,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
 
     public void test04LdsConfigVersion17_ok() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
         final SODFile sod = signHelper(WORKER1, 12, dataGroups1, false,
@@ -318,7 +309,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
 
     public void test05LdsConfigVersion18_ok() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
         final SODFile sod = signHelper(WORKER5, 12, dataGroups1, false,
@@ -340,7 +331,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
     
     public void test05LdsConfigVersion18_noUnicode() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
 
@@ -365,7 +356,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
         workerSession.reloadConfiguration(WORKER5);
 
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
         try {
@@ -384,7 +375,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test06SignData_SHA1withRSAandMGF1() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA1"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA1"));
         signHelper(WORKER11, 12, dataGroups1, false, "SHA1",
@@ -397,7 +388,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test06SignData_SHA1withRSAandMGF1CapitalW() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA1"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA1"));
         signHelper(WORKER19, 12, dataGroups1, false, "SHA1",
@@ -410,7 +401,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test06SignData_SHA1withRSAandMGF1CapitalWandA() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA1"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA1"));
         signHelper(WORKER20, 12, dataGroups1, false, "SHA1",
@@ -423,7 +414,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test06SignData_SHA256withRSAandMGF1() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
         signHelper(WORKER12, 12, dataGroups1, false, "SHA256",
@@ -444,7 +435,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test06SignData_SHA256withRSAandMGF1CapitalW() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
         signHelper(WORKER21, 12, dataGroups1, false, "SHA256",
@@ -458,7 +449,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test06SignData_SHA256withRSAandMGF1_certs() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
         signHelper(WORKER17, 12, dataGroups1, false, "SHA256",
@@ -471,7 +462,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test06SignData_SHA384withRSAandMGF1() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA384"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA384"));
         signHelper(WORKER13, 12, dataGroups1, false, "SHA384",
@@ -484,7 +475,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test06SignData_SHA512withRSAandMGF1() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA512"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA512"));
         signHelper(WORKER14, 12, dataGroups1, false, "SHA512",
@@ -499,7 +490,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test07DNOrder() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA1"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA1"));
         SODFile sod = signHelper(WORKER11, 12, dataGroups1, false, "SHA1",
@@ -533,7 +524,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
      */
     public void test07DNOrderReversed() throws Exception {
         // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
+        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<Integer, byte[]>();
         dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA1"));
         dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA1"));
         SODFile sod = signHelper(WORKER16, 12, dataGroups1, false, "SHA1",
@@ -567,7 +558,7 @@ public class MRTDSODSignerUnitTest extends TestCase {
     	Map<Integer, byte[]> expectedHashes;
     	if(signerDoesHashing) {
             MessageDigest d = MessageDigest.getInstance(digestAlg, "BC");
-            expectedHashes = new HashMap<>();
+            expectedHashes = new HashMap<Integer, byte[]>();
             for(Map.Entry<Integer, byte[]> entry : dataGroups.entrySet()) {
                 expectedHashes.put(entry.getKey(), d.digest(entry.getValue()));
                 d.reset();
@@ -576,12 +567,9 @@ public class MRTDSODSignerUnitTest extends TestCase {
             expectedHashes = dataGroups;
     	}
 
-        RequestContext context = new RequestContext();
-        context.setServices(services);
-        
-        SODSignResponse res = (SODSignResponse) processSession.process(new AdminInfo("Client user", null, null), new WorkerIdentifier(workerId),
+        SODSignResponse res = (SODSignResponse) workerSession.process(workerId,
                 new SODSignRequest(requestId, dataGroups),
-                context);
+                getRequestContext());
         assertNotNull(res);
         assertEquals(requestId, res.getRequestID());
         Certificate signercert = res.getSignerCertificate();
@@ -612,11 +600,10 @@ public class MRTDSODSignerUnitTest extends TestCase {
 
         final GlobalConfigurationSessionMock globalMock
                 = new GlobalConfigurationSessionMock();
-        final WorkerSessionMock workerMock = new WorkerSessionMock();
+        final WorkerSessionMock workerMock = new WorkerSessionMock(globalMock);
         globalConfig = globalMock;
         workerSession = workerMock;
-        processSession = workerMock;
-        services = new MockedServicesImpl().with(GlobalConfigurationSessionLocal.class, globalMock);
+
 
 
         // WORKER1
@@ -628,7 +615,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(KEYSTOREPASSWORD, keystore1Password);
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -643,7 +637,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA512");
             config.setProperty("SIGNATUREALGORITHM", "SHA512withRSA");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -657,7 +658,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty(AUTHTYPE, "NOAUTH");
             config.setProperty("DODATAGROUPHASHING", "true");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -673,7 +681,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("SIGNATUREALGORITHM", "SHA512withRSA");
             config.setProperty("DODATAGROUPHASHING", "true");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -688,7 +703,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("LDSVERSION", "0108");
             config.setProperty("UNICODEVERSION", "040000");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -703,7 +725,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA1");
             config.setProperty("SIGNATUREALGORITHM", "SHA1withRSAandMGF1");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -718,7 +747,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA256");
             config.setProperty("SIGNATUREALGORITHM", "SHA256withRSAandMGF1");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -733,7 +769,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA384");
             config.setProperty("SIGNATUREALGORITHM", "SHA384withRSAandMGF1");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -748,7 +791,15 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA512");
             config.setProperty("SIGNATUREALGORITHM", "SHA512withRSAandMGF1");
             config.setProperty(DEFAULTKEY, "demods1"); // Use a larger key
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -763,7 +814,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA1");
             config.setProperty("SIGNATUREALGORITHM", "SHA256withRSAandMGF1");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -778,7 +836,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA1");
             config.setProperty("SIGNATUREALGORITHM", "SHA1withRSAandMGF1");
             config.setProperty(DEFAULTKEY, keystore2DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -793,7 +858,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA256");
             config.setProperty("SIGNATUREALGORITHM", "SHA256withRSAandMGF1");
             config.setProperty(DEFAULTKEY, keystore3DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
         
@@ -808,7 +880,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA256");
             config.setProperty("SIGNATUREALGORITHM", "SHA256withECDSA");
             config.setProperty(DEFAULTKEY, keystore4DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
         
@@ -824,7 +903,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA1");
             config.setProperty("SIGNATUREALGORITHM", "SHA1WithRSAandMGF1");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
         
@@ -839,7 +925,14 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA1");
             config.setProperty("SIGNATUREALGORITHM", "SHA1WithRSAAndMGF1");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
         
@@ -854,9 +947,21 @@ public class MRTDSODSignerUnitTest extends TestCase {
             config.setProperty("DIGESTALGORITHM", "SHA256");
             config.setProperty("SIGNATUREALGORITHM", "SHA256WithRSAandMGF1");
             config.setProperty(DEFAULTKEY, keystore1DefaultKey);
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config, new MRTDSODSigner());
+            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
+                    new MRTDSODSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
     }
 
+    private RequestContext getRequestContext() {
+        final RequestContext result = new RequestContext();
+        result.put(RequestContext.TRANSACTION_ID, UUID.randomUUID().toString());
+        return result;
+    }
 }

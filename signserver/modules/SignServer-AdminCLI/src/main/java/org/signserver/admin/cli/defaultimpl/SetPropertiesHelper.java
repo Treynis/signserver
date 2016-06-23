@@ -12,13 +12,12 @@
  *************************************************************************/
 package org.signserver.admin.cli.defaultimpl;
 
-import org.bouncycastle.util.encoders.Base64;
 import java.io.PrintStream;
 import java.rmi.RemoteException;
 import java.util.*;
+import org.ejbca.util.Base64;
 import org.signserver.common.AuthorizedClient;
 import org.signserver.common.GlobalConfiguration;
-import org.signserver.common.WorkerConfig;
 import static org.signserver.common.util.PropertiesConstants.*;
 
 /**
@@ -33,10 +32,10 @@ import static org.signserver.common.util.PropertiesConstants.*;
  */
 public class SetPropertiesHelper {
 
-    private HashMap<String, Integer> genIds = new HashMap<>();
+    private HashMap<String, Integer> genIds = new HashMap<String, Integer>();
     private PrintStream out;
     private AdminCommandHelper helper = new AdminCommandHelper();
-    private List<Integer> workerDeclarations = new ArrayList<>();
+    private List<Integer> workerDeclarations = new ArrayList<Integer>();
 
     public SetPropertiesHelper(PrintStream out) {
         this.out = out;
@@ -120,9 +119,9 @@ public class SetPropertiesHelper {
     private int getGenId(String splittedKey) throws RemoteException, Exception {
         if (genIds.get(splittedKey) == null) {
             int genid = helper.getWorkerSession().genFreeWorkerId();
-            genIds.put(splittedKey, genid);
+            genIds.put(splittedKey, new Integer(genid));
         }
-        return ((Integer) genIds.get(splittedKey));
+        return ((Integer) genIds.get(splittedKey)).intValue();
     }
 
     private void processGlobalProperty(String scope, String strippedKey, String value, boolean add) throws RemoteException, Exception {
@@ -183,34 +182,6 @@ public class SetPropertiesHelper {
         out.println("Setting the global property " + key + " to " + value + " with scope " + scope);
         helper.getGlobalConfigurationSession().setProperty(scope, key, value);
 
-        // For backwards compatibility: If the old global config property for IMPLEMENTATION_CLASS is specified, we also set the new property
-        // Note: this logic is somewhat duplicated in PropertiesParser
-        if (key.startsWith(WORKER_PREFIX)) {
-            String strippedKey = key.substring(WORKER_PREFIX.length());
-            String workerIdString = strippedKey.substring(0, strippedKey.indexOf('.'));
-             
-            // Get worker ID
-            final int workerid;
-            if (workerIdString.matches("\\d")) {
-                workerid = Integer.parseInt(workerIdString);
-            } else {
-                if (workerIdString.startsWith(GENID)) {
-                    workerid = getGenId(workerIdString);
-                } else {
-                    workerid = helper.getWorkerId(workerIdString);
-                }
-            }
-            if (workerid == 0) {
-                out.println("Error in propertyfile syntax, couldn't find worker for key : " + key);
-            } else {
-                if (key.endsWith(".SIGNERTOKEN.CLASSPATH")) {
-                    setWorkerProperty(workerid, CRYPTOTOKEN_IMPLEMENTATION_CLASS, value);
-                } else if (key.endsWith(".CLASSPATH")) {
-                    setWorkerProperty(workerid, IMPLEMENTATION_CLASS, value);
-                    setWorkerProperty(workerid, WorkerConfig.TYPE, ""); // Empty type so it will be auto-detected
-                }
-            }
-        }
     }
 
     private void removeGlobalProperty(String scope, String key) throws RemoteException, Exception {
@@ -230,7 +201,7 @@ public class SetPropertiesHelper {
             } else {
                 if (propertykey.startsWith(DOT_SIGNERCERTCHAIN.substring(1))) {
                     String certs[] = propertyvalue.split(";");
-                    ArrayList<byte[]> chain = new ArrayList<>();
+                    ArrayList<byte[]> chain = new ArrayList<byte[]>();
                     for (String base64cert : certs) {
                         if (!base64cert.trim().isEmpty()) {
                             byte[] cert = Base64.decode(base64cert.getBytes());

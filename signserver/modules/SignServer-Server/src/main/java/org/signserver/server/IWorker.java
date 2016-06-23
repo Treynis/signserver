@@ -16,7 +16,6 @@ import java.util.List;
 import javax.persistence.EntityManager;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
-import org.signserver.common.WorkerType;
 
 /**
  * IWorker is an interface that all signers and services should implement.
@@ -30,18 +29,6 @@ import org.signserver.common.WorkerType;
 public interface IWorker {
 
     /**
-     * Get the worker type for this worker.
-     *
-     * This is used to set the TYPE property for a worker when the database
-     * is upgraded from an old version that did not have this property or when
-     * the TYPE property is specified as an empty string to trigger this
-     * automatic detection of the type.
-     *
-     * @return The suggested worker type describing this implementation
-     */
-    WorkerType getWorkerType();
-    
-    /**
      * Initialization method that should be called directly after creation.
      * @param workerId the unique id of the worker
      * @param config the configuration stored in database
@@ -49,7 +36,7 @@ public interface IWorker {
      * @param workerEntityManager Worker specific JPA Entity Manager if worker is configured to use it.
      * implementation and MailSignerContext for mail processors.
      */
-    void init(int workerId, WorkerConfig config, WorkerContext workerContext, EntityManager workerEntityManager);
+    public void init(int workerId, WorkerConfig config, WorkerContext workerContext, EntityManager workerEntityManager);
     
     /**
      * @return The worker configuration
@@ -65,5 +52,5 @@ public interface IWorker {
      * IAuthorizer.
      * @return a WorkerStatus object.
      */
-    WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services);
+    public WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services);
 }

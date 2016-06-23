@@ -17,7 +17,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.rmi.RemoteException;
-import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.util.Base64;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
@@ -35,7 +35,6 @@ public class SetPropertyFromFileCommand extends AbstractAdminCommand {
         return "Sets a property for a given worker with byte data from file";
     }
 
-    @Override
     public String getUsages() {
         return "Usage: signserver setpropertyfromfile <signerid | signerName | global | node> <propertykey> <filename>\n"
                     + "Example 1: signserver setproperty 1 defaultKey myfile.dat\n"

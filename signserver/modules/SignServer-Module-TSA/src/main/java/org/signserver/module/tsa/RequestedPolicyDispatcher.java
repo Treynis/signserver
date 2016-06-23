@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import javax.servlet.http.HttpServletRequest;
 import org.apache.log4j.Logger;
@@ -25,21 +26,18 @@ import org.bouncycastle.asn1.cmp.PKIStatus;
 import org.bouncycastle.tsp.TSPException;
 import org.bouncycastle.tsp.TimeStampRequest;
 import org.bouncycastle.tsp.TimeStampResponse;
-import org.bouncycastle.tsp.TimeStampResponseGenerator;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.DispatcherProcessSessionLocal;
-import org.signserver.server.IServices;
+import org.signserver.ejb.interfaces.IDispatcherWorkerSession;
+import org.signserver.module.tsa.bc.TimeStampResponseGenerator;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.dispatchers.BaseDispatcher;
-import org.signserver.server.log.AdminInfo;
-import org.signserver.server.log.ExceptionLoggable;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
 
 /**
  * Dispatching requests to a Time Stamp Unit based on the requested profile.
  *
- * Properties:<br>
+ * Properties:<br/>
  * DEFAULTWORKER - Worker name or ID to dispatch to in case no policy was requested.
  * USEDEFAULTIFMISMATCH - If true dispatches to DEFAULTWORKER in case no mapping existed for the requested policy OID (default: false)
  * MAPPINGS - Mapping from requested policy OID to a worker name.
@@ -58,7 +56,7 @@ public class RequestedPolicyDispatcher extends BaseDispatcher {
     public static final String TSA_REQUESTEDPOLICYOID = "TSA_REQUESTEDPOLICYOID";
     
     /** Workersession. */
-    private DispatcherProcessSessionLocal processSession;
+    private IDispatcherWorkerSession workerSession;
     
     private static final String MAPPINGS = "MAPPINGS";
     private static final String DEFAULTWORKER = "DEFAULTWORKER";
@@ -72,39 +70,41 @@ public class RequestedPolicyDispatcher extends BaseDispatcher {
     private static final String RESPONSE_CONTENT_TYPE
             = "application/timestamp-reply";
     
-    private Map<String, WorkerIdentifier> workerMapping = new HashMap<>();
+    private Map<String, String> workerMapping = new HashMap<String, String>();
     
-    private WorkerIdentifier defaultWorker;
+    private String defaultWorker;
     private boolean useDefaultIfMismatch;
     private boolean includeStatusString;
     
     @Override
     public void init(final int workerId, final WorkerConfig config,
             final WorkerContext workerContext, final EntityManager workerEM) {
-        super.init(workerId, config, workerContext, workerEM);
+        try {
+            super.init(workerId, config, workerContext, workerEM);
 
-        String policyWorkerMapping = config.getProperty(MAPPINGS);
-        if (policyWorkerMapping == null) {
-            LOG.error("Property " + MAPPINGS + " missing!");
-        } else {
-            workerMapping = parseMapping(policyWorkerMapping);
-        }
-
-        final String val = config.getProperty(DEFAULTWORKER);
-        if (val == null) {
-            defaultWorker = null;
-        } else {
-            defaultWorker = WorkerIdentifier.createFromIdOrName(val);
-        }
-
-        useDefaultIfMismatch = Boolean.parseBoolean(config.getProperty(USEDEFAULTIFMISMATCH, "false"));
-        includeStatusString = Boolean.parseBoolean(config.getProperty(TimeStampSigner.INCLUDESTATUSSTRING, "true"));
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug(new StringBuilder()
-                    .append("workerMapping: ").append(workerMapping).append("\n")
-                    .append("defaultWorker: ").append(defaultWorker).append("\n")
-                    .append("useDefaultIfMismatch: ").append(useDefaultIfMismatch).toString());
+            String policyWorkerMapping = config.getProperty(MAPPINGS);
+            if (policyWorkerMapping == null) {
+                LOG.error("Property " + MAPPINGS + " missing!");
+            } else {
+                workerMapping = parseMapping(policyWorkerMapping);
+            }
+            
+            defaultWorker = config.getProperty(DEFAULTWORKER);
+            
+            useDefaultIfMismatch = Boolean.parseBoolean(config.getProperty(USEDEFAULTIFMISMATCH, "false"));
+            includeStatusString = Boolean.parseBoolean(config.getProperty(TimeStampSigner.INCLUDESTATUSSTRING, "true"));
+            
+            if (LOG.isDebugEnabled()) {
+                LOG.debug(new StringBuilder()
+                        .append("workerMapping: ").append(workerMapping).append("\n")
+                        .append("defaultWorker: ").append(defaultWorker).append("\n")
+                        .append("useDefaultIfMismatch: ").append(useDefaultIfMismatch).toString());
+            }
+            
+            workerSession = ServiceLocator.getInstance().lookupLocal(
+                        IDispatcherWorkerSession.class);
+        } catch (NamingException ex) {
+            LOG.error("Unable to lookup worker session", ex);
         }
     }
 
@@ -127,7 +127,7 @@ public class RequestedPolicyDispatcher extends BaseDispatcher {
 
         // Check that the request contains a valid TimeStampRequest object.
         if (!(signRequest instanceof GenericSignRequest)) {
-            throw new IllegalRequestException("Received request wasn't an expected GenericSignRequest.");
+            throw new IllegalRequestException("Received request wasn't a expected GenericSignRequest.");
         }
         final ISignRequest sReq = (ISignRequest) signRequest;
         
@@ -152,18 +152,26 @@ public class RequestedPolicyDispatcher extends BaseDispatcher {
             }
             
             // Find to which worker the request should be dispatched
-            final WorkerIdentifier toWorker = lookupWorkerToDispatchTo(timeStampRequest, context);
+            final String toWorker = lookupWorkerToDispatchTo(timeStampRequest, context);
             if (toWorker == null) {
                 final TimeStampResponseGenerator gen = new TimeStampResponseGenerator(null, null);
                 final String statusString = includeStatusString ? "request contains unknown policy." : null;
                 final TimeStampResponse resp = gen.generateFailResponse(PKIStatus.REJECTION, PKIFailureInfo.unacceptedPolicy, statusString);
 
                 // Auditlog
-                logMap.put(IWorkerLogger.LOG_CLIENT_AUTHORIZED, false);
+                logMap.put(IWorkerLogger.LOG_CLIENT_AUTHORIZED, "false");
                 logMap.put(IWorkerLogger.LOG_EXCEPTION, "requested policy not supported");
 
                 result = new GenericServletResponse(sReq.getRequestID(), resp.getEncoded(), null, null, null, RESPONSE_CONTENT_TYPE);
             } else {
+                int toWorkerId = 0;
+                try {
+                    toWorkerId = Integer.parseInt(toWorker);
+                } catch (NumberFormatException ignored) {}
+                if (toWorkerId < 1) {
+                    toWorkerId = getWorkerSession().getWorkerId(toWorker);
+                }
+                
                 // Mark request comming from a dispatcher so the DispatchedAuthorizer can be used
                 nextContext.put(RequestContext.DISPATCHER_AUTHORIZED_CLIENT, true);
                 
@@ -173,10 +181,10 @@ public class RequestedPolicyDispatcher extends BaseDispatcher {
                 }
                 ProcessRequest newRequest = new GenericServletRequest(sReq.getRequestID(), (byte[]) sReq.getRequestData(), httpRequest);
                 
-                result = (GenericSignResponse) getProcessSession(context.getServices()).process(new AdminInfo("Client user", null, null), toWorker, newRequest, nextContext);
+                result = (GenericSignResponse) getWorkerSession().process(toWorkerId, newRequest, nextContext);
             }
-        } catch (final IOException e) {
-            logMap.put(ITimeStampLogger.LOG_TSA_EXCEPTION, new ExceptionLoggable(e));
+        } catch (IOException e) {
+            logMap.put(ITimeStampLogger.LOG_TSA_EXCEPTION, e.getMessage());
             throw new SignServerException("Response message could not be constructed", e);
         } catch (TSPException e) {
             throw new SignServerException("Response message could not be constructed", e);
@@ -184,28 +192,28 @@ public class RequestedPolicyDispatcher extends BaseDispatcher {
         return result;
     }
 
-    private DispatcherProcessSessionLocal getProcessSession(IServices services) {
-        return services.get(DispatcherProcessSessionLocal.class);
+    private IDispatcherWorkerSession getWorkerSession() {
+        return workerSession;
     }
     
-    private Map<String, WorkerIdentifier> parseMapping(String mapping) {
+    private Map<String, String> parseMapping(String mapping) {
         
         if (mapping == null) {
             return Collections.emptyMap();
         }
         final String[] entries = mapping.split(";");
-        final Map<String, WorkerIdentifier> result = new HashMap<>();
+        final Map<String, String> result = new HashMap<String, String>();
         for (String entry : entries) {
             final String[] keyvalue = entry.trim().split(":");
             if (keyvalue.length == 2) {
-                result.put(keyvalue[0].trim(), WorkerIdentifier.createFromIdOrName(keyvalue[1].trim()));
+                result.put(keyvalue[0].trim(), keyvalue[1].trim());
             }
         }
         if (LOG.isDebugEnabled()) {
             final StringBuilder str = new StringBuilder();
             str.append("Authorization mapping: ");
             str.append("\n");
-            for (Map.Entry<String, WorkerIdentifier> entry : result.entrySet()) {
+            for (Map.Entry<String, String> entry : result.entrySet()) {
                 str.append("\"");
                 str.append(entry.getKey());
                 str.append("\"");
@@ -220,8 +228,8 @@ public class RequestedPolicyDispatcher extends BaseDispatcher {
         return result;
     }
 
-    protected WorkerIdentifier lookupWorkerToDispatchTo(TimeStampRequest timeStampRequest, RequestContext requestContext) {
-        WorkerIdentifier result;
+    protected String lookupWorkerToDispatchTo(TimeStampRequest timeStampRequest, RequestContext requestContext) {
+        String result;
         if (timeStampRequest.getReqPolicy() == null) {
             result = defaultWorker;
         } else {

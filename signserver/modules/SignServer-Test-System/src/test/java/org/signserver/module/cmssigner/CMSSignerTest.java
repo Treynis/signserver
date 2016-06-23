@@ -15,21 +15,16 @@ package org.signserver.module.cmssigner;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.security.cert.CertSelector;
+import java.security.cert.CertStore;
 import java.security.cert.Certificate;
 import java.util.Collection;
 
 import org.apache.log4j.Logger;
 import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.SignerInformation;
-import org.bouncycastle.cms.SignerInformationVerifier;
-import org.bouncycastle.cms.jcajce.JcaSignerInfoVerifierBuilder;
-import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
-import org.bouncycastle.util.Store;
-import org.bouncycastle.cert.AttributeCertificateHolder;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cms.SignerId;
-import org.bouncycastle.jce.provider.X509CertificateObject;
-import org.bouncycastle.util.Selector;
+import org.bouncycastle.jce.X509Principal;
+import org.bouncycastle.x509.AttributeCertificateHolder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
@@ -37,14 +32,12 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GenericSignResponse;
-import org.signserver.common.RemoteRequestContext;
+import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
-import org.signserver.ejb.interfaces.WorkerSession;
 
 /**
  * Tests for CMSSigner.
@@ -61,17 +54,14 @@ public class CMSSignerTest extends ModulesTestCase {
     private static final int WORKERID_ECDSA = 8000;
     private static final int WORKERID_DSA = 8001;
     
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     @Before
-    @Override
     protected void setUp() throws Exception {
         SignServerUtil.installBCProvider();
     }
 
     @After
-    @Override
     protected void tearDown() throws Exception {
         TestingSecurityManager.remove();
     }	
@@ -206,18 +196,18 @@ public class CMSSignerTest extends ModulesTestCase {
         workerSession.reloadConfiguration(workerId);
         
         final GenericSignResponse res =
-                (GenericSignResponse) processSession.process(new WorkerIdentifier(workerId), signRequest, new RemoteRequestContext());
+                (GenericSignResponse) workerSession.process(workerId, signRequest, new RequestContext());
         final byte[] data = res.getProcessedData();
    
         // Answer to right question
         assertSame("Request ID", reqid, res.getRequestID());
 
-        try ( // Output for manual inspection
-                FileOutputStream fos = new FileOutputStream(
-                        new File(getSignServerHome(),
-                                "tmp" + File.separator + "signedcms_" + sigAlg + ".p7s"))) {
-            fos.write((byte[]) data);
-        }
+        // Output for manual inspection
+        final FileOutputStream fos = new FileOutputStream(
+                new File(getSignServerHome(),
+                "tmp" + File.separator + "signedcms_" + sigAlg + ".p7s"));
+        fos.write((byte[]) data);
+        fos.close();
 
         // Check certificate returned
         final Certificate signercert = res.getSignerCertificate();
@@ -234,31 +224,19 @@ public class CMSSignerTest extends ModulesTestCase {
         final SignerInformation signer
                 = (SignerInformation) signers.iterator().next();
 
-        final SignerInformationVerifier sigVerifier =
-                new JcaSignerInfoVerifierBuilder(new JcaDigestCalculatorProviderBuilder().build()).setProvider("BC").build(signercert.getPublicKey());
-
         // Verify using the signer's certificate
         assertTrue("Verification using signer certificate",
-                signer.verify(sigVerifier));
+                signer.verify(signercert.getPublicKey(), "BC"));
 
         // Check that the signer's certificate is included
-        final Store certStore = signedData.getCertificates();
-       
-        final SignerId sid = signer.getSID();
-        final Selector certSelector =
-                new AttributeCertificateHolder(sid.getIssuer(),
-                                               sid.getSerialNumber());
-                
-        Collection<? extends X509CertificateHolder> signerCerts =
-                certStore.getMatches(certSelector);
-        
+        CertStore certs = signedData.getCertificatesAndCRLs("Collection", "BC");
+        X509Principal issuer = new X509Principal(signer.getSID().getIssuer());
+        CertSelector cs = new AttributeCertificateHolder(issuer, signer.getSID().getSerialNumber());
+        Collection<? extends Certificate> signerCerts
+                = certs.getCertificates(cs);
         assertEquals("Certificate included", expectedIncludedCertificateLevels, signerCerts.size());
         if (!signerCerts.isEmpty()) {
-            final X509CertificateHolder certHolder =
-                    signerCerts.iterator().next();
-            final X509CertificateObject cert =
-                    new X509CertificateObject(certHolder.toASN1Structure());
-            assertEquals(signercert, cert);
+            assertEquals(signercert, signerCerts.iterator().next());
         }
 
         // check the signature algorithm

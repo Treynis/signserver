@@ -127,7 +127,7 @@ public class BERTLVObject
 			} else if (value instanceof Byte) {
 				this.length = 1;
 				this.value = new byte[1];
-				((byte[])this.value)[0] = ((Byte)value);
+				((byte[])this.value)[0] = ((Byte)value).byteValue();
 			} else if (value instanceof Integer) {
 				this.value = new BERTLVObject[1];
 				((BERTLVObject[])this.value)[0] = new BERTLVObject(INTEGER_TYPE_TAG, value);
@@ -200,7 +200,7 @@ public class BERTLVObject
 
 	private static BERTLVObject[] interpretCompoundValue(int tag, byte[] valueBytes)
 	throws IOException {
-		Collection<BERTLVObject> subObjects = new ArrayList<>();
+		Collection<BERTLVObject> subObjects = new ArrayList<BERTLVObject>();
 		BERTLVInputStream in = new BERTLVInputStream(new ByteArrayInputStream(valueBytes));
 		int length = valueBytes.length;
 		try {
@@ -239,7 +239,7 @@ public class BERTLVObject
 	 * @param object to add as a subobject.
 	 */
 	public void addSubObject(BERTLVObject object) {
-		Collection<BERTLVObject> subObjects = new ArrayList<>();
+		Collection<BERTLVObject> subObjects = new ArrayList<BERTLVObject>();
 
 		if (value == null) {
 			value = new BERTLVObject[1];
@@ -311,10 +311,11 @@ public class BERTLVObject
 			return this;
 		} else if (value instanceof BERTLVObject[]) {
 			BERTLVObject[] children = (BERTLVObject[])value;
-                    for (BERTLVObject child : children) {
-                        BERTLVObject candidate = child.getSubObject(tag);
-                        if (candidate != null) { return candidate; }
-                    }
+			for (int i = 0; i < children.length; i++) {
+				BERTLVObject child = children[i];
+				BERTLVObject candidate = child.getSubObject(tag);
+				if (candidate != null) { return candidate; }
+			}
 		}
 		return null;
 	}
@@ -391,9 +392,9 @@ public class BERTLVObject
 		} else if (value instanceof BERTLVObject[]) {
 			result.append("{\n");
 			BERTLVObject[] subObjects = (BERTLVObject[])value;
-                    for (BERTLVObject subObject : subObjects) {
-                        result.append(subObject.toString(indent + 3));
-                    }
+			for (int i = 0; i < subObjects.length; i++) {
+				result.append(subObjects[i].toString(indent + 3));
+			}
 			result.append(prefix);
 			result.append("}\n");
 	} else {
@@ -555,7 +556,7 @@ public class BERTLVObject
 			} else if (value instanceof Date) {
 				return SDF.format((Date)value).getBytes();
 			} else if (value instanceof Integer) {
-				int intValue = ((Integer)value);
+				int intValue = ((Integer)value).intValue();
 				int byteCount = Integer.bitCount(intValue) / 8 + 1;
 				byte[] result = new byte[byteCount];
 				for (int i = 0; i < byteCount; i++) {
@@ -565,20 +566,20 @@ public class BERTLVObject
 				return result;
 			} else if (value instanceof Byte) {
 				byte[] result = new byte[1];
-				result[0] = ((Byte)value);
+				result[0] = ((Byte)value).byteValue();
 				return result;
 			}
 		}
 		if (value instanceof BERTLVObject[]) {
 			ByteArrayOutputStream result = new ByteArrayOutputStream();
 			BERTLVObject[] children = (BERTLVObject[])value;
-                    for (BERTLVObject children1 : children) {
-                        try {
-                            result.write(children1.getEncoded());
-                        }catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
+			for (int i = 0; i < children.length; i++) {
+				try {
+					result.write(children[i].getEncoded());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 			return result.toByteArray();
 		}
 

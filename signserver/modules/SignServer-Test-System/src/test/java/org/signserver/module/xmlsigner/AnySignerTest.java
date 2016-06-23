@@ -18,9 +18,9 @@ import java.io.FileOutputStream;
 import java.security.*;
 import java.util.Collection;
 import org.bouncycastle.jce.ECKeyUtil;
-import org.bouncycastle.pkcs.PKCS10CertificationRequest;
-import org.bouncycastle.util.encoders.Base64;
+import org.bouncycastle.jce.PKCS10CertificationRequest;
 import org.bouncycastle.util.encoders.Hex;
+import org.ejbca.util.Base64;
 import org.junit.After;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
@@ -32,9 +32,8 @@ import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.common.util.PathUtil;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for any Signer.
@@ -54,17 +53,15 @@ public class AnySignerTest extends ModulesTestCase {
 
     private static File keystoreFile;
 
-    private final WorkerSession workerSession = getWorkerSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     @Before
-    @Override
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
         signserverhome = PathUtil.getAppHome();
     }
 
     @After
-    @Override
     public void tearDown() throws Exception {
         TestingSecurityManager.remove();
     }	
@@ -101,12 +98,12 @@ public class AnySignerTest extends ModulesTestCase {
         final char[] authCode = "foo123".toCharArray();
         final String newKeyAlias = "newkey0001";
 
-        final String actualNewAlias = workerSession.generateSignerKey(new WorkerIdentifier(WORKERID), "RSA",
+        final String actualNewAlias = workerSession.generateSignerKey(WORKERID, "RSA",
                 "2048", newKeyAlias, authCode);
         
         assertEquals("alias", newKeyAlias, actualNewAlias);
 
-        final Collection<KeyTestResult> results = workerSession.testKey(new WorkerIdentifier(WORKERID),
+        final Collection<KeyTestResult> results = workerSession.testKey(WORKERID,
                 newKeyAlias, authCode);
         final KeyTestResult result = results.iterator().next();
         assertEquals("alias in result", newKeyAlias, result.getAlias());
@@ -130,17 +127,17 @@ public class AnySignerTest extends ModulesTestCase {
         final PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo("SHA1WithRSA",
                 "CN=test01GenerateKey,C=SE", null);
         Base64SignerCertReqData data = (Base64SignerCertReqData) workerSession
-                .getCertificateRequest(new WorkerIdentifier(WORKERID), certReqInfo, false, false);
+                .getCertificateRequest(WORKERID, certReqInfo, false, false);
         byte[] reqBytes = data.getBase64CertReq();
         final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
 
-        final PublicKey actualPubKey = getPublicKeyFromRequest(req);
+        final PublicKey actualPubKey = req.getPublicKey();
 
         assertEquals("key in request", pubKey, actualPubKey);
         
         // Test that the DN is in the correct order
-        String actualDN = req.getSubject().toString();
+        String actualDN = req.getCertificationRequestInfo().getSubject().toString();
         assertTrue("dn: " + actualDN, actualDN.startsWith("CN=test01GenerateKey") && actualDN.endsWith("C=SE"));
     }
 
@@ -154,12 +151,12 @@ public class AnySignerTest extends ModulesTestCase {
         final char[] authCode = "foo123".toCharArray();
         final String newKeyAlias = "newkey0002";
 
-        final String actualNewAlias = workerSession.generateSignerKey(new WorkerIdentifier(WORKERID), 
+        final String actualNewAlias = workerSession.generateSignerKey(WORKERID, 
                 "ECDSA", "secp256r1", newKeyAlias, authCode);
 
         assertEquals("alias", newKeyAlias, actualNewAlias);
 
-        final Collection<KeyTestResult> results = workerSession.testKey(new WorkerIdentifier(WORKERID),
+        final Collection<KeyTestResult> results = workerSession.testKey(WORKERID,
                 newKeyAlias, authCode);
         final KeyTestResult result = results.iterator().next();
         assertEquals("alias in result", newKeyAlias, result.getAlias());
@@ -185,12 +182,12 @@ public class AnySignerTest extends ModulesTestCase {
         final PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo(
                 "SHA1WithECDSA", "CN=test02GenerateKey", null);
         Base64SignerCertReqData data = (Base64SignerCertReqData) workerSession
-                .getCertificateRequest(new WorkerIdentifier(WORKERID), certReqInfo, false, false);
+                .getCertificateRequest(WORKERID, certReqInfo, false, false);
         byte[] reqBytes = data.getBase64CertReq();
         final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
 
-        final PublicKey actualPubKey = getPublicKeyFromRequest(req);
+        final PublicKey actualPubKey = req.getPublicKey();
 
         assertEquals("key in request", pubKey, actualPubKey);
     }
@@ -204,13 +201,13 @@ public class AnySignerTest extends ModulesTestCase {
         final PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo(
                 "SHA1WithECDSA", "CN=test02GenerateKey", null);
         Base64SignerCertReqData data = (Base64SignerCertReqData) workerSession
-                .getCertificateRequest(new WorkerIdentifier(WORKERID), certReqInfo, explicitEcc,
+                .getCertificateRequest(WORKERID, certReqInfo, explicitEcc,
                 false);
         byte[] reqBytes = data.getBase64CertReq();
         final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
 
-        final PublicKey actualPubKey = getPublicKeyFromRequest(req);
+        final PublicKey actualPubKey = req.getPublicKey();
         final PublicKey afterConvert = ECKeyUtil.publicToExplicitParameters(
                 actualPubKey, "BC");
 
@@ -232,13 +229,13 @@ public class AnySignerTest extends ModulesTestCase {
         final PKCS10CertReqInfo certReqInfo = new PKCS10CertReqInfo(
                 "SHA1WithECDSA", "CN=test02GenerateKey", null);
         Base64SignerCertReqData data = (Base64SignerCertReqData) workerSession
-                .getCertificateRequest(new WorkerIdentifier(WORKERID), certReqInfo, explicitEcc,
+                .getCertificateRequest(WORKERID, certReqInfo, explicitEcc,
                 false);
         byte[] reqBytes = data.getBase64CertReq();
         final PKCS10CertificationRequest req
                 = new PKCS10CertificationRequest(Base64.decode(reqBytes));
 
-        final PublicKey actualPubKey = getPublicKeyFromRequest(req);
+        final PublicKey actualPubKey = req.getPublicKey();
         final PublicKey afterConvert = ECKeyUtil.publicToExplicitParameters(
                 actualPubKey, "BC");
 

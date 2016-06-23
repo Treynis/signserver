@@ -68,11 +68,11 @@ public class WebServicesDocumentValidator extends AbstractDocumentValidator {
         // Take start time
         final long startTime = System.nanoTime();
         
-        final RemoteRequestContext context = new RemoteRequestContext();
-        RequestMetadata requestMetadata = new RequestMetadata();
-        context.setMetadata(requestMetadata);
+        final RequestContext context = new RequestContext();
         
         if (metadata != null) {
+            final RequestMetadata requestMetadata = RequestMetadata.getInstance(context);
+        
             requestMetadata.putAll(metadata);
         }
 

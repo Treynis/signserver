@@ -26,12 +26,11 @@ import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
-import org.signserver.ejb.interfaces.ProcessSessionLocal;
+import org.signserver.common.util.PropertiesConstants;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.CredentialUtils;
-import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 
 /**
  * Client web services implementation containing operations for requesting 
@@ -53,10 +52,10 @@ public class ClientWS {
     private WebServiceContext wsContext;
     
     @EJB
-    private ProcessSessionLocal processSession;
+    private IWorkerSession.ILocal workersession;
     
-    private ProcessSessionLocal getProcessSession() {
-        return processSession;
+    private IWorkerSession.ILocal getWorkerSession() {
+        return workersession;
     }
     
     private final Random random = new Random();
@@ -79,12 +78,16 @@ public class ClientWS {
             @WebParam(name = "data") byte[] data) throws RequestFailedException, InternalServerException {
         final DataResponse result;
         try {
-            final RequestContext requestContext = handleRequestContext(requestMetadata);
+            final int workerId = getWorkerId(workerIdOrName);
+            if (workerId < 1) {
+                throw new RequestFailedException("No worker with the given name could be found");
+            }
+            final RequestContext requestContext = handleRequestContext(requestMetadata, workerId);
 
             final int requestId = random.nextInt();
             
             final ProcessRequest req = new GenericSignRequest(requestId, data);
-            final ProcessResponse resp = getProcessSession().process(new AdminInfo("CLI user", null, null), WorkerIdentifier.createFromIdOrName(workerIdOrName), req, requestContext);
+            final ProcessResponse resp = getWorkerSession().process(workerId, req, requestContext);
             
             if (resp instanceof GenericSignResponse) {
                 final GenericSignResponse signResponse = (GenericSignResponse) resp;
@@ -111,7 +114,10 @@ public class ClientWS {
                 LOG.debug("Service unvailable", ex);
             }
             throw new InternalServerException("Service unavailable: " + ex.getMessage());
-        } catch (AuthorizationRequiredException | AccessDeniedException ex) {
+        } catch (AuthorizationRequiredException ex) {
+            LOG.info("Request failed: " + ex.getMessage());
+            throw new RequestFailedException(ex.getMessage());
+        } catch (AccessDeniedException ex) {
             LOG.info("Request failed: " + ex.getMessage());
             throw new RequestFailedException(ex.getMessage());
         } catch (SignServerException ex) {
@@ -140,12 +146,13 @@ public class ClientWS {
             @WebParam(name = "sodData") final SODRequest data) throws RequestFailedException, InternalServerException {
         final SODResponse result;
         try {
-            final RequestContext requestContext = handleRequestContext(requestMetadata);
+            final int workerId = getWorkerId(workerIdOrName);
+            final RequestContext requestContext = handleRequestContext(requestMetadata, workerId);
             final int requestId = random.nextInt();
         
             // Collect all [dataGroup1, dataGroup2, ..., dataGroupN]
             final List<DataGroup> dataGroups = data.getDataGroups();
-            final HashMap<Integer,byte[]> dataGroupsMap = new HashMap<>();
+            final HashMap<Integer,byte[]> dataGroupsMap = new HashMap<Integer, byte[]>();
             for (DataGroup dataGroup : dataGroups) {
                 final int dataGroupId = dataGroup.getId();
                 if ((dataGroupId > -1) && (dataGroupId < 17)) {
@@ -184,7 +191,7 @@ public class ClientWS {
             }
 
             final SODSignRequest req = new SODSignRequest(requestId, dataGroupsMap, ldsVersion, unicodeVersion);
-            final ProcessResponse resp = getProcessSession().process(new AdminInfo("CLI user", null, null), WorkerIdentifier.createFromIdOrName(workerIdOrName), req, requestContext);
+            final ProcessResponse resp = getWorkerSession().process(workerId, req, requestContext);
             
             if (resp instanceof SODSignResponse) {
                 SODSignResponse signResponse = (SODSignResponse) resp; 
@@ -211,7 +218,13 @@ public class ClientWS {
                 LOG.debug("Service unvailable", ex);
             }
             throw new InternalServerException("Service unavailable: " + ex.getMessage());
-        } catch (IllegalRequestException | AuthorizationRequiredException | AccessDeniedException ex) {
+        } catch (IllegalRequestException ex) {
+            LOG.info("Request failed: " + ex.getMessage());
+            throw new RequestFailedException(ex.getMessage());
+        } catch (AuthorizationRequiredException ex) {
+            LOG.info("Request failed: " + ex.getMessage());
+            throw new RequestFailedException(ex.getMessage());
+        } catch (AccessDeniedException ex) {
             LOG.info("Request failed: " + ex.getMessage());
             throw new RequestFailedException(ex.getMessage());
         } catch (SignServerException ex) {
@@ -241,8 +254,19 @@ public class ClientWS {
         }
         return null;
     }
+    
+    private int getWorkerId(String workerIdOrName) {
+        final int retval;
 
-    private RequestContext handleRequestContext(final List<Metadata> requestMetadata) {
+        if (workerIdOrName.substring(0, 1).matches("\\d")) {
+            retval = Integer.parseInt(workerIdOrName);
+        } else {
+            retval = getWorkerSession().getWorkerId(workerIdOrName);
+        }
+        return retval;
+    }
+
+    private RequestContext handleRequestContext(final List<Metadata> requestMetadata, final int workerId) {
         final HttpServletRequest servletRequest =
                 (HttpServletRequest) wsContext.getMessageContext().get(MessageContext.SERVLET_REQUEST);
         String requestIP = getRequestIP();
@@ -251,37 +275,20 @@ public class ClientWS {
 
         // Add credentials to the context
         CredentialUtils.addToRequestContext(requestContext, servletRequest, clientCertificate);
-
+        
         final LogMap logMap = LogMap.getInstance(requestContext);
 
-        final String xForwardedFor = servletRequest.getHeader(RequestContext.X_FORWARDED_FOR);
-
         // Add HTTP specific log entries
-        logMap.put(IWorkerLogger.LOG_REQUEST_FULLURL, new Loggable() {
-            @Override
-            public String toString() {
-                return servletRequest.getRequestURL().append("?")
-                        .append(servletRequest.getQueryString()).toString();
-            }
-        });
-                
-        logMap.put(IWorkerLogger.LOG_REQUEST_LENGTH, new Loggable() {
-            @Override
-            public String toString() {
-                return servletRequest.getHeader("Content-Length");
-            }
-        });
+        logMap.put(IWorkerLogger.LOG_REQUEST_FULLURL, 
+                servletRequest.getRequestURL().append("?")
+                .append(servletRequest.getQueryString()).toString());
+        logMap.put(IWorkerLogger.LOG_REQUEST_LENGTH, 
+                servletRequest.getHeader("Content-Length"));
+        logMap.put(IWorkerLogger.LOG_XFORWARDEDFOR,
+                servletRequest.getHeader("X-Forwarded-For"));
 
-        logMap.put(IWorkerLogger.LOG_XFORWARDEDFOR, new Loggable() {
-            @Override
-            public String toString() {
-                return servletRequest.getHeader("X-Forwarded-For");
-            }
-        });
-
-        if (xForwardedFor != null) {
-            requestContext.put(RequestContext.X_FORWARDED_FOR, xForwardedFor);
-        }
+        logMap.put(IWorkerLogger.LOG_WORKER_NAME,
+                getWorkerSession().getCurrentWorkerConfig(workerId).getProperty(PropertiesConstants.NAME));
         
         if (requestMetadata == null) {
             requestContext.remove(RequestContext.REQUEST_METADATA);
@@ -292,15 +299,10 @@ public class ClientWS {
             }
             
             // Special handling of FILENAME
-            final String fileName = metadata.get(RequestContext.FILENAME);
+            String fileName = metadata.get(RequestContext.FILENAME);
             if (fileName != null) {
                 requestContext.put(RequestContext.FILENAME, fileName);
-                logMap.put(IWorkerLogger.LOG_FILENAME, new Loggable() {
-                    @Override
-                    public String toString() {
-                        return fileName;
-                    }
-                });
+                logMap.put(IWorkerLogger.LOG_FILENAME, fileName);
             }
         }
         
@@ -308,7 +310,7 @@ public class ClientWS {
     }
 
     private List<Metadata> getResponseMetadata(final RequestContext requestContext) {
-        final LinkedList<Metadata> result = new LinkedList<>();
+        final LinkedList<Metadata> result = new LinkedList<Metadata>();
         // TODO: DSS-x: Implement support for "Response Metadata":
         //Object o = requestContext.get(RequestContext.REQUEST_METADATA);
         //if (o instanceof Map) {

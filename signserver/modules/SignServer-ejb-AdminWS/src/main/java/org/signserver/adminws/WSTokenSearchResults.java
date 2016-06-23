@@ -38,7 +38,7 @@ public class WSTokenSearchResults {
      * @return the WSTokenSearchResults
      */
     public static WSTokenSearchResults fromTokenSearchResults(final TokenSearchResults src) {
-        final List<WSTokenEntry> entries = new LinkedList<>();
+        final List<WSTokenEntry> entries = new LinkedList<WSTokenEntry>();
         for (TokenEntry entry : src.getEntries()) {
             entries.add(WSTokenEntry.fromTokenEntry(entry));
         }
