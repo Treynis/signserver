@@ -155,24 +155,31 @@ public class PESigner {
         return this;
     }
 
+    public void sign(PEFile file) throws Exception {
+        sign(file, "SHA1with" + privateKey.getAlgorithm());
+    }
+    
     /**
      * Sign the specified executable file.
      * @throws Exception
      */
-    public void sign(PEFile file) throws Exception {
+    public void sign(PEFile file, String signatureAlgorithm) throws Exception {
         // pad the file on a 8 byte boundary
         // todo only if there was no previous certificate table
         file.pad(8);
         
         // compute the signature
-        CertificateTableEntry entry = createCertificateTableEntry(file);
+        CertificateTableEntry entry =
+                createCertificateTableEntry(file, signatureAlgorithm);
         
         file.writeDataDirectory(DataDirectoryType.CERTIFICATE_TABLE, entry.toBytes());
         file.close();
     }
 
-    private CertificateTableEntry createCertificateTableEntry(PEFile file) throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
-        CMSSignedData sigData = createSignature(file);
+    private CertificateTableEntry createCertificateTableEntry(PEFile file,
+                                                              String signatureAlgorithm)
+            throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
+        CMSSignedData sigData = createSignature(file, signatureAlgorithm);
         
         if (timestamping) {
             Timestamper ts = timestamper;
@@ -188,7 +195,8 @@ public class PESigner {
         return new CertificateTableEntry(sigData);
     }
 
-    private CMSSignedData createSignature(PEFile file) throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
+    private CMSSignedData createSignature(PEFile file, String signatureAlgorithm)
+            throws IOException, CMSException, OperatorCreationException, CertificateEncodingException {
         byte[] sha = file.computeDigest(algo);
         
         AlgorithmIdentifier algorithmIdentifier = new AlgorithmIdentifier(algo.oid, DERNull.INSTANCE);
@@ -196,7 +204,7 @@ public class PESigner {
         SpcAttributeTypeAndOptionalValue data = new SpcAttributeTypeAndOptionalValue(AuthenticodeObjectIdentifiers.SPC_PE_IMAGE_DATA_OBJID, new SpcPeImageData());
         SpcIndirectDataContent spcIndirectDataContent = new SpcIndirectDataContent(data, digestInfo);
 
-        ContentSigner shaSigner = new JcaContentSignerBuilder(algo + "with" + privateKey.getAlgorithm()).build(privateKey);
+        ContentSigner shaSigner = new JcaContentSignerBuilder(signatureAlgorithm).build(privateKey);
         DigestCalculatorProvider digestCalculatorProvider = new JcaDigestCalculatorProviderBuilder().build();
         
         // prepare the authenticated attributes
