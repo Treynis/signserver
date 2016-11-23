@@ -12,12 +12,11 @@
  *************************************************************************/
 package org.signserver.server;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
-import org.signserver.common.data.Request;
 
 /**
  * Authorizer that examines the RequestContext and only accepts requests if
@@ -45,9 +44,7 @@ public class DispatchedAuthorizer implements IAuthorizer {
 
     private boolean authorizeAllDispatchers;
 
-    // Configuration errors
-    private final ArrayList<String> configErrors = new ArrayList<>(1);
-
+    
 
     @Override
     public void init(int workerId, WorkerConfig config, EntityManager em) throws SignServerException {
@@ -55,24 +52,19 @@ public class DispatchedAuthorizer implements IAuthorizer {
         
         String value = config.getProperty(AUTHORIZEALLDISPATCHERS);
         if (value == null) {
-            configErrors.add("Missing property " + AUTHORIZEALLDISPATCHERS);
-        } else if (Boolean.TRUE.toString().equalsIgnoreCase(value)) {
-            authorizeAllDispatchers = true;
-        } else if (Boolean.FALSE.toString().equalsIgnoreCase(value)) {
-            authorizeAllDispatchers = false;
+            LOG.error("DispatchedAuthorizer[" + workerId + "]: Missing property " + AUTHORIZEALLDISPATCHERS);
         } else {
-            configErrors.add("Incorrect value for property "
-                    + AUTHORIZEALLDISPATCHERS);
+            authorizeAllDispatchers = Boolean.parseBoolean(value);
         }
     }
-
+    
     @Override
     public List<String> getFatalErrors() {
-        return configErrors;
+        return Collections.emptyList();
     }
 
     @Override
-    public void isAuthorized(final Request request,
+    public void isAuthorized(final ProcessRequest request,
             final RequestContext requestContext)
                 throws IllegalRequestException, SignServerException {
 

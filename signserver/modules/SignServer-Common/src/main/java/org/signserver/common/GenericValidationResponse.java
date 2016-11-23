@@ -84,9 +84,7 @@ public class GenericValidationResponse extends ProcessResponse {
     }
 
     /**
-     * Get the request ID.
      * 
-     * @return The request ID
      * @see org.signserver.common.ProcessResponse#getRequestID()
      */
     public int getRequestID() {
@@ -150,7 +148,6 @@ public class GenericValidationResponse extends ProcessResponse {
      * @param in InputStream to read from.
      * @throws IOException If an I/O error occurred.
      */
-    @Override
     public void parse(DataInput in) throws IOException {
         LOG.debug(">parse");
         in.readInt();
@@ -178,7 +175,6 @@ public class GenericValidationResponse extends ProcessResponse {
      * @throws IOException If an I/O error occurred.
      * @throws IllegalArgumentException If the method was not called with an InputStream.
      */
-    @Override
     public void serialize(DataOutput out) throws IOException {
         LOG.debug(">serlialize");
         out.writeInt(RequestAndResponseManager.RESPONSETYPE_GENERICVALIDATION);

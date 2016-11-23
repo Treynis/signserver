@@ -22,6 +22,7 @@ import org.junit.After;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.client.cli.defaultimpl.ValidateDocumentCommand;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
 import org.signserver.module.xmlvalidator.XMLValidatorTestData;
 import org.signserver.testutils.ModulesTestCase;
@@ -29,10 +30,9 @@ import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerType;
 import org.signserver.common.util.PathUtil;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for the validatedocument command of Client CLI.
@@ -54,10 +54,10 @@ public class DocumentValidatorTest extends ModulesTestCase {
 
     private static File signserverhome;
 
-    private final WorkerSession workerSession = getWorkerSession();
-
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
+    
     @Before
-    @Override
     protected void setUp() throws Exception {
         SignServerUtil.installBCProvider();
         TestingSecurityManager.install();
@@ -65,7 +65,6 @@ public class DocumentValidatorTest extends ModulesTestCase {
     }
 
     @After
-    @Override
     protected void tearDown() throws Exception {
         TestingSecurityManager.remove();
     }
@@ -91,8 +90,7 @@ public class DocumentValidatorTest extends ModulesTestCase {
     public void test00SetupDatabase() throws Exception {
 
         // VALIDATION SERVICE
-        workerSession.setWorkerProperty(17, WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
-        workerSession.setWorkerProperty(17, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.validationservice.server.ValidationServiceWorker");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER17.CLASSPATH", "org.signserver.validationservice.server.ValidationServiceWorker");
         workerSession.setWorkerProperty(17, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(17, "NAME", VALIDATION_WORKER);
         workerSession.setWorkerProperty(17, "VAL1.CLASSPATH", "org.signserver.validationservice.server.DummyValidator");
@@ -147,12 +145,18 @@ public class DocumentValidatorTest extends ModulesTestCase {
     private void testValidateDocumentFromFile(final String protocol, final String[] metadatas) throws Exception {
         try {
             final File doc = File.createTempFile("test2.xml", null);
-            try (FileOutputStream out = new FileOutputStream(doc)) {
+            FileOutputStream out = null;
+            try {
+                out = new FileOutputStream(doc);
                 out.write(XMLValidatorTestData.TESTXML1.getBytes());
                 out.close();
+            } finally {
+                if (out != null) {
+                    out.close();
+                }
             }
            
-            final List<String> argList = new LinkedList<>(Arrays.asList("validatedocument", "-workername",
+            final List<String> argList = new LinkedList<String>(Arrays.asList("validatedocument", "-workername",
                                             "TestXMLValidator", "-infile", doc.getAbsolutePath(),
                                             "-host", getHTTPHost(), "-port", String.valueOf(getPublicHTTPSPort()),
                                             "-truststore", new File(signserverhome, "p12/truststore.jks").getAbsolutePath(),
@@ -270,7 +274,6 @@ public class DocumentValidatorTest extends ModulesTestCase {
  
     public void test99TearDownDatabase() throws Exception {
         removeWorker(WORKERID);
-        removeWorker(17);
     }
 
     private byte[] execute(String... args) throws IllegalCommandArgumentsException, IOException, CommandFailureException {

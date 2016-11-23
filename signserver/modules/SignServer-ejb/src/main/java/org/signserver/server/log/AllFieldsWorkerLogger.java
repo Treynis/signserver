@@ -13,12 +13,10 @@
 package org.signserver.server.log;
 
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.signserver.common.RequestContext;
-import org.signserver.common.WorkerConfig;
-import org.signserver.server.SignServerContext;
 
 /**
  * An IWorkerLogger that renders the log line by appending all the log fields
@@ -26,7 +24,7 @@ import org.signserver.server.SignServerContext;
  * @author Markus Kilås
  * @version $Id$
  */
-public class AllFieldsWorkerLogger extends BaseWorkerLogger implements IWorkerLogger {
+public class AllFieldsWorkerLogger implements IWorkerLogger {
 
     /** Logger for this class. */
     private static final Logger ACCOUNTLOG =
@@ -37,28 +35,26 @@ public class AllFieldsWorkerLogger extends BaseWorkerLogger implements IWorkerLo
     private Level logLevel;
     
     @Override
-    public void init(final int workerId, final WorkerConfig config, final SignServerContext context) {
-        this.logLevel = Level.toLevel(config.getProperty("LOGLEVEL_DEFAULT",
+    public void init(final Properties props) {
+        this.logLevel = Level.toLevel(props.getProperty("LOGLEVEL_DEFAULT",
         		DEFAULT_LOGLEVEL), Level.INFO);
     }
 
     /**
      * Render the log line by putting together all the fields and separating
      * them with semi-colon.
-     * @param adminInfo unused
      * @param fields The fields to include.
-     * @param context unused
      * @throws WorkerLoggerException
      */
     @Override
-    public void log(final AdminInfo adminInfo, final Map<String, Object> fields, final RequestContext context)
+    public void log(final AdminInfo adminInfo, final Map<String, String> fields)
             throws WorkerLoggerException {
         final StringBuilder str = new StringBuilder();
         str.append("AllVariablesLogger; ");
-        for (Map.Entry<String, Object> entry : fields.entrySet()) {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
             str.append(entry.getKey());
             str.append(": ");
-            str.append(String.valueOf(entry.getValue()));
+            str.append(entry.getValue());
             str.append("; ");
         }
         
@@ -71,4 +67,10 @@ public class AllFieldsWorkerLogger extends BaseWorkerLogger implements IWorkerLo
         ACCOUNTLOG.log(this.logLevel, str.toString());
     }
 
+    @Override
+    public void setEjbs(Map<Class<?>, ?> ejbs) {
+        // NO-OP for this implementation
+    }
+    
+    
 }

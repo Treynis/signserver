@@ -13,7 +13,6 @@
 package org.signserver.client.cli.defaultimpl;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
 
@@ -29,18 +28,18 @@ import org.signserver.common.SignServerException;
  */
 public interface DocumentValidator {
 
-    void validate(final InputStream in, final long size, final String encoding,
+    void validate(final byte[] data, final String encoding,
             final OutputStream out) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException, IOException;
 
-    void validate(final InputStream in, final long size, final String encoding)
+    void validate(final byte[] data, final String encoding)
             throws IllegalRequestException, CryptoTokenOfflineException,
             SignServerException, IOException;
 
-    void validate(final InputStream in, final long size, final Map<String, Object> requestContext) throws IllegalRequestException,
+    void validate(final byte[] data, final Map<String, Object> requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException, IOException;
 
-    void validate(final InputStream in, final long size, final OutputStream out)
+    void validate(final byte[] data, final OutputStream out)
             throws IllegalRequestException, CryptoTokenOfflineException,
             SignServerException, IOException;
 }

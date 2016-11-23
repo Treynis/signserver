@@ -18,6 +18,7 @@ import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
 import org.signserver.common.GlobalConfiguration;
+import org.signserver.common.ProcessableConfig;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 
@@ -108,9 +109,10 @@ public class GetConfigCommand extends AbstractAdminCommand {
             out.println("  " + key + "=" + config.getProperties().getProperty(key) + "\n");
         }
 
-        if (config.getSignerCertificate() != null) {
+        ProcessableConfig pConfig = new ProcessableConfig(config);
+        if (pConfig.getSignerCertificate() != null) {
             out.println(" The current configuration use the following signer certificate : \n");
-            WorkerStatus.printCert(config.getSignerCertificate(), out);
+            WorkerStatus.printCert(pConfig.getSignerCertificate(), out);
         } else {
             out.println(" Either this isn't a Signer or no Signer Certificate have been uploaded to it.\n");
         }

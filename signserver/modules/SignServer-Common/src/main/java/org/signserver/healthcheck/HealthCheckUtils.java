@@ -28,7 +28,7 @@ public class HealthCheckUtils {
     private static final Logger LOG = Logger.getLogger(HealthCheckUtils.class);
 
     public static List<String> checkMemory(int minfreememory) {
-        final LinkedList<String> result = new LinkedList<>();
+        final LinkedList<String> result = new LinkedList<String>();
         if (LOG.isDebugEnabled()) {
             LOG.debug("Checking JVM heap memory.");
         }
@@ -54,7 +54,7 @@ public class HealthCheckUtils {
     }
 
     public static List<String> checkDB(final EntityManager em, final String checkDBString) {
-        final LinkedList<String> result = new LinkedList<>();
+        final LinkedList<String> result = new LinkedList<String>();
         try {
             em.createNativeQuery(checkDBString).getResultList();
         } catch (Exception e) {

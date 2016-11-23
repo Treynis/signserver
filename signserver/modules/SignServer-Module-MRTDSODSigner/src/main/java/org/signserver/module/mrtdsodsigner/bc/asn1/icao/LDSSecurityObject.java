@@ -3,9 +3,9 @@ package org.signserver.module.mrtdsodsigner.bc.asn1.icao;
 import java.util.Enumeration;
 
 import org.bouncycastle.asn1.ASN1EncodableVector;
-import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.DERInteger;
 import org.bouncycastle.asn1.ASN1Object;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.icao.DataGroupHash;
@@ -37,7 +37,7 @@ public class LDSSecurityObject
 
     public static final int ub_DataGroups = 16;
 
-    ASN1Integer version;
+    DERInteger version;
     AlgorithmIdentifier digestAlgorithmIdentifier;
     DataGroupHash[] datagroupHash;
     LDSVersionInfo ldsVersionInfo;
@@ -69,7 +69,7 @@ public class LDSSecurityObject
         Enumeration e = seq.getObjects();
 
         // version
-        version = ASN1Integer.getInstance(e.nextElement());
+        version = DERInteger.getInstance(e.nextElement());
         // digestAlgorithmIdentifier
         digestAlgorithmIdentifier = AlgorithmIdentifier.getInstance(e.nextElement());
 
@@ -83,7 +83,7 @@ public class LDSSecurityObject
             datagroupHash[i] = DataGroupHash.getInstance(datagroupHashSeq.getObjectAt(i));
         }
 
-        if (version.equals(new ASN1Integer(1))) {
+        if (version.equals(new DERInteger(1))) {
             ldsVersionInfo = LDSVersionInfo.getInstance(e.nextElement());
         }
     }
@@ -92,7 +92,7 @@ public class LDSSecurityObject
         AlgorithmIdentifier digestAlgorithmIdentifier,
         DataGroupHash[]       datagroupHash)
     {
-        this.version = new ASN1Integer(0);
+        this.version = new DERInteger(0);
         this.digestAlgorithmIdentifier = digestAlgorithmIdentifier;
         this.datagroupHash = datagroupHash;
 
@@ -104,7 +104,7 @@ public class LDSSecurityObject
         DataGroupHash[]       datagroupHash,
 	LDSVersionInfo ldsVersionInfo)
     {
-        this.version = ldsVersionInfo == null ? new ASN1Integer(0) : new ASN1Integer(1);
+        this.version = ldsVersionInfo == null ? new DERInteger(0) : new DERInteger(1);
         this.digestAlgorithmIdentifier = digestAlgorithmIdentifier;
         this.datagroupHash = datagroupHash;
         this.ldsVersionInfo = ldsVersionInfo;
@@ -120,7 +120,7 @@ public class LDSSecurityObject
         }
     }
 
-    public ASN1Integer getVersion()
+    public DERInteger getVersion()
     {
         return version;
     }
@@ -140,7 +140,6 @@ public class LDSSecurityObject
         return ldsVersionInfo;
     }
 
-    @Override
     public ASN1Primitive toASN1Primitive()
     {
         ASN1EncodableVector seq = new ASN1EncodableVector();
@@ -149,8 +148,9 @@ public class LDSSecurityObject
         seq.add(digestAlgorithmIdentifier);
 
         ASN1EncodableVector seqname = new ASN1EncodableVector();
-        for (DataGroupHash datagroupHash1 : datagroupHash) {
-            seqname.add(datagroupHash1);
+        for (int i = 0; i < datagroupHash.length; i++)
+        {
+            seqname.add(datagroupHash[i]);
         }
         seq.add(new DERSequence(seqname));
 

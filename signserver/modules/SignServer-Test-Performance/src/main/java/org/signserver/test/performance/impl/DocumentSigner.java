@@ -12,20 +12,16 @@
  *************************************************************************/
 package org.signserver.test.performance.impl;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.NullOutputStream;
 import org.bouncycastle.util.encoders.Base64;
 import org.signserver.test.performance.FailedException;
 import org.signserver.test.performance.Task;
@@ -48,24 +44,20 @@ public class DocumentSigner implements Task {
     private boolean useWorkerServlet;
     
     private String workerNameOrId;
-    private final String processType;
     private final Random random;
-    private final byte[] indata;
-    private final File infile;
+    private byte[] data;
 
     private final String userPrefix;
     private final Integer userSuffixMin;
     private final Integer userSuffixMax;
 
     public DocumentSigner(final String url, final boolean useWorkerServlet, 
-            final byte[] indata, final File infile, final String workerNameOrId, final String processType, final Random random,
+            final byte[] data, final String workerNameOrId, final Random random,
             final String userPrefix, final Integer userSuffixMin, final Integer userSuffixMax) {
         this.url = url;
         this.useWorkerServlet = useWorkerServlet;
-        this.indata = indata;
-        this.infile = infile;
+        this.data = data;
         this.workerNameOrId = workerNameOrId;
-        this.processType = processType;
         this.random = random;
         this.userPrefix = userPrefix;
         this.userSuffixMin = userSuffixMin;
@@ -74,24 +66,13 @@ public class DocumentSigner implements Task {
     
     @Override
     public long run() throws FailedException {
-        InputStream in = null;
         try {
-            long size;
-            if (indata == null) {
-                in = new FileInputStream(infile);
-                size = infile.length();
-            } else {
-                in = new ByteArrayInputStream(indata);
-                size = indata.length;
-            }
-            return documentRequest(in, size);
+            return documentRequest();
         } catch (IOException ex) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Could not create request", ex);
             }
             throw new FailedException("Could not create request: " + ex.getMessage());
-        } finally {
-            IOUtils.closeQuietly(in);
         }
     }
     
@@ -101,9 +82,9 @@ public class DocumentSigner implements Task {
      * @return Run time (in ms).
      * @throws IOException
      */
-    private long documentRequest(InputStream in, long size) throws IOException {
+    private long documentRequest() throws IOException {
         URL url;
-        HttpURLConnection urlConn;
+        URLConnection urlConn;
 
         final String requestUrl;
         
@@ -122,7 +103,7 @@ public class DocumentSigner implements Task {
             LOG.debug("Sending request at: " + startMillis);
         }
 
-        urlConn = (HttpURLConnection) url.openConnection();
+        urlConn = url.openConnection();
 
         urlConn.setDoOutput(true);
         urlConn.setAllowUserInteraction(false);
@@ -175,19 +156,9 @@ public class DocumentSigner implements Task {
             sb.append("--" + BOUNDARY);
             sb.append(CRLF);
         }
-        
-        // processType
-        sb.append("Content-Disposition: form-data; name=\"processType\"");
-        sb.append(CRLF);
-        sb.append(CRLF);
-        sb.append(processType);
-        sb.append(CRLF);
-            
-        sb.append("--" + BOUNDARY);
-        sb.append(CRLF);
 
         sb.append("Content-Disposition: form-data; name=\"datafile\"");
-        sb.append("; filename=\""); 
+        sb.append("; filename=\"");
         // don't care about the actual file name for now...
         sb.append("noname.dat");
         
@@ -201,35 +172,28 @@ public class DocumentSigner implements Task {
 
         urlConn.addRequestProperty("Content-Type",
                 "multipart/form-data; boundary=" + BOUNDARY);
-
-        final byte[] preData = sb.toString().getBytes("ASCII");
-        final byte[] postData = ("\r\n--" + BOUNDARY + "--\r\n").getBytes("ASCII");
+        urlConn.addRequestProperty("Content-Length", String.valueOf(
+                sb.toString().length() + BOUNDARY.length() + 8-1));
         
-        if (size >= 0) {
-            final long totalSize = (long) preData.length + size + (long) postData.length;
-            urlConn.setFixedLengthStreamingMode(totalSize);
-        }
-        
-        
-        // Write the request: preData, data, postData
         out = urlConn.getOutputStream();
-        out.write(preData);
-        final long copied = IOUtils.copyLarge(in, out);
-        if (copied != size) {
-            throw new IOException("Expected file size of " + size + " but only read " + copied + " bytes");
-        }
-        out.write(postData);
+                
+        out.write(sb.toString().getBytes());
+        out.write(data);
+        
+        out.write(("\r\n--" + BOUNDARY + "--\r\n").getBytes());
         out.flush();
         
-        try ( // Get the response
-                InputStream inResp = urlConn.getInputStream(); NullOutputStream os = new NullOutputStream()) {
-            int len;
-            final byte[] buf = new byte[1024];
-            while ((len = inResp.read(buf)) > 0) {
-                os.write(buf, 0, len);
-            }
+        // Get the response
+        final InputStream in = urlConn.getInputStream();
+        final ByteArrayOutputStream os = new ByteArrayOutputStream();
+        int len;
+        final byte[] buf = new byte[1024];
+        while ((len = in.read(buf)) > 0) {
+            os.write(buf, 0, len);
         }
+        os.close();
         out.close();
+        in.close();
         
         // Take stop time
         final long estimatedTime = System.nanoTime() - startTime;

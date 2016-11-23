@@ -19,7 +19,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Map;
-import org.apache.commons.io.IOUtils;
 
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
@@ -75,19 +74,22 @@ public class HTTPDocumentValidator extends AbstractDocumentValidator {
     }
     
     @Override
-    protected void doValidate(final InputStream in, final long size, final String encoding, final OutputStream out, final Map<String, Object> requestContext)
+    protected void doValidate(byte[] data, String encoding, final OutputStream out, final Map<String, Object> requestContext)
             throws IllegalRequestException, CryptoTokenOfflineException,
             SignServerException, IOException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Sending validation request "
-                    + " containing data of length " + size + " bytes"
+                    + " containing data of length " + data.length + " bytes"
                     + " to worker " + workerName);
         }
 
-        InputStream responseIn = null;
+        InputStream in = null;
         OutputStream outStream = null;
+
         try {
-            final HttpURLConnection conn = (HttpURLConnection) processServlet.openConnection();
+            final HttpURLConnection conn =
+                    (HttpURLConnection) processServlet.openConnection();
+            
             conn.setDoOutput(true);
             conn.setAllowUserInteraction(false);
 
@@ -119,7 +121,8 @@ public class HTTPDocumentValidator extends AbstractDocumentValidator {
             if (metadata != null) {
                 for (final String key : metadata.keySet()) {
                     final String value = metadata.get(key);
-
+                    
+                    
                     sb.append("Content-Disposition: form-data; name=\"REQUEST_METADATA." + key + "\"").append(CRLF);
                     sb.append(CRLF);
                     sb.append(value);
@@ -155,37 +158,27 @@ public class HTTPDocumentValidator extends AbstractDocumentValidator {
             conn.addRequestProperty("Content-Type",
                     "multipart/form-data; boundary=" + BOUNDARY);
            
-            final byte[] preData = sb.toString().getBytes("ASCII");
-            final byte[] postData = ("\r\n--" + BOUNDARY + "--\r\n").getBytes("ASCII");
-            
-            if (size >= 0) {
-                final long totalSize = (long) preData.length + size + (long) postData.length;
-                conn.setFixedLengthStreamingMode(totalSize);
-            }
-            
-            // Write the request: preData, data, postData
             outStream = conn.getOutputStream();
-            outStream.write(preData);
-            final long copied = IOUtils.copyLarge(in, outStream);
-            if (copied != size) {
-                throw new IOException("Expected file size of " + size + " but only read " + copied + " bytes");
-            }
-            outStream.write(postData);
+            
+            outStream.write(sb.toString().getBytes());
+            outStream.write(data);
+            
+            outStream.write(("\r\n--" + BOUNDARY + "--\r\n").getBytes());
             outStream.flush();
             
             // Get the response
             final int responseCode = conn.getResponseCode();
             
             if (responseCode >= 400) {
-                responseIn = conn.getErrorStream();
+                in = conn.getErrorStream();
             } else {
-                responseIn = conn.getInputStream();
+                in = conn.getInputStream();
             }
 
             final ByteArrayOutputStream os = new ByteArrayOutputStream();
             int len;
             final byte[] buf = new byte[1024];
-            while ((len = responseIn.read(buf)) > 0) {
+            while ((len = in.read(buf)) > 0) {
                 os.write(buf, 0, len);
             }
             os.close();
@@ -200,9 +193,9 @@ public class HTTPDocumentValidator extends AbstractDocumentValidator {
             final String response = os.toString();
             
             if ("VALID".equals(response)) {
-                out.write(("Valid: " + Boolean.TRUE).getBytes());
+                out.write(("Valid: " + Boolean.TRUE.booleanValue()).getBytes());
             } else {
-                out.write(("Valid: " + Boolean.FALSE).getBytes());
+                out.write(("Valid: " + Boolean.FALSE.booleanValue()).getBytes());
             }
             out.write("\n".getBytes());            
             
@@ -219,9 +212,9 @@ public class HTTPDocumentValidator extends AbstractDocumentValidator {
                     throw new RuntimeException(ex);
                 }
             }
-            if (responseIn != null) {
+            if (in != null) {
                 try {
-                    responseIn.close();
+                    in.close();
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }

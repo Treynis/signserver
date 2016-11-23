@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import org.signserver.common.AuthorizedClient;
+import org.signserver.common.ProcessableConfig;
 import org.signserver.common.SignServerConstants;
 import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerStatus;
@@ -36,12 +37,12 @@ public abstract class BaseValidator extends BaseProcessable implements IValidato
      * @see org.signserver.server.IProcessable#getStatus()
      */
     @Override
-    public WorkerStatusInfo getStatus(final List<String> additionalFatalErrors, final IServices services) {
-        final List<String> fatalErrors = new LinkedList<>(additionalFatalErrors);
-        fatalErrors.addAll(getFatalErrors(services));
+    public WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services) {
+        final List<String> fatalErrors = new LinkedList<String>(additionalFatalErrors);
+        fatalErrors.addAll(getFatalErrors());
 
-        final List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<>();
-        final List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<>();
+        final List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<WorkerStatusInfo.Entry>();
+        final List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<WorkerStatusInfo.Entry>();
 
         // Worker status
         briefEntries.add(new WorkerStatusInfo.Entry("Worker status", fatalErrors.isEmpty() ? "Active" : "Offline"));
@@ -61,14 +62,11 @@ public abstract class BaseValidator extends BaseProcessable implements IValidato
 
         // Clients
         final StringBuilder clientsValue = new StringBuilder();
-        for (AuthorizedClient client : config.getAuthorizedClients()) {
+        for (AuthorizedClient client : new ProcessableConfig(config).getAuthorizedClients()) {
             clientsValue.append("  ").append(client.getCertSN()).append(", ").append(properties.getProperty(client.getIssuerDN())).append("\n");
         }
         completeEntries.add(new WorkerStatusInfo.Entry("Authorized clients (serial number, issuer DN)", clientsValue.toString()));
 
-        return new WorkerStatusInfo(workerId, config.getProperty("NAME"),
-                                    "Validator", WorkerStatus.STATUS_ACTIVE,
-                                    briefEntries, fatalErrors, completeEntries,
-                                    config);
+        return new StaticWorkerStatus(new WorkerStatusInfo(workerId, config.getProperty("NAME"), "Validator", WorkerStatus.STATUS_ACTIVE, briefEntries, fatalErrors, completeEntries, config));
     }
 }

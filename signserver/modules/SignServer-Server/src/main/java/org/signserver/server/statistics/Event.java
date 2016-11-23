@@ -78,7 +78,7 @@ public class Event {
     }
 
     /**
-     * @return the time the event started or null if it haven't ended yet.
+     * @return @return the time the event started or null if it haven't ended yet.
      */
     public Date getEndTimeStamp() {
         return endTimeStamp;
@@ -94,7 +94,7 @@ public class Event {
      */
     public void addCustomStatistics(String type, Integer data) {
         if (customData == null) {
-            customData = new HashMap<>();
+            customData = new HashMap<String, Integer>();
         }
         customData.put(type, data);
     }

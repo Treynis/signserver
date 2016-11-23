@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="SignServer" href="http://signserver.sourceforge.net/">
+
+    <title>Documentation - SignServer - Open Source server side Digital Signatures</title>
+
+    <body>
+       <menusection name="Home" index="0"         href="/index.html">
+
+            <menu name="Documentation">
+                <item name="Home"                 href="/index.html"/>
+
+                <item name="Architecture"         href="/architecture.html"/>
+                
+                <item name="Manual Overview"	  href="/manual.html"/>
+            </menu>
+                
+            <menu name="Manual">
+                <item name="Introduction"         href="/manual/introduction.html"/>
+                <item name="Installation Guide"	  href="/manual/installguide.html"/>        
+                <item name="Usage Guide"          href="/manual/usageguide.html"/>
+                <item name="Integration"          href="/manual/integration.html"/>
+                <item name="Common Configuration" href="/manual/commonconf.html"/>
+                <item name="Plugins"              href="/manual/plugins.html"/>
+                <item name="Development"          href="/manual/development.html"/>
+                <item name="Miscellaneous"        href="/manual/misc.html"/>
+            </menu>
+
+            <menu name="Other">
+                <item name="signserver.org" href="https://www.signserver.org"/>
+            </menu>
+
+        </menusection>
+
+    </body>
+</project>

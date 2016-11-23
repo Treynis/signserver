@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer-Modules</artifactId>
-        <version>4.0.1-SNAPSHOT</version>
+        <version>3.7.5-SNAPSHOT</version>
     </parent>
     <artifactId>SignServer-Module-Log4j</artifactId>
     <name>SignServer-Module-Log4j</name>
@@ -19,10 +19,12 @@
         <dependency>
             <groupId>commons-logging</groupId>
             <artifactId>commons-logging</artifactId>
+            <version>1.1.1</version>
         </dependency>
         <dependency>
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
+            <version>1.2.14</version>
         </dependency>
     </dependencies>
 </project>

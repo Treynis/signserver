@@ -16,15 +16,14 @@ import java.beans.XMLEncoder;
 import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import javax.ejb.EJBException;
 import javax.persistence.*;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.Base64GetHashMap;
-import org.cesecore.util.Base64PutHashMap;
+import org.ejbca.util.Base64GetHashMap;
+import org.ejbca.util.Base64PutHashMap;
 import org.signserver.common.ArchiveData;
 import org.signserver.common.ArchiveDataVO;
 
@@ -134,8 +133,6 @@ public class ArchiveDataBean implements Serializable {
      * type indicates if the archieve is of the type response or request
      * see TYPE constants for more information
      *
-     * @param type Type of archiving
-     * @see org.signserver.server.archive.olddbarchiver.ArchiveOfTypes
      */
     public void setType(int type) {
         this.type = type;
@@ -174,8 +171,6 @@ public class ArchiveDataBean implements Serializable {
 
     /**
      * The unique ID of the archive, could be the response serial number.
-     * 
-     * @param archiveid Archive ID
      */
     public void setArchiveid(String archiveid) {
         this.archiveid = archiveid;
@@ -234,22 +229,26 @@ public class ArchiveDataBean implements Serializable {
      */
     public ArchiveData getArchiveDataObject() {
         final ArchiveData result;
+        
+        try {
+            if (dataEncoding != null && dataEncoding == DATA_ENCODING_BASE64) {
+                result = new ArchiveData(Base64.decode(getArchiveData().getBytes("UTF8")));
+            } else {
+                java.beans.XMLDecoder decoder;
 
-        if (dataEncoding != null && dataEncoding == DATA_ENCODING_BASE64) {
-            result = new ArchiveData(Base64.decode(getArchiveData().getBytes(StandardCharsets.UTF_8)));
-        } else {
-            java.beans.XMLDecoder decoder;
+                    decoder =
+                            new java.beans.XMLDecoder(
+                            new java.io.ByteArrayInputStream(getArchiveData().getBytes("UTF8")));
+                HashMap<?, ?> h = (HashMap<?, ?>) decoder.readObject();
+                decoder.close();
 
-                decoder =
-                        new java.beans.XMLDecoder(
-                        new java.io.ByteArrayInputStream(getArchiveData().getBytes(StandardCharsets.UTF_8)));
-            HashMap<?, ?> h = (HashMap<?, ?>) decoder.readObject();
-            decoder.close();
+                HashMap<?, ?> data = new Base64GetHashMap(h);
 
-            HashMap<?, ?> data = new Base64GetHashMap(h);
-
-            result = new ArchiveData();
-            result.loadData(data);
+                result = new ArchiveData();
+                result.loadData(data);
+            }
+        } catch (UnsupportedEncodingException e) {
+            throw new EJBException(e);
         }
 
         return result;
@@ -266,12 +265,12 @@ public class ArchiveDataBean implements Serializable {
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        try (XMLEncoder encoder = new XMLEncoder(baos)) {
-            encoder.writeObject(a);
-        }
+        XMLEncoder encoder = new XMLEncoder(baos);
+        encoder.writeObject(a);
+        encoder.close();
 
         try {
-            setArchiveData(baos.toString(StandardCharsets.UTF_8.name()));
+            setArchiveData(baos.toString("UTF8"));
         } catch (UnsupportedEncodingException e) {
             throw new EJBException(e);
         }
@@ -279,17 +278,19 @@ public class ArchiveDataBean implements Serializable {
 
     /**
      * Method used to get the ArchiveDataVO representation of the data row.
-     * 
-     * @return Archive data
      */
     public ArchiveDataVO getArchiveDataVO() {
         if (LOG.isDebugEnabled()) {
             LOG.debug("getArchiveDataVO: dataEncoding: " + getDataEncoding());
         }
         if (getDataEncoding() != null && getDataEncoding() == DATA_ENCODING_BASE64) {
-            return new ArchiveDataVO(getType(), getSignerid(), getArchiveid(), new Date(getTime()),
-                getRequestIssuerDN(), getRequestCertSerialnumber(), getRequestIP(),
-                Base64.decode(getArchiveData().getBytes(StandardCharsets.UTF_8)));
+            try {
+                return new ArchiveDataVO(getType(), getSignerid(), getArchiveid(), new Date(getTime()),
+                    getRequestIssuerDN(), getRequestCertSerialnumber(), getRequestIP(),
+                    Base64.decode(getArchiveData().getBytes("UTF8")));
+            } catch (UnsupportedEncodingException ex) {
+                throw new RuntimeException(ex);
+            }
         } else {
             return new ArchiveDataVO(getType(), getSignerid(), getArchiveid(), new Date(getTime()),
                 getRequestIssuerDN(), getRequestCertSerialnumber(), getRequestIP(),

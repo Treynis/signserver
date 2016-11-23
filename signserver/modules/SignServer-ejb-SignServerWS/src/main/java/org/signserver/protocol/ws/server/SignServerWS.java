@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.*;
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.ejb.EJB;
 import javax.ejb.Stateless;
@@ -25,40 +24,17 @@ import javax.persistence.EntityManager;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
-import org.apache.commons.fileupload.FileUploadBase;
-import org.apache.commons.fileupload.FileUploadException;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
-import org.signserver.common.data.CertificateValidationRequest;
-import org.signserver.common.data.CertificateValidationResponse;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.SODRequest;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.ejb.interfaces.ProcessSessionLocal;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
+import org.signserver.common.util.PropertiesConstants;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.healthcheck.HealthCheckUtils;
 import org.signserver.protocol.ws.*;
 import org.signserver.server.CredentialUtils;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.common.data.SignatureResponse;
-import org.signserver.common.data.DocumentValidationRequest;
-import org.signserver.common.data.DocumentValidationResponse;
-import org.signserver.common.data.LegacyRequest;
-import org.signserver.common.data.LegacyResponse;
-import org.signserver.common.data.Response;
-import org.signserver.common.data.SODResponse;
-import org.signserver.server.data.impl.CloseableReadableData;
-import org.signserver.server.data.impl.CloseableWritableData;
-import org.signserver.server.data.impl.DataFactory;
-import org.signserver.server.data.impl.DataUtils;
-import org.signserver.server.data.impl.UploadConfig;
-import org.signserver.server.log.AdminInfo;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 import org.signserver.server.nodb.FileBasedDatabaseManager;
-import org.signserver.validationservice.common.ValidateRequest;
-import org.signserver.validationservice.common.ValidateResponse;
 
 /**
  * Implementor of the ISignServerWS interface.
@@ -80,13 +56,10 @@ public class SignServerWS implements ISignServerWS {
     private static final String HTTP_AUTH_BASIC_AUTHORIZATION = "Authorization";
     
     @EJB
-    private GlobalConfigurationSessionLocal globalSession;
+    private IGlobalConfigurationSession.ILocal globalconfigsession;
     
     @EJB
-    private WorkerSessionLocal workersession;
-    
-    @EJB
-    private ProcessSessionLocal processSession;
+    private IWorkerSession.ILocal workersession;
     
     /** EntityManager is conditionally injected from ejb-jar.xml. */
     private EntityManager em;
@@ -95,20 +68,12 @@ public class SignServerWS implements ISignServerWS {
 
     private int minimumFreeMemory = 1;
     
-    private DataFactory dataFactory;
-    
-    @PostConstruct
-    public void init() {
-        dataFactory = DataUtils.createDataFactory();
-    }
-    
-    @Override
     public Collection<WorkerStatusWS> getStatus(String workerIdOrName)
             throws InvalidWorkerIdException {
         LOG.debug("WS getStatus called");
-        ArrayList<WorkerStatusWS> retval = new ArrayList<>();
+        ArrayList<WorkerStatusWS> retval = new ArrayList<WorkerStatusWS>();
 
-        final LinkedList<String> errors = new LinkedList<>();
+        final LinkedList<String> errors = new LinkedList<String>();
 
         if (FileBasedDatabaseManager.getInstance().isUsed()) {
             errors.addAll(FileBasedDatabaseManager.getInstance().getFatalErrors());
@@ -119,10 +84,19 @@ public class SignServerWS implements ISignServerWS {
             errors.addAll(HealthCheckUtils.checkMemory(getMinimumFreeMemory()));
         }
 
-        if (!workerIdOrName.equalsIgnoreCase(ISignServerWS.ALLWORKERS)) {
+        int workerId = 0;
+        try {
+            if (!workerIdOrName.equalsIgnoreCase(ISignServerWS.ALLWORKERS)) {
+                workerId = getWorkerId(workerIdOrName);
+            }
+        } catch (IllegalRequestException e) {
+            throw new InvalidWorkerIdException("Worker id or name " + workerIdOrName + " couldn't be found.");
+        }
+
+        if (workerId != 0) {
             // Specified WorkerId
             if (errors.isEmpty()) {
-                errors.addAll(checkSigner(WorkerIdentifier.createFromIdOrName(workerIdOrName)));
+                errors.addAll(checkSigner(workerId));
             }
             WorkerStatusWS resp = new WorkerStatusWS();
             resp.setWorkerName(workerIdOrName);
@@ -139,10 +113,11 @@ public class SignServerWS implements ISignServerWS {
             retval.add(resp);
         } else {
             // All Workers
-            List<Integer> signers = getWorkerSession().getAllWorkers();
-            for (int next : signers) {
+            List<Integer> signers = getWorkerSession().getWorkers(GlobalConfiguration.WORKERTYPE_PROCESSABLE);
+            for (Iterator<Integer> iterator = signers.iterator(); iterator.hasNext();) {
+                int next = iterator.next();
                 if (errors.isEmpty()) {
-                    errors.addAll(checkSigner(new WorkerIdentifier(next)));
+                    errors.addAll(checkSigner(next));
                 }
 
                 WorkerStatusWS resp = new WorkerStatusWS();
@@ -163,9 +138,9 @@ public class SignServerWS implements ISignServerWS {
         return retval;
     }
 
-    private List<String> checkSigner(WorkerIdentifier wi) throws InvalidWorkerIdException {
-        final LinkedList<String> result = new LinkedList<>();
-        final WorkerStatus status = getWorkerSession().getStatus(wi);
+    private List<String> checkSigner(int workerId) throws InvalidWorkerIdException {
+        final LinkedList<String> result = new LinkedList<String>();
+        final WorkerStatus status = getWorkerSession().getStatus(workerId);
         for (String error : status.getFatalErrors()) {
             result.add("Worker " + status.getWorkerId() + ": " + error + "\n");
         }
@@ -175,12 +150,11 @@ public class SignServerWS implements ISignServerWS {
     /**
      * @see  org.signserver.protocol.ws.ISignServerWS#process(String, Collection)
      */
-    @Override
     public Collection<ProcessResponseWS> process(String workerIdOrName,
             Collection<ProcessRequestWS> requests)
             throws InvalidWorkerIdException, IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
-        ArrayList<ProcessResponseWS> retval = new ArrayList<>();
+        ArrayList<ProcessResponseWS> retval = new ArrayList<ProcessResponseWS>();
 
         final HttpServletRequest servletRequest =
                 (HttpServletRequest) wsContext.getMessageContext().get(MessageContext.SERVLET_REQUEST);
@@ -190,43 +164,30 @@ public class SignServerWS implements ISignServerWS {
 
         // Add credentials to the context
         CredentialUtils.addToRequestContext(requestContext, servletRequest, clientCertificate);
-
+        
         final LogMap logMap = LogMap.getInstance(requestContext);
 
         final String xForwardedFor = servletRequest.getHeader(RequestContext.X_FORWARDED_FOR);
         
         // Add HTTP specific log entries
-        logMap.put(IWorkerLogger.LOG_REQUEST_FULLURL, new Loggable() {
-            @Override
-            public String toString() {
-                return servletRequest.getRequestURL().append("?")
-                        .append(servletRequest.getQueryString()).toString();
-            }
-        });
-                
-        logMap.put(IWorkerLogger.LOG_REQUEST_LENGTH, new Loggable() {
-            @Override
-            public String toString() {
-                return servletRequest.getHeader("Content-Length");
-            }
-        });
-                
-        logMap.put(IWorkerLogger.LOG_XFORWARDEDFOR, new Loggable() {
-            @Override
-            public String toString() {
-                return xForwardedFor;
-            }
-        });
+        logMap.put(IWorkerLogger.LOG_REQUEST_FULLURL, 
+                servletRequest.getRequestURL().append("?")
+                .append(servletRequest.getQueryString()).toString());
+        logMap.put(IWorkerLogger.LOG_REQUEST_LENGTH, 
+                servletRequest.getHeader("Content-Length"));
+        logMap.put(IWorkerLogger.LOG_XFORWARDEDFOR, xForwardedFor);
+
         
         if (xForwardedFor != null) {
             requestContext.put(RequestContext.X_FORWARDED_FOR, xForwardedFor);
         }
         
-        final WorkerIdentifier wi = WorkerIdentifier.createFromIdOrName(workerIdOrName);
+        int workerId = getWorkerId(workerIdOrName);
 
-        ArrayList<Certificate> signerCertificateChain = getSignerCertificateChain(wi);
+        ArrayList<Certificate> signerCertificateChain = getSignerCertificateChain(workerId);
 
-        for (ProcessRequestWS next : requests) {
+        for (Iterator<ProcessRequestWS> iterator = requests.iterator(); iterator.hasNext();) {
+            ProcessRequestWS next = iterator.next();
             ProcessRequest req;
             try {
                 req = RequestAndResponseManager.parseProcessRequest(next.getRequestData());
@@ -242,156 +203,48 @@ public class SignServerWS implements ISignServerWS {
                 requestContext.put(RequestContext.REQUEST_METADATA, metadata);
             }
             
-            final String fileName = metadata.get(RequestContext.FILENAME);
+            String fileName = metadata.get(RequestContext.FILENAME);
 
             if (fileName != null) {
-                requestContext.put(RequestContext.FILENAME, fileName);
-                logMap.put(IWorkerLogger.LOG_FILENAME, new Loggable() {
-                    @Override
-                    public String toString() {
-                        return fileName;
-                    }
-                });
+            	requestContext.put(RequestContext.FILENAME, fileName);
+            	logMap.put(IWorkerLogger.LOG_FILENAME, fileName);
             }
             
-            if (wi.hasName()) {
-                logMap.put(IWorkerLogger.LOG_WORKER_NAME, new Loggable() {
-                    @Override
-                    public String toString() {
-                        return wi.getName();
-                    }
-                });
-            }
-            if (wi.hasId()) {
-                logMap.put(IWorkerLogger.LOG_WORKER_ID, new Loggable() {
-                    @Override
-                    public String toString() {
-                        return String.valueOf(wi.getId());
-                    }
-                });
-            }
-            
-            // TODO: Duplicated in SignServerWS, AdminWS, ProcessSessionBean (remote)
-            CloseableReadableData requestData = null;
-            CloseableWritableData responseData = null;
-            Integer requestID = null;
+            logMap.put(IWorkerLogger.LOG_WORKER_NAME,
+                    getWorkerSession().getCurrentWorkerConfig(workerId).getProperty(PropertiesConstants.NAME));
+
+            ProcessResponse resp = getWorkerSession().process(workerId, req, requestContext);
+            ProcessResponseWS wsresp = new ProcessResponseWS();
             try {
-                final Request req2;
-                
-                // Use the new request types with large file support for
-                // GenericSignRequest and GenericValidationRequest
-                if (req instanceof GenericSignRequest) {
-                    byte[] data = ((GenericSignRequest) req).getRequestData();
-                    requestID = ((GenericSignRequest) req).getRequestID();
-                    
-                    // Upload handling (Note: close in finally clause)
-                    UploadConfig uploadConfig = UploadConfig.create(globalSession);
-                    requestData = dataFactory.createReadableData(data, uploadConfig.getMaxUploadSize(), uploadConfig.getRepository());
-                    responseData = dataFactory.createWritableData(requestData, uploadConfig.getRepository());
-                    req2 = new SignatureRequest(requestID, requestData, responseData);
-                } else if (req instanceof GenericValidationRequest) {
-                    byte[] data = ((GenericValidationRequest) req).getRequestData();
-                    requestID = ((GenericValidationRequest) req).getRequestID();
-                    
-                    // Upload handling (Note: close in finally clause)
-                    UploadConfig uploadConfig = UploadConfig.create(globalSession);
-                    requestData = dataFactory.createReadableData(data, uploadConfig.getMaxUploadSize(), uploadConfig.getRepository());
-                    req2 = new DocumentValidationRequest(requestID, requestData);
-                } else if (req instanceof ValidateRequest) {
-                    final ValidateRequest vr = (ValidateRequest) req;
-
-                    // Upload handling
-                    req2 = new CertificateValidationRequest(vr.getCertificate(), vr.getCertPurposesString());
-                } else if (req instanceof SODSignRequest) {
-                    SODSignRequest sodReq = (SODSignRequest) req;
-                    req2 = new SODRequest(sodReq.getRequestID(), sodReq.getDataGroupHashes(), sodReq.getLdsVersion(), sodReq.getUnicodeVersion(), responseData);
-                } else {
-                    // Passthrough for all legacy requests
-                    req2 = new LegacyRequest(req);
-                }
-
-                final Response resp = getProcessSession().process(new AdminInfo("Client user", null, null),
-                        wi, req2, requestContext);
-                final ProcessResponse processResponse;
-                
-                if (resp instanceof SignatureResponse) {
-                    SignatureResponse sigResp = (SignatureResponse) resp;
-                    processResponse = new GenericSignResponse(sigResp.getRequestID(), responseData.toReadableData().getAsByteArray(), sigResp.getSignerCertificate(), sigResp.getArchiveId(), sigResp.getArchivables());
-                } else if (resp instanceof DocumentValidationResponse) {
-                    DocumentValidationResponse docResp = (DocumentValidationResponse) resp;
-                    processResponse = new GenericValidationResponse(docResp.getRequestID(), docResp.isValid(), convert(docResp.getCertificateValidationResponse()), requestData.getAsByteArray());
-                } else if (resp instanceof CertificateValidationResponse) {
-                    CertificateValidationResponse certResp = (CertificateValidationResponse) resp;
-                    processResponse = new ValidateResponse(certResp.getValidation(), certResp.getValidCertificatePurposes());
-                } else if (resp instanceof SODResponse) {
-                    SODResponse sodResp = (SODResponse) resp;
-                    processResponse = new SODSignResponse(sodResp.getRequestID(), responseData.toReadableData().getAsByteArray(), sodResp.getSignerCertificate(), sodResp.getArchiveId(), sodResp.getArchivables());
-                } else if (resp instanceof LegacyResponse) {
-                    processResponse = ((LegacyResponse) resp).getLegacyResponse();
-                } else {
-                    throw new SignServerException("Unexpected response type: " + resp);
-                }
-                
-                ProcessResponseWS wsresp = new ProcessResponseWS();
-                
-                if (processResponse instanceof GenericSignResponse) {
-                    GenericSignResponse sigResp = (GenericSignResponse) processResponse;
-                    wsresp.setRequestID(sigResp.getRequestID());
-                    try {
-                        wsresp.setWorkerCertificate(new Certificate(sigResp.getSignerCertificate()));
-                        wsresp.setWorkerCertificateChain(signerCertificateChain);
-                    } catch (CertificateEncodingException e) {
-                        LOG.error(e);
-                    }
-                }
-                
-                try {
-                    wsresp.setResponseData(RequestAndResponseManager.serializeProcessResponse(processResponse));
-                } catch (IOException e1) {
-                    LOG.error("Error parsing process response", e1);
-                    throw new SignServerException(e1.getMessage());
-                }
-
-                retval.add(wsresp);
-            } catch (FileUploadBase.SizeLimitExceededException ex) {
-                LOG.error("Maximum content length exceeded: " + ex.getLocalizedMessage());
-                throw new IllegalRequestException("Maximum content length exceeded");
-            } catch (FileUploadException ex) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Upload failed", ex);
-                }
-                throw new IllegalRequestException("Upload failed: " + ex.getLocalizedMessage());
-            } catch (IOException ex) {
-                throw new SignServerException("IO error", ex);
-            } finally {
-                if (requestData != null) {
-                    try {
-                        requestData.close();
-                    } catch (IOException ex) {
-                        LOG.error("Unable to remove temporary upload file: " + ex.getLocalizedMessage());
-                    }
-                }
-                if (responseData != null) {
-                    try {
-                        responseData.close();
-                    } catch (IOException ex) {
-                        LOG.error("Unable to remove temporary response file: " + ex.getLocalizedMessage());
-                    }
-                }
+                wsresp.setResponseData(RequestAndResponseManager.serializeProcessResponse(resp));
+            } catch (IOException e1) {
+                LOG.error("Error parsing process response", e1);
+                throw new SignServerException(e1.getMessage());
             }
+            if (resp instanceof ISignResponse) {
+                wsresp.setRequestID(((ISignResponse) resp).getRequestID());
+                try {
+                    wsresp.setWorkerCertificate(new Certificate(((ISignResponse) resp).getSignerCertificate()));
+                    wsresp.setWorkerCertificateChain(signerCertificateChain);
+                } catch (CertificateEncodingException e) {
+                    LOG.error(e);
+                }
+
+            }
+            retval.add(wsresp);
         }
         return retval;
     }
 
-    private ArrayList<Certificate> getSignerCertificateChain(WorkerIdentifier wi) throws InvalidWorkerIdException {
+    private ArrayList<Certificate> getSignerCertificateChain(int workerId) throws InvalidWorkerIdException {
         ArrayList<Certificate> retval = null;
         try {
-            WorkerStatus ws = getWorkerSession().getStatus(wi);
-            Collection<java.security.cert.Certificate> signerCertificateChain =
-                    ws.getActiveSignerConfig().getSignerCertificateChain();
+            WorkerStatus ws = getWorkerSession().getStatus(workerId);
+            ProcessableConfig sc = new ProcessableConfig(ws.getActiveSignerConfig());
+            Collection<java.security.cert.Certificate> signerCertificateChain = sc.getSignerCertificateChain();
 
             if (signerCertificateChain != null) {
-                retval = new ArrayList<>();
+                retval = new ArrayList<Certificate>();
                 for (Iterator<java.security.cert.Certificate> iterator = signerCertificateChain.iterator(); iterator.hasNext();) {
                     retval.add(new Certificate(iterator.next()));
                 }
@@ -420,6 +273,20 @@ public class SignServerWS implements ISignServerWS {
         return request.getRemoteAddr();
     }
 
+    private int getWorkerId(String workerIdOrName) throws IllegalRequestException {
+        int retval = 0;
+
+        if (workerIdOrName.substring(0, 1).matches("\\d")) {
+            retval = Integer.parseInt(workerIdOrName);
+        } else {
+            retval = getWorkerSession().getWorkerId(workerIdOrName);
+            if (retval == 0) {
+                throw new IllegalRequestException("Error: No worker with the given name could be found");
+            }
+        }
+        return retval;
+    }
+
     private int getMinimumFreeMemory() {
         final String minMemory = CompileTimeSettings.getInstance().getProperty(
                 CompileTimeSettings.HEALTHECK_MINIMUMFREEMEMORY);
@@ -442,20 +309,11 @@ public class SignServerWS implements ISignServerWS {
         return checkDBString;
     }
 
-    private WorkerSessionLocal getWorkerSession() {
+    private IWorkerSession.ILocal getWorkerSession() {
         return workersession;
     }
-    
-    private ProcessSessionLocal getProcessSession() {
-        return processSession;
-    }
 
-    private ValidateResponse convert(CertificateValidationResponse from) {
-        if (from == null) {
-            return null;
-        } else {
-            return new ValidateResponse(from.getValidation(), from.getValidCertificatePurposes());
-        }
+    private IGlobalConfigurationSession.ILocal getGlobalConfigurationSession() {
+        return globalconfigsession;
     }
-
 }

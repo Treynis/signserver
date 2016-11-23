@@ -14,7 +14,6 @@ package org.signserver.cli;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,15 +21,15 @@ import static junit.framework.TestCase.assertEquals;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.server.cryptotokens.KeystoreInConfigCryptoToken;
 import org.signserver.server.cryptotokens.P12CryptoToken;
 import org.signserver.testutils.CLITestHelper;
 import static org.signserver.testutils.CLITestHelper.assertPrinted;
 import org.signserver.testutils.ModulesTestCase;
-import org.signserver.ejb.interfaces.WorkerSession;
-import org.signserver.ejb.interfaces.GlobalConfigurationSession;
 
 /**
  * Tests for the query token entries command.
@@ -41,8 +40,8 @@ import org.signserver.ejb.interfaces.GlobalConfigurationSession;
 public class TokenEntriesCLITest extends ModulesTestCase {
     private final CLITestHelper cli = getAdminCLI();
     
-    protected final WorkerSession workerSession = getWorkerSession();
-    protected final GlobalConfigurationSession globalSession = getGlobalSession();
+    protected final IWorkerSession workerSession = getWorkerSession();
+    protected final IGlobalConfigurationSession globalSession = getGlobalSession();
 
     @Override
     protected void setUp() throws Exception {
@@ -71,14 +70,14 @@ public class TokenEntriesCLITest extends ModulesTestCase {
         final String testKeyAlias1 = "testKeyAlias1";
         final File ks = createEmptyKeystore();
         try {
-            workerSession.setWorkerProperty(tokenId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.server.signers.CryptoWorker");
-            workerSession.setWorkerProperty(tokenId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, P12CryptoToken.class.getName());
+            globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".CLASSPATH", "org.signserver.server.signers.CryptoWorker");
+            globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".SIGNERTOKEN.CLASSPATH", P12CryptoToken.class.getName());
             workerSession.setWorkerProperty(tokenId, "NAME", "TestP12CryptoToken" + tokenId);
             workerSession.setWorkerProperty(tokenId, "KEYSTOREPATH", ks.getAbsolutePath());
             workerSession.setWorkerProperty(tokenId, "KEYSTOREPASSWORD", "foo123");
             workerSession.reloadConfiguration(tokenId);
-            workerSession.activateSigner(new WorkerIdentifier(tokenId), "foo123");
-            workerSession.generateSignerKey(new WorkerIdentifier(tokenId), "RSA", "512", testKeyAlias1, "foo123".toCharArray());
+            workerSession.activateSigner(tokenId, "foo123");
+            workerSession.generateSignerKey(tokenId, "RSA", "512", testKeyAlias1, "foo123".toCharArray());
             
             assertEquals(CommandLineInterface.RETURN_SUCCESS,
                      cli.execute("querytokenentries", "-token", String.valueOf(tokenId), "-from", "0", "-limit", "1", "-criteria", "alias LIKE %KeyAlias%"));
@@ -99,27 +98,27 @@ public class TokenEntriesCLITest extends ModulesTestCase {
     @Test
     public void testQueryMoreThan10Keys() throws Exception {
         final int tokenId = 40302;
-        final List<String> aliases = new ArrayList<> ();
+        final List<String> aliases = new ArrayList<String> ();
         for (int i = 0; i < 13; i++) {
             aliases.add("testKey-" + i);
         }
         final File ks = createEmptyKeystore();
         try {
-            workerSession.setWorkerProperty(tokenId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.server.signers.CryptoWorker");
-            workerSession.setWorkerProperty(tokenId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, P12CryptoToken.class.getName());
+            globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".CLASSPATH", "org.signserver.server.signers.CryptoWorker");
+            globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".SIGNERTOKEN.CLASSPATH", P12CryptoToken.class.getName());
             workerSession.setWorkerProperty(tokenId, "NAME", "TestP12CryptoToken" + tokenId);
             workerSession.setWorkerProperty(tokenId, "KEYSTOREPATH", ks.getAbsolutePath());
             workerSession.setWorkerProperty(tokenId, "KEYSTOREPASSWORD", "foo123");
             workerSession.reloadConfiguration(tokenId);
-            workerSession.activateSigner(new WorkerIdentifier(tokenId), "foo123");
+            workerSession.activateSigner(tokenId, "foo123");
             
             for (String alias : aliases) {
-                workerSession.generateSignerKey(new WorkerIdentifier(tokenId), "RSA", "512", alias, "foo123".toCharArray());
+                workerSession.generateSignerKey(tokenId, "RSA", "512", alias, "foo123".toCharArray());
             }
 
             assertEquals(CommandLineInterface.RETURN_SUCCESS,
                      cli.execute("querytokenentries", "-token", String.valueOf(tokenId)));
-            String output = cli.getOut().toString(StandardCharsets.UTF_8.name());
+            String output = cli.getOut().toString("UTF-8");
             for (String alias : aliases) {
                 assertTrue("should contain: " + alias + " but was " + output, output.contains(alias));
             }

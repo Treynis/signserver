@@ -19,7 +19,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.util.Collection;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.server.archive.Archivable;
 
 /**
@@ -51,11 +51,6 @@ public class GenericSignResponse extends ProcessResponse implements ISignRespons
     /**
      * Creates a GenericWorkResponse, works as a simple VO.
      * 
-     * @param requestID
-     * @param processedData
-     * @param signerCertificate
-     * @param archiveId
-     * @param archivables
      * @see org.signserver.common.ProcessRequest
      */
     public GenericSignResponse(int requestID, byte[] processedData,
@@ -77,7 +72,6 @@ public class GenericSignResponse extends ProcessResponse implements ISignRespons
     /**
      * @return the request ID
      */
-    @Override
     public int getRequestID() {
         return requestID;
     }
@@ -107,7 +101,6 @@ public class GenericSignResponse extends ProcessResponse implements ISignRespons
         return processedData;
     }
 
-    @Override
     public void parse(DataInput in) throws IOException {
         in.readInt();
         this.requestID = in.readInt();
@@ -131,7 +124,6 @@ public class GenericSignResponse extends ProcessResponse implements ISignRespons
         in.readFully(processedData);
     }
 
-    @Override
     public void serialize(DataOutput out) throws IOException {
         out.writeInt(tag);
         out.writeInt(this.requestID);
@@ -150,12 +142,10 @@ public class GenericSignResponse extends ProcessResponse implements ISignRespons
         } else {
             out.writeInt(0);
         }
-        final byte[] data = getProcessedData(); // This can be overridden
-        out.writeInt(data.length);
-        out.write(data);
+        out.writeInt(processedData.length);
+        out.write(processedData);
     }
 
-    @Override
     public Collection<? extends Archivable> getArchivables() {
         return archivables;
     }

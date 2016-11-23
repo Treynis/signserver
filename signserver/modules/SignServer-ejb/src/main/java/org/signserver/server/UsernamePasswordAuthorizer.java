@@ -24,12 +24,11 @@ import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Hex;
 import org.signserver.common.AuthorizationRequiredException;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.data.Request;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 
 /**
  * Authorizer requiring a username password pair.
@@ -68,7 +67,7 @@ public class UsernamePasswordAuthorizer implements IAuthorizer {
     }
 
     @Override
-    public void isAuthorized(final Request request,
+    public void isAuthorized(final ProcessRequest request,
             final RequestContext requestContext)
             throws SignServerException, IllegalRequestException {
 
@@ -92,7 +91,7 @@ public class UsernamePasswordAuthorizer implements IAuthorizer {
 
     private void loadAccounts(final WorkerConfig config) {
 
-        userMap = new HashMap<>();
+        userMap = new HashMap<String, Account>();
 
         for(Object o : config.getProperties().keySet()) {
             if (o instanceof String) {
@@ -165,13 +164,7 @@ public class UsernamePasswordAuthorizer implements IAuthorizer {
 
     private static void logUsername(final String username,
             final RequestContext requestContext) {
-        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_USERNAME,
-                    new Loggable() {
-                        @Override
-                        public String toString() {
-                            return username;
-                        }
-                    });
+        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_USERNAME, username);
     }
 
     private static class Account {

@@ -13,11 +13,7 @@
 package org.signserver.server.config.entities;
 
 import java.io.Serializable;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Lob;
-import javax.persistence.Table;
+import javax.persistence.*;
 
 /**
  * Entity Bean storing each worker configuration.
@@ -29,8 +25,6 @@ import javax.persistence.Table;
  * Information stored:
  * <pre>
  * signerId (PrimaryKey, int)
- * signerName (String)
- * signerType (int)
  * signerConfigData (WorkerConfig in xml-encoding, String)
  * </pre>
  *
@@ -43,16 +37,10 @@ public class WorkerConfigDataBean implements Serializable {
     @Id
     private int signerId;
     
-    @Column(length = 255)
-    private String signerName;
-    
-    @Column
-    private Integer signerType;
-    
     @Lob
     @Column(length = 1048576)
     private String signerConfigData;
-    
+
     /**
      * Unique Id of the signer
      *
@@ -65,27 +53,9 @@ public class WorkerConfigDataBean implements Serializable {
     /**
      * Unique Id of the signer
      * Shouldn't be set after creation.
-     * 
-     * @param signerId Signer ID
      */
     public void setSignerId(int signerId) {
         this.signerId = signerId;
-    }
-    
-    public String getSignerName() {
-        return signerName;
-    }
-
-    public void setSignerName(String signerName) {
-        this.signerName = signerName;
-    }
-
-    public Integer getSignerType() {
-        return signerType;
-    }
-
-    public void setSignerType(Integer signerType) {
-        this.signerType = signerType;
     }
 
     /**
@@ -101,7 +71,7 @@ public class WorkerConfigDataBean implements Serializable {
     /**
      * WorkerConfig in  xmlencoded String format
      *
-     * @param signerConfigData
+     * @param WorkerConfig xmlencoded encoded WorkerConfig
      * @ejb.persistence
      */
     public void setSignerConfigData(String signerConfigData) {

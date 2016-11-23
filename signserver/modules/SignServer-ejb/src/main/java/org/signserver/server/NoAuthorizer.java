@@ -20,7 +20,6 @@ import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.data.Request;
 
 /**
  * Simple IAuthorizer accepting all requests.
@@ -31,7 +30,6 @@ import org.signserver.common.data.Request;
 public class NoAuthorizer implements IAuthorizer {
 
     /**
-     * @throws org.signserver.common.SignServerException
      * @see org.signserver.server.IAuthorizer#init(int, org.signserver.common.WorkerConfig, javax.persistence.EntityManager)
      */
     @Override
@@ -40,14 +38,10 @@ public class NoAuthorizer implements IAuthorizer {
     }
 
     /**
-     * Check if a request is authorized.
-     * 
-     * @throws SignServerException
-     * @throws IllegalRequestException If not authorized
      * @see org.signserver.server.IAuthorizer#isAuthorized(ProcessRequest, RequestContext)
      */
     @Override
-    public void isAuthorized(Request request, RequestContext requestContext)
+    public void isAuthorized(ProcessRequest request, RequestContext requestContext)
             throws SignServerException, IllegalRequestException {
     }
 

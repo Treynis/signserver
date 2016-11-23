@@ -65,13 +65,11 @@ then
 fi
 
 # Optional JARs
-VALIDATIONCLI_JAR=`find "${SIGNSRV_HOME}/lib" -name "SignServer-Client-ValidationCLI-*.jar"`
-OPTIONAL_CLASSPATH=${VALIDATIONCLI_JAR}:${EXTRA_CLASSPATH}
+OPTIONAL_CLASSPATH=${SIGNSRV_HOME}/lib/SignServer-Client-ValidationCLI.jar:${EXTRA_CLASSPATH}
 
 # Construct the classpath
 CP="${MAIN_JAR}"
 CP="${SIGNSRV_HOME}/conf":"$CP"
-CP="$CP:$SIGNSRV_HOME/res/deploytools/cesecore"
 CP="$CP":${OPTIONAL_CLASSPATH}
 
 # For Cygwin, switch paths to Windows format before running java

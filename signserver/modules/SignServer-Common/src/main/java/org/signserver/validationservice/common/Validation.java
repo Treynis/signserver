@@ -16,7 +16,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
@@ -24,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 
 /**
  * Base validation VO containing the status of a specific certificate.
@@ -113,7 +112,7 @@ public class Validation implements Serializable {
             this.certificateData = certificate.getEncoded();
 
             if (cAChain != null) {
-                this.cAChainData = new ArrayList<>();
+                this.cAChainData = new ArrayList<byte[]>();
                 for (Certificate cert : cAChain) {
                     cAChainData.add(0, cert.getEncoded());
                 }
@@ -173,7 +172,7 @@ public class Validation implements Serializable {
      */
     public List<Certificate> getCAChain() {
         if (cAChain == null && cAChainData != null) {
-            cAChain = new ArrayList<>();
+            cAChain = new ArrayList<Certificate>();
             for (byte[] certData : cAChainData) {
                 try {
                     Certificate cACert = CertTools.getCertfromByteArray(certData);
@@ -202,13 +201,13 @@ public class Validation implements Serializable {
         size = in.readInt();
         byte[] stringData = new byte[size];
         in.readFully(stringData);
-        status = Status.valueOf(new String(stringData, StandardCharsets.UTF_8));
+        status = Status.valueOf(new String(stringData, "UTF-8"));
 
         size = in.readInt();
         if (size != 0) {
             stringData = new byte[size];
             in.readFully(stringData);
-            statusMessage = new String(stringData, StandardCharsets.UTF_8);
+            statusMessage = new String(stringData, "UTF-8");
         }
 
         long time = in.readLong();
@@ -218,7 +217,7 @@ public class Validation implements Serializable {
 
         revokationReason = in.readInt();
 
-        cAChainData = new ArrayList<>();
+        cAChainData = new ArrayList<byte[]>();
         size = in.readInt();
         for (int i = 0; i < size; i++) {
             int dataLen = in.readInt();
@@ -233,14 +232,14 @@ public class Validation implements Serializable {
         out.writeInt(certificateData.length);
         out.write(certificateData);
 
-        byte[] stringData = status.name().getBytes(StandardCharsets.UTF_8);
+        byte[] stringData = status.name().getBytes("UTF-8");
         out.writeInt(stringData.length);
         out.write(stringData);
 
         if (statusMessage == null) {
             out.writeInt(0);
         } else {
-            stringData = statusMessage.getBytes(StandardCharsets.UTF_8);
+            stringData = statusMessage.getBytes("UTF-8");
             out.writeInt(stringData.length);
             out.write(stringData);
         }

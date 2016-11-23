@@ -42,7 +42,7 @@ public class RequestContext implements Serializable {
      */
     public static String METADATA_PDFPASSWORD = "pdfPassword";
 
-    private HashMap<String, Object> context = new HashMap<>();
+    private HashMap<String, Object> context = new HashMap<String, Object>();
     
     /**
      * Used to fetch the client certificate used for the request if there exists any, otherwise is
@@ -160,10 +160,7 @@ public class RequestContext implements Serializable {
     }
 
     /**
-     * Help constructor setting the client certificate and Remote IP.
-     * 
-     * @param clientCertificate Client certificate
-     * @param remoteIP Remote IP address of the request
+     * Help constructor setting the client certificate and Remote IP
      */
     public RequestContext(Certificate clientCertificate, String remoteIP) {
         context.put(CLIENT_CERTIFICATE, clientCertificate);
@@ -171,9 +168,7 @@ public class RequestContext implements Serializable {
     }
 
     /**
-     * Help constructor used for calls from the RMI cli.
-     * 
-     * @param calledFromCli True if called from the RMI CLI
+     * Help constructor used for calls from the RMI cli
      */
     public RequestContext(boolean calledFromCli) {
         context.put(CALLED_FROM_CLI, calledFromCli);
@@ -181,10 +176,7 @@ public class RequestContext implements Serializable {
 
     /**
      * Retrieves specified field from the context, this could be a custom value or
-     * one of the specified constants.
-     * 
-     * @param field Field to get value of
-     * @return The value of the field
+     * one of the specified constants
      */
     public Object get(String field) {
         return context.get(field);
@@ -192,10 +184,7 @@ public class RequestContext implements Serializable {
 
     /**
      * Sets specified field from the context, this could be a custom value or
-     * one of the specified constants.
-     * 
-     * @param field Field to set value of
-     * @param data The value to set
+     * one of the specified constants
      */
     public void put(String field, Object data) {
         context.put(field, data);
@@ -203,9 +192,7 @@ public class RequestContext implements Serializable {
 
     /**
      * Removes specified field from the context, this could be a custom value or
-     * one of the specified constants.
-     * 
-     * @param field The field to remove
+     * one of the specified constants
      */
     public void remove(String field) {
         context.remove(field);
@@ -273,7 +260,7 @@ public class RequestContext implements Serializable {
         final RequestContext newContext = new RequestContext();
         
         newContext.services = services;
-        newContext.context = new HashMap<>();
+        newContext.context = new HashMap<String, Object>();
         
         for (final String key : context.keySet()) {
             final Object value = context.get(key);

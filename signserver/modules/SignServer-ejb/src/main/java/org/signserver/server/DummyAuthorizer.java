@@ -16,14 +16,13 @@ import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.List;
 import javax.persistence.EntityManager;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
+import org.signserver.common.GenericSignRequest;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.SignatureRequest;
 
 /**
  * Dummy authorizer used for testing and demonstration purposes
@@ -34,9 +33,6 @@ import org.signserver.common.data.SignatureRequest;
 public class DummyAuthorizer implements IAuthorizer {
 
     /**
-     * Initialize a DummyAuthorizer.
-     * 
-     * @throws org.signserver.common.SignServerException
      * @see org.signserver.server.IAuthorizer#init(int, org.signserver.common.WorkerConfig, javax.persistence.EntityManager)
      */
     @Override
@@ -55,14 +51,10 @@ public class DummyAuthorizer implements IAuthorizer {
     }
 
     /**
-     * Check if request is authorized.
-     * 
-     * @throws SignServerException
-     * @throws IllegalRequestException If not authorized
      * @see org.signserver.server.IAuthorizer#isAuthorized(ProcessRequest, RequestContext)
      */
     @Override
-    public void isAuthorized(Request request, RequestContext requestContext)
+    public void isAuthorized(ProcessRequest request, RequestContext requestContext)
             throws SignServerException, IllegalRequestException {
 
         String clientIP = (String) requestContext.get(RequestContext.REMOTE_IP);
@@ -72,12 +64,11 @@ public class DummyAuthorizer implements IAuthorizer {
             throw new IllegalRequestException("Not authorized");
         }
         if (clientCert != null && (CertTools.stringToBCDNString(clientCert.getSubjectDN().toString()).equals("CN=timestamptest,O=PrimeKey Solution AB")
-                || CertTools.stringToBCDNString(clientCert.getSubjectDN().toString()).equals("CN=TS Signer 1,OU=Testing,O=SignServer,C=SE")
                 || CertTools.stringToBCDNString(clientCert.getSubjectDN().toString()).equals("CN=Signer 4,OU=Testing,O=SignServer,C=SE")
                 || clientCert.getSerialNumber().toString(16).equalsIgnoreCase("58ece0453711fe20"))) {
             throw new IllegalRequestException("Not authorized");
         }
-        if (request instanceof SignatureRequest && ((SignatureRequest) request).getRequestID() != 1) {
+        if (request instanceof GenericSignRequest && ((GenericSignRequest) request).getRequestID() != 1) {
             throw new IllegalRequestException("Not authorized");
         }
     }

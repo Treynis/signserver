@@ -13,11 +13,12 @@
 package org.signserver.module.xmlvalidator;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.Provider;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
-import java.util.LinkedList;
-import java.util.List;
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import javax.xml.crypto.MarshalException;
 import javax.xml.crypto.dsig.XMLSignature;
@@ -26,22 +27,23 @@ import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.dom.DOMValidateContext;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
-import org.signserver.common.data.CertificateValidationRequest;
-import org.signserver.common.data.CertificateValidationResponse;
-import org.signserver.common.data.DocumentValidationRequest;
-import org.signserver.common.data.DocumentValidationResponse;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.ejb.interfaces.InternalProcessSessionLocal;
-import org.signserver.server.IServices;
+import org.signserver.ejb.interfaces.IInternalWorkerSession;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.log.AdminInfo;
 import org.signserver.server.validators.BaseValidator;
+import org.signserver.validationservice.common.ValidateRequest;
+import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -51,6 +53,9 @@ import org.xml.sax.SAXException;
  * Implements IValidator and have the following properties:
  * VALIDATIONSERVICEWORKER = Name or id of validation service worker for
  *                           handling certificate validation
+ * RETURNDOCUMENT = True if the response should contain the validated document
+ * STRIPSIGNATURE = True if the signature should be removed from the document
+ *                  if it is returned
  *
  * @author Markus Kilås
  * @version $Id$
@@ -63,51 +68,52 @@ public class XMLValidator extends BaseValidator {
     /** VALIDATIONSERVICEWORKER property. */
     static final String PROP_VALIDATIONSERVICEWORKER =
             "VALIDATIONSERVICEWORKER";
-
-    // Configuration errors
-    private final LinkedList<String> configErrors = new LinkedList<>();
     
-    private String validationServiceWorker;
+    /** RETURNDOCUMENT property. */
+    static final String PROP_RETURNDOCUMENT = "RETURNDOCUMENT";
+    
+    /** STRIPSIGNATURE property. */
+    static final String PROP_STRIPSIGNATURE = "STRIPSIGNATURE";
+    
+    /** Worker session. */
+    private IInternalWorkerSession workersession;
+    
+    /** ID of validation service worker used for validating certificates. */
+    private transient int validationServiceWorkerId;
 
     @Override
     public void init(final int workerId, final WorkerConfig config,
             final WorkerContext workerContext, final EntityManager workerEM) {
         super.init(workerId, config, workerContext, workerEM);
-        
-        // Required property: VALIDATIONSERVICEWORKER
-        validationServiceWorker = config.getProperty(PROP_VALIDATIONSERVICEWORKER);
-        if (validationServiceWorker == null || validationServiceWorker.trim().isEmpty()) {
-            configErrors.add("Missing required property: " + PROP_VALIDATIONSERVICEWORKER);
-        }
+
+        getWorkerSession();
+        getValidationServiceWorkerId();
     }
 
     @Override
-    public Response processData(Request signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-        try {
-            if (!configErrors.isEmpty()) {
-                throw new SignServerException("Worker is misconfigured");
-            }
-            
-            // Check that the request contains a valid GenericSignRequest object with a byte[].
-            if (!(signRequest instanceof DocumentValidationRequest)) {
-                throw new IllegalRequestException("Received request wasn't an expected GenericValidationRequest.");
-            }
-            DocumentValidationRequest sReq = (DocumentValidationRequest) signRequest;
-            
-            byte[] data = (byte[]) sReq.getRequestData().getAsByteArray();
-            
-            DocumentValidationResponse response = validate(sReq.getRequestID(), data, requestContext);
-            
-            // The client can be charged for the request
-            requestContext.setRequestFulfilledByWorker(true);
-            
-            return response;
-        } catch (IOException ex) {
-            throw new SignServerException("IO error", ex);
+    public ProcessResponse processData(ProcessRequest signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+
+        // Check that the request contains a valid GenericSignRequest object with a byte[].
+        if (!(signRequest instanceof GenericValidationRequest)) {
+            throw new IllegalRequestException("Received request wasn't a expected GenericValidationRequest.");
         }
+        IValidationRequest sReq = (IValidationRequest) signRequest;
+
+        if (!(sReq.getRequestData() instanceof byte[])) {
+            throw new IllegalRequestException("Received request data wasn't a expected byte[].");
+        }
+
+        byte[] data = (byte[]) sReq.getRequestData();
+
+        GenericValidationResponse response = validate(sReq.getRequestID(), data);
+        
+        // The client can be charged for the request
+        requestContext.setRequestFulfilledByWorker(true);
+            
+        return response;
     }
 
-    private DocumentValidationResponse validate(final int requestId, byte[] data, RequestContext requestContext) throws SignServerException {
+    private GenericValidationResponse validate(final int requestId, byte[] data) throws SignServerException {
 
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(true);
@@ -126,20 +132,28 @@ public class XMLValidator extends BaseValidator {
             dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
 
             doc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(data));
-        } catch (ParserConfigurationException | SAXException | IOException ex) {
+        } catch (ParserConfigurationException ex) {
+            throw new SignServerException("Document parsing error", ex);
+        } catch (SAXException ex) {
+            throw new SignServerException("Document parsing error", ex);
+        } catch (IOException ex) {
             throw new SignServerException("Document parsing error", ex);
         }
         NodeList nl = doc.getElementsByTagNameNS(XMLSignature.XMLNS, "Signature");
         if (nl.getLength() == 0) {
             LOG.info("Request " + requestId + ": No signature found");
-            return new DocumentValidationResponse(requestId, false);
+            return new GenericValidationResponse(requestId, false);
         }
 
         String providerName = System.getProperty("jsr105Provider", "org.apache.jcp.xml.dsig.internal.dom.XMLDSigRI");
         XMLSignatureFactory fac;
         try {
             fac = XMLSignatureFactory.getInstance("DOM", (Provider) Class.forName(providerName).newInstance());
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (IllegalAccessException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (ClassNotFoundException e) {
             throw new SignServerException("Problem with JSR105 provider", e);
         }
 
@@ -157,7 +171,7 @@ public class XMLValidator extends BaseValidator {
             throw new SignServerException("XML signature validation error", ex);
         } catch (XMLSignatureException ex) {
             LOG.info("Request " + requestId + ": XML signature validation error", ex);
-            return new DocumentValidationResponse(requestId, false);
+            return new GenericValidationResponse(requestId, false);
         }
 
         LOG.info("Request " + requestId + " signature valid: " + validSignature);
@@ -169,7 +183,7 @@ public class XMLValidator extends BaseValidator {
 
         // Check certificate
         boolean validCertificate = false;
-        CertificateValidationResponse vresponse = null;
+        ValidateResponse vresponse = null;
 
         // No need to check certificate if the signature anyway is inconsistent
         if (validSignature) {
@@ -181,22 +195,28 @@ public class XMLValidator extends BaseValidator {
                         + "\"" + choosenCert.getNotAfter() + "\")");
             }
 
-            CertificateValidationRequest vr = new CertificateValidationRequest(choosenCert, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
-            Response response;
+            ValidateRequest vr;
+            ProcessResponse response;
+            try {
+                vr = new ValidateRequest(choosenCert, ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE);
+            } catch (CertificateEncodingException e) {
+                throw new SignServerException("Error validating certificate", e);
+            }
 
             try {
-                LOG.info("Requesting certificate validation from worker: " + PROP_VALIDATIONSERVICEWORKER);
-                response = getProcessSession(requestContext).process(new AdminInfo("Client user", null, null), WorkerIdentifier.createFromIdOrName(validationServiceWorker), vr, new RequestContext());
+                final int validationWorkerId = getValidationServiceWorkerId();
+                LOG.info("Requesting certificate validation from worker: " + validationWorkerId);
+                response = getWorkerSession().process(validationWorkerId, vr, new RequestContext());
                 LOG.info("ProcessResponse: " + response);
 
                 if (response == null) {
                     throw new SignServerException("Error communicating with validation servers, no server in the cluster seem available.");
                 }
 
-                if (!(response instanceof CertificateValidationResponse)) {
+                if (!(response instanceof ValidateResponse)) {
                     throw new SignServerException("Unexpected certificate validation response: " + response);
                 }
-                vresponse = (CertificateValidationResponse) response;
+                vresponse = (ValidateResponse) response;
 
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Request " + requestId + ": validateCertificate:response("
@@ -209,31 +229,84 @@ public class XMLValidator extends BaseValidator {
                     validCertificate = true;
                 }
 
-            } catch (IllegalRequestException | CryptoTokenOfflineException | SignServerException e) {
+            } catch (IllegalRequestException e) {
+                LOG.warn("Error validating certificate", e);
+            } catch (CryptoTokenOfflineException e) {
+                LOG.warn("Error validating certificate", e);
+            } catch (SignServerException e) {
                 LOG.warn("Error validating certificate", e);
             }
             LOG.info("Request " + requestId + " valid certificate: " + validCertificate);
         }
 
-        return new DocumentValidationResponse(requestId, validSignature && validCertificate, vresponse);
+        byte[] processedBytes = null;
+        if (Boolean.parseBoolean(config.getProperty(PROP_RETURNDOCUMENT))) {
+            if (Boolean.parseBoolean(config.getProperty(PROP_STRIPSIGNATURE))) {
+                try {
+                    processedBytes = unwrapSignature(doc, "Signature");
+                } catch (TransformerConfigurationException ex) {
+                    throw new SignServerException("Error stripping Signature tag", ex);
+                } catch (TransformerException ex) {
+                    throw new SignServerException("Error stripping Signature tag", ex);
+                }
+            } else {
+                processedBytes = data;
+            }
+        }
+
+        return new GenericValidationResponse(requestId, validSignature && validCertificate, vresponse, processedBytes);
+    }
+
+    private int getValidationServiceWorkerId() {
+        if (validationServiceWorkerId < 1) {
+            validationServiceWorkerId = getWorkerSession().getWorkerId(
+                    config.getProperties().getProperty(PROP_VALIDATIONSERVICEWORKER));
+
+            if (validationServiceWorkerId < 1) {
+                LOG.warn("XMLValidator[" + workerId + "] "
+                        + "Could not find worker for property "
+                        + PROP_VALIDATIONSERVICEWORKER + ": "
+                        + config.getProperties().getProperty(PROP_VALIDATIONSERVICEWORKER));
+            } else {
+                LOG.info("XMLValidator[" + workerId + "] "
+                        + "Will use validation service worker: " + validationServiceWorkerId);
+            }
+        }
+        return validationServiceWorkerId;
+    }
+
+    private byte[] unwrapSignature(Document doc, String tagName) throws TransformerConfigurationException, TransformerException {
+
+        // Remove Signature element
+        Node rootNode = doc.getFirstChild();
+        NodeList nodeList = rootNode.getChildNodes();
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Node node = nodeList.item(i);
+            if (tagName.equals(node.getLocalName())) {
+                rootNode.removeChild(node);
+            }
+        }
+
+        // Render the result
+        Transformer xformer = TransformerFactory.newInstance().newTransformer();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        xformer.transform(new DOMSource(doc), new StreamResult(out));
+        return out.toByteArray();
     }
 
     /**
-     * Get process session.
-     * 
-     * @param requestContext Request context
      * @return The worker session. Can be overridden for instance by unit tests.
      */
-    protected InternalProcessSessionLocal getProcessSession(RequestContext requestContext) {
-        return requestContext.getServices().get(InternalProcessSessionLocal.class);
+    protected IInternalWorkerSession getWorkerSession() {
+        if (workersession == null) {
+            try {
+                workersession = ServiceLocator.getInstance().lookupLocal(
+                        IInternalWorkerSession.class);
+            } catch (NamingException ne) {
+                throw new RuntimeException(ne);
+            }
+        }
+        return workersession;
     }
 
-    @Override
-    protected List<String> getFatalErrors(final IServices services) {
-        // Add our errors to the list of errors
-        final LinkedList<String> errors = new LinkedList<>(
-                super.getFatalErrors(services));
-        errors.addAll(configErrors);
-        return errors;
-    }
 }

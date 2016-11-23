@@ -14,7 +14,6 @@ package org.signserver.module.mrtdsodsigner;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -35,20 +34,14 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX500NameUtil;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.*;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.common.data.SODRequest;
-import org.signserver.common.data.SODResponse;
-import org.signserver.common.data.WritableData;
 import org.signserver.module.mrtdsodsigner.jmrtd.SODFile;
-import org.signserver.server.IServices;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
 /**
@@ -109,7 +102,7 @@ public class MRTDSODSigner extends BaseSigner {
             WorkerContext workerContext, EntityManager workerEM) {
         super.init(workerId, config, workerContext, workerEM);
         
-        configErrors = new LinkedList<>();
+        configErrors = new LinkedList<String>();
         
         if (hasSetIncludeCertificateLevels) {
             configErrors.add(WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS + " is not supported.");
@@ -117,24 +110,26 @@ public class MRTDSODSigner extends BaseSigner {
     }
 
     @Override
-    public Response processData(Request signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+    public ProcessResponse processData(ProcessRequest signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
         if (log.isTraceEnabled()) {
             log.trace(">processData");
         }
+        ProcessResponse ret = null;
 
         // Check that the request contains a valid SODSignRequest object.
-        if (!(signRequest instanceof SODRequest)) {
+        if (!(signRequest instanceof SODSignRequest)) {
             throw new IllegalRequestException("Received request wasn't an expected SODSignRequest.");
         }
         
-        final SODRequest sodRequest = (SODRequest) signRequest;
+        final ISignRequest sReq = (ISignRequest) signRequest;
+        
+        final SODSignRequest sodRequest = (SODSignRequest) signRequest;
 
-        final IServices services = requestContext.getServices();
-        final ICryptoTokenV4 token = getCryptoToken(services);
+        final ICryptoToken token = getCryptoToken();
         // Trying to do a workaround for issue when the PKCS#11 session becomes invalid
         // If autoactivate is on, we can deactivate and re-activate the token.
         synchronized (syncObj) {
-            int status = token.getCryptoTokenStatus(services);
+            int status = token.getCryptoTokenStatus();
             if (log.isDebugEnabled()) {
                 log.debug("Crypto token status: " + status);
             }
@@ -146,9 +141,9 @@ public class MRTDSODSigner extends BaseSigner {
                 }
                 if (pin != null) {
                     log.info("Deactivating and re-activating crypto token.");
-                    token.deactivate(services);
+                    token.deactivate();
                     try {
-                        token.activate(pin, services);
+                        token.activate(pin);
                     } catch (CryptoTokenAuthenticationFailureException e) {
                         throw new CryptoTokenOfflineException(e);
                     }
@@ -159,13 +154,12 @@ public class MRTDSODSigner extends BaseSigner {
         }
 
         // Construct SOD
-        final WritableData responseData = sodRequest.getResponseData();
         final SODFile sod;
         final X509Certificate cert;
         final List<Certificate> certChain;
         ICryptoInstance crypto = null;
         try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
 
             cert = (X509Certificate) getSigningCertificate(crypto);
             if (cert == null) {
@@ -196,7 +190,7 @@ public class MRTDSODSigner extends BaseSigner {
                 }
                 // If true here the "data group hashes" are not really hashes but values that we must hash.
                 // The input is already decoded (if needed) and nice, so we just need to hash it
-                dghashes = new HashMap<>(16);
+                dghashes = new HashMap<Integer, byte[]>(16);
                 for (Map.Entry<Integer, byte[]> dgId : dgvalues.entrySet()) {
                     final byte[] value = dgId.getValue();
                     if (log.isDebugEnabled()) {
@@ -256,7 +250,9 @@ public class MRTDSODSigner extends BaseSigner {
             // Reconstruct the sod
             sod = new SODFile(new ByteArrayInputStream(constructedSod.getEncoded()));
 
-        } catch (NoSuchAlgorithmException | CertificateException ex) {
+        } catch (NoSuchAlgorithmException ex) {
+            throw new SignServerException("Problem constructing SOD", ex);
+        } catch (CertificateException ex) {
             throw new SignServerException("Problem constructing SOD", ex);
         } catch (IOException ex) {
             throw new SignServerException("Problem reconstructing SOD", ex);
@@ -265,7 +261,7 @@ public class MRTDSODSigner extends BaseSigner {
         }
 
         // Verify the Signature before returning
-        try (OutputStream out = responseData.getAsOutputStream()) {
+        try {
             verifySignatureAndChain(sod, certChain);
 
             if (log.isDebugEnabled()) {
@@ -273,15 +269,13 @@ public class MRTDSODSigner extends BaseSigner {
             }
             // Return response
             final byte[] signedbytes = sod.getEncoded();
-            out.write(signedbytes);
             final String archiveId = createArchiveId(signedbytes, (String) requestContext.get(RequestContext.TRANSACTION_ID));
-            final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, responseData.toReadableData(), archiveId));
-
+            final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, signedbytes, archiveId));
+            ret = new SODSignResponse(sReq.getRequestID(), signedbytes, cert,
+                    archiveId, archivables);
+            
             // The client can be charged for the request
             requestContext.setRequestFulfilledByWorker(true);
-            
-            return new SODResponse(sodRequest.getRequestID(), responseData, cert,
-                    archiveId, archivables, "application/octet-stream");
         } catch (GeneralSecurityException e) {
             log.error("Error verifying the SOD we signed ourselves. ", e);
             throw new SignServerException("SOD verification failure", e);
@@ -289,6 +283,11 @@ public class MRTDSODSigner extends BaseSigner {
         	log.error("Error encoding SOD", e);
         	throw new SignServerException("SOD encoding failure", e);
         }
+
+        if (log.isTraceEnabled()) {
+            log.trace("<processData");
+        }
+        return ret;
     }
 
     private X509Certificate findIssuerCert(Collection<Certificate> chain, X509Certificate sodCert) {
@@ -373,8 +372,8 @@ public class MRTDSODSigner extends BaseSigner {
     }
     
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final List<String> errors = super.getFatalErrors(services);
+    protected List<String> getFatalErrors() {
+        final List<String> errors = super.getFatalErrors();
         
         errors.addAll(configErrors);
         return errors;

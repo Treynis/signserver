@@ -39,31 +39,18 @@ public class LogMapUnitTest extends TestCase {
         final LogMap origLogMap = LogMap.getInstance(origContext);
         
         // write to the original log map
-        origLogMap.put("original key", new Loggable() {
-            @Override
-            public String toString() {
-                return "original value";
-            }
-        });
+        origLogMap.put("original key", "original value");
         
         final LogMap copiedLogMap = LogMap.getInstance(copiedContext);
         
         // write to the copied log map
-        copiedLogMap.put("copied key", new Loggable() {
-            @Override
-            public String toString() {
-                return "copied value";
-            }
-        });
+        copiedLogMap.put("copied key", "copied value");
         
         // check that the expected values are logged to their correct log maps
-        final Object origLoggable = origLogMap.get("original key");
         assertEquals("original log map should contain", "original value",
-                     String.valueOf(origLoggable));
-        
-        final Object copiedLoggable = copiedLogMap.get("copied key");
+                     origLogMap.get("original key"));
         assertEquals("copied log map should contain", "copied value",
-                     String.valueOf(copiedLoggable));
+                     copiedLogMap.get("copied key"));
         
         // check that the value written in the new log map is not visible in
         // orignal one, and vice-versa

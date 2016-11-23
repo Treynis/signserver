@@ -1,58 +1,3 @@
-SignServer 4.0.0
-----------------
-
-Major new features and improvements:
-    - Support for large files (Enterprise Edition)
-    - Major internal library updates such as CESeCore 6.4 and BouncyCastle 1.53
-    - Build system changed from Ant to Maven
-    - Many internal API improvements    
-    - Support for RFC 5816 time-stamps
-    - Initial Payara 4.1 support
-
-Bug fixes:
-    - Bug in BouncyCastle related to extensions in time-stamps
-    - ClientWS interface did not handle X-Forwarded-For header
-    - Fixed spelling typos
-    - Fixed unit tests not running automatically
-    - Fixed stylesheet on public web pages
-
-Notice:
- - Database changes were introduced. See UPGRADE.txt for details.
- - The way to specify a worker's implementation class name in properties form
-   has changed. Previously it was specified as:
-   GLOB.WORKER4711.CLASSPATH=org.signserver.module.pdfsigner.PDFSigner
-   But now it should be specified as a worker property:
-   WORKER4711.IMPLEMENTATION_CLASS=org.signserver.module.pdfsigner.PDFSigner
-   Exported configurations might have to be adapted.
-   SignServer will try to upgrade existing configurations during startup.
- - Each worker configuration should now contain a worker property TYPE,
-   specifying the type of worker such as UNKNOWN, PROCESSABLE, TIMED_SERVICE,
-   SPECIAL or CRYPTO_WORKER.
-   Existing workers will get this worker property populated during the startup.
-   See UPGRADE.txt.
- - Previously deprecated crypto token implementations has been removed: 
-   SoftCryptoToken, HardCodedCryptoToken, OldPKCS11CryptoToken, and
-   PrimeCardHSMCryptoToken.
-   For SoftCryptoToken and HardCodedCryptoToken, used for demonstration purposes,
-   use KeystoreCryptoToken with the supplied sample configuration.
-   For OldPKCS11CryptoToken, configurations should be upgraded to use
-   PKCS11CryptoToken.
- - The TimeStampSigner now generates RFC 5816-compliant time stamps with the
-   ESSCertIDv2 attribute. To get the old behavior, specify SHA1 as the certificate
-   digest algorithm, using the new CERTIFICATE_DIGEST_ALGORITHM worker property.
- - For the TimeStampSigner the default behavior is now to always require the
-   ACCEPTEDPOLICIES property to be set to a list of accepted requested policies
-   (or empty to disallow requesting a policy). For backwards-compatibility
-   the new ACCEPTANYPOLICY property can be set to the value "true".
- - The old deprecated scripts in the bin folder has been removed. Please, use
-   the replacement scripts that has been available since long before:
-   admingui.sh   => signserver-gui
-   client.sh     => signclient
-   signserver.sh => signserver
-
-See ChangeLog.txt for the full list of changes.
-
-
 SignServer 3.7.4
 ----------------
 
@@ -72,6 +17,10 @@ Bug fixes:
 SignServer 3.7.3
 ----------------
 
+New features:
+ - Added auto-renewal timed service.
+ - Option to specify options for self-signed certificates.
+
 Notice:
  - The renewsigner admin CLI command will no longer prompt for an authcode when
    the -authcode CLI argument is omitted, use the new -authprompt option to get
@@ -79,7 +28,6 @@ Notice:
    command will not automatically (re)activate the token.
 
 See ChangeLog.txt for the full list of changes.
-
 
 SignServer 3.7.2
 ----------------
@@ -138,7 +86,7 @@ New features:
 Improvements:
 
 Bug fixes:
- - Crypto token operations in the administration GUI no requires clicking
+ - Crypto token operations in the administration GUI does not require clicking
    outside of the last edited input field to be able to performe the action
    (i.e. when generating keys).
 
@@ -588,6 +536,8 @@ Bug fixes:
  - Ant target for testing individual tests did not work
  - Switching application server type did not update jndi.properties    
  - JavaDoc failed to build
+
+
 
 
 Notice:

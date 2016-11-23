@@ -12,22 +12,21 @@
  *************************************************************************/
 package org.signserver.server.signers;
 
-import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Properties;
 
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.GenericSignRequest;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.RequestMetadata;
+import org.signserver.common.SODSignRequest;
+import org.signserver.common.SODSignResponse;
 import org.signserver.common.SignServerException;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.common.data.SODRequest;
-import org.signserver.common.data.SODResponse;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.common.data.SignatureResponse;
-import org.signserver.common.data.WritableData;
 
 /**
  * Test signer returning the content of REQUEST_METADATA in properties file format.
@@ -39,24 +38,21 @@ import org.signserver.common.data.WritableData;
 public class EchoRequestMetadataSigner extends BaseSigner {
 
     @Override
-    public Response processData(Request signRequest,
+    public ProcessResponse processData(ProcessRequest signRequest,
             RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
         
         final Properties props = new Properties();
         final int reqId;
         final boolean isSOD;
-        final WritableData responseData;
         
-        if (signRequest instanceof SignatureRequest) {
-            final SignatureRequest req = (SignatureRequest) signRequest;
+        if (signRequest instanceof GenericSignRequest) {
+            final GenericSignRequest req = (GenericSignRequest) signRequest;
             reqId = req.getRequestID();
-            responseData = req.getResponseData();
             isSOD = false;
-        } else if (signRequest instanceof SODRequest) {
-            final SODRequest req = (SODRequest) signRequest;
+        } else if (signRequest instanceof SODSignRequest) {
+            final SODSignRequest req = (SODSignRequest) signRequest;
             reqId = req.getRequestID();
-            responseData = req.getResponseData();
             isSOD = true;
         } else {
             throw new SignServerException("Unknown sign request");
@@ -72,17 +68,13 @@ public class EchoRequestMetadataSigner extends BaseSigner {
             }
         }
         
-        try (PrintWriter writer = new PrintWriter(responseData.getAsOutputStream())) {
-            props.list(writer);
-            writer.close();
-
-            if (!isSOD) {
-                return new SignatureResponse(reqId, responseData, null, null, null, "text/plain");
-            } else {
-                return new SODResponse(reqId, responseData, null, null, null, null);            
-            }
-        } catch (IOException ex) {
-            throw new SignServerException("IO error", ex);
+        final StringWriter writer = new StringWriter();
+        props.list(new PrintWriter(writer));
+        
+        if (!isSOD) {
+            return new GenericServletResponse(reqId, writer.getBuffer().toString().getBytes(), null, null, null, "text/plain");
+        } else {
+            return new SODSignResponse(reqId, writer.getBuffer().toString().getBytes(), null, null, null);            
         }
     }
     

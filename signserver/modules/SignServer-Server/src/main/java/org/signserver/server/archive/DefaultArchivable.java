@@ -12,19 +12,14 @@
  *************************************************************************/
 package org.signserver.server.archive;
 
-import java.io.IOException;
-import org.signserver.common.data.ReadableData;
-
 /**
- * Default Archivable with support for large files.
- * The old default Archivable implementation is now called ByteArrayArchivable.
+ * Default Archivable holding any byte[].
  *
  * @author Markus Kilås
  * @version $Id$
- * @see ByteArrayArchivable
  */
 public class DefaultArchivable extends AbstractArchivable {
-
+    
     private static final long serialVersionUID = 0L;
 
     /** The default content-type. */
@@ -32,43 +27,72 @@ public class DefaultArchivable extends AbstractArchivable {
             = "application/octet-stream";
 
     /** The data. */
-    private transient ReadableData data; // Don't serialize the data. Let it stay a server side.
-
+    private byte[] bytes;
+    
+    /**
+     * Creates an instance of DefaultArchivable with the given type and 
+     * data.
+     * @param type The type of Archivable.
+     * @param bytes The data to archive.
+     * @see Archivable#TYPE_REQUEST
+     * @see Archivable#TYPE_RESPONSE
+     * @deprecated Use a constructor that takes an archive ID.
+     */
+    @Deprecated
+    public DefaultArchivable(final String type, final byte[] bytes) {
+        this(type, APPLICATION_OCTET_STREAM, bytes);
+    }
+    
     /**
      * Creates an instance of DefaultArchivable with the given type, data and  
      * archive ID
      * @param type The type of Archivable.
-     * @param data The data to archive.
+     * @param bytes The data to archive.
      * @param archiveId Some ID of the transaction
      * @see Archivable#TYPE_REQUEST
      * @see Archivable#TYPE_RESPONSE
+     * @since SignServer 3.3
      */
-    public DefaultArchivable(final String type, final ReadableData data, final String archiveId) {
-        this(type, APPLICATION_OCTET_STREAM, data, archiveId);
+    public DefaultArchivable(final String type, final byte[] bytes, final String archiveId) {
+        this(type, APPLICATION_OCTET_STREAM, bytes, archiveId);
     }
 
+    /**
+     * Creates an instance of DefaultArchivable with the given type, 
+     * content-type and data.
+     * @param type The type of Archivable.
+     * @param contentType The content-type of the data.
+     * @param bytes The data to archive.
+     * @see Archivable#TYPE_REQUEST
+     * @see Archivable#TYPE_RESPONSE
+     * @deprecated Use a constructor that takes an archive ID.
+     */
+    @Deprecated
+    public DefaultArchivable(final String type, final String contentType,
+            final byte[] bytes) {
+        super(type, contentType);
+        this.bytes = bytes;
+    }
+    
     /** Creates an instance of DefaultArchivable with the given type, 
      * content-type, data and archive ID.
      * @param type The type of Archivable.
      * @param archiveId Some ID of the transaction
      * @param contentType The content-type of the data.
-     * @param data The data to archive.
+     * @param bytes The data to archive.
      * @see Archivable#TYPE_REQUEST
      * @see Archivable#TYPE_RESPONSE
+     * @since SignServer 3.3
      */
     public DefaultArchivable(final String type, 
-            final String contentType, final ReadableData data, final String archiveId) {
+            final String contentType, final byte[] bytes, final String archiveId) {
         super(type, archiveId, contentType);
-        this.data = data;
+        this.bytes = bytes;
     }
 
     @Override
     public byte[] getContentEncoded() {
-        try {
-            return data.getAsByteArray();
-        } catch (IOException ex) {
-            throw new IllegalStateException("Archive data unavailable: " + ex.getLocalizedMessage(), ex);
-        }
+        return bytes;
     }
 
 }

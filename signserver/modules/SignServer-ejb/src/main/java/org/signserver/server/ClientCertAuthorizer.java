@@ -22,10 +22,10 @@ import org.cesecore.util.CertTools;
 import org.signserver.common.ClientEntry;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessableConfig;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.data.Request;
 
 /**
  * Client certificate authorizer.
@@ -39,23 +39,21 @@ public class ClientCertAuthorizer implements IAuthorizer {
     private static final Logger LOG = Logger.getLogger(ClientCertAuthorizer.class);
     
     private int workerId;
+    private ProcessableConfig config = null;
 
     private Set<ClientEntry> authorizedClients;
     
     /**
-     * Initialize a ClientCertAuthorizer.
-     * 
-     * @param workerConfig Worker configuration
-     * @throws org.signserver.common.SignServerException
      * @see org.signserver.server.IAuthorizer#init(int,
      * org.signserver.common.WorkerConfig, javax.persistence.EntityManager)
      */
     @Override
     public void init(final int workerId, final WorkerConfig workerConfig,
             final EntityManager em)  throws SignServerException {
+        this.config = new ProcessableConfig(workerConfig);
         this.workerId = workerId;
         this.authorizedClients =
-                ClientEntry.clientEntriesFromAuthClients(workerConfig.getAuthorizedClients());
+                ClientEntry.clientEntriesFromAuthClients(config.getAuthorizedClients());
         if (LOG.isDebugEnabled()) {
             LOG.debug("Configured clients: " + authorizedClients);
         }
@@ -69,13 +67,11 @@ public class ClientCertAuthorizer implements IAuthorizer {
     /**
      * Performing SignServer 2.x client certificate authentication.
      *
-     * @throws org.signserver.common.SignServerException
-     * @throws org.signserver.common.IllegalRequestException
      * @see org.signserver.server.IAuthorizer#isAuthorized(ProcessRequest,
      * RequestContext)
      */
     @Override
-    public void isAuthorized(final Request request,
+    public void isAuthorized(final ProcessRequest request,
             final RequestContext requestContext)
             throws SignServerException, IllegalRequestException {
         final X509Certificate clientCert = (X509Certificate)

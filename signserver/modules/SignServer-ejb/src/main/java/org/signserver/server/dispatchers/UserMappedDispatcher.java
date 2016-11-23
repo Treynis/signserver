@@ -16,23 +16,20 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
-import org.signserver.common.NoSuchWorkerException;
+import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
+import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.ejb.interfaces.DispatcherProcessSessionLocal;
-import org.signserver.server.IServices;
+import org.signserver.ejb.interfaces.IDispatcherWorkerSession;
 import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.log.AdminInfo;
 
 /**
  * Dispatching requests based on username with mapping in config.
@@ -54,23 +51,22 @@ public class UserMappedDispatcher extends BaseDispatcher {
     /** Property WORKERS. */
     private static final String PROPERTY_USERNAME_MAPPING = "USERNAME_MAPPING";
 
+    /** Workersession. */
+    private IDispatcherWorkerSession workerSession;
+
     /** Mapping. */
     private Map<String, String> mappings;
 
     /** Configuration errors. */
     private LinkedList<String> configErrors;
-    
-    private String name;
 
     @Override
     public void init(final int workerId, final WorkerConfig config,
             final WorkerContext workerContext, final EntityManager workerEM) {
         super.init(workerId, config, workerContext, workerEM);
-        configErrors = new LinkedList<>();
-        
-        name = config.getProperty("NAME");
+        configErrors = new LinkedList<String>();
 
-        mappings = new HashMap<>();
+        mappings = new HashMap<String, String>();
         final String workersValue = config.getProperty(PROPERTY_USERNAME_MAPPING);
         if (workersValue == null) {
             configErrors.add("Property " + PROPERTY_USERNAME_MAPPING + " missing!");
@@ -86,17 +82,26 @@ public class UserMappedDispatcher extends BaseDispatcher {
                 }
             }
         }
+        this.workerSession = getWorkerSession();
     }
     
-    protected DispatcherProcessSessionLocal getWorkerSession(final RequestContext requestContext) {
-        return requestContext.getServices().get(DispatcherProcessSessionLocal.class);
+    protected IDispatcherWorkerSession getWorkerSession() {
+        if (workerSession == null) {
+            try {
+                workerSession = ServiceLocator.getInstance().lookupLocal(
+                        IDispatcherWorkerSession.class);
+            } catch (NamingException ex) {
+                LOG.error("Unable to lookup worker session", ex);
+            }
+        }
+        return workerSession;
     }
 
     @Override
-    public Response processData(final Request signRequest,
+    public ProcessResponse processData(final ProcessRequest signRequest,
             final RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
-        final Response response;
+        final ProcessResponse response;
         
         if (!configErrors.isEmpty()) {
             throw new SignServerException("Worker is misconfigured");
@@ -117,29 +122,28 @@ public class UserMappedDispatcher extends BaseDispatcher {
             throw new IllegalRequestException("No worker for the specified username");
         }
         
-        if (name.equals(workerName)) {
+        final int id = workerSession.getWorkerId(workerName);
+        if (id == 0) {
+            LOG.warn("Non existing worker: \"" + workerName + "\"");
+            throw new SignServerException("Non-existing worker configured in mapping");
+        } else if (id == workerId) {
             LOG.warn("Ignoring dispatching to it self (worker "
-                    + workerName + ")");
+                    + id + ")");
             throw new SignServerException("Dispatcher configured to dispatch to itself");
         } else {
-            try {
-                response = getWorkerSession(requestContext).process(new AdminInfo("Client user", null, null),
-                        new WorkerIdentifier(workerName), signRequest,
-                        nextContext);
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Dispatched to worker: "
-                            + workerName + " (" + workerName + ")");
-                }
-            } catch (NoSuchWorkerException ex) {
-                throw new SignServerException("Worker is misconfigured", ex);
+            response = workerSession.process(id, signRequest,
+                    nextContext);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Dispatched to worker: "
+                        + workerName + " (" + id + ")");
             }
         }
         return response;
     }
 
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final LinkedList<String> errors = new LinkedList<>(super.getFatalErrors(services));
+    protected List<String> getFatalErrors() {
+        final LinkedList<String> errors = new LinkedList<String>(super.getFatalErrors());
         errors.addAll(configErrors);
         return errors;
     }

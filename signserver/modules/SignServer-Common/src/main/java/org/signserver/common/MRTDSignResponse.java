@@ -20,7 +20,8 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
-import org.cesecore.util.CertTools;
+
+import org.ejbca.util.CertTools;
 
 /**
  * Class used for the response of the signSession.signData method and contain information
@@ -43,11 +44,7 @@ public class MRTDSignResponse extends ProcessResponse {
     }
 
     /**
-     * Main Constuctor.
-     * 
-     * @param requestID Request ID
-     * @param signedData Signed response data
-     * @param signerCertificate The signer certificate
+     * Main Constuctor
      */
     public MRTDSignResponse(int requestID, ArrayList<byte[]> signedData, Certificate signerCertificate) {
         this.requestID = requestID;
@@ -55,6 +52,10 @@ public class MRTDSignResponse extends ProcessResponse {
         this.signerCertificate = signerCertificate;
     }
 
+    /**
+     * 
+     * @see org.signserver.common.ProcessResponse#getRequestID()
+     */
     public int getRequestID() {
         return requestID;
     }
@@ -79,7 +80,6 @@ public class MRTDSignResponse extends ProcessResponse {
 
     /**
      * Not supported, always returns null.
-     * @return Always null
      */
     public ArchiveData getArchiveData() {
         return null;
@@ -87,18 +87,16 @@ public class MRTDSignResponse extends ProcessResponse {
 
     /**
      * Not supported, always returns null.
-     * @return Always null
      */
     public String getArchiveId() {
         return null;
     }
 
-    @Override
     public void parse(DataInput in) throws IOException {
         in.readInt();
         this.requestID = in.readInt();
         int arraySize = in.readInt();
-        this.signedData = new ArrayList<>();
+        this.signedData = new ArrayList<byte[]>();
         for (int i = 0; i < arraySize; i++) {
             int dataSize = in.readInt();
             byte[] data = new byte[dataSize];
@@ -119,7 +117,6 @@ public class MRTDSignResponse extends ProcessResponse {
         }
     }
 
-    @Override
     public void serialize(DataOutput out) throws IOException {
         out.writeInt(RequestAndResponseManager.RESPONSETYPE_MRTDSIGNRESPONSE);
         out.writeInt(this.requestID);

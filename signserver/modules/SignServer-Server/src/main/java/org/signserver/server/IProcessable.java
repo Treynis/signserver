@@ -22,6 +22,8 @@ import java.util.Map;
 import org.cesecore.util.query.QueryCriteria;
 import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.IllegalRequestException;
@@ -32,12 +34,12 @@ import org.signserver.common.OperationUnsupportedException;
 import org.signserver.common.QueryException;
 import org.signserver.common.WorkerStatus;
 import org.signserver.common.DuplicateAliasException;
+import org.signserver.server.cryptotokens.ICryptoToken;
+import org.signserver.server.cryptotokens.ICryptoTokenV3;
+import org.signserver.server.cryptotokens.IKeyGenerator;
 import org.signserver.common.NoSuchAliasException;
 import org.signserver.server.cryptotokens.TokenSearchResults;
 import org.signserver.common.UnsupportedCryptoTokenParameter;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
 
 /**
  * IProcessable is an interface that all processable workers should implement.
@@ -56,14 +58,11 @@ public interface IProcessable extends IWorker {
     /**
      * Main method that does the actual signing according to the data in the request.
      *
-     * @param signRequest
-     * @param requestContext
-     * @return Signing response
-     * @throws IllegalRequestException if requests contain unsupported data.
-     * @throws CryptoTokenOfflineException if the token performing cryptographic operations is off-line.
-     * @throws SignServerException if general failure occurred during the operation.
+     *  @throws IllegalRequestException if requests contain unsupported data.
+     *  @throws CryptoTokenOfflineException if the token performing cryptographic operations is off-line.
+     *  @throws SignServerException if general failure occurred during the operation.
      */
-    Response processData(Request signRequest,
+    ProcessResponse processData(ProcessRequest signRequest,
             RequestContext requestContext) throws IllegalRequestException,
                 CryptoTokenOfflineException, SignServerException;
 
@@ -72,37 +71,39 @@ public interface IProcessable extends IWorker {
      *
      * Optional method, if not supported throw a CryptoTokenOfflineException
      *
-     * @param authCode Authentication code for crypto token
-     * @param services Services
-     * @throws CryptoTokenAuthenticationFailureException In case of token authentication failure
-     * @throws CryptoTokenOfflineException If crypto token is offline
+     * @param authCode
      */
-    void activateSigner(String authCode, IServices services) throws
+    void activateSigner(String authCode) throws
             CryptoTokenAuthenticationFailureException, CryptoTokenOfflineException;
 
     /**
      * Method used to deactivate a processable worker when it's not used anymore
-     * Optional method, if not supported throw a CryptoTokenOfflineException.
-     * 
-     * @param services
-     * @return True if successful
-     * @throws CryptoTokenOfflineException If crypto token is offline
+     *
+     * Optional method, if not supported throw a CryptoTokenOfflineException
      */
-    boolean deactivateSigner(IServices services) throws CryptoTokenOfflineException;
+    boolean deactivateSigner() throws CryptoTokenOfflineException;
 
     /**
      * Method used to tell the processable worker to create a certificate request using its crypto token.
-     * Optional method, if not supported throw a CryptoTokenOfflineException.
-     * 
-     * @param info Certificate request info
-     * @param explicitEccParameters True if explicit ECC parameters should be used
-     * @param defaultKey If true, use default key
-     * @return Certificate signing request data
-     * @throws org.signserver.common.CryptoTokenOfflineException 
-     * @throws org.signserver.common.NoSuchAliasException 
+     *
+     * Optional method, if not supported throw a CryptoTokenOfflineException
      */
     ICertReqData genCertificateRequest(ISignerCertReqInfo info,
             boolean explicitEccParameters, boolean defaultKey)
+            throws CryptoTokenOfflineException, NoSuchAliasException;
+
+    /**
+     * Generate a certificate request using the worker's crypto token, given
+     * a key alias.
+     * 
+     * @param info Certificate request info
+     * @param explicitEccParameters If explicit ECC parameters should be used
+     * @param keyAlias Key alias in crypto token
+     * @return Certificate request data
+     * @throws CryptoTokenOfflineException 
+     */
+    ICertReqData genCertificateRequest(ISignerCertReqInfo info,
+            boolean explicitEccParameters, String keyAlias)
             throws CryptoTokenOfflineException, NoSuchAliasException;
 
     ICertReqData genCertificateRequest(ISignerCertReqInfo certReqInfo, boolean explicitEccParameters, String keyAlias, IServices services) throws CryptoTokenOfflineException, NoSuchAliasException;
@@ -111,29 +112,34 @@ public interface IProcessable extends IWorker {
         
     /**
      * Method specifying which type of authentication that should be performed before signature is performed
-     * Returns one of the AUTHTYPE_ constants.
-     * 
-     * @return Authentication type
+     * Returns one of the AUTHTYPE_ constants
      */
     String getAuthenticationType();
 
-    public boolean removeKey(String alias, IServices services) throws CryptoTokenOfflineException, KeyStoreException, SignServerException;
+    /**
+     * Method used to remove a key in the processable worker that shouldn't be used any more
+     *
+     * Optional method, if not supported return false.
+     *
+     * @param purpose on of ICryptoToken.PURPOSE_ constants
+     * @return true if removal was successful.
+     */
+    boolean destroyKey(int purpose);
 
     /**
-     * Generate key.
-     * 
-     * @param keyAlgorithm
-     * @param keySpec
-     * @param alias
-     * @param authCode
-     * @param params
-     * @param services
-     * @throws CryptoTokenOfflineException
-     * @throws DuplicateAliasException
-     * @throws NoSuchAlgorithmException
-     * @throws InvalidAlgorithmParameterException
-     * @throws UnsupportedCryptoTokenParameter
-     * @see ICryptoTokenV4#generateKey(java.lang.String, java.lang.String, java.lang.String, char[], java.util.Map, org.signserver.server.IServices) 
+     * @see IKeyGenerator#generateKey(java.lang.String, java.lang.String,
+     *  java.lang.String, char[])
+     */
+    void generateKey(String keyAlgorithm, String keySpec, String alias,
+            char[] authCode) throws
+            CryptoTokenOfflineException,
+            DuplicateAliasException, 
+            NoSuchAlgorithmException,
+            InvalidAlgorithmParameterException,
+            UnsupportedCryptoTokenParameter;;
+
+    /**
+     * @see ICryptoTokenV3#generateKey(java.lang.String, java.lang.String, java.lang.String, char[], java.util.Map, org.signserver.server.IServices) 
      */
     void generateKey(final String keyAlgorithm, final String keySpec, final String alias, final char[] authCode, Map<String, Object> params, final IServices services) throws
             CryptoTokenOfflineException,
@@ -143,42 +149,24 @@ public interface IProcessable extends IWorker {
             UnsupportedCryptoTokenParameter;
     
     /**
-     * Test key.
-     * 
-     * @param alias
-     * @param authCode
-     * @return Collection of test results
-     * @throws CryptoTokenOfflineException 
-     * @throws KeyStoreException 
-     * @see ICryptoTokenV4#testKey(java.lang.String, char[])
+     * @see ICryptoToken#testKey(java.lang.String, char[])
      */
     Collection<KeyTestResult> testKey(String alias,
             char[] authCode)
             throws CryptoTokenOfflineException, KeyStoreException;
 
     /**
-     * Test key.
-     * 
-     * @param alias
-     * @param authCode
-     * @param services
-     * @return Collection of test results
-     * @throws org.signserver.common.CryptoTokenOfflineException 
-     * @throws java.security.KeyStoreException 
-     * @see ICryptoTokenV4#testKey(java.lang.String, char[], org.signserver.server.IServices) 
+     * @see ICryptoTokenV3#testKey(java.lang.String, char[], org.signserver.server.IServices) 
      */
     Collection<org.signserver.common.KeyTestResult> testKey(String alias,
         char[] authCode, IServices services) throws CryptoTokenOfflineException, KeyStoreException;
  
     /**
-     * Get token status.
-     * 
-     * @param services
      * @return The status of the crypto token
      * @see WorkerStatus#STATUS_ACTIVE
      * @see WorkerStatus#STATUS_OFFLINE
      */
-    int getCryptoTokenStatus(IServices services);
+    int getCryptoTokenStatus();
     
     /**
      * Import a signing certificate chain to the signer's crypto token.
@@ -187,8 +175,6 @@ public interface IProcessable extends IWorker {
      * @param alias Alias to use in the crypto token
      * @param authenticationCode Authentication code for the key entry, or use
      *                           the token's authentication code if null
-     * @param params Additional parameters to pass to the crypto token
-     * @param services Services implementations for the crypto token to use
      * @throws CryptoTokenOfflineException In case the token was not active or could not function for any other reasons
      * @throws NoSuchAliasException In case the alias did not exist in the token
      * @throws InvalidAlgorithmParameterException If the supplied crypto token parameters was not valid

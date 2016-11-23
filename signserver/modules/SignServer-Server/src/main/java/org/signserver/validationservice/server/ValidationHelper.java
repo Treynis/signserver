@@ -20,7 +20,7 @@ import javax.persistence.EntityManager;
 
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 
 /**
@@ -41,13 +41,12 @@ public class ValidationHelper {
      * 
      * It will work in the following manner:
      * <ul>
-     * <li>All properties starting with 'validator&lt;validatorId&gt;.' or 'val&lt;validatorId&gt;.' will have
+     * <li>All properties starting with 'validator<validatorId>.' or 'val<validatorId>.' will have
      *   the following keys added without the 'val...' prefix.
      * <li>All properties without 'val...' prefix will be added if the key doesn't exist already. I.e
      * all properties with keys starting 'val..' overrides general properties.
-     * <li>If no 'validator&lt;validatorId&gt;.' exists for the given id then, null will be returned.
+     * <li>If no 'validator<validatorId>.' exists for the given id then, null will be returned.
      * </ul>
-     * @param validatorId
      * @param config a worker config containing all properties
      * @return a Propertes according to above specification or 'null' if no property with 'val...' exists
      * in configuration.
@@ -132,12 +131,11 @@ public class ValidationHelper {
      * 
      * @param workerId current workerId
      * @param config worker config for the ValidationServiceWorker
-     * @param em enitity manager
      * @return available validators, never null
      * @throws SignServerException if validators are missconfigured.
      */
-    public static HashMap<Integer, IValidator> genValidators(int workerId, WorkerConfig config, EntityManager em) throws SignServerException {
-        HashMap<Integer, IValidator> retval = new HashMap<>();
+    public static HashMap<Integer, IValidator> genValidators(int workerId, WorkerConfig config, EntityManager em, ICryptoToken ct) throws SignServerException {
+        HashMap<Integer, IValidator> retval = new HashMap<Integer, IValidator>();
 
         for (int i = 1; i <= SUPPORTED_NUMBER_OF_VALIDATORS; i++) {
             Properties valprops = getValidatorProperties(i, config);
@@ -147,9 +145,13 @@ public class ValidationHelper {
                     try {
                         Class<?> c = ValidationHelper.class.getClassLoader().loadClass(classpath);
                         IValidator v = (IValidator) c.newInstance();
-                        v.init(workerId, i, valprops, em);
+                        v.init(workerId, i, valprops, em, ct);
                         retval.put(i, v);
-                    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+                    } catch (ClassNotFoundException e) {
+                        throw new SignServerException("Error validator with validatorId " + i + " with workerId " + workerId + " have got the required setting " + ValidationServiceConstants.VALIDATOR_SETTING_CLASSPATH + " set correctly.");
+                    } catch (InstantiationException e) {
+                        throw new SignServerException("Error validator with validatorId " + i + " with workerId " + workerId + " have got the required setting " + ValidationServiceConstants.VALIDATOR_SETTING_CLASSPATH + " set correctly.");
+                    } catch (IllegalAccessException e) {
                         throw new SignServerException("Error validator with validatorId " + i + " with workerId " + workerId + " have got the required setting " + ValidationServiceConstants.VALIDATOR_SETTING_CLASSPATH + " set correctly.");
                     }
                 } else {
@@ -166,13 +168,12 @@ public class ValidationHelper {
      * 
      * It will work in the following manner:
      * <ul>
-     * <li>All properties starting with 'issuer&lt;issuerId&gt;.'  will have
+     * <li>All properties starting with 'issuer<issuerId>.'  will have
      *   the following keys added without the 'issuer...' prefix.
      * <li>All properties without 'issuer...' prefix will be added if the key doesn't exist already. I.e
      * all properties with keys starting 'issuer..' overrides general properties.
-     * <li>If no 'issuer&lt;issuerId&gt;.' exists for the given id then, null will be returned.
+     * <li>If no 'issuer<issuerId>.' exists for the given id then, null will be returned.
      * </ul>
-     * @param issuerId Issuer ID
      * @param validatorProperties a worker config containing all properties
      * @return a Propertes according to above specification or 'null' if no property with 'issuer...' exists
      * in configuration.

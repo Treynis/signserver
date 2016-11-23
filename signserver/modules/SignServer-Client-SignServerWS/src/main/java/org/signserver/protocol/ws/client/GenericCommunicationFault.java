@@ -68,17 +68,14 @@ public class GenericCommunicationFault implements ICommunicationFault {
         this.throwable = _throwable;
     }
 
-    @Override
     public String getDescription() {
         return this.description;
     }
 
-    @Override
     public String getHostName() {
         return this.hostname;
     }
 
-    @Override
     public Throwable getThrowed() {
         return this.throwable;
     }

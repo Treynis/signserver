@@ -15,7 +15,6 @@ package org.signserver.validationservice.common;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestAndResponseManager;
@@ -41,10 +40,9 @@ public class ValidateResponse extends ProcessResponse {
     }
 
     /**
-     * Main constructor.
+     * Main constructor
      * 
-     * @param validation of the certificate verified
-     * @param validPurposes Valid purposes
+     * @param validation of the certificate verified.
      */
     public ValidateResponse(Validation validation, String[] validPurposes) {
         super();
@@ -53,8 +51,6 @@ public class ValidateResponse extends ProcessResponse {
     }
 
     /**
-     * Get validation.
-     * 
      * @return The validation of the requested certificate
      */
     public Validation getValidation() {
@@ -62,8 +58,6 @@ public class ValidateResponse extends ProcessResponse {
     }
 
     /**
-     * Get the purposes of validation.
-     * 
      * @return a String with all valid certificate purposes separated by a ','.
      */
     public String getValidCertificatePurposes() {
@@ -77,7 +71,6 @@ public class ValidateResponse extends ProcessResponse {
         return retval;
     }
 
-    @Override
     public void parse(DataInput in) throws IOException {
         in.readInt();
         validation = new Validation();
@@ -89,12 +82,11 @@ public class ValidateResponse extends ProcessResponse {
                 int stringLen = in.readInt();
                 byte[] stringData = new byte[stringLen];
                 in.readFully(stringData);
-                validCertificatePurposes[i] = new String(stringData, StandardCharsets.UTF_8);
+                validCertificatePurposes[i] = new String(stringData, "UTF-8");
             }
         }
     }
 
-    @Override
     public void serialize(DataOutput out) throws IOException {
         out.writeInt(RequestAndResponseManager.RESPONSETYPE_VALIDATE);
         validation.serialize(out);
@@ -102,8 +94,8 @@ public class ValidateResponse extends ProcessResponse {
             out.writeInt(0);
         } else {
             out.writeInt(validCertificatePurposes.length);
-            for (String validCertificatePurpose : validCertificatePurposes) {
-                byte[] stringData = validCertificatePurpose.getBytes(StandardCharsets.UTF_8);
+            for (int i = 0; i < validCertificatePurposes.length; i++) {
+                byte[] stringData = validCertificatePurposes[i].getBytes("UTF-8");
                 out.writeInt(stringData.length);
                 out.write(stringData);
             }

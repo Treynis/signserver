@@ -14,7 +14,6 @@ package org.signserver.common.util;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import org.apache.log4j.Logger;
 
 /**
  * Utility methods dealing with file system paths.
@@ -24,9 +23,6 @@ import org.apache.log4j.Logger;
  * @version $Id$
  */
 public class PathUtil {
-    
-    /** Logger for this class. */
-    private static final Logger LOG = Logger.getLogger(PathUtil.class);
 
     private static final String APPLICATION_SPECIFIC_FILE = "bin/signserver-gui";
 
@@ -34,7 +30,6 @@ public class PathUtil {
      * Gets the application directory (ie. SIGNSERVER_HOME).
      * The directory is found by moving up the directory tree until a folder
      * with SignServer specific files are found.
-     * Also tries to create a tmp folder if it does not already exists.
      * @return the application directory
      * @throws java.io.FileNotFoundException in case the application directory
      * could not be found
@@ -53,15 +48,6 @@ public class PathUtil {
         if (result == null) {
             throw new FileNotFoundException("Application home folder could not be found. Started search with CWD: " + cwd.getAbsolutePath());
         }
-        
-        // Try to create a tmp folder
-        final File tmpFolder = new File(result, "tmp");
-        if (!tmpFolder.exists()) {
-            if (!tmpFolder.mkdir()) {
-                LOG.warn("Unable to create tmp folder: " + tmpFolder.getAbsolutePath());
-            }
-        }
-
         return result;
     }
 }

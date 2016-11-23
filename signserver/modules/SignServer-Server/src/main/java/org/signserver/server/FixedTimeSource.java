@@ -12,12 +12,8 @@
  *************************************************************************/
 package org.signserver.server;
 
-import java.util.Collections;
 import java.util.Date;
-import java.util.List;
 import java.util.Properties;
-import org.signserver.common.RequestContext;
-import org.signserver.common.WorkerStatusInfo;
 
 /**
  * Simple class implementing the ITimeSource interface always returns the
@@ -39,17 +35,8 @@ public class FixedTimeSource implements ITimeSource {
     }
 
     @Override
-    public Date getGenTime(final RequestContext context) {
+    public Date getGenTime() {
         return time;
     }
 
-    @Override
-    public List<WorkerStatusInfo.Entry> getStatusBriefEntries() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<WorkerStatusInfo.Entry> getStatusCompleteEntries() {
-        return Collections.emptyList();
-    }
 }

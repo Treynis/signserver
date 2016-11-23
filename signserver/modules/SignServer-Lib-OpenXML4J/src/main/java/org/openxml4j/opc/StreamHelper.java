@@ -45,7 +45,6 @@ package org.openxml4j.opc;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 
 import org.dom4j.Document;
 import org.dom4j.io.OutputFormat;
@@ -71,7 +70,7 @@ public final class StreamHelper {
 			OutputStream outStream) {
 		try {
 			OutputFormat outformat = OutputFormat.createPrettyPrint();
-			outformat.setEncoding(StandardCharsets.UTF_8.name());
+			outformat.setEncoding("UTF-8");
 			XMLWriter writer = new XMLWriter(outStream, outformat);
 			writer.write(xmlContent);
 		} catch (Exception e) {

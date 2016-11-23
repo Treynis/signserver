@@ -15,12 +15,11 @@ package org.signserver.validationservice.common;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestAndResponseManager;
 
@@ -48,11 +47,8 @@ public class ValidateRequest extends ProcessRequest {
 
     /**
      * Default constructor performing a full validation, verifying the complete chain
-     * returning the complete chain of the certificates.
-     * 
-     * @param certificate Certificate
-     * @param certPurposes Certificate purpose
-     * @throws CertificateEncodingException If an encoding error occurs
+     * returning the complete chain of the certificates
+     * @throws CertificateEncodingException 
      */
     public ValidateRequest(Certificate certificate, String certPurposes) throws CertificateEncodingException {
         super();
@@ -92,12 +88,7 @@ public class ValidateRequest extends ProcessRequest {
 
         return retval;
     }
-    
-    public String getCertPurposesString() {
-        return certPurposes;
-    }
 
-    @Override
     public void parse(DataInput in) throws IOException {
         in.readInt();
         int dataSize = in.readInt();
@@ -107,17 +98,16 @@ public class ValidateRequest extends ProcessRequest {
         if (stringLen > 0) {
             byte[] stringData = new byte[stringLen];
             in.readFully(stringData);
-            this.certPurposes = new String(stringData, StandardCharsets.UTF_8);
+            this.certPurposes = new String(stringData, "UTF-8");
         }
     }
 
-    @Override
     public void serialize(DataOutput out) throws IOException {
         out.writeInt(RequestAndResponseManager.RESPONSETYPE_VALIDATE);
         out.writeInt(certificateData.length);
         out.write(certificateData);
         if (certPurposes != null) {
-            byte[] stringData = certPurposes.getBytes(StandardCharsets.UTF_8);
+            byte[] stringData = certPurposes.getBytes("UTF-8");
             out.writeInt(stringData.length);
             out.write(stringData);
         } else {

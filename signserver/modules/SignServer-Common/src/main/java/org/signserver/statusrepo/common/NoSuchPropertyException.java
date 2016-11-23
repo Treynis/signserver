@@ -32,22 +32,15 @@ public class NoSuchPropertyException extends Exception {
 
     /**
      * Constructs an instance of
-     * <code>NoSuchPropertyException</code> with the specified property.
+     * <code>NoSuchPropertyException</code> with the specified detail message.
      *
-     * @param property Property that the exception corresponds to
+     * @param msg the detail message.
      */
     public NoSuchPropertyException(String property) {
         super("No such property: " + property);
         this.property = property;
     }
 
-    /**
-     * Construct an instance of
-     * <code>NoSuchPropertyException</code> with the specified property and detailed message.
-     * 
-     * @param property Property that the exception corresponds to
-     * @param message Detailed message
-     */
     public NoSuchPropertyException(String property, String message) {
         super(message);
         this.property = property;

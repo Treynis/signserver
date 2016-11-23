@@ -50,28 +50,19 @@ public class GenericValidationRequest extends ProcessRequest implements IValidat
     }
 
     /**
-     * Get the request ID.
-     * 
-     * @return The request ID
      * @see org.signserver.common.ProcessRequest
      */
-    @Override
     public int getRequestID() {
         return requestID;
     }
 
     /**
-     * Get the request data.
-     * 
-     * @return The request data
      * @see org.signserver.common.ProcessRequest
      */
-    @Override
     public byte[] getRequestData() {
         return requestData;
     }
 
-    @Override
     public void parse(DataInput in) throws IOException {
         in.readInt();
         this.requestID = in.readInt();
@@ -80,7 +71,6 @@ public class GenericValidationRequest extends ProcessRequest implements IValidat
         in.readFully(requestData);
     }
 
-    @Override
     public void serialize(DataOutput out) throws IOException {
         out.writeInt(RequestAndResponseManager.REQUESTTYPE_GENERICVALIDATION);
         out.writeInt(requestID);

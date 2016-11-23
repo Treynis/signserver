@@ -12,12 +12,9 @@
  *************************************************************************/
 package org.signserver.module.tsa;
 
-import java.io.File;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.security.Security;
 import java.util.Arrays;
-import java.util.List;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.DEROctetString;
@@ -32,28 +29,23 @@ import org.bouncycastle.tsp.TimeStampRequest;
 import org.bouncycastle.tsp.TimeStampRequestGenerator;
 import org.bouncycastle.tsp.TimeStampResponse;
 import org.bouncycastle.tsp.TimeStampTokenInfo;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import org.junit.Before;
 import org.junit.Test;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestContext;
-import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.common.data.Request;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.LocalComputerTimeSource;
+import org.signserver.server.cryptotokens.HardCodedCryptoTokenAliases;
 import org.signserver.server.log.LogMap;
 import org.signserver.test.utils.mock.GlobalConfigurationSessionMock;
 import org.signserver.test.utils.mock.WorkerSessionMock;
-import org.signserver.testutils.ModulesTestCase;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
-import org.signserver.server.IServices;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.server.data.impl.CloseableReadableData;
-import org.signserver.server.data.impl.CloseableWritableData;
-import org.signserver.server.log.AdminInfo;
-import org.signserver.test.utils.mock.MockedRequestContext;
-import org.signserver.test.utils.mock.MockedServicesImpl;
 
 /**
  * Unit tests for the TimeStampSigner.
@@ -63,7 +55,7 @@ import org.signserver.test.utils.mock.MockedServicesImpl;
  * @author Markus Kilås
  * @version $Id$
  */
-public class TimeStampSignerUnitTest extends ModulesTestCase {
+public class TimeStampSignerUnitTest {
 
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(TimeStampSignerUnitTest.class);
@@ -74,22 +66,14 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
     private static final int WORKER4 = 8893;
     private static final int WORKER5 = 8894;
     private static final int WORKER6 = 8895;
-    private static final int WORKER7 = 8896;
-    private static final int WORKER8 = 8897;
     private static final String NAME = "NAME";
     private static final String AUTHTYPE = "AUTHTYPE";
-    private static final String CRYPTOTOKEN_CLASSNAME =
-            "org.signserver.server.cryptotokens.KeystoreCryptoToken";
+    private static final String CRYPTOTOKEN_CLASSNAME = "org.signserver.server.cryptotokens.HardCodedCryptoToken";
 
-    private static final String KEY_ALIAS = "TS Signer 1";
-    
-    private GlobalConfigurationSessionLocal globalConfig;
-    private WorkerSessionLocal workerSession;
-    private WorkerSessionMock processSession;
-    private IServices services;
+    private IGlobalConfigurationSession.IRemote globalConfig;
+    private IWorkerSession.IRemote workerSession;
 
     @Before
-    @Override
     public void setUp() throws Exception {
         setupWorkers();
         Security.addProvider(new BouncyCastleProvider());
@@ -106,13 +90,18 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
                 new TimeStampRequestGenerator();
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
                 TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER1);
+        byte[] requestBytes = timeStampRequest.getEncoded();
+        GenericSignRequest signRequest = new GenericSignRequest(100, requestBytes);
+        final RequestContext requestContext = new RequestContext();
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER1, signRequest, requestContext);
+
+        final TimeStampResponse timeStampResponse = new TimeStampResponse(
+                (byte[]) res.getProcessedData());
         timeStampResponse.validate(timeStampRequest);
 
-        final LogMap logMap = LogMap.getInstance(processSession.getLastRequestContext());
-        final Object loggable = logMap.get("TSA_TIMESOURCE");
-        assertEquals("timesource", LocalComputerTimeSource.class.getSimpleName(),
-                     String.valueOf(loggable));
+        LogMap logMap = LogMap.getInstance(requestContext);
+        assertEquals("timesource", LocalComputerTimeSource.class.getSimpleName(), logMap.get("TSA_TIMESOURCE"));
     }
     
     /**
@@ -129,33 +118,34 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
                 new TimeStampRequestGenerator();
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
                 TSPAlgorithms.SHA1, new byte[2000], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER1);
+        byte[] requestBytes = timeStampRequest.getEncoded();
+        GenericSignRequest signRequest = new GenericSignRequest(100, requestBytes);
+        final RequestContext requestContext = new RequestContext();
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER1, signRequest, requestContext);
+
+        final TimeStampResponse timeStampResponse = new TimeStampResponse(
+                (byte[]) res.getProcessedData());
         timeStampResponse.validate(timeStampRequest);
 
-        LogMap logMap = LogMap.getInstance(processSession.getLastRequestContext());
-        final Object responseLoggable =
-                logMap.get(ITimeStampLogger.LOG_TSA_TIMESTAMPRESPONSE_ENCODED);
-        assertNotNull("response", responseLoggable);
-        
+        LogMap logMap = LogMap.getInstance(requestContext);
+        assertNotNull("response",
+                logMap.get(ITimeStampLogger.LOG_TSA_TIMESTAMPRESPONSE_ENCODED));
         assertEquals("log line doesn't contain newlines", -1,
-                responseLoggable.toString().lastIndexOf('\n'));
-        
-        final Object requestLoggable =
-                logMap.get(ITimeStampLogger.LOG_TSA_TIMESTAMPREQUEST_ENCODED);
-        assertNotNull("request", requestLoggable);
+                logMap.get(ITimeStampLogger.LOG_TSA_TIMESTAMPRESPONSE_ENCODED).lastIndexOf('\n'));
+        assertNotNull("request",
+                logMap.get(ITimeStampLogger.LOG_TSA_TIMESTAMPREQUEST_ENCODED));
         assertEquals("log line doesn't contain newlines", -1,
-                requestLoggable.toString().lastIndexOf('\n'));
+                logMap.get(ITimeStampLogger.LOG_TSA_TIMESTAMPREQUEST_ENCODED).lastIndexOf('\n'));
     }
 
-    private void setupWorkers() throws Exception {
+    private void setupWorkers() {
 
         final GlobalConfigurationSessionMock globalMock
                 = new GlobalConfigurationSessionMock();
-        final WorkerSessionMock workerMock = new WorkerSessionMock();
+        final WorkerSessionMock workerMock = new WorkerSessionMock(globalMock);
         globalConfig = globalMock;
         workerSession = workerMock;
-        processSession = workerMock;
-        services = new MockedServicesImpl().with(GlobalConfigurationSessionLocal.class, globalMock);
 
         // WORKER1
         {
@@ -163,18 +153,17 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             final WorkerConfig config = new WorkerConfig();
             config.setProperty(NAME, "TestTimeStampSigner1");
             config.setProperty(AUTHTYPE, "NOAUTH");
-            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID,
-                               "1.3.6.1.4.1.22408.1.2.3.45");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            config.setProperty("ACCEPTANYPOLICY", "true");
+            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
+
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
-                    new TimeStampSigner());
+                    new TimeStampSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -184,19 +173,18 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             final WorkerConfig config = new WorkerConfig();
             config.setProperty(NAME, "TestTimeStampSigner3");
             config.setProperty(AUTHTYPE, "NOAUTH");
-            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID,
-                               "1.3.6.1.4.1.22408.1.2.3.45");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
+            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
             config.setProperty("ACCEPTEDEXTENSIONS", "1.2.74;1.2.7.2;1.2.7.8");
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            config.setProperty("ACCEPTANYPOLICY", "true");
+
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
-                    new TimeStampSigner());
+                    new TimeStampSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -206,19 +194,18 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             final WorkerConfig config = new WorkerConfig();
             config.setProperty(NAME, "TestTimeStampSigner2");
             config.setProperty(AUTHTYPE, "NOAUTH");
-            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID,
-                              "1.3.6.1.4.1.22408.1.2.3.45");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
+            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
             config.setProperty("ACCEPTEDEXTENSIONS", "");
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            config.setProperty("ACCEPTANYPOLICY", "true");
+
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
-                    new TimeStampSigner());
+                    new TimeStampSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
 
@@ -228,19 +215,18 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             final WorkerConfig config = new WorkerConfig();
             config.setProperty(NAME, "TestTimeStampSigner3");
             config.setProperty(AUTHTYPE, "NOAUTH");
-            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID,
-                               "1.3.6.1.4.1.22408.1.2.3.45");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
+            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
             config.setProperty("ACCEPTEDEXTENSIONS", "1.2.74; 1.2.7.2; 1.2.7.8");
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            config.setProperty("ACCEPTANYPOLICY", "true");
+
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
-                    new TimeStampSigner());
+                    new TimeStampSigner() {
+                @Override
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+            });
             workerSession.reloadConfiguration(workerId);
         }
         
@@ -250,21 +236,19 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             final WorkerConfig config = new WorkerConfig();
             config.setProperty(NAME, "TestTimeStampSigner4");
             config.setProperty(AUTHTYPE, "NOAUTH");
-            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID,
-                               "1.3.6.1.4.1.22408.1.2.3.45");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            config.setProperty("ACCEPTANYPOLICY", "true");
+            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
             
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new TimeStampSigner() {
                 @Override
-                protected Extensions getAdditionalExtensions(Request request, RequestContext context) {
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+
+                @Override
+                protected Extensions getAdditionalExtensions(ProcessRequest request, RequestContext context) {
                      final Extension ext =
                              new Extension(new ASN1ObjectIdentifier("1.2.7.9"),
                                            false,
@@ -281,21 +265,19 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             final WorkerConfig config = new WorkerConfig();
             config.setProperty(NAME, "TestTimeStampSigner4");
             config.setProperty(AUTHTYPE, "NOAUTH");
-            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID,
-                               "1.3.6.1.4.1.22408.1.2.3.45");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            config.setProperty("ACCEPTANYPOLICY", "true");
+            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID, "1.2.3.4");
+            config.setProperty("DEFAULTKEY", HardCodedCryptoTokenAliases.KEY_ALIAS_4);
             
             workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
                     new TimeStampSigner() {
                 @Override
-                protected Extensions getAdditionalExtensions(Request request, RequestContext context) {
+                protected IGlobalConfigurationSession.IRemote
+                        getGlobalConfigurationSession() {
+                    return globalConfig;
+                }
+
+                @Override
+                protected Extensions getAdditionalExtensions(ProcessRequest request, RequestContext context) {
                      final Extension ext =
                              new Extension(new ASN1ObjectIdentifier("1.2.7.9"),
                                            false,
@@ -311,52 +293,6 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
             });
             workerSession.reloadConfiguration(workerId);
         }
-        
-        // WORKER7: accepting only a specific request policy
-        {
-            final int workerId = WORKER7;
-            final WorkerConfig config = new WorkerConfig();
-            config.setProperty(NAME, "TestTimeStampSigner7");
-            config.setProperty(AUTHTYPE, "NOAUTH");
-            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID,
-                               "1.3.6.1.4.1.22408.1.2.3.45");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            config.setProperty("ACCEPTEDPOLICIES",
-                               "1.3.6.1.4.1.22408.1.2.3.45");
-            
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
-                    new TimeStampSigner());
-            workerSession.reloadConfiguration(workerId);
-        }
-        
-        // WORKER8: accepting only a specific set of request policies
-        {
-            final int workerId = WORKER8;
-            final WorkerConfig config = new WorkerConfig();
-            config.setProperty(NAME, "TestTimeStampSigner8");
-            config.setProperty(AUTHTYPE, "NOAUTH");
-            config.setProperty(TimeStampSigner.DEFAULTTSAPOLICYOID,
-                               "1.3.6.1.4.1.22408.1.2.3.45");
-            config.setProperty("DEFAULTKEY", KEY_ALIAS);
-            config.setProperty("KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" +
-                        File.separator + "test" + File.separator + "dss10" +
-                        File.separator + "dss10_tssigner1.p12");
-            config.setProperty("KEYSTORETYPE", "PKCS12");
-            config.setProperty("KEYSTOREPASSWORD", "foo123");
-            config.setProperty("ACCEPTEDPOLICIES",
-                               "1.3.6.1.4.1.22408.1.2.3.45; 1.3.6.1.4.1.22408.1.2.3.46");
-            
-            workerMock.setupWorker(workerId, CRYPTOTOKEN_CLASSNAME, config,
-                    new TimeStampSigner());
-            workerSession.reloadConfiguration(workerId);
-        }
     }
 
     /**
@@ -369,27 +305,22 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
         LOG.info("testNotAcceptedExtensionPrevented");
         TimeStampRequestGenerator timeStampRequestGenerator =
                 new TimeStampRequestGenerator();
-        timeStampRequestGenerator.addExtension(new ASN1ObjectIdentifier("1.2.7.9"), false, new DEROctetString("Value".getBytes(StandardCharsets.UTF_8)));
+        timeStampRequestGenerator.addExtension(new ASN1ObjectIdentifier("1.2.7.9"), false, new DEROctetString("Value".getBytes("UTF-8")));
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
                 TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
         byte[] requestBytes = timeStampRequest.getEncoded();
-        try (
-                CloseableReadableData requestData = createRequestData(requestBytes);
-                CloseableWritableData responseData = createResponseData(false);
-            ) {
-            SignatureRequest signRequest = new SignatureRequest(100, requestData, responseData);
-            processSession.process(new AdminInfo("Client user", null, null),
-                    new WorkerIdentifier(WORKER2), signRequest, new MockedRequestContext(services));
+        GenericSignRequest signRequest = new GenericSignRequest(100, requestBytes);
+        final RequestContext requestContext = new RequestContext();
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER2, signRequest, requestContext);
 
-            final TimeStampResponse timeStampResponse = new TimeStampResponse(responseData.toReadableData().getAsByteArray());
-            timeStampResponse.validate(timeStampRequest);
-            assertEquals("rejection", PKIStatus.REJECTION, timeStampResponse.getStatus());
-            assertEquals("unacceptedExtension", PKIFailureInfo.unacceptedExtension, timeStampResponse.getFailInfo().intValue());
-        } finally {
-            
-        }
+        final TimeStampResponse timeStampResponse = new TimeStampResponse(
+                (byte[]) res.getProcessedData());
+        timeStampResponse.validate(timeStampRequest);
+        assertEquals("rejection", PKIStatus.REJECTION, timeStampResponse.getStatus());
+        assertEquals("unacceptedExtension", PKIFailureInfo.unacceptedExtension, timeStampResponse.getFailInfo().intValue());
     }
-    
+
     /**
      * Tests that a request including an extension listed will accept
      * the extension.
@@ -400,10 +331,17 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
         LOG.info("testAcceptedExtensions");
         TimeStampRequestGenerator timeStampRequestGenerator =
                 new TimeStampRequestGenerator();
-        timeStampRequestGenerator.addExtension(new ASN1ObjectIdentifier("1.2.7.2"), false, new DEROctetString("Value".getBytes(StandardCharsets.UTF_8)));
+        timeStampRequestGenerator.addExtension(new ASN1ObjectIdentifier("1.2.7.2"), false, new DEROctetString("Value".getBytes("UTF-8")));
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
                 TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER2);
+        byte[] requestBytes = timeStampRequest.getEncoded();
+        GenericSignRequest signRequest = new GenericSignRequest(100, requestBytes);
+        final RequestContext requestContext = new RequestContext();
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER2, signRequest, requestContext);
+
+        final TimeStampResponse timeStampResponse = new TimeStampResponse(
+                (byte[]) res.getProcessedData());
         timeStampResponse.validate(timeStampRequest);
         assertEquals("granted", PKIStatus.GRANTED, timeStampResponse.getStatus());
         assertEquals("extensions in token",
@@ -421,10 +359,17 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
         LOG.info("testAcceptedExtensionsWithSpaces");
         TimeStampRequestGenerator timeStampRequestGenerator =
                 new TimeStampRequestGenerator();
-        timeStampRequestGenerator.addExtension(new ASN1ObjectIdentifier("1.2.7.2"), false, new DEROctetString("Value".getBytes(StandardCharsets.UTF_8)));
+        timeStampRequestGenerator.addExtension(new ASN1ObjectIdentifier("1.2.7.2"), false, new DEROctetString("Value".getBytes("UTF-8")));
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
                 TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER4);
+        byte[] requestBytes = timeStampRequest.getEncoded();
+        GenericSignRequest signRequest = new GenericSignRequest(100, requestBytes);
+        final RequestContext requestContext = new RequestContext();
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER4, signRequest, requestContext);
+
+        final TimeStampResponse timeStampResponse = new TimeStampResponse(
+                (byte[]) res.getProcessedData());
         timeStampResponse.validate(timeStampRequest);
         assertEquals("granted", PKIStatus.GRANTED, timeStampResponse.getStatus());
         assertEquals("extensions in token",
@@ -444,25 +389,17 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
                 new TimeStampRequestGenerator();
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
                 TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER3);
+        byte[] requestBytes = timeStampRequest.getEncoded();
+        GenericSignRequest signRequest = new GenericSignRequest(100, requestBytes);
+        final RequestContext requestContext = new RequestContext();
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER3, signRequest, requestContext);
+
+        final TimeStampResponse timeStampResponse = new TimeStampResponse(
+                (byte[]) res.getProcessedData());
         timeStampResponse.validate(timeStampRequest);
         assertEquals("granted", PKIStatus.GRANTED, timeStampResponse.getStatus());
         assertNull("extensions in token", timeStampResponse.getTimeStampToken().getTimeStampInfo().toASN1Structure().getExtensions());
-    }
-    
-    private TimeStampResponse timestamp(TimeStampRequest timeStampRequest, int workerId) throws Exception {
-        byte[] requestBytes = timeStampRequest.getEncoded();
-        try (
-                CloseableReadableData requestData = createRequestData(requestBytes);
-                CloseableWritableData responseData = createResponseData(false);
-            ) {
-            SignatureRequest signRequest = new SignatureRequest(100, requestData, responseData);
-        
-            processSession.process(new AdminInfo("Client user", null, null), new WorkerIdentifier(workerId), signRequest, new MockedRequestContext(services));
-
-            final TimeStampResponse timeStampResponse = new TimeStampResponse(responseData.toReadableData().getAsInputStream());
-            return timeStampResponse;
-        }
     }
 
     /**
@@ -475,10 +412,17 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
         LOG.info("testEmptyAcceptedExtensionsPreventsExtension");
         TimeStampRequestGenerator timeStampRequestGenerator =
                 new TimeStampRequestGenerator();
-        timeStampRequestGenerator.addExtension(new ASN1ObjectIdentifier("1.2.7.9"), false, new DEROctetString("Value".getBytes(StandardCharsets.UTF_8)));
+        timeStampRequestGenerator.addExtension(new ASN1ObjectIdentifier("1.2.7.9"), false, new DEROctetString("Value".getBytes("UTF-8")));
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
                 TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER3);
+        byte[] requestBytes = timeStampRequest.getEncoded();
+        GenericSignRequest signRequest = new GenericSignRequest(100, requestBytes);
+        final RequestContext requestContext = new RequestContext();
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER3, signRequest, requestContext);
+
+        final TimeStampResponse timeStampResponse = new TimeStampResponse(
+                (byte[]) res.getProcessedData());
         timeStampResponse.validate(timeStampRequest);
         assertEquals("rejection", PKIStatus.REJECTION, timeStampResponse.getStatus());
         assertEquals("unacceptedExtension", PKIFailureInfo.unacceptedExtension, timeStampResponse.getFailInfo().intValue());
@@ -496,7 +440,14 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
                 new TimeStampRequestGenerator();
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
                 TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER5);
+        byte[] requestBytes = timeStampRequest.getEncoded();
+        GenericSignRequest signRequest = new GenericSignRequest(100, requestBytes);
+        final RequestContext requestContext = new RequestContext();
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER5, signRequest, requestContext);
+
+        final TimeStampResponse timeStampResponse = new TimeStampResponse(
+                (byte[]) res.getProcessedData());
         timeStampResponse.validate(timeStampRequest);
     
         TimeStampTokenInfo timeStampInfo = timeStampResponse.getTimeStampToken().getTimeStampInfo();
@@ -526,7 +477,14 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
                 new TimeStampRequestGenerator();
         TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
                 TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER6);
+        byte[] requestBytes = timeStampRequest.getEncoded();
+        GenericSignRequest signRequest = new GenericSignRequest(100, requestBytes);
+        final RequestContext requestContext = new RequestContext();
+        final GenericSignResponse res = (GenericSignResponse) workerSession.process(
+                WORKER6, signRequest, requestContext);
+
+        final TimeStampResponse timeStampResponse = new TimeStampResponse(
+                (byte[]) res.getProcessedData());
         timeStampResponse.validate(timeStampRequest);
     
         TimeStampTokenInfo timeStampInfo = timeStampResponse.getTimeStampToken().getTimeStampInfo();
@@ -545,383 +503,6 @@ public class TimeStampSignerUnitTest extends ModulesTestCase {
                 extension1.getExtnValue());
         assertEquals("Should contain extension value", new DEROctetString("Critical".getBytes()),
                 extension2.getExtnValue());
-    }
-    
-    /**
-     * Test that setting an accepted policy works with that policy in the
-     * request.
-     * 
-     * @throws Exception 
-     */
-    @Test
-    public void testOnlyAcceptedPolicy() throws Exception {
-        LOG.info("testOnlyAcceptedPolicy");
-        TimeStampRequestGenerator timeStampRequestGenerator =
-                new TimeStampRequestGenerator();
-        timeStampRequestGenerator.setReqPolicy(new ASN1ObjectIdentifier("1.3.6.1.4.1.22408.1.2.3.45"));
-        TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
-                TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER7);
-        timeStampResponse.validate(timeStampRequest);
-        assertEquals("acceptance", PKIStatus.GRANTED, timeStampResponse.getStatus());
-    }
-    
-    /**
-     * Test that a request policy is accepted for a signer accepting a set
-     * of request policies.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testOnlyAcceptedPolicyInSet() throws Exception {
-        LOG.info("testAnyAcceptedPolicy");
-        TimeStampRequestGenerator timeStampRequestGenerator =
-                new TimeStampRequestGenerator();
-        timeStampRequestGenerator.setReqPolicy(new ASN1ObjectIdentifier("1.3.6.1.4.1.22408.1.2.3.45"));
-        TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
-                TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER8);
-        timeStampResponse.validate(timeStampRequest);
-        assertEquals("acceptance", PKIStatus.GRANTED, timeStampResponse.getStatus());
-    }
-    
-    /**
-     * Test that requesting a policy not in the set of accepted policies is
-     * rejected.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testNonAcceptedPolicy() throws Exception {
-        LOG.info("testAnyAcceptedPolicy");
-        TimeStampRequestGenerator timeStampRequestGenerator =
-                new TimeStampRequestGenerator();
-        timeStampRequestGenerator.setReqPolicy(new ASN1ObjectIdentifier("1.3.6.1.4.1.22408.1.2.1.2"));
-        TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
-                TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER7);
-        timeStampResponse.validate(timeStampRequest);
-        assertEquals("acceptance", PKIStatus.REJECTION, timeStampResponse.getStatus());
-    }
-    
-    /**
-     * Test that requesting a policy works with ACCEPTANYPOLICY set to true.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testAnyAcceptedPolicy() throws Exception {
-        LOG.info("testAnyAcceptedPolicy");
-        TimeStampRequestGenerator timeStampRequestGenerator =
-                new TimeStampRequestGenerator();
-        timeStampRequestGenerator.setReqPolicy(new ASN1ObjectIdentifier("1.3.6.1.4.1.22408.1.2.1.2"));
-        TimeStampRequest timeStampRequest = timeStampRequestGenerator.generate(
-                TSPAlgorithms.SHA1, new byte[20], BigInteger.valueOf(100));
-        final TimeStampResponse timeStampResponse = timestamp(timeStampRequest, WORKER1);
-        timeStampResponse.validate(timeStampRequest);
-        assertEquals("acceptance", PKIStatus.GRANTED, timeStampResponse.getStatus());
-    }
-    
-    /**
-     * Test that setting both ACCEPTANYPOLICY and ACCEPTEDPOLICIES results in
-     * a configuration error.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testBothAnyAcceptedAndAcceptedPoliciesError() throws Exception {
-        LOG.info("testBothAnyAcceptedAndAcceptedPoliciesError"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-        
-        config.setProperty("ACCEPTANYPOLICY", "true");
-        config.setProperty("ACCEPTEDPOLICIES", "1.3.6.1.4.1.22408.1.2.3.45");
-        
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertTrue("should contain configuration error",
-                   fatalErrors.contains("Can not set ACCEPTANYPOLICY to true and ACCEPTEDPOLICIES at the same time"));
-    }
-    
-    /**
-     * Test that setting both ACCEPTANYPOLICY (with caps, TRUE) and ACCEPTEDPOLICIES results in
-     * a configuration error for defining conflicts, but not for the ACCEPTANYPOLICY value.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testBothAnyAcceptedAndAcceptedPoliciesCapsError() throws Exception {
-        LOG.info("testBothAnyAcceptedAndAcceptedPoliciesError"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-        
-        config.setProperty("ACCEPTANYPOLICY", "TRUE");
-        config.setProperty("ACCEPTEDPOLICIES", "1.3.6.1.4.1.22408.1.2.3.45");
-        
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertTrue("should contain configuration error",
-                   fatalErrors.contains("Can not set ACCEPTANYPOLICY to true and ACCEPTEDPOLICIES at the same time"));
-        assertFalse("should not contain error about ACCEPTANYPOLICY",
-                    fatalErrors.contains("Illegal value for ACCEPTANYPOLICY: TRUE"));
-    }
-    
-    /**
-     * Test that setting ACCEPTANYPOLICY to explicitely false and
-     * ACCEPTEDPOLICIES is accepted.
-     * 
-     * @throws Exception 
-     */
-    @Test
-    public void testAcceptAnyPolicyFalseAndAcceptedPolicies() throws Exception {
-        LOG.info("testAcceptAnyPolicyFalseAndAcceptedPolicies"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-        
-        config.setProperty("ACCEPTANYPOLICY", "false");
-        config.setProperty("ACCEPTEDPOLICIES", "1.3.6.1.4.1.22408.1.2.3.45");
-        
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertFalse("should not contain error",
-                fatalErrors.contains("Can not set ACCEPTANYPOLICY to true and ACCEPTEDPOLICIES at the same time"));
-        assertFalse("should not contain error",
-                fatalErrors.contains("Must specify either ACCEPTEDPOLICIES or ACCEPTANYPOLICY true"));
-        assertFalse("should not contain error",
-                fatalErrors.contains("Illegal value for ACCEPTANYPOLICY: false"));
-    }
-    
-    /**
-     * Test that setting ACCEPTANYPOLICY to an empty value and
-     * ACCEPTEDPOLICIES is accepted.
-     * 
-     * @throws Exception 
-     */
-    @Test
-    public void testAcceptAnyPolicyEmptyAndAcceptedPolicies() throws Exception {
-        LOG.info("testAcceptAnyPolicyEmptyAndAcceptedPolicies"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-        
-        config.setProperty("ACCEPTANYPOLICY", "");
-        config.setProperty("ACCEPTEDPOLICIES", "1.3.6.1.4.1.22408.1.2.3.45");
-        
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertFalse("should not contain error",
-                fatalErrors.contains("Can not set ACCEPTANYPOLICY to true and ACCEPTEDPOLICIES at the same time"));
-        assertFalse("should not contain error",
-                fatalErrors.contains("Must specify either ACCEPTEDPOLICIES or ACCEPTANYPOLICY true"));
-    }
-    
-    /**
-     * Test that not setting any of ACCEPTANYPOLICY or ACCEPTEDPOLICIES results in
-     * a configuration error.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testNoneOfAnyAcceptedOrAcceptedPoliciesError() throws Exception {
-        LOG.info("testBothAnyAcceptedAndAcceptedPoliciesError"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-      
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertTrue("should contain configuration error",
-                   fatalErrors.contains("Must specify either ACCEPTEDPOLICIES or ACCEPTANYPOLICY true"));
-    }
-    
-    /**
-     * Test that not setting an invalid value for ACCEPTANYPOLICY results in
-     * an error.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testAcceptAnyPolicyInvalid() throws Exception {
-        LOG.info("testBothAnyAcceptedAndAcceptedPoliciesError"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-        
-        config.setProperty("ACCEPTANYPOLICY", "foo");
-      
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertTrue("should contain configuration error",
-                   fatalErrors.contains("Illegal value for ACCEPTANYPOLICY: foo"));
-    }
-    
-    /**
-     * Test that setting ACCEPTANYPOLICY to false without setting ACCEPTEDPOLICIES
-     * is not allowed.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testAcceptAnyPolicyFalseAndNoAcceptedPolicies() throws Exception {
-        LOG.info("testAcceptAnyPolicyFalseAndNoAcceptedPolicies"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-        
-        config.setProperty("ACCEPTANYPOLICY", "false");
-      
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertTrue("should contain configuration error",
-                   fatalErrors.contains("Must specify either ACCEPTEDPOLICIES or ACCEPTANYPOLICY true"));
-    }
-    
-    /**
-     * Test that setting ACCEPTANYPOLICY to FALSE (with caps) without setting ACCEPTEDPOLICIES
-     * is not allowed.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testAcceptAnyPolicyFalseCapitalAndNoAcceptedPolicies() throws Exception {
-        LOG.info("testAcceptAnyPolicyFalseAndNoAcceptedPolicies"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-        
-        config.setProperty("ACCEPTANYPOLICY", "FALSE");
-      
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertTrue("should contain configuration error",
-                   fatalErrors.contains("Must specify either ACCEPTEDPOLICIES or ACCEPTANYPOLICY true"));
-        assertFalse("should not contain error about ACCEPTANYPOLICY",
-                    fatalErrors.contains("Illegal value for ACCEPTANYPOLICY: FALSE"));
-    }
-    
-    /**
-     * Test that setting ACCEPTANYPOLICY empty without setting ACCEPTEDPOLICIES
-     * is not allowed.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testAcceptAnyPolicyEmptyAndNoAcceptedPolicies() throws Exception {
-        LOG.info("testAcceptAnyPolicyEmptyAndNoAcceptedPolicies"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-        
-        config.setProperty("ACCEPTANYPOLICY", "");
-      
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertTrue("should contain configuration error",
-                   fatalErrors.contains("Must specify either ACCEPTEDPOLICIES or ACCEPTANYPOLICY true"));
-    }
-    
-    /**
-     * Test that setting ACCEPTEDPOLICIES to an empty list is accepted without
-     * setting ACCEPTANYPOLICY.
-     *
-     * @throws Exception 
-     */
-    @Test
-    public void testAcceptedPoliciesEmpty() throws Exception {
-        LOG.info("testAcceptedPoliciesEmpty"); 
-        
-        final WorkerConfig config = new WorkerConfig();
-        
-        config.setProperty("ACCEPTEDPOLICIES", "");
-      
-        final TimeStampSigner signer = new TimeStampSigner() {
-            @Override
-            public ICryptoTokenV4 getCryptoToken(final IServices services) throws SignServerException {
-                return null;
-            }
-        };
-        
-        signer.init(WORKER1, config, null, null);
-        
-        final List<String> fatalErrors = signer.getFatalErrors(null);
-        
-        assertFalse("should not contain error",
-                fatalErrors.contains("Must specify either ACCEPTEDPOLICIES or ACCEPTANYPOLICY true"));
     }
 }
 

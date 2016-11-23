@@ -26,6 +26,7 @@ import org.cesecore.util.query.QueryCriteria;
 import org.junit.Before;
 import org.junit.Test;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.InvalidWorkerIdException;
@@ -34,9 +35,8 @@ import org.signserver.common.QueryException;
 import org.signserver.common.SignServerException;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.UnsupportedCryptoTokenParameter;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Generic CryptoToken tests using PKCS#11.
@@ -56,7 +56,8 @@ public class P11CryptoTokenTest extends CryptoTokenTestBase {
     private final String pin;
     private final String existingKey1;
     
-    private final WorkerSessionRemote workerSession = getWorkerSession();
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
     
     public P11CryptoTokenTest() {
         sharedLibraryName = getConfig().getProperty("test.p11.sharedLibraryName");
@@ -74,8 +75,8 @@ public class P11CryptoTokenTest extends CryptoTokenTestBase {
     
     private void setupCryptoTokenProperties(final int tokenId) throws Exception {
         // Setup token
-        workerSession.setWorkerProperty(tokenId, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.server.signers.CryptoWorker");
-        workerSession.setWorkerProperty(tokenId, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, PKCS11CryptoToken.class.getName());
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".CLASSPATH", "org.signserver.server.signers.CryptoWorker");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + tokenId + ".SIGNERTOKEN.CLASSPATH", PKCS11CryptoToken.class.getName());
         workerSession.setWorkerProperty(tokenId, "NAME", CRYPTO_TOKEN_NAME);
         workerSession.setWorkerProperty(tokenId, "SHAREDLIBRARYNAME", sharedLibraryName);
         workerSession.setWorkerProperty(tokenId, "SLOT", slot);
@@ -137,28 +138,28 @@ public class P11CryptoTokenTest extends CryptoTokenTestBase {
 
     @Override
     protected TokenSearchResults searchTokenEntries(int startIndex, int max, QueryCriteria qc, boolean includeData) throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, SignServerException, AuthorizationDeniedException, InvalidAlgorithmParameterException, UnsupportedCryptoTokenParameter {
-        return getWorkerSession().searchTokenEntries(new WorkerIdentifier(CRYPTO_TOKEN), startIndex, max, qc, includeData, Collections.<String, Object>emptyMap());
+        return getWorkerSession().searchTokenEntries(CRYPTO_TOKEN, startIndex, max, qc, includeData, Collections.<String, Object>emptyMap());
     }
 
     @Override
     protected void generateKey(String keyType, String keySpec, String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, SignServerException {
-        getWorkerSession().generateSignerKey(new WorkerIdentifier(CRYPTO_TOKEN), keySpec, keySpec, alias, null);
+        getWorkerSession().generateSignerKey(CRYPTO_TOKEN, keySpec, keySpec, alias, null);
     }
 
     @Override
     protected boolean destroyKey(String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, SignServerException, KeyStoreException {
-        return getWorkerSession().removeKey(new WorkerIdentifier(CRYPTO_TOKEN), alias);
+        return getWorkerSession().removeKey(CRYPTO_TOKEN, alias);
     }
 
     @Override
     protected void importCertificateChain(List<Certificate> chain, String alias)
             throws CryptoTokenOfflineException, IllegalArgumentException,
             CertificateException, CertificateEncodingException, OperationUnsupportedException {
-        getWorkerSession().importCertificateChain(new WorkerIdentifier(CRYPTO_TOKEN), getCertByteArrayList(chain), alias, null);
+        getWorkerSession().importCertificateChain(CRYPTO_TOKEN, getCertByteArrayList(chain), alias, null);
     }
     
     private List<byte[]> getCertByteArrayList(final List<Certificate> chain) throws CertificateEncodingException {
-        final List<byte[]> result = new LinkedList<>();
+        final List<byte[]> result = new LinkedList<byte[]>();
         
         for (final Certificate cert : chain) {
             result.add(cert.getEncoded());
@@ -172,12 +173,12 @@ public class P11CryptoTokenTest extends CryptoTokenTestBase {
                                                  final boolean explicitEccParameters,
                                                  final String alias)
             throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        return getWorkerSession().getCertificateRequest(new WorkerIdentifier(CRYPTO_TOKEN), req, explicitEccParameters, alias);
+        return getWorkerSession().getCertificateRequest(CRYPTO_TOKEN, req, explicitEccParameters, alias);
     }
 
     @Override
     protected List<Certificate> getCertificateChain(String alias)
             throws CryptoTokenOfflineException, InvalidWorkerIdException {
-        return getWorkerSession().getSignerCertificateChain(new WorkerIdentifier(CRYPTO_TOKEN), alias);
+        return getWorkerSession().getSignerCertificateChain(CRYPTO_TOKEN, alias);
     }
 }

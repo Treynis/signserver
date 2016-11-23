@@ -20,16 +20,15 @@ import org.apache.commons.cli.*;
 import org.apache.log4j.Logger;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.InvalidWorkerIdException;
-import org.signserver.common.RemoteRequestContext;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.common.RequestContext;
+import org.signserver.ejb.interfaces.IWorkerSession.IRemote;
+import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.test.random.*;
 import org.signserver.test.random.impl.IncrementProperty;
 import org.signserver.test.random.impl.IncrementPropertyThread;
 import org.signserver.test.random.impl.RenewSigner;
 import org.signserver.test.random.impl.RequestContextPreProcessor;
 import org.signserver.test.random.impl.SigningThread;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
 
 /**
  * Command line interface for random tests.
@@ -88,9 +87,9 @@ public class Main {
                 .append(" - Sends requests from usernames starting with the supplied 'userprefix' and ends with a random number between 'usersuffixmin' and 'usersuffixmax'").append(NL);
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         final HelpFormatter formatter = new HelpFormatter();
-        try (PrintWriter pw = new PrintWriter(bout)) {
-            formatter.printHelp(pw, HelpFormatter.DEFAULT_WIDTH, COMMAND + " <options>", "Random testing tool", OPTIONS, HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, footer.toString());
-        }
+        PrintWriter pw = new PrintWriter(bout);
+        formatter.printHelp(pw, HelpFormatter.DEFAULT_WIDTH, COMMAND + " <options>", "Random testing tool", OPTIONS, HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, footer.toString());
+        pw.close();
         LOG.info(bout.toString());
     }
     
@@ -155,7 +154,7 @@ public class Main {
             // Worker group 1
             final List<WorkerSpec> workerGroup1;
             if (commandLine.hasOption(WORKER_GROUP_1)) {
-                workerGroup1 = new LinkedList<>();
+                workerGroup1 = new LinkedList<WorkerSpec>();
                 final String list = commandLine.getOptionValue(WORKER_GROUP_1);
                 String[] ids = list.split(",");
                 for (String id : ids) {
@@ -168,7 +167,7 @@ public class Main {
             // Worker group 2
             final List<WorkerSpec> workerGroup2;
             if (commandLine.hasOption(WORKER_GROUP_2)) {
-                workerGroup2 = new LinkedList<>();
+                workerGroup2 = new LinkedList<WorkerSpec>();
                 final String list = commandLine.getOptionValue(WORKER_GROUP_2);
                 String[] ids = list.split(",");
                 for (String id : ids) {
@@ -181,7 +180,7 @@ public class Main {
             // Worker group 3
             final List<WorkerSpec> workerGroup3;
             if (commandLine.hasOption(WORKER_GROUP_3)) {
-                workerGroup3 = new LinkedList<>();
+                workerGroup3 = new LinkedList<WorkerSpec>();
                 final String list = commandLine.getOptionValue(WORKER_GROUP_3);
                 String[] ids = list.split(",");
                 for (String id : ids) {
@@ -208,9 +207,8 @@ public class Main {
             }
             
             final AdminCommandHelper helper = new AdminCommandHelper();
-            final WorkerSessionRemote workerSession = helper.getWorkerSession();
-            final ProcessSessionRemote processSession = helper.getProcessSession();
-            final LinkedList<WorkerThread> threads = new LinkedList<>();
+            final IRemote workerSession = helper.getWorkerSession();
+            final LinkedList<WorkerThread> threads = new LinkedList<WorkerThread>();
             final FailureCallback callback = new FailureCallback() {
 
                 @Override
@@ -248,7 +246,6 @@ public class Main {
             context.setCallback(callback);
             context.setMasterRandom(masterRandom);
             context.setWorkerSession(workerSession);
-            context.setProcessSession(processSession);
             context.setPauser(new Pauser());
             context.setWorkerGroup1(workerGroup1);
             context.setThreadsGroup1(threadGroup1);
@@ -277,7 +274,7 @@ public class Main {
                         throw new ParseException("Missing -workergroup1");
                     }
                 }
-                Collection<WorkerSpec> allWorkers = new LinkedList<>(context.getWorkerGroup1());
+                Collection<WorkerSpec> allWorkers = new LinkedList<WorkerSpec>(context.getWorkerGroup1());
                 if (context.getWorkerGroup2() != null) {
                     allWorkers.addAll(context.getWorkerGroup2());
                 }
@@ -285,7 +282,7 @@ public class Main {
                     allWorkers.addAll(context.getWorkerGroup3());
                 }
                 for (WorkerSpec worker : allWorkers) {
-                    List<String> fatalErrors = context.getWorkerSession().getStatus(new WorkerIdentifier(worker.getWorkerId())).getFatalErrors();
+                    List<String> fatalErrors = context.getWorkerSession().getStatus(worker.getWorkerId()).getFatalErrors();
                     if (!fatalErrors.isEmpty()) {
                         System.err.println();
                         throw new FailedException("Worker " + worker + ": " + fatalErrors);
@@ -380,7 +377,7 @@ public class Main {
      * 
      */
     private static void signAndCountSignings(final List<WorkerThread> threads, final TestContext context) throws Exception {
-        final LinkedList<SigningThread> signingThreads = new LinkedList<>();
+        final LinkedList<SigningThread> signingThreads = new LinkedList<SigningThread>();
         
         if (context.getThreadsGroup1() == null) {
             throw new ParseException("Missing -threadgroup1");
@@ -390,14 +387,14 @@ public class Main {
         // Group 1: Threads signing documents with the workers in group 1
         for (int i = 0; i < context.getThreadsGroup1(); i++) {
             final WorkerSpec worker = context.getWorkerGroup1().get(i % context.getWorkerGroup1().size());
-            final SigningThread signingThread = new SigningThread("Signer-" + i + "-" + worker.getWorkerId(), context.getCallback(), context.getPauser(), context.getMasterRandom().nextLong(), worker, context.getProcessSession(), null);
+            final SigningThread signingThread = new SigningThread("Signer-" + i + "-" + worker.getWorkerId(), context.getCallback(), context.getPauser(), context.getMasterRandom().nextLong(), worker, context.getWorkerSession(), null);
             signingThreads.add(signingThread);
         }
         threads.addAll(signingThreads);
         
         final int workerId = context.getWorkerGroup1().get(0).getWorkerId();
         
-        final long startValue = context.getWorkerSession().getKeyUsageCounterValue(new WorkerIdentifier(workerId));
+        final long startValue = context.getWorkerSession().getKeyUsageCounterValue(workerId);
         
         // Thread pausing signings
         WorkerThread pauseThread = new WorkerThread("Pause", context.getCallback()) {
@@ -416,7 +413,7 @@ public class Main {
                                 signings += w.getOperationsPerformed();
                             }
                             long expected = startValue + signings;
-                            long actual = context.getWorkerSession().getKeyUsageCounterValue(new WorkerIdentifier(workerId));
+                            long actual = context.getWorkerSession().getKeyUsageCounterValue(workerId);
                             if (expected != actual) {
                                 fireFailure("Key usage counter value incorrect. Expected " + expected + ", actual " + actual);
                                 break;
@@ -473,7 +470,7 @@ public class Main {
         // Group 1: Threads signing documents with the workers in group 1
         for (int i = 0; i < context.getThreadsGroup1(); i++) {
             final WorkerSpec worker = context.getWorkerGroup1().get(i%context.getWorkerGroup1().size());
-            final SigningThread signingThread = new SigningThread("Signer-" + i + "-" + worker.getWorkerId(), context.getCallback(), null, context.getMasterRandom().nextLong(), worker, context.getProcessSession(), null);
+            final SigningThread signingThread = new SigningThread("Signer-" + i + "-" + worker.getWorkerId(), context.getCallback(), null, context.getMasterRandom().nextLong(), worker, context.getWorkerSession(), null);
             threads.add(signingThread);
         }
         
@@ -521,16 +518,16 @@ public class Main {
         // Group 1: Threads signing documents with the workers in group 1
         for (int i = 0; i < context.getThreadsGroup1(); i++) {
             final WorkerSpec worker = context.getWorkerGroup1().get(i%context.getWorkerGroup1().size());
-            final SigningThread signingThread = new SigningThread("Signer-" + i + "-" + worker.getWorkerId(), context.getCallback(), null, context.getMasterRandom().nextLong(), worker, context.getProcessSession(), null);
+            final SigningThread signingThread = new SigningThread("Signer-" + i + "-" + worker.getWorkerId(), context.getCallback(), null, context.getMasterRandom().nextLong(), worker, context.getWorkerSession(), null);
             threads.add(signingThread);
         }
         
         // Group 3: Threads updating the configuration of the workers in group 2
         final int workerId = context.getWorkerGroup3().get(0).getWorkerId();
         final List<WorkerSpec> renewees = context.getWorkerGroup2();
-        final List<RenewSigner> renewers = new LinkedList<>();
+        final List<RenewSigner> renewers = new LinkedList<RenewSigner>();
         for (WorkerSpec renewee : renewees) {
-            renewers.add(new RenewSigner(workerId, renewee.getWorkerId(), context.getProcessSession()));
+            renewers.add(new RenewSigner(workerId, renewee.getWorkerId(), context.getWorkerSession()));
         }
 
         final long seed = context.getMasterRandom().nextLong();
@@ -585,12 +582,12 @@ public class Main {
         // Group 1: Threads signing documents with the workers in group 1
         for (int i = 0; i < context.getThreadsGroup1(); i++) {
             final WorkerSpec worker = context.getWorkerGroup1().get(i%context.getWorkerGroup1().size());
-            final SigningThread signingThread = new SigningThread("Signer-" + i + "-" + worker.getWorkerId(), context.getCallback(), null, context.getMasterRandom().nextLong(), worker, context.getProcessSession(), new RequestContextPreProcessor() {
+            final SigningThread signingThread = new SigningThread("Signer-" + i + "-" + worker.getWorkerId(), context.getCallback(), null, context.getMasterRandom().nextLong(), worker, context.getWorkerSession(), new RequestContextPreProcessor() {
 
                 @Override
-                public void preProcess(RemoteRequestContext requestContext) {
+                public void preProcess(RequestContext requestContext) {
                     final String username = userPrefix + (userSuffixMin + context.getMasterRandom().nextInt(userSuffixMax - userSuffixMin + 1));
-                    requestContext.setUsername(username);
+                    requestContext.put(RequestContext.CLIENT_CREDENTIAL, new UsernamePasswordClientCredential(username, ""));
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Username: " + username);
                     }

@@ -39,7 +39,7 @@ import java.util.Properties;
 import java.security.cert.X509Certificate;
 
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
@@ -105,12 +105,12 @@ public class OCSPValidator extends BaseValidator {
         // certStore & certPath construction
         CertPath certPath = null;
         CertStore certStore;
-        List<Object> certs = new ArrayList<>();
+        List<Object> certs = new ArrayList<Object>();
         CertificateFactory certFactory;
         CertPathValidator validator = null;
         PKIXParameters params = null;
         Certificate rootCert = null;
-        List<X509Certificate> certChainWithoutRootCert = new ArrayList<>();
+        List<X509Certificate> certChainWithoutRootCert = new ArrayList<X509Certificate>();
         try {
 
             certFactory = CertificateFactory.getInstance("X509", "BC");
@@ -214,16 +214,13 @@ public class OCSPValidator extends BaseValidator {
     }
 
     /**
-     * Find the issuer of this certificate and get the Authorized OCSP Responder Certificates.
-     * 
-     * @param cert Given certificate
-     * @return List of authorized OSCP responder certificates
+     * Find the issuer of this certificate and get the Authorized OCSP Responder Certificates
      * @throws SignServerException 
      * @throws IOException 
      * @throws CertificateException 
      */
     protected List<X509Certificate> getIssuerAuthorizedOCSPResponderCertificates(Certificate cert) throws SignServerException, CertificateException, IOException {
-        ArrayList<X509Certificate> x509Certs = new ArrayList<>();
+        ArrayList<X509Certificate> x509Certs = new ArrayList<X509Certificate>();
         Properties issuerProps = getIssuerProperties(cert);
         if (issuerProps == null) {
             return null;

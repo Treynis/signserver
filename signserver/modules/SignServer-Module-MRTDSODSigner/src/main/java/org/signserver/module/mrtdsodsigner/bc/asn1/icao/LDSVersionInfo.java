@@ -73,7 +73,6 @@ public class LDSVersionInfo
         return unicodeVersion.getString();
     }
 
-    @Override
     public ASN1Primitive toASN1Primitive()
     {
         ASN1EncodableVector seq = new ASN1EncodableVector();

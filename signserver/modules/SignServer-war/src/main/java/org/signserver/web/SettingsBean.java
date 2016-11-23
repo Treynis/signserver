@@ -31,8 +31,6 @@ public class SettingsBean {
     private static final String WEBDOC_ENABLED = "webdoc.enabled";
     private static final String WEB_ADMINGUI_DIST_ENABLED = "web.admingui.dist.enabled";
     private static final String WEB_ADMINGUI_DIST_FILE = "web.admingui.dist.file";
-    private static final String WEB_CLIENTCLI_DIST_ENABLED = "web.clientcli.dist.enabled";
-    private static final String WEB_CLIENTCLI_DIST_FILE = "web.clientcli.dist.file";
     
     private final CompileTimeSettings settings = CompileTimeSettings.getInstance();
     
@@ -43,17 +41,12 @@ public class SettingsBean {
         final String enabled = settings.getProperty(WEBDOC_ENABLED);
         return enabled != null && Boolean.parseBoolean(enabled);
     }
-
+    
     public boolean isWebAdminGUIDistEnabled() {
         final String enabled = settings.getProperty(WEB_ADMINGUI_DIST_ENABLED);
         return enabled != null && Boolean.parseBoolean(enabled);
     }
     
-    public boolean isWebClientCLIDistEnabled() {
-        final String enabled = settings.getProperty(WEB_CLIENTCLI_DIST_ENABLED);
-        return enabled != null && Boolean.parseBoolean(enabled);
-    }
-
     public File getAdminGUIDistFile() {
         final String fileName = settings.getProperty(WEB_ADMINGUI_DIST_FILE);
         if (LOG.isDebugEnabled()) {
@@ -61,15 +54,7 @@ public class SettingsBean {
         }
         return fileName == null ? null : new File(fileName);
     }
-
-    public File getClientCLIDistFile() {
-        final String fileName = settings.getProperty(WEB_CLIENTCLI_DIST_FILE);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Client CLI dist file: " + fileName);
-        }
-        return fileName == null ? null : new File(fileName);
-    }
-
+    
     public boolean isWebAdminGUIDistAvailable() {
         final boolean result;
         if (!isWebAdminGUIDistEnabled()) {
@@ -85,26 +70,7 @@ public class SettingsBean {
         return result;
     }
     
-    public boolean isWebClientCLIDistAvailable() {
-        final boolean result;
-        if (!isWebClientCLIDistEnabled()) {
-            result = false;
-        } else {
-            final File file = getClientCLIDistFile();
-            if (file == null) {
-                result = false;
-            } else {
-                result = file.exists() && file.isFile();
-            }
-        }
-        return result;
-    }
-
     public String getWebAdminGUIDistSize() {
         return String.format("%.2f MB", getAdminGUIDistFile().length() / 1000000f);
-    }
-
-    public String getWebClientCLIDistSize() {
-        return String.format("%.2f MB", getClientCLIDistFile().length() / 1000000f);
     }
 }

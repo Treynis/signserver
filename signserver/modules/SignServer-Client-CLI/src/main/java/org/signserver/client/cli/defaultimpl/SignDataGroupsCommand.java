@@ -21,8 +21,10 @@ import java.security.cert.CertificateException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
+import javax.xml.ws.soap.SOAPFaultException;
 import org.apache.commons.cli.*;
 import org.apache.log4j.Logger;
+import org.ejbca.ui.cli.util.ConsolePasswordReader;
 import org.signserver.cli.spi.AbstractCommand;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
@@ -186,9 +188,9 @@ public class SignDataGroupsCommand extends AbstractCommand {
                 .append("b) ").append(COMMAND).append(" -workername MRTDSODSigner -data \"1=value1&2=value2&3=value3\" -metadata param1=value1 -metadata param2=value2").append(NL);
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         final HelpFormatter formatter = new HelpFormatter();
-        try (PrintWriter pw = new PrintWriter(bout)) {
-            formatter.printHelp(pw, HelpFormatter.DEFAULT_WIDTH, "signdatagroups <options>", getDescription(), OPTIONS, HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, footer.toString());
-        }
+        PrintWriter pw = new PrintWriter(bout);
+        formatter.printHelp(pw, HelpFormatter.DEFAULT_WIDTH, "signdatagroups <options>", getDescription(), OPTIONS, HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, footer.toString());
+        pw.close();
         return bout.toString();
     }
 
@@ -198,7 +200,7 @@ public class SignDataGroupsCommand extends AbstractCommand {
      * @param line The command line to read from
      */
     private void parseCommandLine(final CommandLine line)
-            throws IllegalCommandArgumentsException, CommandFailureException {
+            throws IllegalCommandArgumentsException {
         if (line.hasOption(WORKERID)) {
                 workerId = Integer.parseInt(line.getOptionValue(
                     WORKERID, null));
@@ -219,7 +221,7 @@ public class SignDataGroupsCommand extends AbstractCommand {
         if (line.hasOption(DATA)) {
             data = line.getOptionValue(DATA, "");
 
-            dataGroups = new HashMap<>();
+            dataGroups = new HashMap<Integer, byte[]>();
 
             String[] groups = data.split("\\&");
             for(String group : groups) {
@@ -263,7 +265,11 @@ public class SignDataGroupsCommand extends AbstractCommand {
             }
         } catch (IOException ex) {
             throw new IllegalCommandArgumentsException("Failed to read password: " + ex.getLocalizedMessage());
-        } catch (NoSuchAlgorithmException | CertificateException | KeyStoreException ex) {
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalCommandArgumentsException("Failure setting up keystores: " + ex.getMessage());
+        } catch (CertificateException ex) {
+            throw new IllegalCommandArgumentsException("Failure setting up keystores: " + ex.getMessage());
+        } catch (KeyStoreException ex) {
             throw new IllegalCommandArgumentsException("Failure setting up keystores: " + ex.getMessage());
         }
     }
@@ -272,7 +278,7 @@ public class SignDataGroupsCommand extends AbstractCommand {
      * @return a ConsolePasswordReader that can be used to read passwords
      */
     protected ConsolePasswordReader createConsolePasswordReader() {
-        return new DefaultConsolePasswordReader();
+        return new ConsolePasswordReader();
     }
 
     /**
@@ -350,7 +356,7 @@ public class SignDataGroupsCommand extends AbstractCommand {
      * Execute the signing operation.
      */
     public final void run() throws CommandFailureException, IllegalCommandArgumentsException {
-            final int NUM_WORKERS = 1;
+        final int NUM_WORKERS = 1;
         Worker workers[] = new Worker[NUM_WORKERS];
         PrintStream outputStream = getOutputStream();
         if (outputStream == null) {
@@ -384,14 +390,14 @@ public class SignDataGroupsCommand extends AbstractCommand {
             }
         }
 
-            // Check for error, XXX: Yes this is ugly and we should remove this stress test feature from here
+        // Check for error, XXX: Yes this is ugly and we should remove this stress test feature from here
         for (Worker worker : workers) {
             final Exception exception = worker.getException();
             if (exception != null) {
                 if (exception.getCause() instanceof AuthorizationRequiredException) {
-                final AuthorizationRequiredException authEx =
+                    final AuthorizationRequiredException authEx =
                     (AuthorizationRequiredException) exception.getCause();
-                LOG.error("Authorization required: " + authEx.getMessage());
+                    LOG.error("Authorization required: " + authEx.getMessage());
                 } else if (exception instanceof HTTPException) {
                     final HTTPException httpException = (HTTPException) exception;
                     throw new CommandFailureException("Failure: HTTP error: " +
@@ -400,7 +406,7 @@ public class SignDataGroupsCommand extends AbstractCommand {
                 } else {
                     LOG.error("Failed", worker.getException());
                 }
-                    throw new CommandFailureException(worker.getException().getMessage(), ClientCLI.RETURN_ERROR);
+                throw new CommandFailureException(worker.getException().getMessage(), ClientCLI.RETURN_ERROR);
             }
         }
 
@@ -448,7 +454,13 @@ public class SignDataGroupsCommand extends AbstractCommand {
                 for (int i = 0; i < repeat || repeat == -1; i++) {
                     signer.sign(dataGroups, encoding, out);
                 }
-            } catch (IOException | IllegalRequestException | CryptoTokenOfflineException | SignServerException ex) {
+            } catch (IOException ex) {
+                exception = ex;
+            } catch (IllegalRequestException ex) {
+                exception = ex;
+            } catch (CryptoTokenOfflineException ex) {
+                exception = ex;
+            } catch (SignServerException ex) {
                 exception = ex;
             }
             LOG.info("Finished");

@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.module.xades.validator;
 
-import java.nio.charset.StandardCharsets;
 import java.security.Security;
 import java.util.Collections;
 import javax.persistence.EntityManager;
@@ -21,17 +20,14 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import org.signserver.common.GenericValidationRequest;
+import org.signserver.common.GenericValidationResponse;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerType;
 import org.signserver.module.xades.signer.XAdESSignerUnitTest;
 import org.signserver.server.WorkerContext;
-import org.signserver.common.data.DocumentValidationRequest;
-import org.signserver.common.data.DocumentValidationResponse;
-import org.signserver.server.data.impl.CloseableReadableData;
-import org.signserver.testutils.ModulesTestCase;
 import org.signserver.validationservice.common.Validation;
 
 /**
@@ -120,7 +116,6 @@ public class XAdESValidator1UnitTest {
         LOG.info("init");
         int signerId = 4711;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("TRUSTANCHORS", ROOTCA_CERTIFICATE);
         
         WorkerContext workerContext = null;
@@ -128,20 +123,17 @@ public class XAdESValidator1UnitTest {
         XAdESValidator instance = new XAdESValidator();
         instance.init(signerId, config, workerContext, em);
         
-        assertEquals(Collections.EMPTY_LIST, instance.getFatalErrors(null));
+        assertEquals(Collections.EMPTY_LIST, instance.getFatalErrors());
     }
     
     /**
      * Test of init method with missing TRUSTANCHORS, of class XAdESValidator.
-     * 
-     * @throws java.lang.Exception
      */
     @Test(expected = SignServerException.class)
     public void testInit_missingTRUSTANCHORS() throws Exception {
         LOG.info("init");
         int signerId = 4711;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("CERTIFICATES", ROOTCA_CERTIFICATE);
         
         WorkerContext workerContext = null;
@@ -149,15 +141,14 @@ public class XAdESValidator1UnitTest {
         XAdESValidator instance = new XAdESValidator();
         instance.init(signerId, config, workerContext, em);
         
-        String errors = instance.getFatalErrors(null).toString();
+        String errors = instance.getFatalErrors().toString();
         assertTrue("error: " + errors, errors.contains("TRUSTANCHORS"));
         
         // Sending an request should give error
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-200-0");
-        
-        try (CloseableReadableData requestData = ModulesTestCase.createRequestData(SIGNED_DOCUMENT1.getBytes(StandardCharsets.UTF_8))) {
-            DocumentValidationRequest request = new DocumentValidationRequest(200, requestData);
+        GenericValidationRequest request = new GenericValidationRequest(200, SIGNED_DOCUMENT1.getBytes("UTF-8"));
+        try {
             instance.processData(request, requestContext);
             fail("Should have thrown SignServer exception");
         } catch (IllegalRequestException ex) {
@@ -167,8 +158,6 @@ public class XAdESValidator1UnitTest {
 
     /**
      * Test of processData method, of class XAdESValidator.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testProcessData_basicValidation() throws Exception {
@@ -183,14 +172,12 @@ public class XAdESValidator1UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-201-0");
-        try (CloseableReadableData requestData = ModulesTestCase.createRequestData(SIGNED_DOCUMENT1.getBytes(StandardCharsets.UTF_8))) {
-            DocumentValidationRequest request = new DocumentValidationRequest(201, requestData);
-            DocumentValidationResponse response = (DocumentValidationResponse) instance.processData(request, requestContext);
-
-            assertTrue("valid document", response.isValid());
-            assertNotNull("returned signer cert", response.getCertificateValidationResponse().getValidation().getCertificate());
-            assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
-        }
+        GenericValidationRequest request = new GenericValidationRequest(201, SIGNED_DOCUMENT1.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
+        
+        assertTrue("valid document", response.isValid());
+        assertNotNull("returned signer cert", response.getSignerCertificate());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
 }
