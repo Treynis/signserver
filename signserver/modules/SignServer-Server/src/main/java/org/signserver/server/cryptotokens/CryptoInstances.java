@@ -29,7 +29,7 @@ public class CryptoInstances {
     
     private static final String REQUESTCONTEXT_KEY = "CRYPTO_INSTANCES";
     
-    private final Set<ICryptoInstance> instances = new HashSet<>();
+    private final Set<ICryptoInstance> instances = new HashSet<ICryptoInstance>();
     
     /**
      * Get the CryptoInstances from the RequestContext or create and put a new 

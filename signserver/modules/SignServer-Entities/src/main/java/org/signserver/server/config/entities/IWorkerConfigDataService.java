@@ -12,10 +12,7 @@
  *************************************************************************/
 package org.signserver.server.config.entities;
 
-import java.util.List;
-import org.signserver.common.NoSuchWorkerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerType;
 
 /**
  * DataService managing the persistence of the worker configuration data.
@@ -29,10 +26,9 @@ public interface IWorkerConfigDataService {
     /**
      * Get the worker configuration for the given worker.
      * @param workerId Id of worker
-     * @param create If true, create the config
      * @return The worker configuration
      */
-    WorkerConfig getWorkerProperties(int workerId, boolean create);
+    WorkerConfig getWorkerProperties(int workerId);
     
     /**
      * Remove the worker's configuration.
@@ -54,12 +50,4 @@ public interface IWorkerConfigDataService {
      * @param implClassName The name of the worker
      */
     void create(int workerId, String implClassName);
-    
-    List<Integer> findAllIds();
-
-    void populateNameColumn();
-
-    public int findId(String workerName) throws NoSuchWorkerException;
-
-    public List<Integer> findAllIds(WorkerType workerType);
 }

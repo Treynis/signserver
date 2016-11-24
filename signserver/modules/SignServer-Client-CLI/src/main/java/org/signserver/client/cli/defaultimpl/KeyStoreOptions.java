@@ -25,7 +25,7 @@ import java.util.ResourceBundle;
 import javax.net.ssl.*;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
-import org.signserver.cli.spi.CommandFailureException;
+import org.ejbca.ui.cli.util.ConsolePasswordReader;
 
 /**
  * Handles keystore and truststore options from the command line as well
@@ -88,9 +88,7 @@ public class KeyStoreOptions {
     private boolean useHTTPS;
     private boolean usePrivateHTTPS;
 
-    public void parseCommandLine(CommandLine line, ConsolePasswordReader passwordReader, PrintStream out)
-            throws IOException, NoSuchAlgorithmException, CertificateException,
-                   KeyStoreException, CommandFailureException {
+    public void parseCommandLine(CommandLine line, ConsolePasswordReader passwordReader, PrintStream out) throws IOException, NoSuchAlgorithmException, CertificateException, KeyStoreException {
         if (line.hasOption(KeyStoreOptions.TRUSTSTORE)) {
             truststoreFile = new File(line.getOptionValue(KeyStoreOptions.TRUSTSTORE, null));
         }
@@ -134,7 +132,6 @@ public class KeyStoreOptions {
                 for (int i = 0; i < 3; i++) {
                     out.print("Password for keystore: ");
                     out.flush();
-                    
                     keystorePassword = new String(passwordReader.readPassword());
                     try {
                         KeyStore keystore = KeyStore.getInstance("JKS");
@@ -188,8 +185,15 @@ public class KeyStoreOptions {
         if (truststoreFile != null) {
             try {
                 truststore = loadKeyStore(truststoreFile, truststorePassword);
-            } catch (KeyStoreException | NoSuchAlgorithmException |
-                     CertificateException | IOException ex) {
+            } catch (KeyStoreException ex) {
+                throw new RuntimeException("Could not load truststore", ex);
+            } catch (FileNotFoundException ex) {
+                throw new RuntimeException("Could not load truststore", ex);
+            } catch (IOException ex) {
+                throw new RuntimeException("Could not load truststore", ex);
+            } catch (NoSuchAlgorithmException ex) {
+                throw new RuntimeException("Could not load truststore", ex);
+            } catch (CertificateException ex) {
                 throw new RuntimeException("Could not load truststore", ex);
             }
         }
@@ -198,8 +202,15 @@ public class KeyStoreOptions {
         if (keystoreFile != null) {
             try {
                 keystore = loadKeyStore(keystoreFile, keystorePassword);
-            } catch (KeyStoreException | NoSuchAlgorithmException |
-                     CertificateException | IOException ex) {
+            } catch (KeyStoreException ex) {
+                throw new RuntimeException("Could not load keystore", ex);
+            } catch (FileNotFoundException ex) {
+                throw new RuntimeException("Could not load keystore", ex);
+            } catch (IOException ex) {
+                throw new RuntimeException("Could not load keystore", ex);
+            } catch (NoSuchAlgorithmException ex) {
+                throw new RuntimeException("Could not load keystore", ex);
+            } catch (CertificateException ex) {
                 throw new RuntimeException("Could not load keystore", ex);
             }
         }
@@ -220,7 +231,13 @@ public class KeyStoreOptions {
             try {
                 setDefaultSocketFactory(truststore, keystore, keyAlias,
                     keystorePassword == null ? null : keystorePassword.toCharArray());
-            } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException | UnrecoverableKeyException ex) {
+            } catch (NoSuchAlgorithmException ex) {
+                throw new RuntimeException("Could not setup HTTPS", ex);
+            } catch (KeyStoreException ex) {
+                throw new RuntimeException("Could not setup HTTPS", ex);
+            } catch (KeyManagementException ex) {
+                throw new RuntimeException("Could not setup HTTPS", ex);
+            } catch (UnrecoverableKeyException ex) {
                 throw new RuntimeException("Could not setup HTTPS", ex);
             }
         }

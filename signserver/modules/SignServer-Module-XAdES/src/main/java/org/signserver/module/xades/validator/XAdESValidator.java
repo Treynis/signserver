@@ -15,7 +15,6 @@ package org.signserver.module.xades.validator;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -45,17 +44,11 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.log4j.Logger;
 import org.bouncycastle.cert.ocsp.OCSPException;
 import org.bouncycastle.cert.ocsp.OCSPReq;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.*;
-import org.signserver.common.data.CertificateValidationResponse;
-import org.signserver.server.IServices;
 import org.signserver.server.WorkerContext;
-import org.signserver.common.data.ReadableData;
-import org.signserver.common.data.DocumentValidationRequest;
-import org.signserver.common.data.DocumentValidationResponse;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
 import org.signserver.server.validators.BaseValidator;
+import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
 import org.signserver.validationservice.common.Validation.Status;
 import org.signserver.validationservice.server.OCSPResponse;
@@ -109,7 +102,7 @@ public class XAdESValidator extends BaseValidator {
             final WorkerContext workerContext, final EntityManager workerEM) {
         super.init(workerId, config, workerContext, workerEM);
         
-        configErrors = new LinkedList<>();
+        configErrors = new LinkedList<String>();
         
         revocationEnabled = Boolean.parseBoolean(config.getProperty(REVOCATION_CHECKING, REVOCATION_CHECKING_DEFAULT));
 
@@ -119,16 +112,23 @@ public class XAdESValidator extends BaseValidator {
         try {
             final Collection<Certificate> certificates = loadCertificatesFromProperty(CERTIFICATES);
             certStore = CertStore.getInstance("Collection", new CollectionCertStoreParameters(certificates));
-        } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException | CertificateException | IOException | IllegalStateException ex) {
+        } catch (InvalidAlgorithmParameterException ex) {
+            logPropertyError(workerId, CERTIFICATES, ex);
+        } catch (NoSuchAlgorithmException ex) {
+            logPropertyError(workerId, CERTIFICATES, ex);
+        } catch (CertificateException ex) {
+            logPropertyError(workerId, CERTIFICATES, ex);
+        } catch (IOException ex) {
             logPropertyError(workerId, CERTIFICATES, ex);
         }
+        
         // TRUSTANCHORS
         try {
             final String value = config.getProperty(TRUSTANCHORS);
             if (value == null) {
                 logMissingProperty(workerId, TRUSTANCHORS);
             } else {
-                final Collection<Certificate> trustedCertificates = CertTools.getCertsFromPEM(new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8)));
+                final Collection<Certificate> trustedCertificates = CertTools.getCertsFromPEM(new ByteArrayInputStream(value.getBytes("UTF-8")));
                 trustAnchors = KeyStore.getInstance("JKS");
                 trustAnchors.load(null, null);
                 int i = 0;
@@ -147,9 +147,15 @@ public class XAdESValidator extends BaseValidator {
                     LOG.debug(sb.toString());
                 }
             }
-        } catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException | IllegalStateException ex) {
+        } catch (KeyStoreException ex) {
             logPropertyError(workerId, TRUSTANCHORS, ex);
-        }
+        } catch (IOException ex) {
+            logPropertyError(workerId, TRUSTANCHORS, ex);
+        } catch (NoSuchAlgorithmException ex) {
+            logPropertyError(workerId, TRUSTANCHORS, ex);
+        } catch (CertificateException ex) {
+            logPropertyError(workerId, TRUSTANCHORS, ex);
+        }        
     }
     
     /** Log a property error and add the error message the list of fatal errors. */
@@ -174,27 +180,31 @@ public class XAdESValidator extends BaseValidator {
         if (value == null) {
             results = Collections.emptyList();
         } else {
-            results = CertTools.getCertsFromPEM(new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8)));
+            results = CertTools.getCertsFromPEM(new ByteArrayInputStream(value.getBytes("UTF-8")));
         }
         return results;
     }
 
     @Override
-    public Response processData(Request signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+    public ProcessResponse processData(ProcessRequest signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
 
         // Check that the request contains a valid GenericSignRequest object with a byte[].
-        if (!(signRequest instanceof DocumentValidationRequest)) {
-            throw new IllegalRequestException(
-                    "Received request wasn't an expected GenericValidationRequest.");
+        if (!(signRequest instanceof GenericValidationRequest)) {
+            throw new IllegalRequestException("Received request wasn't a expected GenericValidationRequest.");
         }
-        
-        final DocumentValidationRequest request = (DocumentValidationRequest) signRequest;
+        IValidationRequest sReq = (IValidationRequest) signRequest;
+
+        if (!(sReq.getRequestData() instanceof byte[])) {
+            throw new IllegalRequestException("Received request data wasn't a expected byte[].");
+        }
         
         if (!configErrors.isEmpty()) {
             throw new SignServerException("Worker is misconfigured");
         }
 
-        DocumentValidationResponse response = validate(request.getRequestID(), request.getRequestData());
+        byte[] data = (byte[]) sReq.getRequestData();
+
+        GenericValidationResponse response = validate(sReq.getRequestID(), data);
         
         // The client can be charged for the request
         requestContext.setRequestFulfilledByWorker(true);
@@ -202,7 +212,7 @@ public class XAdESValidator extends BaseValidator {
         return response;
     }
 
-    private DocumentValidationResponse validate(final int requestId, ReadableData data) throws SignServerException {
+    private GenericValidationResponse validate(final int requestId, byte[] data) throws SignServerException {
         
         // Validation: parse
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -220,8 +230,12 @@ public class XAdESValidator extends BaseValidator {
             // Xerces 2 only - http://xerces.apache.org/xerces2-j/features.html#disallow-doctype-decl
             dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
 
-            doc = dbf.newDocumentBuilder().parse(data.getAsInputStream());
-        } catch (ParserConfigurationException | SAXException | IOException ex) {
+            doc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(data));
+        } catch (ParserConfigurationException ex) {
+            throw new SignServerException("Document parsing error", ex);
+        } catch (SAXException ex) {
+            throw new SignServerException("Document parsing error", ex);
+        } catch (IOException ex) {
             throw new SignServerException("Document parsing error", ex);
         }
         
@@ -236,15 +250,19 @@ public class XAdESValidator extends BaseValidator {
             Element node = doc.getDocumentElement();
 
             result = verifier.verify(node, new SignatureSpecificVerificationOptions());
-        } catch (NoSuchAlgorithmException | NoSuchProviderException | XadesProfileResolutionException ex) {
+        } catch (NoSuchAlgorithmException ex) {
+            throw new SignServerException("XML signature validation error", ex);
+        } catch (NoSuchProviderException ex) {
+            throw new SignServerException("XML signature validation error", ex);
+        } catch (XadesProfileResolutionException ex) {
             throw new SignServerException("XML signature validation error", ex);
         } catch (XAdES4jException ex) {
             LOG.info("Request " + requestId + " signature valid: false, " + ex.getMessage());
-            return new DocumentValidationResponse(requestId, false);
+            return new GenericValidationResponse(requestId, false);
         }
         
         List<X509Certificate> xchain = result.getValidationData().getCerts();
-        List<Certificate> chain = new LinkedList<>();
+        List<Certificate> chain = new LinkedList<Certificate>();
         for (X509Certificate cert : xchain) {
             chain.add(cert);
         }
@@ -259,7 +277,7 @@ public class XAdESValidator extends BaseValidator {
                 v = validate(cert, certChain, rootCert);
             } catch (IllegalRequestException ex) {
                 LOG.info("Request " + requestId + " signature valid: false, " + ex.getMessage());
-                return new DocumentValidationResponse(requestId, false);
+                return new GenericValidationResponse(requestId, false);
             } catch (CryptoTokenOfflineException ex) {
                 throw new SignServerException("Certificate validation error", ex);
             }
@@ -270,14 +288,14 @@ public class XAdESValidator extends BaseValidator {
         }
         LOG.info("Request " + requestId + " signature valid: " + (v.getStatus() == Status.VALID));
         
-        CertificateValidationResponse vresponse = new CertificateValidationResponse(v, null);
+        ValidateResponse vresponse = new ValidateResponse(v, null);
 
-        return new DocumentValidationResponse(requestId, v.getStatus().equals(Status.VALID), vresponse);
+        return new GenericValidationResponse(requestId, v.getStatus().equals(Status.VALID), vresponse, null);
     }
 
     @Override
-    protected List<String> getFatalErrors(final IServices services) {
-        final LinkedList<String> errors = new LinkedList<>(super.getFatalErrors(services));
+    protected List<String> getFatalErrors() {
+        final LinkedList<String> errors = new LinkedList<String>(super.getFatalErrors());
         errors.addAll(configErrors);
         return errors;
     }
@@ -334,7 +352,16 @@ public class XAdESValidator extends BaseValidator {
                 
             });
             
-        } catch (CertificateException | InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchProviderException e) {
+        } catch (CertificateException e) {
+            LOG.error("Exception on preparing parameters for validation", e);
+            throw new SignServerException(e.toString(), e);
+        } catch (InvalidAlgorithmParameterException e) {
+            LOG.error("Exception on preparing parameters for validation", e);
+            throw new SignServerException(e.toString(), e);
+        } catch (NoSuchAlgorithmException e) {
+            LOG.error("Exception on preparing parameters for validation", e);
+            throw new SignServerException(e.toString(), e);
+        } catch (NoSuchProviderException e) {
             LOG.error("Exception on preparing parameters for validation", e);
             throw new SignServerException(e.toString(), e);
         }
@@ -364,28 +391,19 @@ public class XAdESValidator extends BaseValidator {
     }
 
     private List<Certificate> toChain(final List<X509Certificate> xchain) {
-        final List<Certificate> chain = new LinkedList<>();
+        final List<Certificate> chain = new LinkedList<Certificate>();
         for (X509Certificate cert : xchain) {
             chain.add(cert);
         }
         return chain;
     }
     
-    /**
-     * Set the time-stamp verification provider to use. This method can be overridden by unit tests.
-     * 
-     * @param timeStampVerificationImplementation Verification implementation to use
-     **/
+    /** Set the time-stamp verification provider to use. This method can be overridden by unit tests. **/
     protected void setTimeStampVerificationProviderImplementation(final Class<? extends TimeStampVerificationProvider> timeStampVerificationImplementation) {
         this.timeStampVerificationImplementation = timeStampVerificationImplementation;
     }
     
-    /** Query the OCSP responder. This method can be overridden by unit tests.
-     * @param url
-     * @param request
-     * @return 
-     * @throws java.io.IOException
-     * @throws org.bouncycastle.cert.ocsp.OCSPException **/
+    /** Query the OCSP responder. This method can be overridden by unit tests. **/
     protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
         return ValidationUtils.queryOCSPResponder(url, request);
     }

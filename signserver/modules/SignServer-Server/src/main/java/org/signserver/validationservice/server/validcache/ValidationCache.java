@@ -16,7 +16,7 @@ import java.security.cert.Certificate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 
 import org.signserver.validationservice.common.Validation;
 
@@ -30,7 +30,7 @@ import org.signserver.validationservice.common.Validation;
  */
 public class ValidationCache {
 
-    private Set<String> cachedIssuersDNSet = new HashSet<>();
+    private Set<String> cachedIssuersDNSet = new HashSet<String>();
     private ValidationMap validationMap = new ValidationMap();
     private TimeQueue timeQueue;
 

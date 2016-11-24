@@ -15,13 +15,13 @@ package org.signserver.server.aliasselectors;
 import java.util.Collections;
 import java.util.List;
 import javax.persistence.EntityManager;
+import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestContext;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.data.Request;
 import org.signserver.server.IProcessable;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.cryptotokens.CryptoTokenHelper;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 
 /**
  * Default alias selector giving the DEFAULTKEY alias configured for the
@@ -47,9 +47,9 @@ public class DefaultAliasSelector implements AliasSelector {
 
     @Override
     public String getAlias(final int purpose, final IProcessable processble,
-                           final Request signRequest,
+                           final ProcessRequest signRequest,
                            final RequestContext requestContext) {
-        return purpose == ICryptoTokenV4.PURPOSE_NEXTKEY ? nextKeyAlias : defaultAlias;
+        return purpose == ICryptoToken.PURPOSE_NEXTKEY ? nextKeyAlias : defaultAlias;
     }
     
     @Override

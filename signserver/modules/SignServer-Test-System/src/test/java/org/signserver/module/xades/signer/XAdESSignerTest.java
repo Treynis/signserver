@@ -13,7 +13,6 @@
 package org.signserver.module.xades.signer;
 
 import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.cert.CertStore;
 import java.security.cert.CollectionCertStoreParameters;
@@ -25,9 +24,8 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.GenericSignResponse;
-import org.signserver.common.RemoteRequestContext;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.common.RequestContext;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.testutils.ModulesTestCase;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -38,7 +36,6 @@ import xades4j.verification.SignatureSpecificVerificationOptions;
 import xades4j.verification.XAdESVerificationResult;
 import xades4j.verification.XadesVerificationProfile;
 import xades4j.verification.XadesVerifier;
-import org.signserver.ejb.interfaces.WorkerSession;
 
 /**
  * System tests for the XAdESSigner.
@@ -59,8 +56,7 @@ public class XAdESSignerTest extends ModulesTestCase {
     private static final int TS_ID = 9902;
     private static final String TS_NAME = "TestTimeStampSigner";
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
 
     @Test
     public void testBasicSigningXAdESFormT() throws Exception {
@@ -75,19 +71,21 @@ public class XAdESSignerTest extends ModulesTestCase {
             workerSession.reloadConfiguration(TS_ID);
             workerSession.reloadConfiguration(WORKER_ID);
 
-            GenericSignRequest request = new GenericSignRequest(100, "<test100/>".getBytes(StandardCharsets.UTF_8));
-            GenericSignResponse response = (GenericSignResponse) processSession.process(new WorkerIdentifier(WORKER_ID), request, new RemoteRequestContext());
+            RequestContext requestContext = new RequestContext();
+            requestContext.put(RequestContext.TRANSACTION_ID, "0000-100-1");
+            GenericSignRequest request = new GenericSignRequest(100, "<test100/>".getBytes("UTF-8"));
+            GenericSignResponse response = (GenericSignResponse) workerSession.process(WORKER_ID, request, requestContext);
 
             byte[] data = response.getProcessedData();
             final String signedXml = new String(data);
             LOG.debug("signedXml: " + signedXml);
 
             // Validation: setup
-            CertStore certStore = CertStore.getInstance("Collection", new CollectionCertStoreParameters(workerSession.getSignerCertificateChain(new WorkerIdentifier(WORKER_ID))));
+            CertStore certStore = CertStore.getInstance("Collection", new CollectionCertStoreParameters(workerSession.getSignerCertificateChain(WORKER_ID)));
             KeyStore trustAnchors = KeyStore.getInstance("JKS");
             trustAnchors.load(null, "foo123".toCharArray());
-            trustAnchors.setCertificateEntry("signerIssuer", workerSession.getSignerCertificateChain(new WorkerIdentifier(WORKER_ID)).get(1));
-            trustAnchors.setCertificateEntry("tsIssuer", workerSession.getSignerCertificateChain(new WorkerIdentifier(TS_ID)).get(1));
+            trustAnchors.setCertificateEntry("signerIssuer", workerSession.getSignerCertificateChain(WORKER_ID).get(1));
+            trustAnchors.setCertificateEntry("tsIssuer", workerSession.getSignerCertificateChain(TS_ID).get(1));
 
             CertificateValidationProvider certValidator = new PKIXCertificateValidationProvider(trustAnchors, false, certStore);
 

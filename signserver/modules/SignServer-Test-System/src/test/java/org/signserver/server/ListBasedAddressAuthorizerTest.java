@@ -27,8 +27,7 @@ import org.signserver.common.WorkerStatus;
 import org.signserver.testutils.ModulesTestCase;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for the ListBasedAddressAuthorizer implementation.
@@ -46,7 +45,7 @@ public class ListBasedAddressAuthorizerTest extends ModulesTestCase {
 
     private String localIP;
     
-    private final WorkerSession workerSession = getWorkerSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     @Before
     @Override
@@ -279,7 +278,7 @@ public class ListBasedAddressAuthorizerTest extends ModulesTestCase {
         LOG.info(">test12BothDirectAddressPropertiesSet");
         setPropertiesAndReload(localIP, localIP, localIP, null);
        
-        final WorkerStatus status = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+        final WorkerStatus status = workerSession.getStatus(getSignerIdDummy1());
         final List<String> fatalErrors = status.getFatalErrors();
         
         assertTrue("Contains fatal error",
@@ -303,7 +302,7 @@ public class ListBasedAddressAuthorizerTest extends ModulesTestCase {
         LOG.info(">test13BothForwardedAddressPropertiesSet");
         setPropertiesAndReload(null, localIP, localIP, localIP);
         
-        final WorkerStatus status = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+        final WorkerStatus status = workerSession.getStatus(getSignerIdDummy1());
         final List<String> fatalErrors = status.getFatalErrors();
         
         assertTrue("Contains fatal error",
@@ -326,7 +325,7 @@ public class ListBasedAddressAuthorizerTest extends ModulesTestCase {
         LOG.info(">test14MissingDirectAddresses");
         setPropertiesAndReload(null, null, null, localIP);
        
-        final WorkerStatus status = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+        final WorkerStatus status = workerSession.getStatus(getSignerIdDummy1());
         final List<String> fatalErrors = status.getFatalErrors();
         
         assertTrue("Contains fatal error",
@@ -349,7 +348,7 @@ public class ListBasedAddressAuthorizerTest extends ModulesTestCase {
         LOG.info(">test15MissingForwardedAddresses");
         setPropertiesAndReload(null, localIP, null, null);
        
-        final WorkerStatus status = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+        final WorkerStatus status = workerSession.getStatus(getSignerIdDummy1());
         final List<String> fatalErrors = status.getFatalErrors();
         
         assertTrue("Contains fatal error",
@@ -580,7 +579,7 @@ public class ListBasedAddressAuthorizerTest extends ModulesTestCase {
         workerSession.setWorkerProperty(getSignerIdDummy1(), "MAX_FORWARDED_ADDRESSES", "0");
         workerSession.reloadConfiguration(getSignerIdDummy1());
         
-        final WorkerStatus status = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+        final WorkerStatus status = workerSession.getStatus(getSignerIdDummy1());
         final List<String> fatalErrors = status.getFatalErrors();
         
         assertTrue("Contains fatal error",
@@ -605,7 +604,7 @@ public class ListBasedAddressAuthorizerTest extends ModulesTestCase {
         workerSession.setWorkerProperty(getSignerIdDummy1(), "MAX_FORWARDED_ADDRESSES", "-2");
         workerSession.reloadConfiguration(getSignerIdDummy1());
         
-        final WorkerStatus status = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+        final WorkerStatus status = workerSession.getStatus(getSignerIdDummy1());
         final List<String> fatalErrors = status.getFatalErrors();
         
         assertTrue("Contains fatal error",
@@ -630,7 +629,7 @@ public class ListBasedAddressAuthorizerTest extends ModulesTestCase {
             workerSession.setWorkerProperty(getSignerIdDummy1(), "MAX_FORWARDED_ADDRESSES", "foo123");
             workerSession.reloadConfiguration(getSignerIdDummy1());
 
-            final WorkerStatus status = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+            final WorkerStatus status = workerSession.getStatus(getSignerIdDummy1());
             final List<String> fatalErrors = status.getFatalErrors();
 
             assertTrue("Contains fatal error",

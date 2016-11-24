@@ -12,9 +12,9 @@
  *************************************************************************/
 package org.signserver.module.xmlsigner;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -39,6 +39,7 @@ import javax.xml.crypto.dsig.keyinfo.X509Data;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
@@ -49,13 +50,7 @@ import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
-import org.signserver.common.data.ReadableData;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.common.data.SignatureResponse;
-import org.signserver.common.data.WritableData;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
@@ -111,39 +106,49 @@ public class XMLSigner extends BaseSigner {
     }
 
     @Override
-    public Response processData(Request signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+    public ProcessResponse processData(ProcessRequest signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
 
-        // Check that the request contains a valid GenericSignRequest object
-        // with a byte[].
-        if (!(signRequest instanceof SignatureRequest)) {
-            throw new IllegalRequestException(
-                    "Received request wasn't an expected GenericSignRequest.");
+        ProcessResponse signResponse;
+
+        // Check that the request contains a valid GenericSignRequest object with a byte[].
+        if (!(signRequest instanceof GenericSignRequest)) {
+            throw new IllegalRequestException("Received request wasn't a expected GenericSignRequest.");
         }
-        final SignatureRequest sReq = (SignatureRequest) signRequest;
-        String archiveId = createArchiveId(new byte[0], (String) requestContext.get(RequestContext.TRANSACTION_ID));
+        
+        final ISignRequest sReq = (ISignRequest) signRequest;
+        
+        if (!(sReq.getRequestData() instanceof byte[])) {
+            throw new IllegalRequestException("Received request data wasn't a expected byte[].");
+        }
+
+        byte[] data = (byte[]) sReq.getRequestData();
+        String archiveId = createArchiveId(data, (String) requestContext.get(RequestContext.TRANSACTION_ID));
+
 
         String providerName = System.getProperty("jsr105Provider", "org.apache.jcp.xml.dsig.internal.dom.XMLDSigRI");
         XMLSignatureFactory fac;
         try {
             fac = XMLSignatureFactory.getInstance("DOM", (Provider) Class.forName(providerName).newInstance());
-        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+        } catch (InstantiationException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (IllegalAccessException e) {
+            throw new SignServerException("Problem with JSR105 provider", e);
+        } catch (ClassNotFoundException e) {
             throw new SignServerException("Problem with JSR105 provider", e);
         }
 
-        final ReadableData requestData = sReq.getRequestData();
-        final WritableData responseData = sReq.getResponseData();
         Certificate cert;
         Document doc;
         ICryptoInstance crypto = null;
         try {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
 
             // Get certificate chain and signer certificate
             final List<Certificate> certs = getSigningCertificateChain(crypto);
             if (certs == null) {
                 throw new IllegalArgumentException("Null certificate chain. This signer needs a certificate.");
             }
-            List<X509Certificate> x509CertChain = new LinkedList<>();
+            List<X509Certificate> x509CertChain = new LinkedList<X509Certificate>();
             for (Certificate c : includedCertificates(certs)) {
                 if (c instanceof X509Certificate) {
                     x509CertChain.add((X509Certificate) c);
@@ -170,7 +175,9 @@ public class XMLSigner extends BaseSigner {
                         fac.newSignatureMethod(getSignatureMethod(sigAlg), null),
                         Collections.singletonList(ref));
 
-            } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException ex) {
+            } catch (InvalidAlgorithmParameterException ex) {
+                throw new SignServerException("XML signing algorithm error", ex);
+            } catch (NoSuchAlgorithmException ex) {
                 throw new SignServerException("XML signing algorithm error", ex);
             }
 
@@ -180,7 +187,7 @@ public class XMLSigner extends BaseSigner {
                 KeyInfoFactory kif = fac.getKeyInfoFactory();
                 X509Data x509d = kif.newX509Data(x509CertChain);
 
-                List<XMLStructure> kviItems = new LinkedList<>();
+                List<XMLStructure> kviItems = new LinkedList<XMLStructure>();
                 kviItems.add(x509d);
                 ki = kif.newKeyInfo(kviItems);
             }
@@ -188,7 +195,7 @@ public class XMLSigner extends BaseSigner {
             DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             dbf.setNamespaceAware(true);
 
-            try (InputStream in = requestData.getAsInputStream()) {
+            try {
                 // Xerces 1 - http://xerces.apache.org/xerces-j/features.html#external-general-entities
                 // Xerces 2 - http://xerces.apache.org/xerces2-j/features.html#external-general-entities
                 dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
@@ -200,10 +207,12 @@ public class XMLSigner extends BaseSigner {
                 // Xerces 2 only - http://xerces.apache.org/xerces2-j/features.html#disallow-doctype-decl
                 dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
 
-                doc = dbf.newDocumentBuilder().parse(in);
+                doc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(data));
             } catch (SAXException ex) {
                 throw new IllegalRequestException("Document parsing error", ex);
-            } catch (ParserConfigurationException | IOException ex) {
+            } catch (ParserConfigurationException ex) {
+                throw new SignServerException("Document parsing error", ex);
+            } catch (IOException ex) {
                 throw new SignServerException("Document parsing error", ex);
             }
             DOMSignContext dsc = new DOMSignContext(privKey, doc.getDocumentElement());
@@ -211,30 +220,45 @@ public class XMLSigner extends BaseSigner {
             XMLSignature signature = fac.newXMLSignature(si, ki);
             try {
                 signature.sign(dsc);
-            } catch (MarshalException | XMLSignatureException ex) {
+            } catch (MarshalException ex) {
+                throw new SignServerException("Signature generation error", ex);
+            } catch (XMLSignatureException ex) {
                 throw new SignServerException("Signature generation error", ex);
             }
         } finally {
             releaseCryptoInstance(crypto, requestContext);
         }
 
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+
         TransformerFactory tf = TransformerFactory.newInstance();
         Transformer trans;
-        try (OutputStream out = responseData.getAsOutputStream()) {
+        try {
             trans = tf.newTransformer();
-            trans.transform(new DOMSource(doc), new StreamResult(out));
-        } catch (TransformerException | IOException ex) {
+            trans.transform(new DOMSource(doc), new StreamResult(bout));
+        } catch (TransformerConfigurationException ex) {
+            throw new SignServerException("XML transformation error", ex);
+        } catch (TransformerException ex) {
             throw new SignServerException("XML transformation error", ex);
         }
 
-        final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, responseData.toReadableData(), archiveId));
+        final byte[] signedbytes = bout.toByteArray();
+        final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
+
+        if (signRequest instanceof GenericServletRequest) {
+            signResponse = new GenericServletResponse(sReq.getRequestID(), signedbytes,
+                    cert,
+                    archiveId, archivables, CONTENT_TYPE);
+        } else {
+            signResponse = new GenericSignResponse(sReq.getRequestID(), signedbytes,
+                    cert,
+                    archiveId, archivables);
+        }
         
         // The client can be charged for the request
         requestContext.setRequestFulfilledByWorker(true);
         
-        return new SignatureResponse(sReq.getRequestID(), responseData,
-                    cert,
-                    archiveId, archivables, CONTENT_TYPE);
+        return signResponse;
     }
 
     /**

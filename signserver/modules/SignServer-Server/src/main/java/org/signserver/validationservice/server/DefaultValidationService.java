@@ -14,12 +14,11 @@ package org.signserver.validationservice.server;
 
 import java.security.cert.Certificate;
 import java.util.List;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
-import org.signserver.common.data.CertificateValidationRequest;
-import org.signserver.common.data.CertificateValidationResponse;
+import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidateResponse;
 import org.signserver.validationservice.common.Validation;
 import org.signserver.validationservice.common.Validation.Status;
@@ -34,15 +33,10 @@ import org.signserver.validationservice.common.Validation.Status;
 public class DefaultValidationService extends BaseValidationService {
 
     /**
-     * @param validationRequest
-     * @return 
-     * @throws org.signserver.common.IllegalRequestException 
-     * @throws org.signserver.common.CryptoTokenOfflineException 
-     * @throws org.signserver.common.SignServerException 
      * @see org.signserver.validationservice.server.IValidationService#validate(org.signserver.validationservice.common.ValidateRequest)
      */
     @Override
-    public CertificateValidationResponse validate(CertificateValidationRequest validationRequest)
+    public ValidateResponse validate(ValidateRequest validationRequest)
             throws IllegalRequestException, CryptoTokenOfflineException,
             SignServerException {
 
@@ -53,7 +47,7 @@ public class DefaultValidationService extends BaseValidationService {
             Validation valRes = new Validation(validationRequest.getCertificate(), null,
                     Validation.Status.ISSUERNOTSUPPORTED,
                     "Issuer of given certificate isn't supported");
-            return new CertificateValidationResponse(valRes, null);
+            return new ValidateResponse(valRes, null);
         }
         // Verify and check validity
         Validation validation = ICertificateManager.verifyCertAndChain(
@@ -126,7 +120,7 @@ public class DefaultValidationService extends BaseValidationService {
             }
         }
 
-        return new CertificateValidationResponse(validation, validPurposes);
+        return new ValidateResponse(validation, validPurposes);
     }
 
     /**

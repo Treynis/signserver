@@ -21,7 +21,6 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.signserver.common.AuthorizedClient;
-import org.signserver.common.WorkerConfig;
 import static org.signserver.common.util.PropertiesConstants.GENID;
 import static org.signserver.common.util.PropertiesConstants.OLDWORKER_PREFIX;
 import static org.signserver.common.util.PropertiesConstants.WORKER_PREFIX;
@@ -59,7 +58,7 @@ public abstract class PropertiesApplier {
     /**
      * Hold the worker IDs updated-
      */
-    private SortedSet<Integer> workerIds = new TreeSet<>();
+    private SortedSet<Integer> workerIds = new TreeSet<Integer>();
     
     private String error;
  
@@ -91,7 +90,6 @@ public abstract class PropertiesApplier {
                     translateWorkerDatas(parser.getAddAuthorizedClients());
             final Map<Integer, List<AuthorizedClient>> removeAuthorizedClients =
                     translateWorkerDatas(parser.getRemoveAuthorizedClients());
-            final ArrayList<PropertiesParser.WorkerProperty> delayedSetWorkerProperties = new ArrayList<>();
             
             // apply the configuration
             for (final PropertiesParser.GlobalProperty prop : setGlobalProperties.keySet()) {
@@ -102,19 +100,7 @@ public abstract class PropertiesApplier {
                 removeGlobalProperty(prop.getScope(), prop.getKey());
             }
             
-            // apply set worker properties
             for (final PropertiesParser.WorkerProperty prop : setWorkerProperties.keySet()) {
-                if (prop.getKey().equalsIgnoreCase(WorkerConfig.TYPE)) {
-                    // Apply the TYPE properties last so we are sure the IMPLEMENTATION_CLASS has been added first
-                    delayedSetWorkerProperties.add(prop);
-                } else {
-                    // All other properties can be applied now
-                    setWorkerProperty(Integer.parseInt(prop.getWorkerIdOrName()), prop.getKey(), setWorkerProperties.get(prop));
-                }
-            }
-
-            // apply delayed set worker properties
-            for (final PropertiesParser.WorkerProperty prop : delayedSetWorkerProperties) {
                 setWorkerProperty(Integer.parseInt(prop.getWorkerIdOrName()), prop.getKey(), setWorkerProperties.get(prop));
             }
             
@@ -143,11 +129,7 @@ public abstract class PropertiesApplier {
             }
             
         } catch (PropertiesApplierException e) {
-            if (e.getCause() != null && "java.lang.ClassNotFoundException: javax.persistence.PersistenceException".equals(e.getCause().getMessage())) {
-                error = "Persistence failure. Check that the worker name does not already exist.";
-            } else {
-                error = ExceptionUtils.catCauses(e, ": ");
-            }
+            error = ExceptionUtils.catCauses(e, ": ");
         }
         
     }
@@ -164,7 +146,7 @@ public abstract class PropertiesApplier {
             final Map<PropertiesParser.GlobalProperty, String> properties)
             throws PropertiesApplierException {
         final Map<PropertiesParser.GlobalProperty, String> result =
-                new HashMap<>();
+                new HashMap<PropertiesParser.GlobalProperty, String>();
         
         for (final PropertiesParser.GlobalProperty prop : properties.keySet()) {
             result.put(new PropertiesParser.GlobalProperty(prop.getScope(),
@@ -187,7 +169,7 @@ public abstract class PropertiesApplier {
      */
     private List<PropertiesParser.GlobalProperty> translateGlobalProperties(final List<PropertiesParser.GlobalProperty> properties)
         throws PropertiesApplierException {
-        final List<PropertiesParser.GlobalProperty> result = new LinkedList<>();
+        final List<PropertiesParser.GlobalProperty> result = new LinkedList<PropertiesParser.GlobalProperty>();
         
         for (final PropertiesParser.GlobalProperty prop : properties) {
             result.add(new PropertiesParser.GlobalProperty(prop.getScope(), translateGlobalPropertyKey(prop.getKey())));
@@ -208,7 +190,7 @@ public abstract class PropertiesApplier {
             final Map<PropertiesParser.WorkerProperty, String> workerProperties)
             throws PropertiesApplierException {
         final Map<PropertiesParser.WorkerProperty, String> result =
-                new HashMap<>();
+                new HashMap<PropertiesParser.WorkerProperty, String>();
         
         for (final PropertiesParser.WorkerProperty prop : workerProperties.keySet()) {
             result.put(new PropertiesParser.WorkerProperty(Integer.toString(translateWorkerPropertyKey(prop.getWorkerIdOrName())),
@@ -229,7 +211,7 @@ public abstract class PropertiesApplier {
      */
     private List<PropertiesParser.WorkerProperty> translateWorkerProperties(final List<PropertiesParser.WorkerProperty> workerProperties)
         throws PropertiesApplierException {
-        final List<PropertiesParser.WorkerProperty> result = new LinkedList<>();
+        final List<PropertiesParser.WorkerProperty> result = new LinkedList<PropertiesParser.WorkerProperty>();
         
         for (final PropertiesParser.WorkerProperty prop : workerProperties) {
             result.add(new PropertiesParser.WorkerProperty(Integer.toString(translateWorkerPropertyKey(prop.getWorkerIdOrName())),
@@ -249,7 +231,7 @@ public abstract class PropertiesApplier {
      */
     private <T> Map<Integer, T> translateWorkerDatas(final Map<String, T> signerDataLists)
         throws PropertiesApplierException {
-        final Map<Integer, T> result = new HashMap<>();
+        final Map<Integer, T> result = new HashMap<Integer, T>();
         
         for (final String workerNameOrId : signerDataLists.keySet()) {           
             result.put(translateWorkerPropertyKey(workerNameOrId), signerDataLists.get(workerNameOrId));
@@ -261,74 +243,66 @@ public abstract class PropertiesApplier {
     /**
      * Set a global property.
      * 
-     * @param scope Scope for the property
-     * @param key Property key
-     * @param value Property value
-     * @throws PropertiesApplierException If there was a failure setting the property
+     * @param scope
+     * @param key
+     * @param value
      */
     protected abstract void setGlobalProperty(final String scope, final String key, final String value) throws PropertiesApplierException;
     
     /**
      * Remove a global property.
      * 
-     * @param scope Scope for the property to remove
-     * @param key Key of property to remove
-     * @throws PropertiesApplierException If there was a failure removing the property
+     * @param scope
+     * @param key
      */
     protected abstract void removeGlobalProperty(final String scope, final String key) throws PropertiesApplierException;
     
     /**
      * Set a worker property.
      * 
-     * @param workerId Worker ID
-     * @param key Key of property to set
-     * @param value Value of property to set
-     * @throws PropertiesApplierException
+     * @param workerId
+     * @param key
+     * @param value
      */
     protected abstract void setWorkerProperty(final int workerId, final String key, final String value) throws PropertiesApplierException;
     
     /**
      * Remove a worker property.
      * 
-     * @param workerId Worker ID
-     * @param key Key of property to remove
-     * @throws PropertiesApplierException
+     * @param workerId
+     * @param key
      */
     protected abstract void removeWorkerProperty(final int workerId, final String key) throws PropertiesApplierException;
     
     /**
      * Upload a signer certificate.
      * 
-     * @param workerId Worker ID
-     * @param signerCert Signer certificate to upload
-     * @throws PropertiesApplierException If there was a failure
+     * @param workerId
+     * @param signerCert
      */
     protected abstract void uploadSignerCertificate(final int workerId, final byte[] signerCert) throws PropertiesApplierException;
     
     /**
      * Upload a signer certificate chain.
      * 
-     * @param workerId Worker ID
-     * @param signerCertChain Signer certificate chain to upload
-     * @throws PropertiesApplierException
+     * @param workerId
+     * @param signerCertChain
      */
     protected abstract void uploadSignerCertificateChain(final int workerId, final List<byte[]> signerCertChain) throws PropertiesApplierException;
     
     /**
      * Add an authorized client for a worker.
      * 
-     * @param workerId Worker ID
+     * @param workerId
      * @param ac Authorized client to add
-     * @throws PropertiesApplierException If there was a failure
      */
     protected abstract void addAuthorizedClient(final int workerId, final AuthorizedClient ac) throws PropertiesApplierException;
     
     /**
      * Remove an authorized client for a worker.
      * 
-     * @param workerId Worker ID
+     * @param workerId
      * @param ac Authorized client to remove
-     * @throws PropertiesApplierException If there was a failure
      */
     protected abstract void removeAuthorizedClient(final int workerId, final AuthorizedClient ac) throws PropertiesApplierException;
     
@@ -353,7 +327,6 @@ public abstract class PropertiesApplier {
      * Lookup next available auto-generated worker ID.
      * 
      * @return Next available worker ID
-     * @throws PropertiesApplierException If there was a failure
      */
     protected abstract int genFreeWorkerId() throws PropertiesApplierException;
     
@@ -362,7 +335,6 @@ public abstract class PropertiesApplier {
      * 
      * @param workerName
      * @return worker ID
-     * @throws PropertiesApplierException If there was a faulure looking up the worker ID
      * @throws IllegalArgumentException if given a non-existing worker name
      */
     protected abstract int getWorkerId(final String workerName) throws PropertiesApplierException;
@@ -450,7 +422,7 @@ public abstract class PropertiesApplier {
      * @return List of worker IDs
      */
     public List<Integer> getWorkerIds() {
-        return new ArrayList<>(workerIds);
+        return new ArrayList<Integer>(workerIds);
     }
     
     /**

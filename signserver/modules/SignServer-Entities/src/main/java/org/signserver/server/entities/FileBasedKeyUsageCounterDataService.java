@@ -43,7 +43,9 @@ public class FileBasedKeyUsageCounterDataService implements IKeyUsageCounterData
     }
 
     /**
-     * Entity Bean holding info about a workers (service or signer) configuration 
+     * Entity Bean holding info about a workers (service or signer) configuration
+     * 
+     * @param workerId uniqe Id of the worker 
      *
      */
     @Override

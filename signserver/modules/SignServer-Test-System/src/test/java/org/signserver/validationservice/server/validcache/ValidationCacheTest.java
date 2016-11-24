@@ -17,8 +17,8 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Date;
 import junit.framework.TestCase;
-import org.cesecore.keys.util.KeyTools;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
+import org.ejbca.util.keystore.KeyTools;
 import org.signserver.common.SignServerUtil;
 import org.signserver.validationservice.common.Validation;
 import static org.junit.Assert.*;
@@ -55,7 +55,7 @@ public class ValidationCacheTest {
      */
     @Test
     public void testValidationCache() throws InterruptedException {
-        ArrayList<String> cachedIssuerDNs = new ArrayList<>();
+        ArrayList<String> cachedIssuerDNs = new ArrayList<String>();
         cachedIssuerDNs.add(CertTools.getIssuerDN(cert1));
         cachedIssuerDNs.add(CertTools.getIssuerDN(cert2));
         ValidationCache cache = new ValidationCache(cachedIssuerDNs, 2000);

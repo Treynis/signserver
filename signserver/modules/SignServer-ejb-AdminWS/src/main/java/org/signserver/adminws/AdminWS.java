@@ -15,7 +15,6 @@ package org.signserver.adminws;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyStoreException;
 import java.security.cert.CertificateException;
@@ -29,7 +28,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import javax.annotation.PostConstruct;
 
 import javax.annotation.Resource;
 import javax.ejb.EJB;
@@ -40,9 +38,6 @@ import javax.jws.WebService;
 import javax.servlet.http.HttpServletRequest;
 import javax.xml.ws.WebServiceContext;
 import javax.xml.ws.handler.MessageContext;
-import org.apache.commons.configuration.PropertiesConfiguration;
-import org.apache.commons.fileupload.FileUploadBase;
-import org.apache.commons.fileupload.FileUploadException;
 
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
@@ -55,32 +50,12 @@ import org.cesecore.util.query.QueryCriteria;
 import org.cesecore.util.query.clauses.Order;
 import org.cesecore.util.query.elems.Term;
 import org.signserver.common.*;
-import org.signserver.common.data.CertificateValidationRequest;
-import org.signserver.common.data.CertificateValidationResponse;
-import org.signserver.common.data.DocumentValidationRequest;
-import org.signserver.common.data.DocumentValidationResponse;
-import org.signserver.common.data.LegacyRequest;
-import org.signserver.common.data.LegacyResponse;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.common.data.SODRequest;
-import org.signserver.common.data.SODResponse;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.common.data.SignatureResponse;
-import org.signserver.ejb.interfaces.ProcessSessionLocal;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.server.CertificateClientCredential;
 import org.signserver.server.IClientCredential;
 import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.log.AdminInfo;
-import org.signserver.ejb.interfaces.WorkerSessionLocal;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.server.data.impl.CloseableReadableData;
-import org.signserver.server.data.impl.CloseableWritableData;
-import org.signserver.server.data.impl.DataFactory;
-import org.signserver.server.data.impl.DataUtils;
-import org.signserver.server.data.impl.UploadConfig;
-import org.signserver.validationservice.common.ValidateRequest;
-import org.signserver.validationservice.common.ValidateResponse;
 
 /**
  * Class implementing the Admin WS interface.
@@ -98,8 +73,8 @@ public class AdminWS {
 
     private static final String HTTP_AUTH_BASIC_AUTHORIZATION = "Authorization";
     
-    private static final HashSet<String> LONG_COLUMNS = new HashSet<>();
-    private static final HashSet<String> INT_COLUMNS = new HashSet<>();
+    private static final HashSet<String> LONG_COLUMNS = new HashSet<String>();
+    private static final HashSet<String> INT_COLUMNS = new HashSet<String>();
     
     static {
         LONG_COLUMNS.add(AuditLogEntry.FIELD_TIMESTAMP);
@@ -113,23 +88,14 @@ public class AdminWS {
     private WebServiceContext wsContext;
 
     @EJB
-    private WorkerSessionLocal worker;
-    
-    @EJB
-    private ProcessSessionLocal processSession;
+    private IWorkerSession.ILocal worker;
 
     @EJB
-    private GlobalConfigurationSessionLocal global;
+    private IGlobalConfigurationSession.ILocal global;
     
     @EJB
     private SecurityEventsAuditorSessionLocal auditor;
-
-    private DataFactory dataFactory;
-        
-    @PostConstruct
-    public void init() {
-        dataFactory = DataUtils.createDataFactory();
-    }
+    
     
     private Set<ClientEntry> getWSClients(final String propertyName) {
         final String adminsProperty = global.getGlobalConfiguration().getProperty(
@@ -137,7 +103,7 @@ public class AdminWS {
         
         if (adminsProperty == null) {
             LOG.warn(String.format("No %s global property set.", propertyName));
-            return new HashSet<>();
+            return new HashSet<ClientEntry>();
         } else {
             return ClientEntry.clientEntriesFromProperty(adminsProperty);
         }
@@ -148,7 +114,6 @@ public class AdminWS {
      *
      * @param workerName of the worker, cannot be null
      * @return The Id of a named worker or 0 if no such name exists
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getWorkerId")
     public int getWorkerId(
@@ -156,21 +121,15 @@ public class AdminWS {
             throws AdminNotAuthorizedException {
         requireAdminAuthorization("getWorkerId", workerName);
 
-        try {
-            return worker.getWorkerId(workerName);
-        } catch (InvalidWorkerIdException ex) {
-            return 0;
-        }
+        return worker.getWorkerId(workerName);
     }
 
     /**
      * Returns the current status of a processalbe.
+     *
      * Should be used with the cmd-line status command.
-     * 
      * @param workerId of the signer
      * @return a WorkerStatus class
-     * @throws InvalidWorkerIdException If the worker ID is invalid
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getStatus")
     public WSWorkerStatus getStatus(
@@ -179,7 +138,7 @@ public class AdminWS {
         requireAdminAuthorization("getStatus", String.valueOf(workerId));
 
         final WSWorkerStatus result;
-        final WorkerStatus status = worker.getStatus(new WorkerIdentifier(workerId));
+        final WorkerStatus status = worker.getStatus(workerId);
         if (status == null) {
             result = null;
         } else {
@@ -191,11 +150,11 @@ public class AdminWS {
             result.setWorkerId(workerId);
 
             final ByteArrayOutputStream bout1 = new ByteArrayOutputStream();
-            status.displayStatus(new PrintStream(bout1), false);
+            status.displayStatus(workerId, new PrintStream(bout1), false);
             result.setStatusText(bout1.toString());
 
             final ByteArrayOutputStream bout2 = new ByteArrayOutputStream();
-            status.displayStatus(new PrintStream(bout2), true);
+            status.displayStatus(workerId, new PrintStream(bout2), true);
             result.setCompleteStatusText(bout2.toString());
         }
         return result;
@@ -208,7 +167,6 @@ public class AdminWS {
      *
      * @param workerId of the worker that should be reloaded, or 0 to reload
      * reload of all available workers
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "reloadConfiguration")
     public void reloadConfiguration(@WebParam(name = "workerId") int workerId)
@@ -227,8 +185,6 @@ public class AdminWS {
      * @param authenticationCode (PIN) used to activate the token.
      * @throws CryptoTokenOfflineException
      * @throws CryptoTokenAuthenticationFailureException
-     * @throws InvalidWorkerIdException
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "activateSigner")
     public void activateSigner(@WebParam(name = "signerId") int signerId,
@@ -238,7 +194,7 @@ public class AdminWS {
             AdminNotAuthorizedException {
         requireAdminAuthorization("activateSigner", String.valueOf(signerId));
         
-        worker.activateSigner(new WorkerIdentifier(signerId), authenticationCode);
+        worker.activateSigner(signerId, authenticationCode);
     }
 
     /**
@@ -248,8 +204,7 @@ public class AdminWS {
      * @param signerId of the signer
      * @return true if deactivation was successful
      * @throws CryptoTokenOfflineException
-     * @throws InvalidWorkerIdException
-     * @throws AdminNotAuthorizedException If the admin is not authorized
+     * @throws CryptoTokenAuthenticationFailureException
      */
     @WebMethod(operationName = "deactivateSigner")
     public boolean deactivateSigner(@WebParam(name = "signerId") int signerId)
@@ -257,7 +212,7 @@ public class AdminWS {
             InvalidWorkerIdException, AdminNotAuthorizedException {
         requireAdminAuthorization("deactivateSigner", String.valueOf(signerId));
         
-        return worker.deactivateSigner(new WorkerIdentifier(signerId));
+        return worker.deactivateSigner(signerId);
     }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +225,6 @@ public class AdminWS {
      *
      * @param workerId
      * @return the current (not always active) configuration
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getCurrentWorkerConfig")
     public WSWorkerConfig getCurrentWorkerConfig(
@@ -292,7 +246,6 @@ public class AdminWS {
      * @param workerId
      * @param key
      * @param value
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "setWorkerProperty")
     public void setWorkerProperty(
@@ -312,7 +265,6 @@ public class AdminWS {
      * @param workerId
      * @param key
      * @return true if the property did exist and was removed othervise false
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "removeWorkerProperty")
     public boolean removeWorkerProperty(
@@ -331,7 +283,6 @@ public class AdminWS {
      *
      * @param workerId
      * @return Sorted collection of authorized clients
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getAuthorizedClients")
     public Collection<AuthorizedClient> getAuthorizedClients(
@@ -348,7 +299,6 @@ public class AdminWS {
 
      * @param workerId
      * @param authClient
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "addAuthorizedClient")
     public void addAuthorizedClient(@WebParam(name = "workerId") final int workerId,
@@ -366,8 +316,6 @@ public class AdminWS {
      *
      * @param workerId
      * @param authClient
-     * @return True if the autorized client was removed
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "removeAuthorizedClient")
     public boolean removeAuthorizedClient(
@@ -390,10 +338,6 @@ public class AdminWS {
      * @param explicitEccParameters false should be default and will use
      * NamedCurve encoding of ECC public keys (IETF recommendation), use true
      * to include all parameters explicitly (ICAO ePassport requirement).
-     * @return Base64-encoded certificate request
-     * @throws CryptoTokenOfflineException 
-     * @throws InvalidWorkerIdException 
-     * @throws AdminNotAuthorizedException 
      */
     @WebMethod(operationName = "getPKCS10CertificateRequest")
     public Base64SignerCertReqData getPKCS10CertificateRequest(
@@ -406,7 +350,7 @@ public class AdminWS {
         final AdminInfo adminInfo = requireAdminAuthorization("getPKCS10CertificateRequest",
                 String.valueOf(signerId));
         
-        final ICertReqData data = worker.getCertificateRequest(adminInfo, new WorkerIdentifier(signerId),
+        final ICertReqData data = worker.getCertificateRequest(adminInfo, signerId,
                 certReqInfo, explicitEccParameters);
         if (!(data instanceof Base64SignerCertReqData)) {
             throw new RuntimeException("Unsupported cert req data");
@@ -425,10 +369,6 @@ public class AdminWS {
      * to include all parameters explicitly (ICAO ePassport requirement).
      * @param defaultKey true if the default key should be used otherwise for
      * instance use next key.
-     * @return Base64-encoded certificate request
-     * @throws CryptoTokenOfflineException 
-     * @throws InvalidWorkerIdException 
-     * @throws AdminNotAuthorizedException 
      */
     @WebMethod(operationName = "getPKCS10CertificateRequestForKey")
     public Base64SignerCertReqData getPKCS10CertificateRequestForKey(
@@ -442,7 +382,7 @@ public class AdminWS {
         final AdminInfo adminInfo = requireAdminAuthorization("getPKCS10CertificateRequestForKey",
                 String.valueOf(signerId));
         
-        final ICertReqData data = worker.getCertificateRequest(adminInfo, new WorkerIdentifier(signerId),
+        final ICertReqData data = worker.getCertificateRequest(adminInfo, signerId,
                 certReqInfo, explicitEccParameters, defaultKey);
         if (!(data instanceof Base64SignerCertReqData)) {
             throw new RuntimeException("Unsupported cert req data");
@@ -463,7 +403,7 @@ public class AdminWS {
         final AdminInfo adminInfo = requireAdminAuthorization("getPKCS10CertificateRequestForKey",
                 String.valueOf(signerId));
         
-        final ICertReqData data = worker.getCertificateRequest(adminInfo, new WorkerIdentifier(signerId),
+        final ICertReqData data = worker.getCertificateRequest(adminInfo, signerId,
                 certReqInfo, explicitEccParameters, keyAlias);
         if (!(data instanceof Base64SignerCertReqData)) {
             throw new RuntimeException("Unsupported cert req data");
@@ -478,7 +418,6 @@ public class AdminWS {
      * been configured. Otherwise null or an exception is thrown.
      * @throws CryptoTokenOfflineException In case the crypto token or the worker
      * is not active
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getSignerCertificate")
     public byte[] getSignerCertificate(
@@ -487,7 +426,7 @@ public class AdminWS {
         requireAdminAuthorization("getSignerCertificate",
                 String.valueOf(signerId));
         
-        return worker.getSignerCertificateBytes(new WorkerIdentifier(signerId));
+        return worker.getSignerCertificateBytes(signerId);
     }
 
     /**
@@ -497,7 +436,6 @@ public class AdminWS {
      * has been configured. Otherwise null or an exception is thrown.
      * @throws CryptoTokenOfflineException In case the crypto token or the worker
      * is not active
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getSignerCertificateChain")
     public List<byte[]> getSignerCertificateChain(
@@ -506,7 +444,7 @@ public class AdminWS {
         requireAdminAuthorization("getSignerCertificateChain",
                 String.valueOf(signerId));
         
-        return worker.getSignerCertificateChainBytes(new WorkerIdentifier(signerId));
+        return worker.getSignerCertificateChainBytes(signerId);
     }
 
     /**
@@ -515,7 +453,6 @@ public class AdminWS {
      * @return The last date or null if no last date (=unlimited).
      * @throws CryptoTokenOfflineException In case the cryptotoken is offline
      * for some reason.
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getSigningValidityNotAfter")
     public Date getSigningValidityNotAfter(
@@ -524,7 +461,7 @@ public class AdminWS {
         requireAdminAuthorization("getSigningValidityNotAfter",
                 String.valueOf(workerId));
         
-        return worker.getSigningValidityNotAfter(new WorkerIdentifier(workerId));
+        return worker.getSigningValidityNotAfter(workerId);
     }
 
     /**
@@ -533,7 +470,6 @@ public class AdminWS {
      * @return The first date or null if no last date (=unlimited).
      * @throws CryptoTokenOfflineException In case the cryptotoken is offline
      * for some reason.
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getSigningValidityNotBefore")
     public Date getSigningValidityNotBefore(
@@ -542,7 +478,7 @@ public class AdminWS {
         requireAdminAuthorization("getSigningValidityNotBefore", 
                 String.valueOf(workerId));
         
-        return worker.getSigningValidityNotBefore(new WorkerIdentifier(workerId));
+        return worker.getSigningValidityNotBefore(workerId);
     }
 
     /**
@@ -552,7 +488,6 @@ public class AdminWS {
      * @param workerId
      * @return Value of the key usage counter or -1
      * @throws CryptoTokenOfflineException
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getKeyUsageCounterValue")
     public long getKeyUsageCounterValue(
@@ -561,17 +496,15 @@ public class AdminWS {
         requireAdminAuthorization("getKeyUsageCounterValue",
                 String.valueOf(workerId));
 
-        return worker.getKeyUsageCounterValue(new WorkerIdentifier(workerId));
+        return worker.getKeyUsageCounterValue(workerId);
     }
 
     /**
      * Method used to remove a key from a signer.
      *
      * @param signerId id of the signer
-     * @param purpose on of ICryptoTokenV4.PURPOSE_ constants
+     * @param purpose on of ICryptoToken.PURPOSE_ constants
      * @return true if removal was successful.
-     * @throws InvalidWorkerIdException
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "destroyKey")
     public boolean destroyKey(@WebParam(name = "signerId") final int signerId,
@@ -591,10 +524,7 @@ public class AdminWS {
      * @param keySpec Key specification
      * @param alias Name of the new key
      * @param authCode Authorization code
-     * @return Key alias of generated key
      * @throws CryptoTokenOfflineException
-     * @throws InvalidWorkerIdException If the worker ID is invalid
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      * @throws IllegalArgumentException
      */
     @WebMethod(operationName = "generateSignerKey")
@@ -609,7 +539,7 @@ public class AdminWS {
         final AdminInfo adminInfo = requireAdminAuthorization("generateSignerKey", String.valueOf(signerId),
                 keyAlgorithm, keySpec, alias);
         
-        return worker.generateSignerKey(adminInfo, new WorkerIdentifier(signerId), keyAlgorithm, keySpec, alias,
+        return worker.generateSignerKey(adminInfo, signerId, keyAlgorithm, keySpec, alias,
                 authCode == null ? null : authCode.toCharArray());
     }
 
@@ -621,9 +551,7 @@ public class AdminWS {
      * @param authCode Authorization code
      * @return Collection with test results for each key
      * @throws CryptoTokenOfflineException
-     * @throws InvalidWorkerIdException
      * @throws KeyStoreException
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "testKey")
     @SuppressWarnings("deprecation") // We support the old KeyTestResult class as well
@@ -638,14 +566,26 @@ public class AdminWS {
 
         // Workaround for KeyTestResult first placed in wrong package
         final Collection<KeyTestResult> results;
-        Collection<?> res = worker.testKey(adminInfo, new WorkerIdentifier(signerId), alias, authCode == null ? null : authCode.toCharArray());
+        Collection<?> res = worker.testKey(adminInfo, signerId, alias, authCode == null ? null : authCode.toCharArray());
         if (res.size() < 1) {
-            results = new LinkedList<>();
+            results = new LinkedList<KeyTestResult>();
         } else {
-            results = new LinkedList<>();
-            for (Object o : res) {
-                if (o instanceof KeyTestResult) {
-                    results.add((KeyTestResult) o);
+            if (res.iterator().next() instanceof org.signserver.server.KeyTestResult) {
+                results = new LinkedList<KeyTestResult>();
+                for (Object res0 : res) {
+                    final org.signserver.server.KeyTestResult res1
+                            = (org.signserver.server.KeyTestResult) res0;
+                    final KeyTestResult res2 = new KeyTestResult(
+                            res1.getAlias(), res1.isSuccess(),
+                            res1.getStatus(), res1.getPublicKeyHash());
+                    results.add(res2);
+                }
+            } else {
+                results = new LinkedList<KeyTestResult>();
+                for (Object o : res) {
+                    if (o instanceof KeyTestResult) {
+                        results.add((KeyTestResult) o);
+                    }
                 }
             }
         }
@@ -677,7 +617,7 @@ public class AdminWS {
             SignServerException, AdminNotAuthorizedException {
         final AdminInfo adminInfo = requireAdminAuthorization("removeKey", String.valueOf(signerId), alias);
 
-        return worker.removeKey(adminInfo, new WorkerIdentifier(signerId), alias);
+        return worker.removeKey(adminInfo, signerId, alias);
     }
 
     /**
@@ -686,8 +626,6 @@ public class AdminWS {
      * @param signerId id of the signer
      * @param signerCert the certificate used to sign signature requests
      * @param scope one of GlobalConfiguration.SCOPE_ constants
-     * @throws IllegalRequestException
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "uploadSignerCertificate")
     public void uploadSignerCertificate(
@@ -713,8 +651,6 @@ public class AdminWS {
      * @param signerId id of the signer
      * @param signerCerts the certificate chain used to sign signature requests
      * @param scope one of GlobalConfiguration.SCOPE_ constants
-     * @throws IllegalRequestException
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "uploadSignerCertificateChain")
     public void uploadSignerCertificateChain(
@@ -740,7 +676,6 @@ public class AdminWS {
      * @param scope one of the GlobalConfiguration.SCOPE_ constants
      * @param key of the property should not have any scope prefix, never null
      * @param value the value, never null.
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "setGlobalProperty")
     public void setGlobalProperty(
@@ -759,7 +694,6 @@ public class AdminWS {
      * @param key of the property should start with either glob. or node.,
      * never null
      * @return true if removal was successful, othervise false.
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "removeGlobalProperty")
     public boolean removeGlobalProperty(
@@ -775,7 +709,6 @@ public class AdminWS {
      * Method that returns all the global properties with Global Scope and Node
      * scopes properties for this node.
      * @return A GlobalConfiguration Object, never null
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "getGlobalConfiguration")
     public WSGlobalConfiguration getGlobalConfiguration()
@@ -810,26 +743,20 @@ public class AdminWS {
      * @param workerType can either be GlobalConfiguration.WORKERTYPE_ALL,
      * _SIGNERS or _SERVICES
      * @return A List if Integers of worker Ids, never null.
-     * @throws AdminNotAuthorizedException
      */
     @WebMethod(operationName = "getWorkers")
     public List<Integer> getWorkers(
             @WebParam(name = "workerType") final int workerType)
                 throws AdminNotAuthorizedException {
         requireAdminAuthorization("getWorkers", String.valueOf(workerType));
-
-        if (workerType == WorkerConfig.WORKERTYPE_ALL) {
-            return worker.getAllWorkers();
-        } else {
-            return worker.getWorkers(WorkerType.fromType(workerType));
-        }
+        
+        return worker.getWorkers(workerType);
     }
 
     /**
      * Method that is used after a database crash to restore all cached data to
      * database.
      * @throws ResyncException if resync was unsuccessfull
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "globalResync")
     public void globalResync() throws ResyncException, AdminNotAuthorizedException {
@@ -840,8 +767,6 @@ public class AdminWS {
 
     /**
      * Method to reload all data from database.
-     * 
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      */
     @WebMethod(operationName = "globalReload")
     public void globalReload() throws AdminNotAuthorizedException {
@@ -857,12 +782,6 @@ public class AdminWS {
      * @param workerIdOrName Name or ID of the worker who should process the
      * request
      * @param requests Collection of serialized (binary) requests.
-     * @return Collection of response data
-     * @throws InvalidWorkerIdException 
-     * @throws IllegalRequestException 
-     * @throws CryptoTokenOfflineException 
-     * @throws SignServerException 
-     * @throws AdminNotAuthorizedException If the admin is not authorized
      *
      * @see RequestAndResponseManager#serializeProcessRequest(org.signserver.common.ProcessRequest)
      * @see RequestAndResponseManager#parseProcessRequest(byte[])
@@ -876,7 +795,7 @@ public class AdminWS {
             AdminNotAuthorizedException {
         final AdminInfo adminInfo = requireAdminAuthorization("process", workerIdOrName);
 
-        final Collection<byte[]> result = new LinkedList<>();
+        final Collection<byte[]> result = new LinkedList<byte[]>();
 
         final X509Certificate[] clientCerts = getClientCertificates();
         final X509Certificate clientCertificate;
@@ -922,6 +841,8 @@ public class AdminWS {
         }
         requestContext.put(RequestContext.CLIENT_CREDENTIAL, credential);
 
+        final int workerId = getWorkerId(workerIdOrName);
+
         for (byte[] requestBytes : requests) {
             final ProcessRequest req;
             try {
@@ -932,114 +853,13 @@ public class AdminWS {
                 throw new IllegalRequestException(
                         "Error parsing process request", ex);
             }
-            
-            // TODO: Duplicated in SignServerWS, AdminWS, ProcessSessionBean (remote)
-            CloseableReadableData requestData = null;
-            CloseableWritableData responseData = null;
             try {
-                final Request req2;
-                boolean propertiesRequest = false;
-                
-                // Use the new request types with large file support for
-                // GenericSignRequest and GenericValidationRequest
-                if (req instanceof GenericSignRequest) {
-                    byte[] data = ((GenericSignRequest) req).getRequestData();
-                    int requestID = ((GenericSignRequest) req).getRequestID();
-                    
-                    // Upload handling (Note: close in finally clause)
-                    UploadConfig uploadConfig = UploadConfig.create(global);
-                    requestData = dataFactory.createReadableData(data, uploadConfig.getMaxUploadSize(), uploadConfig.getRepository());
-                    responseData = dataFactory.createWritableData(requestData, uploadConfig.getRepository());
-                    req2 = new SignatureRequest(requestID, requestData, responseData);
-                } else if (req instanceof GenericValidationRequest) {
-                    byte[] data = ((GenericValidationRequest) req).getRequestData();
-                    int requestID = ((GenericValidationRequest) req).getRequestID();
-                    
-                    // Upload handling (Note: close in finally clause)
-                    UploadConfig uploadConfig = UploadConfig.create(global);
-                    requestData = dataFactory.createReadableData(data, uploadConfig.getMaxUploadSize(), uploadConfig.getRepository());
-                    req2 = new DocumentValidationRequest(requestID, requestData);
-                } else if (req instanceof ValidateRequest) {
-                    ValidateRequest vr = (ValidateRequest) req;
-                    req2 = new CertificateValidationRequest(vr.getCertificate(), vr.getCertPurposesString());
-                } else if (req instanceof SODSignRequest) {
-                    SODSignRequest sodReq = (SODSignRequest) req;
-                    req2 = new SODRequest(sodReq.getRequestID(), sodReq.getDataGroupHashes(), sodReq.getLdsVersion(), sodReq.getUnicodeVersion(), responseData);
-                } else if (req instanceof GenericPropertiesRequest) {
-                    GenericPropertiesRequest propReq = (GenericPropertiesRequest) req;
-                    propertiesRequest = true;
-                    
-                    // Upload handling (Note: close in finally clause)
-                    UploadConfig uploadConfig = UploadConfig.create(global);
-                    ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                    propReq.getProperties().store(bout, null);
-                    requestData = dataFactory.createReadableData(bout.toByteArray(), uploadConfig.getMaxUploadSize(), uploadConfig.getRepository());
-                    responseData = dataFactory.createWritableData(requestData, uploadConfig.getRepository());
-                    req2 = new SignatureRequest(propReq.hashCode(), requestData, responseData);
-                } else {
-                    // Passthrough for all legacy requests
-                    req2 = new LegacyRequest(req);
-                }
-
-                Response resp = processSession.process(adminInfo, WorkerIdentifier.createFromIdOrName(workerIdOrName), req2, requestContext);
-    
-                ProcessResponse processResponse;
-                if (resp instanceof SignatureResponse) {
-                    SignatureResponse sigResp = (SignatureResponse) resp;
-                    if (propertiesRequest) {
-                        Properties properties = new Properties();
-                        properties.load(responseData.toReadableData().getAsInputStream());
-                        processResponse = new GenericPropertiesResponse(properties);
-                    } else {
-                        processResponse = new GenericSignResponse(sigResp.getRequestID(), responseData.toReadableData().getAsByteArray(), sigResp.getSignerCertificate(), sigResp.getArchiveId(), sigResp.getArchivables());
-                    }
-                } else if (resp instanceof DocumentValidationResponse) {
-                    DocumentValidationResponse docResp = (DocumentValidationResponse) resp;
-                    processResponse = new GenericValidationResponse(docResp.getRequestID(), docResp.isValid(), convert(docResp.getCertificateValidationResponse()), responseData.toReadableData().getAsByteArray());
-                } else if (resp instanceof CertificateValidationResponse) {
-                    CertificateValidationResponse certResp = (CertificateValidationResponse) resp;
-                    processResponse = new ValidateResponse(certResp.getValidation(), certResp.getValidCertificatePurposes());
-                } else if (resp instanceof SODResponse) {
-                    SODResponse sodResp = (SODResponse) resp;
-                    processResponse = new SODSignResponse(sodResp.getRequestID(), responseData.toReadableData().getAsByteArray(), sodResp.getSignerCertificate(), sodResp.getArchiveId(), sodResp.getArchivables());
-                } else if (resp instanceof LegacyResponse) {
-                    processResponse = ((LegacyResponse) resp).getLegacyResponse();
-                } else {
-                    throw new SignServerException("Unexpected response type: " + resp);
-                }
-                
-                try {
-                    result.add(RequestAndResponseManager.serializeProcessResponse(processResponse));
-                } catch (IOException ex) {
-                    LOG.error("Error serializing process response", ex);
-                    throw new IllegalRequestException(
-                            "Error serializing process response", ex);
-                }                
-            } catch (FileUploadBase.SizeLimitExceededException ex) {
-                LOG.error("Maximum content length exceeded: " + ex.getLocalizedMessage());
-                throw new IllegalRequestException("Maximum content length exceeded");
-            } catch (FileUploadException ex) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Upload failed", ex);
-                }
-                throw new IllegalRequestException("Upload failed: " + ex.getLocalizedMessage());
+                result.add(RequestAndResponseManager.serializeProcessResponse(
+                    worker.process(adminInfo, workerId, req, requestContext)));
             } catch (IOException ex) {
-                throw new SignServerException("IO error", ex);
-            } finally {
-                if (requestData != null) {
-                    try {
-                        requestData.close();
-                    } catch (IOException ex) {
-                        LOG.error("Unable to remove temporary upload file: " + ex.getLocalizedMessage());
-                    }
-                }
-                if (responseData != null) {
-                    try {
-                        responseData.close();
-                    } catch (IOException ex) {
-                        LOG.error("Unable to remove temporary response file: " + ex.getLocalizedMessage());
-                    }
-                }
+                LOG.error("Error serializing process response", ex);
+                throw new IllegalRequestException(
+                        "Error serializing process response", ex);
             }
         }
         return result;
@@ -1070,7 +890,7 @@ public class AdminWS {
         final AdminInfo adminInfo =
                 requireAdminAuthorization("importCertificateChain",
                                           String.valueOf(workerId), String.valueOf(alias));
-        worker.importCertificateChain(adminInfo, new WorkerIdentifier(workerId), certChain, alias,
+        worker.importCertificateChain(adminInfo, workerId, certChain, alias,
                                       authCode == null ? null : authCode.toCharArray());
     }
     
@@ -1119,7 +939,7 @@ public class AdminWS {
      * Convert to WS model LogEntry:s.
      */
     private List<WSAuditLogEntry> toLogEntries(final List<? extends AuditLogEntry> entries) {
-        final List<WSAuditLogEntry> results = new LinkedList<>();
+        final List<WSAuditLogEntry> results = new LinkedList<WSAuditLogEntry>();
         for (AuditLogEntry entry : entries) {
             results.add(WSAuditLogEntry.fromAuditLogEntry(entry));
         }
@@ -1194,7 +1014,7 @@ public class AdminWS {
                 qc.add(andAll(elements, 0));
             }
             
-            return WSTokenSearchResults.fromTokenSearchResults(worker.searchTokenEntries(adminInfo, new WorkerIdentifier(workerId), startIndex, max, qc, includeData, Collections.<String, Object>emptyMap()));
+            return WSTokenSearchResults.fromTokenSearchResults(worker.searchTokenEntries(adminInfo, workerId, startIndex, max, qc, includeData, Collections.<String, Object>emptyMap()));
         } catch (InvalidAlgorithmParameterException ex) {
             throw new SignServerException("Crypto token expects supported parameters", ex);
         } catch (UnsupportedCryptoTokenParameter ex) {
@@ -1209,7 +1029,7 @@ public class AdminWS {
      * @return
      */
     private List<WSArchiveMetadata> toArchiveEntries(final List<? extends ArchiveMetadata> entries) {
-        final List<WSArchiveMetadata> results = new LinkedList<>();
+        final List<WSArchiveMetadata> results = new LinkedList<WSArchiveMetadata>();
         
         for (final ArchiveMetadata entry : entries) {
             results.add(WSArchiveMetadata.fromArchiveMetadata(entry));
@@ -1222,7 +1042,7 @@ public class AdminWS {
      * Convert to the CESeCore model Elem:s.
      */
     private List<Elem> toElements(final List<QueryCondition> conditions) {
-        final LinkedList<Elem> results = new LinkedList<>();
+        final LinkedList<Elem> results = new LinkedList<Elem>();
         
         if (conditions != null) {
             for (QueryCondition cond : conditions) {
@@ -1246,10 +1066,6 @@ public class AdminWS {
      * This uses a recursive implementation not expected to work for larger 
      * lists of Elem:s, however as the number of columns are limited it is not 
      * expected to be a real problem.
-     * 
-     * @param elements
-     * @param index Recursive index
-     * @return Tree of and-criteria elements
      */
     protected Elem andAll(final List<Elem> elements, final int index) {
         if (index >= elements.size() - 1) {
@@ -1416,10 +1232,6 @@ public class AdminWS {
                 (X509Certificate[]) req.getAttribute(
                     "javax.servlet.request.X509Certificate");
         return certificates;
-    }
-    
-    private ValidateResponse convert(CertificateValidationResponse from) {
-        return new ValidateResponse(from.getValidation(), from.getValidCertificatePurposes());
     }
 
     // "Insert Code > Add Web Service Operation")

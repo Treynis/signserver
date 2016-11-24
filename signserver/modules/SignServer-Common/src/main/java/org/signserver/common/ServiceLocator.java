@@ -167,11 +167,16 @@ public final class ServiceLocator {
 
     private static String getBeanName(final Class clazz, final boolean remote) {
         String beanName = clazz.getSimpleName();
+        if (clazz.getEnclosingClass() != null
+                && ((remote && "IRemote".equals(beanName))
+                    || (!remote && "ILocal".equals(beanName)))) {
+            beanName = clazz.getEnclosingClass().getSimpleName();
+        }
         if (beanName.endsWith("Remote")) {
             beanName = beanName.substring(0, beanName.length() - "Remote".length());
         }
-        if (beanName.endsWith("Local")) {
-            beanName = beanName.substring(0, beanName.length() - "Local".length());
+        if (beanName.charAt(0) == 'I') {
+            beanName = beanName.substring(1);
         }
         beanName += "Bean";
         return beanName;

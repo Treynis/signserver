@@ -46,7 +46,9 @@ public class CLITestHelper {
             cli.setOut(new PrintStream(new TeeOutputStream(System.out, out)));
             cli.setErr(new PrintStream(new TeeOutputStream(System.err, err)));
             return cli.execute(args);
-        } catch (IllegalAccessException | InstantiationException ex) {
+        } catch (IllegalAccessException ex) {
+            throw new UnexpectedCommandFailureException(ex);
+        } catch (InstantiationException ex) {
             throw new UnexpectedCommandFailureException(ex);
         }
     }

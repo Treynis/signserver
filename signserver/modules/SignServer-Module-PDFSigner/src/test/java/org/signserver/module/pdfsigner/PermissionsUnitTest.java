@@ -46,8 +46,6 @@ public class PermissionsUnitTest extends TestCase {
     /**
      * Tests getting Permissions instances from collections of permission 
      * strings.
-     * 
-     * @throws java.lang.Exception
      */
     public void testConstructingFromStrings() throws Exception {
         Set set1 = new HashSet(Arrays.asList("ALLOW_COPY", "ALLOW_SCREENREADERS", "_NON_EXISTING_PERM_"));
@@ -74,8 +72,6 @@ public class PermissionsUnitTest extends TestCase {
     
     /**
      * Getting the permissions as a set of permission strings.
-     * 
-     * @throws java.lang.Exception
      */
     public void testToSet() throws Exception {
         
@@ -93,8 +89,6 @@ public class PermissionsUnitTest extends TestCase {
     /**
      * Tests the method checking of the Permissions contains any of the supplied 
      * permissions.
-     * 
-     * @throws java.lang.Exception
      */
     public void testContainsAnyRejected() throws Exception {
         
@@ -134,8 +128,6 @@ public class PermissionsUnitTest extends TestCase {
      * Tests the methods returning a new/different Permissions object with the 
      * same permissions as the original one but with the supplied permissions
      * removed.
-     * 
-     * @throws java.lang.Exception
      */
     public void testWithRemovedPermissions() throws Exception {
         

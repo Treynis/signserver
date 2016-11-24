@@ -102,8 +102,7 @@ public abstract class AbstractProcessServlet extends HttpServlet {
     /**
      * Add collected meta data to a RequestMetadata instance.
      * 
-     * @param holder Meta data holder
-     * @param metadata Metadata to add
+     * @param metadata
      */
     protected void addRequestMetaData(final MetaDataHolder holder,
             final RequestMetadata metadata) {

@@ -12,8 +12,6 @@
  *************************************************************************/
 package org.signserver.common.util;
 
-import org.signserver.common.WorkerConfig;
-
 /**
  * Constants used when parsing/dumping global and worker properties.
  *
@@ -21,10 +19,6 @@ import org.signserver.common.WorkerConfig;
  * @version $Id$
  */
 public interface PropertiesConstants {
-    
-    String IMPLEMENTATION_CLASS = WorkerConfig.IMPLEMENTATION_CLASS;
-    String CRYPTOTOKEN_IMPLEMENTATION_CLASS = WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS;
-    
     String DOT_SIGNERCERTIFICATE = ".SIGNERCERTIFICATE";
     
     String DOT_SIGNERCERTCHAIN = ".SIGNERCERTCHAIN";

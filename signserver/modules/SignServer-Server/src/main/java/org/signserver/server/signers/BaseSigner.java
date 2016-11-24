@@ -39,8 +39,8 @@ import org.signserver.server.IServices;
 import org.signserver.server.KeyUsageCounterHash;
 import org.signserver.server.ValidityTimeUtils;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
+import org.signserver.server.cryptotokens.ICryptoTokenV3;
 import org.signserver.server.entities.KeyUsageCounter;
 
 /**
@@ -58,7 +58,7 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
     protected int includeCertificateLevels;
     protected boolean hasSetIncludeCertificateLevels;
     
-    private List<String> configErrors = new LinkedList<>();
+    private List<String> configErrors = new LinkedList<String>();
 
     private static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
     
@@ -87,73 +87,55 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
      * @see org.signserver.server.IProcessable#getStatus()
      */
     @Override
-    public WorkerStatusInfo getStatus(final List<String> additionalFatalErrors, final IServices services) {
+    public WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services) {
         WorkerStatusInfo info;
-        final List<String> fatalErrors = new LinkedList<>(additionalFatalErrors);
-        fatalErrors.addAll(getFatalErrors(services));
+        final List<String> fatalErrors = new LinkedList<String>(additionalFatalErrors);
+        fatalErrors.addAll(getFatalErrors());
 
         final boolean keyUsageCounterDisabled = config.getProperty(SignServerConstants.DISABLEKEYUSAGECOUNTER, "FALSE").equalsIgnoreCase("TRUE");
 
-        ICryptoTokenV4 token = null;
+        ICryptoToken token = null;
         try {
-            token = getCryptoToken(services);
+            token = getCryptoToken();
         } catch (SignServerException ex) {
             // getFatalErrors will pick up crypto token errors gathered
             // during creation of the crypto token
         }
 
-        List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<>();
-        List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<>();
+        List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<WorkerStatusInfo.Entry>();
+        List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<WorkerStatusInfo.Entry>();
 
         long keyUsageCounterValue = 0;
         int status = WorkerStatus.STATUS_OFFLINE;
         X509Certificate signerCertificate = null;
 
-        if (token != null) {
-            status = token.getCryptoTokenStatus(services);
-        }
-        
-        if (!isNoCertificates()) {
-            RequestContext context = new RequestContext(true);
-            context.setServices(services);
-            ICryptoInstance crypto = null;
-            try {
-                crypto = acquireDefaultCryptoInstance(context);
+        try {
+            signerCertificate =
+                    (X509Certificate) getSigningCertificate();
+            final long keyUsageLimit = Long.valueOf(config.getProperty(SignServerConstants.KEYUSAGELIMIT, "-1"));
 
-                signerCertificate =
-                        (X509Certificate) getSigningCertificate(crypto);
-                if (signerCertificate != null) {
-                    final long keyUsageLimit = Long.valueOf(config.getProperty(SignServerConstants.KEYUSAGELIMIT, "-1"));
+            if (token instanceof ICryptoTokenV3) {
+                status = ((ICryptoTokenV3) token).getCryptoTokenStatus(services);
+            } else if (token != null) {
+                status = token.getCryptoTokenStatus();
+            }
 
-                    KeyUsageCounter counter = getSignServerContext().getKeyUsageCounterDataService().getCounter(KeyUsageCounterHash.create(signerCertificate.getPublicKey()));
-                    if ((counter == null && !keyUsageCounterDisabled) 
-                            || (keyUsageLimit != -1 && status == WorkerStatus.STATUS_ACTIVE && (counter == null || counter.getCounter() >= keyUsageLimit))) {
-                        fatalErrors.add("Key usage limit exceeded or not initialized");
-                    }
-
-                    if (counter != null) {
-                        keyUsageCounterValue = counter.getCounter();
-                    }
+            if (signerCertificate != null) {
+                KeyUsageCounter counter = getSignServerContext().getKeyUsageCounterDataService().getCounter(KeyUsageCounterHash.create(signerCertificate.getPublicKey()));
+                if ((counter == null && !keyUsageCounterDisabled) 
+                        || (keyUsageLimit != -1 && status == WorkerStatus.STATUS_ACTIVE && (counter == null || counter.getCounter() >= keyUsageLimit))) {
+                    fatalErrors.add("Key usage limit exceeded or not initialized");
                 }
 
-            } catch (CryptoTokenOfflineException e) {} // the error will have been picked up by getCryptoTokenFatalErrors already
-
-            catch (NumberFormatException ex) {
-                fatalErrors.add("Incorrect value in worker property " + SignServerConstants.KEYUSAGELIMIT + ": " + ex.getMessage());
-            } catch (InvalidAlgorithmParameterException | UnsupportedCryptoTokenParameter | IllegalRequestException | SignServerException ex) {
-                fatalErrors.add("Unable to obtain certificate from token: " + ex.getLocalizedMessage());
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Unable to obtain certificate from token", ex);
-                }
-            } finally {
-                if (crypto != null) {
-                    try {
-                        releaseCryptoInstance(crypto, context);
-                    } catch (SignServerException ex) {
-                        LOG.warn("Unable to release crypto instance", ex);
-                    }
+                if (counter != null) {
+                    keyUsageCounterValue = counter.getCounter();
                 }
             }
+
+        } catch (CryptoTokenOfflineException e) {} // the error will have been picked up by getCryptoTokenFatalErrors already
+
+        catch (NumberFormatException ex) {
+            fatalErrors.add("Incorrect value in worker property " + SignServerConstants.KEYUSAGELIMIT + ": " + ex.getMessage());
         }
 
         if (status == WorkerStatus.STATUS_OFFLINE) {
@@ -195,7 +177,7 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
 
         // Clients
         final StringBuilder clientsValue = new StringBuilder();
-        for (AuthorizedClient client : config.getAuthorizedClients()) {
+        for (AuthorizedClient client : new ProcessableConfig(config).getAuthorizedClients()) {
             clientsValue.append(client.getCertSN()).append(", ").append(properties.getProperty(client.getIssuerDN())).append("\n");
         }
         completeEntries.add(new WorkerStatusInfo.Entry("Authorized clients (serial number, issuer DN)", clientsValue.toString()));
@@ -217,21 +199,20 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
             completeEntries.add(new WorkerStatusInfo.Entry("Signer certificate", certificateValue));
         }
 
-        return new WorkerStatusInfo(workerId, config.getProperty("NAME"),
-                                    "Signer", status, briefEntries, fatalErrors,
-                                    completeEntries, config);
+        info = new WorkerStatusInfo(workerId, config.getProperty("NAME"), "Signer", status, briefEntries, fatalErrors, completeEntries, config);
+        return new StaticWorkerStatus(info);
     }
 
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final LinkedList<String> errors = new LinkedList<>(super.getFatalErrors(services));
+    protected List<String> getFatalErrors() {
+        final LinkedList<String> errors = new LinkedList<String>(super.getFatalErrors());
         // Load crypto token so its errors are checked
         try {
-            getCryptoToken(services);
+            getCryptoToken();
         } catch (SignServerException ignored) {} // NOPMD errors are added to cryptoTokenFatalErrors
-        errors.addAll(getCryptoTokenFatalErrors(services));
+        errors.addAll(getCryptoTokenFatalErrors());
         if (!isNoCertificates()) {
-            errors.addAll(getSignerCertificateFatalErrors(services));
+            errors.addAll(getSignerCertificateFatalErrors());
         }
         errors.addAll(configErrors);
         return errors;
@@ -246,22 +227,15 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
      * Signer implementation can override this method and just return an empty 
      * list if they don't require a signer certificate to be present.
      *
-     * @param services Services for implementations to use
      * @return List of errors or an empty list in case of no errors
      */
-    protected List<String> getSignerCertificateFatalErrors(IServices services) {
-        final LinkedList<String> result = new LinkedList<>(super.getFatalErrors(services));
+    protected List<String> getSignerCertificateFatalErrors() {
+        final LinkedList<String> result = new LinkedList<String>(super.getFatalErrors());
         // Check if certificate matches key
-        RequestContext context = new RequestContext(true);
-        context.setServices(services);
-        ICryptoInstance crypto = null;
         Certificate certificate = null;
-        List<Certificate> certificateChain = null;
         try {
-            crypto = acquireDefaultCryptoInstance(context);
-            certificate = getSigningCertificate(crypto);
-            certificateChain = getSigningCertificateChain(crypto);
-            final ICryptoTokenV4 token = getCryptoToken(services);
+            certificate = getSigningCertificate();
+            final ICryptoToken token = getCryptoToken();
             if (token == null) {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Signer " + workerId + ": No crypto token");
@@ -273,7 +247,8 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
                 }
                 result.add("No signer certificate available");
             } else {
-                final PublicKey publicKeyInToken = crypto.getPublicKey();
+                final PublicKey publicKeyInToken = token.getPublicKey(
+                        ICryptoToken.PURPOSE_SIGN);
                 if (publicKeyInToken == null) {
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Signer " + workerId + ": Key not configured or not available");
@@ -301,25 +276,12 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Signer " + workerId + ": Could not get crypto token: " + e.getMessage());
             }
-        } catch (InvalidAlgorithmParameterException | UnsupportedCryptoTokenParameter | IllegalRequestException ex) {
-            result.add("Could not get crypto token");
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Signer " + workerId + ": Could not get crypto token: " + ex.getMessage());
-            }
-        } finally {
-            if (crypto != null) {
-                try {
-                    releaseCryptoInstance(crypto, context);
-                } catch (SignServerException ex) {
-                    LOG.warn("Unable to release crypto instance", ex);
-                }
-            }
         }
 
         // Check signer validity
         if (certificate instanceof X509Certificate) {
             try {
-                ValidityTimeUtils.checkSignerValidity(new WorkerIdentifier(workerId), getConfig(), (X509Certificate) certificate);
+                ValidityTimeUtils.checkSignerValidity(workerId, getConfig(), (X509Certificate) certificate);
             } catch (CryptoTokenOfflineException ex) {
                 result.add(ex.getMessage());
                 if (LOG.isDebugEnabled()) {
@@ -331,8 +293,23 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
         if (!hasSetIncludeCertificateLevels || includeCertificateLevels > 0) {
             // Check that certificiate chain contains the signer certificate
             try {
-                getCertStoreWithChain(certificate, certificateChain);
-            } catch (NoSuchAlgorithmException | NoSuchProviderException | CertStoreException | IOException | CertificateEncodingException | InvalidAlgorithmParameterException ex) {
+                getCertStoreWithChain(certificate);
+            } catch (NoSuchAlgorithmException ex) {
+                result.add("Unable to get certificate chain");
+                LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
+            } catch (NoSuchProviderException ex) {
+                result.add("Unable to get certificate chain");
+                LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
+            } catch (CertStoreException ex) {
+                result.add("Unable to get certificate chain");
+                LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
+            } catch (IOException ex) {
+                result.add("Unable to get certificate chain");
+                LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
+            } catch (CertificateEncodingException ex) {
+                result.add("Unable to get certificate chain");
+                LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
+            } catch (InvalidAlgorithmParameterException ex) {
                 result.add("Unable to get certificate chain");
                 LOG.error("Signer " + workerId + ": Unable to get certificate chain: " + ex.getMessage());
             } catch (CryptoTokenOfflineException ex) {
@@ -346,6 +323,11 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
         return result;
     }
 
+    @Deprecated
+    protected Store getCertStoreWithChain(Certificate signingCert) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, CryptoTokenOfflineException, CertStoreException, CertificateEncodingException, IOException {
+        return getCertStoreWithChain(signingCert, getSigningCertificateChain());
+    }
+    
     protected Store getCertStoreWithChain(Certificate signingCert, List<Certificate> signingCertificateChain) throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, CryptoTokenOfflineException, CertStoreException, CertificateEncodingException, IOException {
         if (signingCertificateChain == null) {
             throw new CryptoTokenOfflineException("Certificate chain not available");
@@ -396,4 +378,14 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
         }
     }
 
+    /**
+     * Indicates if this worker is configured to not be configured with any
+     * certificates.
+     * This can be overridden by worker implementations to not require the
+     * user to explicitly configure this.
+     * @return True if this worker is configured to not use any certificates
+     */
+    protected boolean isNoCertificates() {
+        return Boolean.parseBoolean(config.getProperty("NOCERTIFICATES", Boolean.FALSE.toString()));
+    }
 }

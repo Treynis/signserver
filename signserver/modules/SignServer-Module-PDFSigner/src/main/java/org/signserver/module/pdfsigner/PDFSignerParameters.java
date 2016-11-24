@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 
 import org.apache.log4j.Logger;
+import org.ejbca.util.Base64;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
@@ -28,7 +29,6 @@ import com.lowagie.text.pdf.PdfSignatureAppearance;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import org.bouncycastle.util.encoders.Base64;
 
 /**
  * Class that holds configuration values passed to pdfsigner.
@@ -73,7 +73,7 @@ public class PDFSignerParameters {
     private boolean refuseDoubleIndirectObjects;
     
     /** Permissions to not allow in a document. */
-    private Set<String> rejectPermissions = new HashSet<>();
+    private Set<String> rejectPermissions = new HashSet<String>();
     /** Permissions to set. **/
     private Permissions setPermissions;
     /** Permissions to remove. **/
@@ -179,7 +179,7 @@ public class PDFSignerParameters {
         String removePermissionsValue = config.getProperties().getProperty(PDFSigner.REMOVE_PERMISSIONS);
         if (removePermissionsValue != null) {
             String[] array = removePermissionsValue.split(",");
-            removePermissions = new HashSet<>();
+            removePermissions = new HashSet<String>();
             removePermissions.addAll(Arrays.asList(array));
         }
         // Set ownerpassword

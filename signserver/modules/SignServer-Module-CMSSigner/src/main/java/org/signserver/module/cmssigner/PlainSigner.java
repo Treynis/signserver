@@ -12,9 +12,6 @@
  *************************************************************************/
 package org.signserver.module.cmssigner;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -35,22 +32,13 @@ import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
 import org.bouncycastle.util.encoders.Hex;
 import org.signserver.common.*;
-import org.signserver.common.data.ReadableData;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.common.data.SignatureResponse;
-import org.signserver.common.data.WritableData;
-import org.signserver.server.IServices;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
-import org.signserver.server.data.impl.UploadUtil;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.log.IWorkerLogger;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 import org.signserver.server.signers.BaseSigner;
 
 /**
@@ -88,7 +76,7 @@ public class PlainSigner extends BaseSigner {
         super.init(workerId, config, workerContext, workerEM);
 
         // Configuration errors
-        configErrors = new LinkedList<>();
+        configErrors = new LinkedList<String>();
 
         // Get the signature algorithm
         signatureAlgorithm = config.getProperty(SIGNATUREALGORITHM_PROPERTY);
@@ -104,20 +92,28 @@ public class PlainSigner extends BaseSigner {
     }
 
     @Override
-    public Response processData(final Request signRequest,
+    public ProcessResponse processData(final ProcessRequest signRequest,
             final RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
+
+        ProcessResponse signResponse;
         
         // Log values
         final LogMap logMap = LogMap.getInstance(requestContext);
 
         // Check that the request contains a valid GenericSignRequest object
         // with a byte[].
-        if (!(signRequest instanceof SignatureRequest)) {
+        if (!(signRequest instanceof GenericSignRequest)) {
             throw new IllegalRequestException(
-                    "Received request wasn't an expected GenericSignRequest.");
+                    "Received request wasn't a expected GenericSignRequest.");
         }
-        final SignatureRequest sReq = (SignatureRequest) signRequest;
+
+        final ISignRequest sReq = (ISignRequest) signRequest;
+
+        if (!(sReq.getRequestData() instanceof byte[])) {
+            throw new IllegalRequestException(
+                    "Received request data wasn't a expected byte[].");
+        }
 
         if (!configErrors.isEmpty()) {
             throw new SignServerException("Worker is misconfigured");
@@ -132,43 +128,22 @@ public class PlainSigner extends BaseSigner {
             fileNameOriginal = null;
         }
         
-        final ReadableData requestData = sReq.getRequestData();
-        final WritableData responseData = sReq.getResponseData();
-        final byte[] digest;
-        logMap.put(IWorkerLogger.LOG_REQUEST_DIGEST_ALGORITHM, new Loggable() {
-            @Override
-            public String toString() {
-                return logRequestDigestAlgorithm;
-            }
-        });
-        try (InputStream input = requestData.getAsInputStream()) {
+        final byte[] data = (byte[]) sReq.getRequestData();
+        byte[] digest;
+        logMap.put(IWorkerLogger.LOG_REQUEST_DIGEST_ALGORITHM, logRequestDigestAlgorithm);
+        try {
             final MessageDigest md = MessageDigest.getInstance(logRequestDigestAlgorithm);
-
-            // Digest all data
-            // TODO: Future optimization: could be done while the file is read instead
-            final byte[] requestDigest = UploadUtil.digest(input, md);
-
-            logMap.put(IWorkerLogger.LOG_REQUEST_DIGEST, new Loggable() {
-                @Override
-                public String toString() {
-                    return Hex.toHexString(requestDigest);
-                }
-            });
+            digest = md.digest(data);
+            logMap.put(IWorkerLogger.LOG_REQUEST_DIGEST, Hex.toHexString(digest));
         } catch (NoSuchAlgorithmException ex) {
-            LOG.error("Log digest algorithm not supported", ex);
-            throw new SignServerException("Log digest algorithm not supported", ex);
-        } catch (IOException ex) {
-            LOG.error("Log request digest failed", ex);
-            throw new SignServerException("Log request digest failed", ex);
+            LOG.error("Digest algorithm not supported", ex);
+            throw new SignServerException("Digest algorithm not supported", ex);
         }
-        final String archiveId = createArchiveId(new byte[0], (String) requestContext.get(RequestContext.TRANSACTION_ID));
+        final String archiveId = createArchiveId(digest, (String) requestContext.get(RequestContext.TRANSACTION_ID));
 
         ICryptoInstance crypto = null;
-        try (
-                InputStream in = requestData.getAsInputStream();
-                OutputStream out = responseData.getAsInMemoryOutputStream()
-            ) {
-            crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
+        try {
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
             // Get certificate chain and signer certificate
             final List<Certificate> certs = this.getSigningCertificateChain(crypto);
             if (certs == null) {
@@ -187,26 +162,26 @@ public class PlainSigner extends BaseSigner {
             final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(cert.getPublicKey()) : signatureAlgorithm;
             final Signature signature = Signature.getInstance(sigAlg, crypto.getProvider());
             signature.initSign(privKey);
-            
-            final byte[] buffer = new byte[4096]; 
-            int n = 0;
-            while (-1 != (n = in.read(buffer))) {
-                signature.update(buffer, 0, n);
-            }
-            
+            signature.update(data);
+
             final byte[] signedbytes = signature.sign();
-            out.write(signedbytes);
             
-            logMap.put(IWorkerLogger.LOG_RESPONSE_ENCODED, new Loggable() {
-                @Override
-                public String toString() {
-                    return Base64.toBase64String(signedbytes);
-                }
-            });
+            logMap.put(IWorkerLogger.LOG_RESPONSE_ENCODED, Base64.toBase64String(signedbytes));
             
             final Collection<? extends Archivable> archivables = Arrays.asList(
-                    new DefaultArchivable(Archivable.TYPE_REQUEST, CONTENT_TYPE, requestData, archiveId), 
-                    new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, responseData.toReadableData(), archiveId));
+                    new DefaultArchivable(Archivable.TYPE_REQUEST, CONTENT_TYPE, data, archiveId), 
+                    new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
+
+            if (signRequest instanceof GenericServletRequest) {
+                signResponse = new GenericServletResponse(sReq.getRequestID(),
+                        signedbytes, cert, archiveId,
+                        archivables,
+                        CONTENT_TYPE);
+            } else {
+                signResponse = new GenericSignResponse(sReq.getRequestID(),
+                        signedbytes, cert, archiveId,
+                        archivables);
+            }
 
             // Suggest new file name
             if (fileNameOriginal != null) {
@@ -216,15 +191,16 @@ public class PlainSigner extends BaseSigner {
             // The client can be charged for the request
             requestContext.setRequestFulfilledByWorker(true);
 
-            return new SignatureResponse(sReq.getRequestID(),
-                        responseData, cert, archiveId,
-                        archivables,
-                        CONTENT_TYPE);
-        } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException ex) {
+            return signResponse;
+        } catch (NoSuchAlgorithmException ex) {
             LOG.error("Error initializing signer", ex);
             throw new SignServerException("Error initializing signer", ex);
-        } catch (IOException ex) {
-            throw new SignServerException("IO error", ex);
+        } catch (InvalidKeyException ex) {
+            LOG.error("Error initializing signer", ex);
+            throw new SignServerException("Error initializing signer", ex);
+        } catch (SignatureException ex) {
+            LOG.error("Error initializing signer", ex);
+            throw new SignServerException("Error initializing signer", ex);
         } finally {
             releaseCryptoInstance(crypto, requestContext);
         }
@@ -245,8 +221,8 @@ public class PlainSigner extends BaseSigner {
     }
 
     @Override
-    protected List<String> getFatalErrors(final IServices services) {
-        final LinkedList<String> errors = new LinkedList<>(super.getFatalErrors(services));
+    protected List<String> getFatalErrors() {
+        final LinkedList<String> errors = new LinkedList<String>(super.getFatalErrors());
         errors.addAll(configErrors);
         return errors;
     }

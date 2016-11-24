@@ -70,16 +70,6 @@ public class FileBasedDatabaseManager {
         }
         return metadata;
     }
-
-    /**
-     * Write out the meta data to disk.
-     */
-    public void storeMetadata() {
-        synchronized (this) {
-            final Properties properties = getMetadata();
-            dataService.setProperties(properties);
-        }
-    }
     
     private Properties getMetadataTemplate() {
         final Properties result = new Properties();
@@ -129,7 +119,7 @@ public class FileBasedDatabaseManager {
      * @return List of errors preventing the file based database from functioning
      */
     public List<String> getFatalErrors() {
-        final LinkedList<String> result = new LinkedList<>();
+        final LinkedList<String> result = new LinkedList<String>();
         if (!initialized) {
             result.add("File based database not initialized. See servlet log for error during startup.");
         }

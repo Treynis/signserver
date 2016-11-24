@@ -12,23 +12,15 @@
  *************************************************************************/
 package org.signserver.server.config.entities;
 
-import java.beans.XMLDecoder;
-import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import javax.ejb.EJBException;
 import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.Query;
 import org.apache.log4j.Logger;
-import org.cesecore.util.Base64GetHashMap;
-import org.cesecore.util.Base64PutHashMap;
-import org.signserver.common.NoSuchWorkerException;
+import org.ejbca.util.Base64GetHashMap;
+import org.ejbca.util.Base64PutHashMap;
+import org.signserver.common.ProcessableConfig;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerType;
 
 /**
  * Entity Service class that acts as migration layer for
@@ -43,7 +35,7 @@ public class WorkerConfigDataService implements IWorkerConfigDataService {
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(WorkerConfigDataService.class);
     
-    private final EntityManager em;
+    private EntityManager em;
 
     public WorkerConfigDataService(EntityManager em) {
         this.em = em;
@@ -53,7 +45,7 @@ public class WorkerConfigDataService implements IWorkerConfigDataService {
      * Entity Bean holding info about a workers (service or signer) configuration
      * 
      * @param workerId uniqe Id of the worker 
-     * @param configClassPath Class name of the worker implementation
+     *
      */
     @Override
     public void create(int workerId, String configClassPath) {
@@ -62,14 +54,9 @@ public class WorkerConfigDataService implements IWorkerConfigDataService {
         }
         WorkerConfigDataBean wcdb = new WorkerConfigDataBean();
         wcdb.setSignerId(workerId);
-        final String name = "UnamedWorker" + workerId;
-        wcdb.setSignerName(name);
-        wcdb.setSignerType(WorkerType.UNKNOWN.getType());
 
         try {
-            final WorkerConfig config = (WorkerConfig) this.getClass().getClassLoader().loadClass(configClassPath).newInstance();
-            config.setProperty("NAME", name); // TODO
-            setWorkerConfig(workerId, config, wcdb);
+            setWorkerConfig(workerId, (WorkerConfig) this.getClass().getClassLoader().loadClass(configClassPath).newInstance(), wcdb);
         } catch (Exception e) {
             LOG.error(e);
         }
@@ -87,79 +74,41 @@ public class WorkerConfigDataService implements IWorkerConfigDataService {
         WorkerConfigDataBean wcdb = em.find(WorkerConfigDataBean.class, workerId);
 
         if (wcdb != null) {
-            workerConf = parseWorkerConfig(wcdb);
-        }
-
-        return workerConf;
-    }
-    
-    private WorkerConfig parseWorkerConfig(WorkerConfigDataBean wcdb) {
-        final WorkerConfig workerConf = new WorkerConfig();
-        XMLDecoder decoder =
-                    new XMLDecoder(
-                    new ByteArrayInputStream(wcdb.getSignerConfigData().getBytes(StandardCharsets.UTF_8)));
-
-        HashMap h = (HashMap) decoder.readObject();
-        decoder.close();
-        // Handle Base64 encoded string values
-        HashMap data = new Base64GetHashMap(h);
-
-        try {
-            workerConf.loadData(data);
-            workerConf.upgrade();
-        } catch (Exception e) {
-            LOG.error(e);
-        }
-
-        if (wcdb.getSignerName() != null) {
-            workerConf.setProperty("NAME", wcdb.getSignerName());
-        }
-        final Integer signerType = wcdb.getSignerType();
-        if (signerType != null) {
+            java.beans.XMLDecoder decoder;
             try {
-                workerConf.setProperty("TYPE", WorkerType.fromType(signerType).name());
-            } catch (IllegalArgumentException ex) {
-                LOG.error("Unsupported worker type: " + signerType + ": " + ex.getLocalizedMessage());
+                decoder =
+                        new java.beans.XMLDecoder(
+                        new java.io.ByteArrayInputStream(wcdb.getSignerConfigData().getBytes("UTF8")));
+            } catch (UnsupportedEncodingException e) {
+                throw new EJBException(e);
+            }
+
+            HashMap h = (HashMap) decoder.readObject();
+            decoder.close();
+            // Handle Base64 encoded string values
+            HashMap data = new Base64GetHashMap(h);
+
+            if (data.get(WorkerConfig.CLASS) == null) {
+                // Special case, need to upgrade from signserver 1.0
+                workerConf = new ProcessableConfig(new WorkerConfig()).getWorkerConfig();
+                workerConf.loadData(data);
+                workerConf.upgrade();
+            } else {
+                try {
+                    workerConf = new WorkerConfig();
+                    workerConf.loadData(data);
+                    workerConf.upgrade();
+                } catch (Exception e) {
+                    LOG.error(e);
+                }
             }
         }
 
         return workerConf;
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public List<Integer> findAllIds() {
-        final LinkedList<Integer> result = new LinkedList<>();
-        Query query = em.createQuery("SELECT w from WorkerConfigDataBean w"); // TODO: More efficient way to just query the IDs
-        List<WorkerConfigDataBean> list = (List<WorkerConfigDataBean>) query.getResultList();
-        for (WorkerConfigDataBean wcdb : list) {
-            result.add(wcdb.getSignerId());
-        }
-        
-        return result;
-    }
-    
-    @Override
-    public List<Integer> findAllIds(final WorkerType workerType) {
-        final LinkedList<Integer> result = new LinkedList<>();
-        Query query;
-        if (workerType == null) {
-            query = em.createQuery("SELECT w from WorkerConfigDataBean w WHERE w.signerType IS NULL OR w.signerType = :workerType").setParameter("workerType", WorkerType.UNKNOWN.getType());
-        } else {
-            query = em.createQuery("SELECT w from WorkerConfigDataBean w WHERE w.signerType = :workerType").setParameter("workerType", workerType.getType());
-        }
-        List<WorkerConfigDataBean> list = (List<WorkerConfigDataBean>) query.getResultList();
-        for (WorkerConfigDataBean wcdb : list) {
-            result.add(wcdb.getSignerId());
-        }
-        
-        return result;
-    }
-    
     /**
      * Method that saves the Worker Config to database.
-     * 
-     * @param signconf Worker configuration
      */
     @Override
     public void setWorkerConfig(int workerId, WorkerConfig signconf) {
@@ -195,38 +144,18 @@ public class WorkerConfigDataService implements IWorkerConfigDataService {
 
         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
 
-        try (java.beans.XMLEncoder encoder = new java.beans.XMLEncoder(baos)) {
-            encoder.writeObject(a);
-        }
+        java.beans.XMLEncoder encoder = new java.beans.XMLEncoder(baos);
+        encoder.writeObject(a);
+        encoder.close();
 
         try {
             if (LOG.isDebugEnabled()) {
-                LOG.debug("WorkerConfig data: \n" + baos.toString(StandardCharsets.UTF_8.name()));
+                LOG.debug("WorkerConfig data: \n" + baos.toString("UTF8"));
             }
             if (wcdb == null) {
                 wcdb = em.find(WorkerConfigDataBean.class, workerId);
-                if (wcdb == null) {
-                    create(workerId, WorkerConfig.class.getName());
-                    wcdb = em.find(WorkerConfigDataBean.class, workerId);
-                }
             }
-            wcdb.setSignerConfigData(baos.toString(StandardCharsets.UTF_8.name()));
-            
-            // Update name
-            if (signconf.getProperty("NAME") != null) {
-                wcdb.setSignerName(signconf.getProperty("NAME"));
-            }
-            
-            final String type = signconf.getProperty("TYPE");
-            if (signconf.getProperty("TYPE") != null) {
-                try {
-                    wcdb.setSignerType(WorkerType.valueOf(type).getType());
-                } catch (IllegalArgumentException ex) {
-                    LOG.error("Unable to set worker type: " + ex.getLocalizedMessage());
-                    wcdb.setSignerType(WorkerType.UNKNOWN.getType());
-                }
-            }
-
+            wcdb.setSignerConfigData(baos.toString("UTF8"));
             em.persist(wcdb);
         } catch (UnsupportedEncodingException e) {
             throw new EJBException(e);
@@ -237,58 +166,15 @@ public class WorkerConfigDataService implements IWorkerConfigDataService {
      * @see org.signserver.ejb.IWorkerConfigDataService#getWorkerProperties(int)
      */
     @Override
-    public WorkerConfig getWorkerProperties(int workerId, boolean create) {
+    public WorkerConfig getWorkerProperties(int workerId) {
+
         WorkerConfig workerConfig = getWorkerConfig(workerId);
-        if (workerConfig == null && create) { // XXX remove 'create' parameter and instead let caller do the 'new'
-            workerConfig = new WorkerConfig();
+        if (workerConfig == null) {
+            create(workerId, WorkerConfig.class.getName());
+            workerConfig = getWorkerConfig(workerId);
         }
+
         return workerConfig;
     }
 
-    @Override
-    public void populateNameColumn() {
-        Query query = em.createQuery("SELECT w from WorkerConfigDataBean w WHERE w.signerName IS NULL"); // TODO: More efficient way to query
-        List<WorkerConfigDataBean> list = (List<WorkerConfigDataBean>) query.getResultList();
-        if (list.isEmpty()) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Found no worker configurations without name column");
-            }
-        } else {
-            LOG.info("Found " + list.size() + " worker configurations without name column");
-            for (WorkerConfigDataBean wcdb : list) {
-                WorkerConfig config = parseWorkerConfig(wcdb);
-                String name = config.getProperty("NAME");
-                if (name == null) {
-                    name = "UpgradedWorker-" + wcdb.getSignerId();
-                }
-                LOG.info("Upgrading worker configuration " + wcdb.getSignerId() + " with name " + name);
-                wcdb.setSignerName(name);
-                em.persist(wcdb);
-            }
-        }
-    }
-
-    @Override
-    public int findId(String workerName) throws NoSuchWorkerException {
-        final int result;
-        try {
-            Query query = em.createQuery("SELECT w.signerId from WorkerConfigDataBean w WHERE w.signerName = :name").setParameter("name", workerName);
-            query.setMaxResults(1);
-            Object o = query.getSingleResult();
-            if (o instanceof Integer) {
-                result = (Integer) o;
-            } else {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Query result is " + o);
-                }
-                throw new NoSuchWorkerException(workerName);
-            }
-        } catch (NoResultException ex) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("No worker named " + workerName + " found: " + ex.getMessage());
-            }
-            throw new NoSuchWorkerException(workerName);
-        }
-        return result;
-    }
 }

@@ -39,7 +39,7 @@ public abstract class BaseFIFOStatisticsCollector implements IStatisticsCollecto
     protected WorkerConfig config;
     protected EntityManager em;
     protected StatisticsEntry currentStatisticsEntry;
-    protected DelayQueue<StatisticsEntry> fIFOQueue = new DelayQueue<>();
+    protected DelayQueue<StatisticsEntry> fIFOQueue = new DelayQueue<StatisticsEntry>();
     
     private Long expireTime;
 
@@ -54,7 +54,6 @@ public abstract class BaseFIFOStatisticsCollector implements IStatisticsCollecto
     }
 
     /**
-     * @throws SignServerException
      * @see org.signserver.server.statistics.IStatisticsCollector#addEvent(org.signserver.server.statistics.Event)
      */
     @Override
@@ -114,11 +113,6 @@ public abstract class BaseFIFOStatisticsCollector implements IStatisticsCollecto
 
     /**
      * Help method to fetch the expire time.
-     * 
-     * @param settingKey Setting key
-     * @param defaultValue Default value
-     * @param log Logger
-     * @return The expiration time
      */
     protected long getExpireTime(String settingKey, String defaultValue, Logger log) {
         if (expireTime == null) {
@@ -134,14 +128,10 @@ public abstract class BaseFIFOStatisticsCollector implements IStatisticsCollecto
     }
 
     /**
-     * Help method used to fetch matching statistics entries.
-     * 
-     * @param startTime Start time
-     * @param endTime End time
-     * @return Statistic entries
+     * Help method used to fetch matching statistics entries
      */
     protected List<StatisticsEntry> fetchStatistics(Date startTime, Date endTime) {
-        List<StatisticsEntry> retval = new ArrayList<>();
+        List<StatisticsEntry> retval = new ArrayList<StatisticsEntry>();
         
         // First pop old statistics entries
         while (fIFOQueue.poll() != null);

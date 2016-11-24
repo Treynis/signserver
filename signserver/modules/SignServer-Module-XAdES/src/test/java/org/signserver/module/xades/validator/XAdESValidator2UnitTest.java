@@ -33,9 +33,14 @@ import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.X509KeyUsage;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.ejbca.util.CertTools;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.GenericValidationRequest;
+import org.signserver.common.GenericValidationResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.WorkerConfig;
 import org.signserver.module.xades.signer.MockedXAdESSigner;
@@ -49,7 +54,6 @@ import org.signserver.validationservice.common.Validation;
 
 import com.google.inject.Inject;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import org.bouncycastle.asn1.DERNull;
 import org.bouncycastle.asn1.ocsp.OCSPObjectIdentifiers;
@@ -63,20 +67,11 @@ import org.bouncycastle.cert.ocsp.OCSPException;
 import org.bouncycastle.cert.ocsp.OCSPReq;
 import org.bouncycastle.cert.ocsp.RevokedStatus;
 import org.bouncycastle.operator.bc.BcDigestCalculatorProvider;
-import org.cesecore.util.CertTools;
 import org.junit.Before;
 import org.signserver.common.SignServerException;
-import org.signserver.common.data.DocumentValidationRequest;
-import org.signserver.common.data.DocumentValidationResponse;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.server.ServicesImpl;
-import org.signserver.server.SignServerContext;
-import org.signserver.server.data.impl.CloseableReadableData;
-import org.signserver.server.data.impl.CloseableWritableData;
 import org.signserver.test.utils.builders.ocsp.OCSPResponseBuilder;
 import org.signserver.test.utils.builders.ocsp.OcspRespObject;
 import org.signserver.test.utils.mock.MockedCryptoToken;
-import org.signserver.testutils.ModulesTestCase;
 import org.signserver.validationservice.server.OCSPResponse;
 import org.xml.sax.SAXParseException;
 
@@ -438,8 +433,6 @@ public class XAdESValidator2UnitTest {
     /**
      * Setting up key-pairs, mocked crypto tokens, certificates and CRLs used
      * by the tests.
-     * 
-     * @throws java.lang.Exception
      */
     @BeforeClass
     public static void setUpClass() throws Exception {       
@@ -502,18 +495,19 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer1Cert), 
                 chain1, 
                 "BC");
-        LOG.debug("Chain 1: \n" + new String(CertTools.getPemFromCertificateChain(chain1), "ASCII") + "\n");
+        LOG.debug("Chain 1: \n" + new String(CertTools.getPEMFromCerts(chain1), "ASCII") + "\n");
         
         // Sign a document by signer 1
         XAdESSigner instance = new MockedXAdESSigner(token1);
         WorkerConfig config = new WorkerConfig();
-        instance.init(4712, config, new SignServerContext(), null);
+        instance.init(4712, config, null, null);
         RequestContext requestContext = new RequestContext();
-        requestContext.setServices(new ServicesImpl());
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-201-1");
-        signedXml1 = signXML(instance, "<test201/>", requestContext);
+        GenericSignRequest request = new GenericSignRequest(201, "<test201/>".getBytes("UTF-8"));
+        GenericSignResponse response = (GenericSignResponse) instance.processData(request, requestContext);
+        byte[] data = response.getProcessedData();
+        signedXml1 = new String(data);
         LOG.debug("Signed document by signer 1:\n\n" + signedXml1 + "\n");
-        
         
         
         // Signer 2 is issued by the sub CA
@@ -537,7 +531,7 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer2Cert), 
                 chain2, 
                 "BC");
-        LOG.debug("Chain 2: \n" + new String(CertTools.getPemFromCertificateChain(chain2)) + "\n");
+        LOG.debug("Chain 2: \n" + new String(CertTools.getPEMFromCerts(chain2)) + "\n");
         
         // Sign a document by signer 2
         instance = new MockedXAdESSigner(token2);
@@ -545,7 +539,10 @@ public class XAdESValidator2UnitTest {
         instance.init(4713, config, null, null);
         requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-202-1");
-        signedXml2 = signXML(instance, "<test202/>", requestContext);
+        request = new GenericSignRequest(202, "<test202/>".getBytes("UTF-8"));
+        response = (GenericSignResponse) instance.processData(request, requestContext);
+        data = response.getProcessedData();
+        signedXml2 = new String(data);
         LOG.debug("Signed document by signer 2:\n\n" + signedXml2 + "\n");
         
         // CRL with all active (empty CRL)
@@ -594,7 +591,7 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer3Cert), 
                 chain3, 
                 "BC");
-        LOG.debug("Chain 3: \n" + new String(CertTools.getPemFromCertificateChain(chain3)) + "\n");
+        LOG.debug("Chain 3: \n" + new String(CertTools.getPEMFromCerts(chain3)) + "\n");
         
         // signer 4, issued by the sub CA2 with an OCSP authority information access in the signer cert
         final KeyPair signer4KeyPair = CryptoUtils.generateRSA(1024);
@@ -619,7 +616,7 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer4Cert), 
                 chain4, 
                 "BC");
-        LOG.debug("Chain 4: \n" + new String(CertTools.getPemFromCertificateChain(chain4)) + "\n");
+        LOG.debug("Chain 4: \n" + new String(CertTools.getPEMFromCerts(chain4)) + "\n");
         
         // ocspSigner 1, OCSP responder issued by the root CA with an ocsp-nocheck in the signer cert
         ocspSigner1KeyPair = CryptoUtils.generateRSA(1024);
@@ -630,7 +627,7 @@ public class XAdESValidator2UnitTest {
                 .setSubject("CN=OCSP Responder 1, O=XAdES Test, C=SE")
                 .addExtension(new CertExt(Extension.basicConstraints, false, new BasicConstraints(false)))
                 .addExtension(new CertExt(Extension.extendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeId.id_kp_OCSPSigning)))
-                .addExtension(new CertExt(OCSPObjectIdentifiers.id_pkix_ocsp_nocheck, false, DERNull.INSTANCE))
+                .addExtension(new CertExt(OCSPObjectIdentifiers.id_pkix_ocsp_nocheck, false, new DERNull()))
                 .build();
         
         // ocspSigner 2, OCSP responder issued by the sub CA2 with an ocsp-nocheck in the signer cert
@@ -642,7 +639,7 @@ public class XAdESValidator2UnitTest {
                 .setSubject("CN=OCSP Responder 2, O=XAdES Test, C=SE")
                 .addExtension(new CertExt(Extension.basicConstraints, false, new BasicConstraints(false)))
                 .addExtension(new CertExt(Extension.extendedKeyUsage, false, new ExtendedKeyUsage(KeyPurposeId.id_kp_OCSPSigning)))
-                .addExtension(new CertExt(OCSPObjectIdentifiers.id_pkix_ocsp_nocheck, false, DERNull.INSTANCE))
+                .addExtension(new CertExt(OCSPObjectIdentifiers.id_pkix_ocsp_nocheck, false, new DERNull()))
                 .build();
         
         // Sign a document by signer 3
@@ -651,7 +648,10 @@ public class XAdESValidator2UnitTest {
         instance.init(4714, config, null, null);
         requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-203-1");
-        signedXml3 = signXML(instance, "<test203/>", requestContext);
+        request = new GenericSignRequest(202, "<test203/>".getBytes("UTF-8"));
+        response = (GenericSignResponse) instance.processData(request, requestContext);
+        data = response.getProcessedData();
+        signedXml3 = new String(data);
         LOG.debug("Signed document by signer 3:\n\n" + signedXml3 + "\n"); 
         
         // Sign a document by signer 4
@@ -660,7 +660,10 @@ public class XAdESValidator2UnitTest {
         instance.init(4715, config, null, null);
         requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-204-1");
-        signedXml4 = signXML(instance, "<test204/>", requestContext);
+        request = new GenericSignRequest(203, "<test204/>".getBytes("UTF-8"));
+        response = (GenericSignResponse) instance.processData(request, requestContext);
+        data = response.getProcessedData();
+        signedXml4 = new String(data);
         LOG.debug("Signed document by signer 4:\n\n" + signedXml4 + "\n"); 
         
         // Signer 5 is issued directly by the root CA
@@ -686,7 +689,7 @@ public class XAdESValidator2UnitTest {
                 conv.getCertificate(signer1Cert), 
                 chain5, 
                 "BC");
-        LOG.debug("Chain 5: \n" + new String(CertTools.getPemFromCertificateChain(chain5)) + "\n");
+        LOG.debug("Chain 5: \n" + new String(CertTools.getPEMFromCerts(chain5)) + "\n");
         
         // Sign a document by signer 5
         instance = new MockedXAdESSigner(token5);
@@ -694,7 +697,10 @@ public class XAdESValidator2UnitTest {
         instance.init(4712, config, null, null);
         requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-205-1");
-        signedXml5 = signXML(instance, "<test205/>", requestContext);
+        request = new GenericSignRequest(205, "<test205/>".getBytes("UTF-8"));
+        response = (GenericSignResponse) instance.processData(request, requestContext);
+        data = response.getProcessedData();
+        signedXml5 = new String(data);
         LOG.debug("Signed document by signer 5:\n\n" + signedXml5 + "\n");
         
         // CRL with signer 5 revoked
@@ -705,18 +711,6 @@ public class XAdESValidator2UnitTest {
                 .build();
     }
     
-    private static String signXML(XAdESSigner instance, String xml, RequestContext requestContext) throws Exception {
-        try (
-                CloseableReadableData requestData = ModulesTestCase.createRequestData(xml.getBytes(StandardCharsets.UTF_8));
-                CloseableWritableData responseData = ModulesTestCase.createResponseData(false);
-                ) {
-            SignatureRequest request = new SignatureRequest(201, requestData, responseData);
-            instance.processData(request, requestContext);
-            byte[] data = responseData.toReadableData().getAsByteArray();
-            return new String(data, StandardCharsets.UTF_8);
-        }
-    }
-
     @Before
     public void beforeTest() throws Exception {
         updateCRLs(rootcaCRLEmpty, subca1CRLEmpty);
@@ -724,8 +718,6 @@ public class XAdESValidator2UnitTest {
     
     /**
      * Test validation of document signed by signer1 without revocation checking.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner1_noRevocationChecking() throws Exception {
@@ -733,7 +725,7 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "false");
         
         updateCRLs(rootcaCRLEmpty, subca1CRLEmpty);
@@ -742,18 +734,17 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-300-0");
-        DocumentValidationResponse response = validateXML(instance, 300, signedXml1, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(300, signedXml1.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertTrue("valid document", response.isValid());
-        assertNotNull("returned signer cert", response.getCertificateValidationResponse().getValidation().getCertificate());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotNull("returned signer cert", response.getSignerCertificate());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Test validation of document signed by signer1 with CRL where no
      * cert is revoked.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner1_crlNoRevoked() throws Exception {
@@ -761,7 +752,7 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         updateCRLs(rootcaCRLEmpty, subca1CRLEmpty);
@@ -770,18 +761,17 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-301-1");
-        DocumentValidationResponse response = validateXML(instance, 301, signedXml1, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(301, signedXml1.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertTrue("valid document", response.isValid());
-        assertNotNull("returned signer cert", response.getCertificateValidationResponse().getValidation().getCertificate());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotNull("returned signer cert", response.getSignerCertificate());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Test validation of document signed by signer1 with CRL where the signer
      * certificate is revoked.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner1_crlSignerRevoked() throws Exception {
@@ -789,7 +779,7 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         updateCRLs(rootcaCRLSubCAAndSigner1Revoked, subca1CRLEmpty);
@@ -798,16 +788,15 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-302-1");
-        DocumentValidationResponse response = validateXML(instance, 302, signedXml1, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(302, signedXml1.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertFalse("valid document", response.isValid());
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Test validation of document signed by signer2 without revocation checking.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner2_noRevocationChecking() throws Exception {
@@ -815,10 +804,10 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         config.setProperty("REVOCATION_CHECKING", "false");
         
@@ -828,18 +817,17 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-303-1");
-        DocumentValidationResponse response = validateXML(instance, 303, signedXml2, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(303, signedXml2.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertTrue("valid document", response.isValid());
-        assertNotNull("returned signer cert", response.getCertificateValidationResponse().getValidation().getCertificate());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotNull("returned signer cert", response.getSignerCertificate());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Test validation of document signed by signer2 with CRL where no
      * cert is revoked.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner2_crlNoRevoked() throws Exception {
@@ -847,11 +835,11 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         updateCRLs(rootcaCRLEmpty, subca1CRLEmpty);
         
@@ -859,18 +847,17 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-304-1");
-        DocumentValidationResponse response = validateXML(instance, 304, signedXml2, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(304, signedXml2.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertTrue("valid document", response.isValid());
-        assertNotNull("returned signer cert", response.getCertificateValidationResponse().getValidation().getCertificate());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotNull("returned signer cert", response.getSignerCertificate());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Test validation of document signed by signer2 with CRL where the signer
      * certificate is revoked.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner2_crlSignerRevoked() throws Exception {
@@ -878,11 +865,11 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         updateCRLs(rootcaCRLEmpty, subca1CRLSigner2Revoked);
         
@@ -890,17 +877,16 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-305-1");
-        DocumentValidationResponse response = validateXML(instance, 305, signedXml2, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(305, signedXml2.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertFalse("valid document", response.isValid());
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Test validation of document signed by signer2 with CRL where the sub CA
      * certificate is revoked.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner2_crlCARevoked() throws Exception {
@@ -908,11 +894,11 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         updateCRLs(rootcaCRLSubCAAndSigner1Revoked, subca1CRLEmpty);
         
@@ -920,17 +906,16 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-305-1");
-        DocumentValidationResponse response = validateXML(instance, 305, signedXml2, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(305, signedXml2.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertFalse("valid document", response.isValid());
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Test validation of document signed by signer2 where the sub CA CRL is
      * signed by an other CA and thus not trusted.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner2_badCRL() throws Exception {
@@ -938,11 +923,11 @@ public class XAdESValidator2UnitTest {
 
         XAdESValidator instance = new XAdESValidator();
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
         
         // We need to configure intermediate certificate as XAdES4j does not seem to include intermediate certificates in the signed document
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca1Cert)))));
         
         updateCRLs(rootcaCRLEmpty, otherCRL);
         
@@ -950,10 +935,11 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-306-1");
-        DocumentValidationResponse response = validateXML(instance, 306, signedXml2, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(306, signedXml2.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertFalse("valid document", response.isValid());
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
 
     private static OCSPResponse convert(org.signserver.test.utils.builders.ocsp.OCSPResponse response) {
@@ -973,14 +959,12 @@ public class XAdESValidator2UnitTest {
     /**
      * Positive test for signer 3 were an OCSP response is signed by the CA
      * and returns the status GOOD for the signer 3 certificate.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner3_withOnlyOCSP_ca_ok() throws Exception {
         LOG.info("testSigner3_withOnlyOCSP_ca_ok");
 
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -999,32 +983,31 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-307-1");
-        DocumentValidationResponse response = validateXML(instance, 307, signedXml3, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(307, signedXml3.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 1, requests.size());
         
         assertTrue("valid document", response.isValid());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Positive test for signer 3 were an OCSP response is signed by external
      * responder and returns the status GOOD for the signer 3 certificate.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner3_withOnlyOCSP_responder_ok() throws Exception {
         LOG.info("testSigner3_withOnlyOCSP_responder_ok");
 
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1043,32 +1026,31 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-307-1");
-        DocumentValidationResponse response = validateXML(instance, 307, signedXml3, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(307, signedXml3.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 1, requests.size());
         
         assertTrue("valid document", response.isValid());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Negative test for signer 3 were an OCSP response is signed by an un matching private key
      * and returns the status GOOD for the signer 3 certificate.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner3_withOnlyOCSP_anotherKey() throws Exception {
         LOG.info("testSigner3_withOnlyOCSP_anotherKey");
 
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1087,31 +1069,30 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-307-1");
-        DocumentValidationResponse response = validateXML(instance, 307, signedXml3, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(307, signedXml3.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 1, requests.size());
         
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
         assertFalse("valid document", response.isValid());
     }
     
     /**
      * Negative test for signer 3 were querying the OCSP responder fails.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner3_withOnlyOCSP_unavailable() throws Exception {
         LOG.info("testSigner3_withOnlyOCSP_unavailable");
 
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1121,32 +1102,31 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-307-1");
-        DocumentValidationResponse response = validateXML(instance, 307, signedXml3, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(307, signedXml3.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 1, requests.size());
         
         assertFalse("valid document", response.isValid());
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
 
     /**
      * Negative test for signer 3 were an OCSP response is signed by the CA
      * and returns the status REVOKED for the signer 3 certificate.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner3_withOnlyOCSP_revoked() throws Exception {
         LOG.info("testSigner3_withOnlyOCSP_revoked");
 
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1165,32 +1145,31 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-307-1");
-        DocumentValidationResponse response = validateXML(instance, 307, signedXml3, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(307, signedXml3.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 1, requests.size());
         
         assertFalse("valid document", response.isValid());
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Positive test for signer 3 were an OCSP response is signed by the CA
      * and returns the status GOOD for the signer 3 certificate.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner4_withOnlyOCSP_ca_ok() throws Exception {
         LOG.info("testSigner4_withOnlyOCSP_ca_ok");
         
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1217,33 +1196,32 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4716, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-407-1");
-        DocumentValidationResponse response = validateXML(instance, 407, signedXml4, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(407, signedXml4.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 2, requests.size());
         
         assertTrue("valid document", response.isValid());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Positive test for signer 4 were an OCSP response is signed by external
      * responder and returns the status GOOD for the signer 4 certificate.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner4_withOnlyOCSP_responder_ok() throws Exception {
         LOG.info("testSigner4_withOnlyOCSP_responder_ok");
 
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1270,34 +1248,33 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-407-2");
-        DocumentValidationResponse response = validateXML(instance, 407, signedXml4, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(407, signedXml4.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 2, requests.size());
         
         assertTrue("valid document", response.isValid());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
 
     /**
      * Negative test for signer 4 were an OCSP response is signed by the sub CA2
      * and returns the status REVOKED for the signer 4 certificate.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner4_withOnlyOCSP_certRevoked() throws Exception {
         LOG.info("testSigner4_withOnlyOCSP_certRevoked");
 
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1324,33 +1301,32 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-407-4");
-        DocumentValidationResponse response = validateXML(instance, 407, signedXml4, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(407, signedXml4.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 2, requests.size());
         
         assertFalse("valid document", response.isValid());
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Negative test for signer 4 were an OCSP response is signed by the Root CA
      * and returns the status REVOKED for the sub CA 2 certificate.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner4_withOnlyOCSP_caRevoked() throws Exception {
         LOG.info("testSigner4_withOnlyOCSP_caRevoked");
 
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1377,33 +1353,32 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
-        config.setProperty("CERTIFICATES", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("CERTIFICATES", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(subca2Cert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-407-4");
-        DocumentValidationResponse response = validateXML(instance, 407, signedXml4, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(407, signedXml4.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertTrue("OCSP calls: " + requests.size(), requests.size() == 1 || requests.size() == 2);
         
         assertFalse("valid document", response.isValid());
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Positive test for signer 5 were OCSP is unable and falls back to CDP
      * were CRL is ok.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner5_withOCSPandCDP_ok() throws Exception {
         LOG.info("testSigner5_withOCSPandCDP_ok");
 
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1412,26 +1387,25 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-307-1");
-        DocumentValidationResponse response = validateXML(instance, 307, signedXml5, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(307, signedXml5.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 1, requests.size());
         
         assertTrue("valid document", response.isValid());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
      * Negative test for signer 5 were OCSP is unable and falls back to CDP
      * were signer is revoked in CRL.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testSigner5_withOCSPandCDP_revoked() throws Exception {
@@ -1439,7 +1413,7 @@ public class XAdESValidator2UnitTest {
 
         updateCRLs(rootcaCRLSigner5Revoked, subca1CRLEmpty);
         
-        final ArrayList<OCSPReq> requests = new ArrayList<>();
+        final ArrayList<OCSPReq> requests = new ArrayList<OCSPReq>();
         XAdESValidator instance = new XAdESValidator() {
             @Override
             protected OCSPResponse doQueryOCSPResponder(URL url, OCSPReq request) throws IOException, OCSPException {
@@ -1448,19 +1422,20 @@ public class XAdESValidator2UnitTest {
             }
         };
         WorkerConfig config = new WorkerConfig();
-        config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+        config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
         config.setProperty("REVOCATION_CHECKING", "true");
        
         instance.init(4715, config, null, null);
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-307-1");
-        DocumentValidationResponse response = validateXML(instance, 307, signedXml5, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(307, signedXml5.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertEquals("OCSP calls", 1, requests.size());
         
         assertFalse("valid document", response.isValid());
-        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
     }
     
     /**
@@ -1487,11 +1462,12 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-308-0");
-        DocumentValidationResponse response = validateXML(instance, 308, SIGNED_XML_FORM_T, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(308, SIGNED_XML_FORM_T.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertTrue("valid document", response.isValid());
-        assertNotNull("returned signer cert", response.getCertificateValidationResponse().getValidation().getCertificate());
-        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidationResponse().getValidation().getStatus());
+        assertNotNull("returned signer cert", response.getSignerCertificate());
+        assertEquals("cert validation status", Validation.Status.VALID, response.getCertificateValidation().getStatus());
         assertTrue("time stamp verification performed", ProxyTimeStampTokenVerificationProvider.performedVerification);
     }
     
@@ -1519,7 +1495,8 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-308-0");
-        DocumentValidationResponse response = validateXML(instance, 308, SIGNED_XML_FORM_T, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(308, SIGNED_XML_FORM_T.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertFalse("invalid document", response.isValid());
         assertTrue("time stamp verification performed", ProxyTimeStampTokenVerificationProvider.performedVerification);
@@ -1551,7 +1528,8 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-309-0");
-        DocumentValidationResponse response = validateXML(instance, 309, SIGNED_XML_WITH_INTERMEDIATE_TS_CERT, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(309, SIGNED_XML_WITH_INTERMEDIATE_TS_CERT.getBytes("UTF-8"));
+        GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertTrue("valid document", response.isValid());
         assertTrue("time stamp verification performed", ProxyTimeStampTokenVerificationProvider.performedVerification);
@@ -1583,7 +1561,8 @@ public class XAdESValidator2UnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-309-0");
-        DocumentValidationResponse response = validateXML(instance, 309, SIGNED_XML_WITH_INTERMEDIATE_TS_CERT, requestContext);
+        GenericValidationRequest request = new GenericValidationRequest(309, SIGNED_XML_WITH_INTERMEDIATE_TS_CERT.getBytes("UTF-8"));
+         GenericValidationResponse response = (GenericValidationResponse) instance.processData(request, requestContext);
         
         assertTrue("valid document", response.isValid());
         assertTrue("time stamp verification performed", ProxyTimeStampTokenVerificationProvider.performedVerification);
@@ -1600,7 +1579,7 @@ public class XAdESValidator2UnitTest {
         try {
             XAdESValidator instance = new XAdESValidator();
             WorkerConfig config = new WorkerConfig();
-            config.setProperty("TRUSTANCHORS", new String(CertTools.getPemFromCertificateChain(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
+            config.setProperty("TRUSTANCHORS", new String(CertTools.getPEMFromCerts(Arrays.<Certificate>asList(new JcaX509CertificateConverter().getCertificate(rootcaCert)))));
             config.setProperty("REVOCATION_CHECKING", "false");
 
             updateCRLs(rootcaCRLEmpty, subca1CRLEmpty);
@@ -1609,7 +1588,8 @@ public class XAdESValidator2UnitTest {
 
             RequestContext requestContext = new RequestContext();
             requestContext.put(RequestContext.TRANSACTION_ID, "0000-300-0");
-            validateXML(instance, 300, SIGNED_XML_DOCTYPE, requestContext);
+            GenericValidationRequest request = new GenericValidationRequest(300, SIGNED_XML_DOCTYPE.getBytes("UTF-8"));
+            instance.processData(request, requestContext);
 
             fail("Should have thrown IllegalRequestException as the document contained a DTD");
         } catch (SignServerException expected) {
@@ -1663,13 +1643,6 @@ public class XAdESValidator2UnitTest {
             }
             
             return ret;
-        }
-    }
-    
-    private DocumentValidationResponse validateXML(XAdESValidator instance, int requestId, String xml, RequestContext requestContext) throws Exception {
-        try (CloseableReadableData requestData = ModulesTestCase.createRequestData(xml.getBytes(StandardCharsets.UTF_8))) {
-            DocumentValidationRequest request = new DocumentValidationRequest(requestId, requestData);
-            return (DocumentValidationResponse) instance.processData(request, requestContext);
         }
     }
 

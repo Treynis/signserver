@@ -12,21 +12,22 @@
  *************************************************************************/
 package org.signserver.server;
 
-import java.util.EnumSet;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.AuthorizedClient;
+import org.signserver.common.ProcessableConfig;
+import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerConstants;
 import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 import org.signserver.common.WorkerStatusInfo;
-import org.signserver.common.WorkerType;
-import org.signserver.server.signers.CryptoWorker;
-import org.signserver.server.timedservices.ITimedService;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 
 /**
  * Base class with common methods for workers.
@@ -37,13 +38,30 @@ public abstract class BaseWorker implements IWorker {
 
     /** Logger. */
     private static final Logger LOG = Logger.getLogger(BaseWorker.class);
-
+    
+    /** The global configuration session. */
+    private transient IGlobalConfigurationSession globalConfig;
+    
+    /**
+     * @return The global configuration session.
+     */
+    protected IGlobalConfigurationSession
+            getGlobalConfigurationSession() { // FIXME: Better to somehow inject this
+        if (globalConfig == null) {
+            try {
+                globalConfig = ServiceLocator.getInstance().lookupLocal(
+                        IGlobalConfigurationSession.class);
+            } catch (NamingException e) {
+                LOG.error(e);
+            }
+        }
+        return globalConfig;
+    }
             
     //Private Property constants
     protected int workerId = 0;
     protected WorkerConfig config = null;
     protected WorkerContext workerContext;
-    private List<String> fatalErrors;
     /** 
      * @deprecated This EntityManager was created when the worker was 
      * initialized and is not safe to use from an other transaction. Instead 
@@ -75,21 +93,8 @@ public abstract class BaseWorker implements IWorker {
         if (workerContext != null && workerContext instanceof SignServerContext) {
             this.em = ((SignServerContext) workerContext).getEntityManager();
         }
+
         this.workerEM = workerEM;
-        this.fatalErrors = new LinkedList<>();
-        try {
-            final WorkerType wt = WorkerType.valueOf(config.getProperty(WorkerConfig.TYPE, WorkerType.UNKNOWN.name()));
-            if (wt == WorkerType.UNKNOWN) {
-                final EnumSet<WorkerType> values = EnumSet.allOf(WorkerType.class);
-                values.remove(WorkerType.UNKNOWN);
-                fatalErrors.add("Worker TYPE is unknown. Specify one of " + values.toString());
-            }
-        } catch (IllegalArgumentException ex) {
-            final EnumSet<WorkerType> values = EnumSet.allOf(WorkerType.class);
-            values.remove(WorkerType.UNKNOWN);
-            fatalErrors.add("Incorrect Worker TYPE: " + ex.getMessage() + ". Specify one of " + values.toString());
-        }
-        
     }
 
     protected SignServerContext getSignServerContext() {
@@ -102,6 +107,10 @@ public abstract class BaseWorker implements IWorker {
         return result;
     }
 
+    public void destroy() {
+        LOG.debug("Destroy called");
+    }
+    
     @Override
     public WorkerConfig getConfig() {
         return config;
@@ -113,14 +122,12 @@ public abstract class BaseWorker implements IWorker {
      * method to succeed.
      * If the returned list is non empty the worker will be reported as offline 
      * in status listings and by the health check (unless the worker is disabled).
-     * 
-     * @param services Services for the implementations to use
      * @return A list of (short) messages describing each error or an empty list
      * in case there are no errors
      * @since SignServer 3.2.3
      */
-    protected List<String> getFatalErrors(IServices services) {
-        return fatalErrors;
+    protected List<String> getFatalErrors() {
+        return Collections.emptyList();
     }
 
     /**
@@ -131,15 +138,15 @@ public abstract class BaseWorker implements IWorker {
      * @return the status information
      */
     @Override
-    public WorkerStatusInfo getStatus(List<String> additionalFatalErrors, final IServices services) {
-        final List<String> errors = new LinkedList<>(additionalFatalErrors);
-        errors.addAll(getFatalErrors(services));
+    public WorkerStatus getStatus(List<String> additionalFatalErrors, final IServices services) {
+        final List<String> fatalErrors = new LinkedList<String>(additionalFatalErrors);
+        fatalErrors.addAll(getFatalErrors());
 
-        final List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<>();
-        final List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<>();
+        final List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<WorkerStatusInfo.Entry>();
+        final List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<WorkerStatusInfo.Entry>();
 
         // Worker status
-        final boolean active = errors.isEmpty();
+        final boolean active = fatalErrors.isEmpty();
         briefEntries.add(new WorkerStatusInfo.Entry("Worker status", active ? "Active" : "Offline"));
 
         // Disabled or not
@@ -157,53 +164,21 @@ public abstract class BaseWorker implements IWorker {
 
         // Authorized Clients
         final StringBuilder clientsValue = new StringBuilder();
-        for (AuthorizedClient client : config.getAuthorizedClients()) {
+        for (AuthorizedClient client : new ProcessableConfig(config).getAuthorizedClients()) {
             clientsValue.append(client.getCertSN()).append(", ").append(properties.getProperty(client.getIssuerDN())).append("\n");
         }
         completeEntries.add(new WorkerStatusInfo.Entry("Authorized clients (serial number, issuer DN)", clientsValue.toString()));
 
         // Return everything
-        return new WorkerStatusInfo(workerId, 
+        return new StaticWorkerStatus(new WorkerStatusInfo(
+                workerId, 
                 config.getProperty("NAME"), 
                 "Worker", 
                 active ? WorkerStatus.STATUS_ACTIVE : WorkerStatus.STATUS_OFFLINE, 
                 briefEntries, 
-                errors, 
+                fatalErrors, 
                 completeEntries, 
-                config);
+                config));
     }
 
-    /**
-     * Get the worker type for this worker.
-     *
-     * This is used to set the TYPE property for a worker when the database
-     * is upgraded from an old version that did not have this property or when
-     * the TYPE property is specified as an empty string to trigger this
-     * automatic detection of the type.
-     *
-     * Implementations could potentially override this method to suggest a
-     * different worker type.
-     *
-     * @return The suggested worker type describing this implementation
-     */
-    @Override
-    public WorkerType getWorkerType() {
-        final WorkerType type;
-        // Note: The order is important here!
-        // Start by checking for the most specific type
-        if (this instanceof UnloadableWorker) {
-            type = WorkerType.SPECIAL;
-        } else if (this instanceof CryptoWorker) {
-            type = WorkerType.CRYPTO_WORKER;
-        } else if (this instanceof ITimedService) {
-            type = WorkerType.TIMED_SERVICE;
-        } else if (this instanceof IProcessable) {
-            type = WorkerType.PROCESSABLE;
-        } else if (this instanceof CryptoWorker) {
-            type = WorkerType.CRYPTO_WORKER;
-        } else {
-            type = WorkerType.SPECIAL;
-        }
-        return type;
-    }
 }

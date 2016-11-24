@@ -12,8 +12,12 @@
  *************************************************************************/
 package org.signserver.module.xades.signer;
 
-import org.signserver.server.IServices;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import java.security.cert.Certificate;
+import java.util.List;
+import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.RequestContext;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.test.utils.mock.MockedCryptoToken;
 
 /**
@@ -28,9 +32,23 @@ public class MockedXAdESSigner extends XAdESSigner {
     public MockedXAdESSigner(final MockedCryptoToken mockedToken) {
         this.mockedToken = mockedToken;
     }
+    
+    @Override
+    public Certificate getSigningCertificate(final ProcessRequest request,
+                                             final RequestContext context)
+            throws CryptoTokenOfflineException {
+        return mockedToken.getCertificate(ICryptoToken.PURPOSE_SIGN);
+    }
 
     @Override
-    public ICryptoTokenV4 getCryptoToken(final IServices services) {
+    public List<Certificate> getSigningCertificateChain(final ProcessRequest request,
+                                                        final RequestContext context)
+            throws CryptoTokenOfflineException {
+        return mockedToken.getCertificateChain(ICryptoToken.PURPOSE_SIGN);
+    }
+
+    @Override
+    public ICryptoToken getCryptoToken() {
         return mockedToken;
     }
     

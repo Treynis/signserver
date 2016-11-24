@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 class TimeQueue {
 
-    private Queue<TimeCertPair> timeQueue = new ConcurrentLinkedQueue<>();
+    private Queue<TimeCertPair> timeQueue = new ConcurrentLinkedQueue<TimeCertPair>();
     private ValidationMap validationMap;
     private long cacheTimeMS;
 

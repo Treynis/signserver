@@ -27,10 +27,11 @@ import java.util.Properties;
 import javax.persistence.EntityManager;
 
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.Validation;
 
 /**
@@ -51,16 +52,12 @@ public class CRLValidator extends BaseValidator {
     private static final Logger LOG = Logger.getLogger(CRLValidator.class);
 
     /**
-     * @param workerId
-     * @param validatorId
-     * @param props
-     * @param em
-     * @throws org.signserver.common.SignServerException
      * @see org.signserver.validationservice.server.IValidator#init(int, int, java.util.Properties, javax.persistence.EntityManager, org.signserver.server.cryptotokens.ICryptoToken)
      */
     @Override
-    public void init(int workerId, int validatorId, Properties props, EntityManager em) throws SignServerException {
-        super.init(workerId, validatorId, props, em);
+    public void init(int workerId, int validatorId, Properties props, EntityManager em,
+            ICryptoToken ct) throws SignServerException {
+        super.init(workerId, validatorId, props, em, ct);
 
     }
 
@@ -123,8 +120,8 @@ public class CRLValidator extends BaseValidator {
             LOG.debug("***********************");
         }
         Certificate rootCert = null; // represents root Certificate of the certificate in question
-        List<X509Certificate> certChainWithoutRootCert = new ArrayList<>(); // chain without root for CertPath construction 
-        List<URL> cDPURLs = new ArrayList<>(); // list of CDPs obtained from certificates 
+        List<X509Certificate> certChainWithoutRootCert = new ArrayList<X509Certificate>(); // chain without root for CertPath construction 
+        List<URL> cDPURLs = new ArrayList<URL>(); // list of CDPs obtained from certificates 
         List<URL> CRLPaths = getIssuerCRLPaths(cert); 	// retrieved CRL paths from issuer properties
 
         // fetch crl's of requested certificate and all certificates in a chain
@@ -204,7 +201,7 @@ public class CRLValidator extends BaseValidator {
         // certStore & certPath construction
         CertPath certPath = null;
         CertStore certStore;
-        List<Object> certsAndCRLS = new ArrayList<>(); // object ?, specified to suppress warnings but is it good way ? 
+        List<Object> certsAndCRLS = new ArrayList<Object>(); // object ?, specified to suppress warnings but is it good way ? 
         CertificateFactory certFactory;
         CertPathValidator validator = null;
         PKIXParameters params = null;

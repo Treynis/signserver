@@ -12,9 +12,9 @@
  *************************************************************************/
 package org.signserver.module.ooxmlsigner;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
@@ -30,17 +30,11 @@ import org.openxml4j.opc.PackageAccess;
 import org.openxml4j.opc.signature.PackageDigitalSignatureManager;
 import org.openxml4j.opc.signature.RelationshipTransformProvider;
 import org.signserver.common.*;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.server.IServices;
 import org.signserver.server.WorkerContext;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.common.data.SignatureResponse;
-import org.signserver.common.data.WritableData;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.server.signers.BaseSigner;
 
 /**
@@ -79,7 +73,7 @@ public class OOXMLSigner extends BaseSigner {
 
         super.init(workerId, config, workerContext, workerEM);
         
-        configErrors = new LinkedList<>();
+        configErrors = new LinkedList<String>();
         
         if (hasSetIncludeCertificateLevels) {
             configErrors.add(WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS + " is not supported.");
@@ -87,7 +81,7 @@ public class OOXMLSigner extends BaseSigner {
     }
 
     @Override
-    public Response processData(Request signRequest,
+    public ProcessResponse processData(ProcessRequest signRequest,
             RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
 
@@ -95,71 +89,82 @@ public class OOXMLSigner extends BaseSigner {
 
         // Check that the request contains a valid GenericSignRequest object
         // with a byte[].
-        if (!(signRequest instanceof SignatureRequest)) {
+        if (!(signRequest instanceof GenericSignRequest)) {
             throw new IllegalRequestException(
-                    "Received request wasn't an expected GenericSignRequest.");
+                    "Received request wasn't a expected GenericSignRequest.");
         }
-        final SignatureRequest sReq = (SignatureRequest) signRequest;
-        final String archiveId = createArchiveId(new byte[0], (String) requestContext.get(RequestContext.TRANSACTION_ID));
-
-        X509Certificate cert = null;
-        final WritableData responseData = sReq.getResponseData();
-        try (
-                InputStream in = sReq.getRequestData().getAsInputStream();
-                OutputStream out = responseData.getAsOutputStream()
-            ) {
-            Package docxPackage;
-            try {
-                docxPackage = Package.open(in, PackageAccess.READ_WRITE);
-            } catch (InvalidFormatException e) {
-                throw new SignServerException(
-                        "Data received is not in valid openxml package format", e);
-            } catch (IOException e) {
-                throw new SignServerException("Error opening received data", e);
-            }
-
-            // create digital signature manager object
-            PackageDigitalSignatureManager dsm = new PackageDigitalSignatureManager(
-                    docxPackage);
-
-            ICryptoInstance crypto = null;
-            try {
-                crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
-                cert = (X509Certificate) getSigningCertificate(crypto);
-
-                // sign document
-                dsm.SignDocument(crypto.getPrivateKey(), cert);
-            } catch (OpenXML4JException e1) {
-                throw new SignServerException("Problem signing document", e1);
-            } finally {
-                releaseCryptoInstance(crypto, requestContext);
-            }
-
-            // save output to package
-            try {
-                dsm.getContainer().save(out);
-            } catch (IOException e) {
-                throw new SignServerException(
-                        "Error saving final output data to output", e);
-            }
-        } catch (IOException ex) {
-            throw new SignServerException("Error reading data", ex);
+        
+        final ISignRequest sReq = (ISignRequest) signRequest;
+        
+        if (!(sReq.getRequestData() instanceof byte[])) {
+            throw new IllegalRequestException(
+                    "Received request data wasn't a expected byte[].");
         }
 
-        final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, responseData.toReadableData(), archiveId));
+        byte[] data = (byte[]) sReq.getRequestData();
+        final String archiveId = createArchiveId(data, (String) requestContext.get(RequestContext.TRANSACTION_ID));
+
+        Package docxPackage;
+        try {
+            docxPackage = Package.open(new ByteArrayInputStream(data),
+                    PackageAccess.READ_WRITE);
+        } catch (InvalidFormatException e) {
+            throw new SignServerException(
+                    "Data received is not in valid openxml package format", e);
+        } catch (IOException e) {
+            throw new SignServerException("Error opening received data", e);
+        }
+
+        // create digital signature manager object
+        PackageDigitalSignatureManager dsm = new PackageDigitalSignatureManager(
+                docxPackage);
+
+        ICryptoInstance crypto = null;
+        try {
+            crypto = acquireCryptoInstance(ICryptoToken.PURPOSE_SIGN, signRequest, requestContext);
+        
+            // sign document
+            dsm.SignDocument(crypto.getPrivateKey(), (X509Certificate) getSigningCertificate(crypto));
+        } catch (OpenXML4JException e1) {
+            throw new SignServerException("Problem signing document", e1);
+        } finally {
+            releaseCryptoInstance(crypto, requestContext);
+        }
+
+        // save output to package
+        ByteArrayOutputStream boutFinal = new ByteArrayOutputStream();
+        try {
+            dsm.getContainer().save(boutFinal);
+        } catch (IOException e) {
+            throw new SignServerException(
+                    "Error saving final output data to output", e);
+        }
+
+        byte[] signedbytes = boutFinal.toByteArray();
+        final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, signedbytes, archiveId));
+
+        if (signRequest instanceof GenericServletRequest) {
+            signResponse = new GenericServletResponse(sReq.getRequestID(),
+                    signedbytes,
+                    getSigningCertificate(signRequest, requestContext),
+                    archiveId, archivables, CONTENT_TYPE);
+        } else {
+            signResponse = new GenericSignResponse(sReq.getRequestID(),
+                    signedbytes,
+                    getSigningCertificate(signRequest, requestContext),
+                    archiveId, archivables);
+        }
 
         // The client can be charged for the request
         requestContext.setRequestFulfilledByWorker(true);
 
-        return new SignatureResponse(sReq.getRequestID(),
-                    responseData,
-                    cert,
-                    archiveId, archivables, CONTENT_TYPE);
+        return signResponse;
+
     }
 
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final List<String> errors = super.getFatalErrors(services);
+    protected List<String> getFatalErrors() {
+        final List<String> errors = super.getFatalErrors();
     
         errors.addAll(configErrors);
         return errors;

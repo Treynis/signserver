@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Properties;
 import org.bouncycastle.asn1.x509.CRLReason;
 import org.bouncycastle.cert.ocsp.OCSPReq;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.SignServerException;
 
 /**
@@ -290,7 +290,9 @@ public class OCSPCRLPathChecker extends OCSPPathChecker {
             clonedOCSPCRLPathChecker.cACert = clonedPrevCert;
             return clonedOCSPCRLPathChecker;
 
-        } catch (CertificateException | NoSuchProviderException e) {
+        } catch (CertificateException e) {
+            log.error("Exception occured on clone of OCSPCRLPathChecker", e);
+        } catch (NoSuchProviderException e) {
             log.error("Exception occured on clone of OCSPCRLPathChecker", e);
         }
 

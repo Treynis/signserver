@@ -21,15 +21,17 @@ import java.util.Date;
 import javax.xml.namespace.QName;
 
 import org.bouncycastle.jce.X509KeyUsage;
-import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.keys.util.KeyTools;
+import org.ejbca.util.Base64;
+import org.ejbca.util.keystore.KeyTools;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.ServiceLocator;
-import org.signserver.common.WorkerConfig;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.protocol.validationservice.ws.gen.IllegalRequestException_Exception;
 import org.signserver.protocol.validationservice.ws.gen.ValidationResponse;
 import org.signserver.protocol.validationservice.ws.gen.ValidationWSService;
@@ -37,8 +39,6 @@ import org.signserver.testutils.ModulesTestCase;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 import org.signserver.validationservice.common.Validation.Status;
 import org.signserver.validationservice.server.ValidationTestUtils;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
 
 /**
  * TODO: Document me!
@@ -48,7 +48,8 @@ import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class ValidationWSTest extends ModulesTestCase {
 
-    private static WorkerSessionRemote sSSession = null;
+    private static IGlobalConfigurationSession.IRemote gCSession = null;
+    private static IWorkerSession.IRemote sSSession = null;
     private static org.signserver.protocol.validationservice.ws.gen.ValidationWS validationWS;
     private static String validCert1;
     private static String revokedCert1;
@@ -58,7 +59,10 @@ public class ValidationWSTest extends ModulesTestCase {
     @Override
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
-        sSSession = ServiceLocator.getInstance().lookupRemote(WorkerSessionRemote.class);
+        gCSession = ServiceLocator.getInstance().lookupRemote(
+                IGlobalConfigurationSession.IRemote.class);
+        sSSession = ServiceLocator.getInstance().lookupRemote(
+                IWorkerSession.IRemote.class);
     }
 
     @Test
@@ -70,16 +74,15 @@ public class ValidationWSTest extends ModulesTestCase {
         X509Certificate validSubCA1 = ValidationTestUtils.genCert("CN=ValidSubCA1", "CN=ValidRootCA1", validRootCA1Keys.getPrivate(), validSubCA1Keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), true);
 
         KeyPair validCert1Keys = KeyTools.genKeys("1024", "RSA");
-        
         validCert1 = new String(Base64.encode(ValidationTestUtils.genCert("CN=ValidCert1", "CN=ValidSubCA1", validSubCA1Keys.getPrivate(), validCert1Keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), false).getEncoded()));
         revokedCert1 = new String(Base64.encode(ValidationTestUtils.genCert("CN=revokedCert1", "CN=ValidSubCA1", validSubCA1Keys.getPrivate(), validCert1Keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), false).getEncoded()));
         identificationCert1 = new String(Base64.encode(ValidationTestUtils.genCert("CN=identificationCert1", "CN=ValidSubCA1", validSubCA1Keys.getPrivate(), validCert1Keys.getPublic(), new Date(0), new Date(System.currentTimeMillis() + 1000000), false, X509KeyUsage.digitalSignature + X509KeyUsage.keyEncipherment).getEncoded()));
-        ArrayList<X509Certificate> validChain1 = new ArrayList<>();
+        ArrayList<X509Certificate> validChain1 = new ArrayList<X509Certificate>();
         // Add in the wrong order
         validChain1.add(validRootCA1);
         validChain1.add(validSubCA1);
 
-        sSSession.setWorkerProperty(16, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.validationservice.server.ValidationServiceWorker");
+        gCSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER16.CLASSPATH", "org.signserver.validationservice.server.ValidationServiceWorker");
         sSSession.setWorkerProperty(16, "AUTHTYPE", "NOAUTH");
         sSSession.setWorkerProperty(16, "NAME", "ValTest");
         sSSession.setWorkerProperty(16, "VAL1.CLASSPATH", "org.signserver.validationservice.server.DummyValidator");
@@ -106,7 +109,7 @@ public class ValidationWSTest extends ModulesTestCase {
         }
 
         try {
-            getValidationWS().getStatus("1717");
+            getValidationWS().getStatus("17");
             assertTrue(false);
         } catch (IllegalRequestException_Exception e) {
         }
@@ -131,7 +134,7 @@ public class ValidationWSTest extends ModulesTestCase {
         assertTrue(res.getRevocationDate() == null);
 
         try {
-            getValidationWS().isValid("1717", validCert1, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
+            getValidationWS().isValid("17", validCert1, ValidationServiceConstants.CERTPURPOSE_NO_PURPOSE);
             assertTrue(false);
         } catch (IllegalRequestException_Exception e) {
         }
@@ -166,7 +169,15 @@ public class ValidationWSTest extends ModulesTestCase {
 
     @Test
     public void test99RemoveDatabase() throws Exception {
-        removeWorker(16);
+        gCSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER16.CLASSPATH");
+        gCSession.removeProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER16.SIGNERTOKEN.CLASSPATH");
+
+        sSSession.removeWorkerProperty(16, "AUTHTYPE");
+        sSSession.removeWorkerProperty(16, "VAL1.CLASSPATH");
+        sSSession.removeWorkerProperty(16, "VAL1.TESTPROP");
+        sSSession.removeWorkerProperty(16, "VAL1.ISSUER1.CERTCHAIN");
+
+        sSSession.reloadConfiguration(16);
     }
     
     private org.signserver.protocol.validationservice.ws.gen.ValidationWS getValidationWS() throws Exception {

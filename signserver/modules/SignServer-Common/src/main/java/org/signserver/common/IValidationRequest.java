@@ -22,16 +22,12 @@ package org.signserver.common;
 public interface IValidationRequest {
 
     /**
-     * Should contain a unique request id used to identify the request.
-     * 
-     * @return Request ID
+     * Should contain a unique request id used to identify the request
      */
     int getRequestID();
 
     /**
-     * Should contain the data that should be validated.
-     * 
-     * @return Request data
+     * Should contain the data that should be signed.
      */
     Object getRequestData();
 }

@@ -283,7 +283,6 @@ public class MSAuthCodeCMSUtils
             // do nothing
         }
     
-        @Override
         public void write(int b) throws IOException {
             // do nothing
         }

@@ -185,7 +185,7 @@ public class SignServerWSServiceTest extends ModulesTestCase {
 
     public void test03ProcessOk() {
         try {
-            final List<ProcessRequestWS> requests = new ArrayList<>();
+            final List<ProcessRequestWS> requests = new ArrayList<ProcessRequestWS>();
             final ProcessRequestWS request = new ProcessRequestWS();
             request.setRequestDataBase64(new String(Base64.encode(RequestAndResponseManager.serializeProcessRequest(new GenericSignRequest(4711, "<root/>".getBytes())))));
             requests.add(request);
@@ -196,51 +196,72 @@ public class SignServerWSServiceTest extends ModulesTestCase {
             assertEquals("requestID", 4711, response.getRequestID());
             final Certificate certificate = response.getSignerCertificate();
             assertNotNull("Certificate", certificate);
-        } catch (IOException | CryptoTokenOfflineException_Exception | IllegalRequestException_Exception | SignServerException_Exception ex) {
+        } catch (IOException ex) {
+            LOG.error(ex, ex);
+            fail(ex.getMessage());
+        } catch (CryptoTokenOfflineException_Exception ex) {
+            LOG.error(ex, ex);
+            fail(ex.getMessage());
+        } catch (IllegalRequestException_Exception ex) {
             LOG.error(ex, ex);
             fail(ex.getMessage());
         } catch (InvalidWorkerIdException_Exception ex) {
             fail("Worker not found: " + WORKERID
                     + " Hasn't test-configuration.properties been applied?");
+        } catch (SignServerException_Exception ex) {
+            LOG.error(ex, ex);
+            fail(ex.getMessage());
         }
     }
 
     public void test04ProcessNonExisting() {
         try {
-            final List<ProcessRequestWS> requests = new ArrayList<>();
+            final List<ProcessRequestWS> requests = new ArrayList<ProcessRequestWS>();
             final ProcessRequestWS request = new ProcessRequestWS();
             request.setRequestDataBase64(new String(Base64.encode(RequestAndResponseManager.serializeProcessRequest(new GenericSignRequest(4711, "<root/>".getBytes())))));
             requests.add(request);
             ws.process(NONEXISTING_WORKERID, requests);
             fail("Should have thrown InvalidWorkerIdException_Exception");
-        } catch (IOException | CryptoTokenOfflineException_Exception | IllegalRequestException_Exception | SignServerException_Exception ex) {
+        } catch (IOException ex) {
+            LOG.error(ex, ex);
+            fail(ex.getMessage());
+        } catch (CryptoTokenOfflineException_Exception ex) {
+            LOG.error(ex, ex);
+            fail(ex.getMessage());
+        } catch (IllegalRequestException_Exception ex) {
             LOG.error(ex, ex);
             fail(ex.getMessage());
         } catch (InvalidWorkerIdException_Exception ok) {
             // OK
+        } catch (SignServerException_Exception ex) {
+            LOG.error(ex, ex);
+            fail(ex.getMessage());
         }
     }
 
     public void test05ProcessIllegalRequest() {
         try {
-            final List<ProcessRequestWS> requests = new ArrayList<>();
+            final List<ProcessRequestWS> requests = new ArrayList<ProcessRequestWS>();
             final ProcessRequestWS request = new ProcessRequestWS();
             request.setRequestDataBase64(new String(Base64.encode(RequestAndResponseManager.serializeProcessRequest(new GenericSignRequest(4711, "< not-an-well-formed-xml-doc".getBytes())))));
             requests.add(request);
             final List<ProcessResponseWS> responses = ws.process(WORKERID, requests);
             fail("Should have thrown IllegalRequest or SignServerException but got: "
                     + responses);
-        } catch (IOException | CryptoTokenOfflineException_Exception ex) {
+        } catch (IOException ex) {
             LOG.error(ex, ex);
             fail(ex.getMessage());
-        } catch (IllegalRequestException_Exception | SignServerException_Exception ex) {
+        } catch (CryptoTokenOfflineException_Exception ex) {
+            LOG.error(ex, ex);
+            fail(ex.getMessage());
+        } catch (IllegalRequestException_Exception ex) {
             // OK
-        }catch (InvalidWorkerIdException_Exception ex) {
+        } catch (InvalidWorkerIdException_Exception ex) {
             fail("Worker not found: " + WORKERID
                     + " Hasn't test-configuration.properties been applied?");
+        } catch (SignServerException_Exception ex) {
+            // OK (sort of, better would have been an illegalrequest)
         }
-        // OK (sort of, better would have been an illegalrequest)
-        
     }
     
     public void test99RemoveDatabase() throws Exception {

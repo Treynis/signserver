@@ -12,24 +12,18 @@
  *************************************************************************/
 package org.signserver.server.archive.test1archiver;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.logging.Level;
 import org.apache.log4j.Logger;
 import org.signserver.common.ArchiveData;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.RequestMetadata;
 import org.signserver.common.SignServerException;
-import org.signserver.common.data.ReadableData;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.common.data.SignatureResponse;
-import org.signserver.common.data.WritableData;
 import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.olddbarchiver.ArchiveDataArchivable;
 import org.signserver.server.signers.BaseSigner;
@@ -49,37 +43,28 @@ public class Test1Signer extends BaseSigner {
     public static final String METADATA_FAILREQUEST = "DO_FAIL_REQUEST";
 
     @Override
-    public Response processData(final Request processRequest,
+    public ProcessResponse processData(final ProcessRequest processRequest,
             final RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
         LOG.debug(">processData");
         
-        final Response result;
-        final SignatureRequest request;
+        final ProcessResponse result;
+        final GenericSignRequest request;
         
-        if (processRequest instanceof SignatureRequest) {
-            request = (SignatureRequest) processRequest;
+        if (processRequest instanceof GenericSignRequest) {
+            request = (GenericSignRequest) processRequest;
         } else {
             throw new IllegalRequestException("Unexpeted request type: "
                     + processRequest.getClass());
         }
-        final WritableData responseData = request.getResponseData();
         
-        try (OutputStream out = responseData.getAsOutputStream()) {
-            out.write("SIGNED".getBytes(StandardCharsets.UTF_8));
-        } catch (IOException ex) {
-            throw new SignServerException("IO error", ex);
-        }
+        final byte[] signedbytes = "SIGNED".getBytes();
         
         String archiveId = String.valueOf(request.getRequestID()) + "-" + System.currentTimeMillis();
-        try {
-            result = new SignatureResponse(((SignatureRequest) request).getRequestID(),
-                    responseData, getSigningCertificate(requestContext.getServices()),
-                    archiveId,
-                    Collections.singletonList(new ArchiveDataArchivable(archiveId, new ArchiveData(responseData.toReadableData().getAsByteArray()), Archivable.TYPE_RESPONSE)), "text/plain");
-        } catch (IOException ex) {
-            throw new SignServerException("IO error", ex);
-        }
+        result = new GenericSignResponse(request.getRequestID(),
+                signedbytes, getSigningCertificate(processRequest, requestContext), 
+                archiveId,
+                Collections.singletonList(new ArchiveDataArchivable(archiveId, new ArchiveData(signedbytes), Archivable.TYPE_RESPONSE)));
         
         // Setting REQUEST_METADATA.DO_FAIL_REQUEST causes this signer to not treat the request as fulfilled
         boolean success = RequestMetadata.getInstance(requestContext).get(METADATA_FAILREQUEST) == null;

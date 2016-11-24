@@ -25,7 +25,6 @@ import org.signserver.server.archive.Archivable;
 import org.signserver.server.archive.ArchiveException;
 import org.signserver.server.archive.Archiver;
 import org.signserver.server.archive.ArchiverInitException;
-import org.signserver.server.archive.BaseArchiver;
 
 /**
  * Test Archiver used by the system tests to test the Archiver API. Not usable 
@@ -37,7 +36,7 @@ import org.signserver.server.archive.BaseArchiver;
  * @author Markus Kilås
  * @version $Id$
  */
-public class Test1Archiver extends BaseArchiver implements Archiver {
+public class Test1Archiver implements Archiver {
 
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(Test1Archiver.class);

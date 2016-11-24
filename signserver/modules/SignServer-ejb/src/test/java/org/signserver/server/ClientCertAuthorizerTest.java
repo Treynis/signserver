@@ -34,9 +34,10 @@ import org.junit.Test;
 import org.signserver.common.AuthorizedClient;
 import org.signserver.common.GenericSignRequest;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessableConfig;
 import org.signserver.common.RequestContext;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.data.Request;
 import org.signserver.test.utils.builders.CertBuilder;
 import org.signserver.test.utils.builders.CertBuilderException;
 
@@ -125,7 +126,8 @@ public class ClientCertAuthorizerTest {
             throws Exception {
         String errorMessage = "";
         final ClientCertAuthorizer instance = new ClientCertAuthorizer();
-        final WorkerConfig config = new WorkerConfig();
+        final ProcessableConfig config =
+                new ProcessableConfig(new WorkerConfig());
         
         if (authClients != null) {
             for (final AuthorizedClient client : authClients) {
@@ -133,9 +135,9 @@ public class ClientCertAuthorizerTest {
             }
         }
    
-        instance.init(DUMMY_WORKER_ID, config, null);
+        instance.init(DUMMY_WORKER_ID, config.getWorkerConfig(), null);
         
-        final Request request = null;
+        final ProcessRequest request = new GenericSignRequest();
         final RequestContext context = new RequestContext();
         
         context.put(RequestContext.CLIENT_CERTIFICATE, cert);

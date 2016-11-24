@@ -18,7 +18,7 @@
     <!-- Initialization                                                      -->
     <!-- =================================================================== -->
 
-    <property name="deploytools.version" value="2.0"/>
+    <property name="deploytools.version" value="1.1-SNAPSHOT"/>
 
     <!-- Load properties before including files -->
     <property environment="env" />
@@ -46,9 +46,13 @@
     <available file="${appserver.home}/modules/org/jboss/as/standalone/main/module.xml" property="appserver.type" value="jboss"/>
     <available file="${appserver.home}/modules/system/layers/base/org/jboss/as/standalone/main/module.xml" property="appserver.type" value="jboss"/>
     <available file="${appserver.home}/client/cxf-api.jar" property="appserver.subtype" value="jboss6"/>
+    <available file="${appserver.home}/common/lib/jboss-javaee.jar" property="appserver.subtype" value="jboss5"/>
+    <available file="${appserver.home}/common/lib/jboss-ejb3-common.jar" property="appserver.subtype" value="jboss5"/>
     <available file="${appserver.home}/modules/org/jboss/as/standalone/main/module.xml" property="appserver.subtype" value="jboss7"/>
     <available file="${appserver.home}/modules/system/layers/base/org/jboss/as/standalone/main/module.xml" property="appserver.subtype" value="jbosseap6"/>
     <available file="${appserver.home}/lib/javaee.jar" property="appserver.type" value="glassfish"/>
+    <available file="${appserver.home}/lib/appserv-ext.jar" property="appserver.subtype" value="glassfish2"/>
+    <available file="${appserver.home}/modules/bean-validator.jar" property="appserver.subtype" value="glassfish3"/>
     <available file="${appserver.home}/wlserver_10.3/server/lib/wlclient.jar" property="appserver.type" value="weblogic"/>
     <available file="${appserver.home}/lib/commandlineutils.jar" property="appserver.type" value="websphere"/>
 
@@ -57,7 +61,7 @@
     <import file="${appserver-impl.file}" optional="true"/>
     <import file="${this.dir}/appserver/noappserver.xml"/>
 
-    
+
     <!-- =================================================================== -->
     <!-- Initialization                                                      -->
     <!-- =================================================================== -->
@@ -99,8 +103,6 @@
         </path>
         <taskdef name="process-descriptors" classname="org.signserver.deploytools.ant.ProcessModuleDescriptorsTask" classpathref="deploytools.classpath"/>
         <taskdef name="postprocess-mods" classname="org.signserver.deploytools.ant.PostProcessModulesTask" classpathref="deploytools.classpath"/>
-        <taskdef name="rewrite-zip-timestamps" classname="org.signserver.deploytools.ant.RewriteZipEntriesTimestampTask" classpathref="deploytools.classpath"/>
-        <taskdef name="copy-zip-sorted" classname="org.signserver.deploytools.ant.CopyZipEntriesSortedTask" classpathref="deploytools.classpath"/>
     </target>
 
     <!-- Target checking that the application server was identified, otherwise fails with an error message -->
@@ -139,6 +141,7 @@ appserver.home                      = ${appserver.home}
 datasource.jndi-name                = ${datasource.jndi-name}
 datasource.jndi-name-prefix         = ${datasource.jndi-name-prefix}
 database.name                       = ${database.name}
+database.driver                     = ${database.driver}
 database.nodb.location              = ${database.nodb.location}
         </echo>
     </target>
@@ -146,9 +149,6 @@ database.nodb.location              = ${database.nodb.location}
     <!-- Target doing the actual packaging of the EAR file -->
     <target name="-do-configure-ear" depends="display-properties,-check-appsrv,-check-built, -init-tasks, -init-configure, -preprocess-persistence, -set-ejbjarheader-nodb, j2ee:check">
         <echo/>
-
-        <!-- Use Hibernate Persistence Provider by default -->
-        <property name="persistence.provider" value="org.hibernate.ejb.HibernatePersistence"/>
 
         <condition property="allEnabled">
             <istrue value="${includemodulesinbuild}"/>
@@ -170,9 +170,6 @@ database.nodb.location              = ${database.nodb.location}
             Additions to application.xml: 
             ${appXml}
         </echo>
-        <replace file="${app.ear.dir}/META-INF/application.xml" value="${app.name.cap}">
-            <replacetoken><![CDATA[@APPNAME@]]></replacetoken>
-        </replace>
         <replace file="${app.ear.dir}/META-INF/application.xml" value="${appXml}">
             <replacetoken><![CDATA[<!--@MODULES@-->]]></replacetoken>
         </replace>
@@ -343,10 +340,10 @@ database.nodb.location              = ${database.nodb.location}
     </target>
     <target name="-prepare-edition" depends="-detect-edition, -prepare-ce, -prepare-be, -prepare-ee" unless="edition.available">
         <echo level="verbose">Preparing edition</echo>
-        <echo file="${basedir}/res/edition.properties" append="false" encoding="latin1">
-app.edition=${app.edition}
-app.edition.lc=${app.edition.lc}
-        </echo>
+        <propertyfile file="${basedir}/res/edition.properties">
+            <entry key="app.edition" value="${app.edition}"/>
+            <entry key="app.edition.lc" value="${app.edition.lc}"/>
+        </propertyfile>
         <property file="${basedir}/res/edition.properties"/>
     </target>
     <target name="-detect-edition">
@@ -459,7 +456,7 @@ app.edition.lc=${app.edition.lc}
             <classpath>
                 <path path="${systemtest.path}"/>
                 <fileset dir="${basedir}" includes="${systemtest.jars.include}"/>
-                <pathelement path="${basedir}/lib/ext/ext/junit-4.12.jar"/>
+                <pathelement path="${basedir}/lib/ext/ext/junit-4.11.jar"/>
                 <pathelement path="${basedir}/lib/ext/ext/hamcrest-core-1.3.jar"/>
             </classpath>
         </junit>
@@ -483,12 +480,16 @@ app.edition.lc=${app.edition.lc}
                 <equals arg1="${appserver.subtype}" arg2="jbosseap6" />
             </or>
         </condition>
+        <condition property="appserver.conf.folder" value="jboss">
+            <equals arg1="${appserver.type}" arg2="jboss" />
+        </condition>
         <condition property="appserver.conf.folder" value="glassfish">
             <equals arg1="${appserver.type}" arg2="glassfish" />
         </condition>
 
-        <property name="cp.prefix" value="${basedir}/lib/ext/xmlsec-1.5.8.jar"/> <!-- Needed as JBoss bundles older version. TODO: Better do this in a more generic way. -->
-        <property name="systemtest.path" value="${cp.prefix}:${basedir}/conf:${basedir}/conf/${appserver.conf.folder}:${this.dir}/cesecore/:${appserver.client.jars}:${basedir}/lib/ext/jdbc/jdbc.jar"/>
+        <property name="cp.prefix" value="${basedir}/lib/ext/xmlsec-1.5.8.jar"/> <!-- Needed as JBoss 5 bundles older version. TODO: Better do this in a more generic way. -->
+        <property name="cp.postfix" value="${basedir}/lib/ext/hibernate/antlr-2.7.6.jar:${basedir}/lib/ext/hibernate/dom4j-1.6.1.jar:${basedir}/lib/ext/hibernate/ejb3-persistence.jar:${basedir}/lib/ext/hibernate/hibernate-annotations.jar:${basedir}/lib/ext/hibernate/hibernate-commons-annotations.jar:${basedir}/lib/ext/hibernate/hibernate-core.jar:${basedir}/lib/ext/hibernate/hibernate-entitymanager.jar:${basedir}/lib/ext/hibernate/hibernate-search-3.1.1.GA.jar:${basedir}/lib/ext/hibernate/hibernate-validator-3.1.0.GA.jar:${basedir}/lib/ext/hibernate/javassist-3.4.GA.jar:${basedir}/lib/ext/hibernate/jta-1.1.jar:${basedir}/lib/ext/hibernate/lucene-core-2.4.1.jar:${basedir}/lib/ext/hibernate/slf4j-api-1.5.2.jar:${basedir}/lib/ext/hibernate/slf4j-log4j12.jar"/> <!-- Temporarly workaround until DSS-1010 is fixed. -->
+        <property name="systemtest.path" value="${cp.prefix}:${basedir}/conf:${basedir}/conf/${appserver.conf.folder}:${this.dir}/cesecore/:${appserver.client.jars}:${basedir}/lib/ext/jdbc/jdbc.jar:${cp.postfix}"/>
     </target>
 
 </project>

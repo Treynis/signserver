@@ -27,7 +27,6 @@ import org.bouncycastle.asn1.x509.PrivateKeyUsagePeriod;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.SignServerConstants;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
 
 /**
  * Utility methods for checking the validity time of signer certificates.
@@ -57,10 +56,13 @@ public class ValidityTimeUtils {
      * @return The validity date
      * @throws CryptoTokenOfflineException if the signing validity could not be obtained
      */
-    public static Date getSigningValidity(final boolean notAfter, final WorkerIdentifier workerId,
+    public static Date getSigningValidity(final boolean notAfter, final int workerId,
             final WorkerConfig awc, final X509Certificate cert)
             throws CryptoTokenOfflineException {
-        
+        Date certDate = null;
+        Date privatekeyDate = null;
+        Date minreimainingDate = null;
+
         boolean checkcertvalidity = awc.getProperties().getProperty(
                 SignServerConstants.CHECKCERTVALIDITY, Boolean.TRUE.toString()).equalsIgnoreCase(
                 Boolean.TRUE.toString());
@@ -70,28 +72,6 @@ public class ValidityTimeUtils {
         int minremainingcertvalidity = Integer.valueOf(awc.getProperties().
                 getProperty(SignServerConstants.MINREMAININGCERTVALIDITY, "0"));
         
-        return getSigningValidity(notAfter, workerId, checkcertvalidity, checkprivatekeyvalidity, minremainingcertvalidity, cert);
-    }
-    
-    /**
-     * Get the signing validity for the given worker, either notAfter(true) or 
-     * notBefore(false).
-     * @param notAfter True if the notAfter time should be returned
-     * @param workerId Id of worker
-     * @param checkcertvalidity If certificate validity should be checked
-     * @param checkprivatekeyvalidity If private key usage period should be checked
-     * @param minremainingcertvalidity The minimum remaining certificate validity
-     * @param cert The signer certificate
-     * @return The validity date
-     * @throws CryptoTokenOfflineException if the signing validity could not be obtained
-     */
-    public static Date getSigningValidity(final boolean notAfter, final WorkerIdentifier workerId,
-            final boolean checkcertvalidity, final boolean checkprivatekeyvalidity, final int minremainingcertvalidity, final X509Certificate cert)
-            throws CryptoTokenOfflineException {
-        Date certDate = null;
-        Date privatekeyDate = null;
-        Date minreimainingDate = null;
-
         if (LOG.isDebugEnabled()) {
             LOG.debug("checkcertvalidity: " + checkcertvalidity);
             LOG.debug("checkprivatekeyvalidity: " + checkprivatekeyvalidity);
@@ -112,7 +92,15 @@ public class ValidityTimeUtils {
                     privatekeyDate = notAfter ? p.getNotAfter().getDate()
                             : p.getNotBefore().getDate();
                 }
-            } catch (IOException | ParseException e) {
+            } catch (IOException e) {
+                LOG.error(e);
+                CryptoTokenOfflineException newe =
+                        new CryptoTokenOfflineException(
+                        "Error Signer " + workerId
+                        + " have a problem with PrivateKeyUsagePeriod, check server LOG.");
+                newe.initCause(e);
+                throw newe;
+            } catch (ParseException e) {
                 LOG.error(e);
                 CryptoTokenOfflineException newe =
                         new CryptoTokenOfflineException(
@@ -187,14 +175,14 @@ public class ValidityTimeUtils {
     }
 
     /**
-     * Checks that the current time is within the signers "signing validity".
+     * Checks that the current time is withing the signers "signing validity".
      * @param workerId Id of worker
      * @param awc Worker configuration
      * @param cert Signer certificate
      * @throws CryptoTokenOfflineException with an error message if the signer 
      * was not within the validity time or there was an error obtaining the time
      */
-    public static void checkSignerValidity(final WorkerIdentifier workerId, final WorkerConfig awc, final X509Certificate cert) throws CryptoTokenOfflineException {
+    public static void checkSignerValidity(final int workerId, final WorkerConfig awc, final X509Certificate cert) throws CryptoTokenOfflineException {
         // Check certificate, privatekey and minremaining validities
         final Date notBefore =
                 ValidityTimeUtils.getSigningValidity(false, workerId, awc, cert);
@@ -203,11 +191,8 @@ public class ValidityTimeUtils {
         if (LOG.isDebugEnabled()) {
             LOG.debug("The signer validity is from '"
                     + notBefore + "' until '" + notAfter + "'");
-        }        
-        checkValidityTime(workerId, notBefore, notAfter);
-    }
+        }
 
-    private static void checkValidityTime(final WorkerIdentifier workerId, final Date notBefore, final Date notAfter) throws CryptoTokenOfflineException {
         // Compare with current date
         final Date now = new Date();
         if (notBefore != null && now.before(notBefore)) {
@@ -227,28 +212,4 @@ public class ValidityTimeUtils {
             throw new CryptoTokenOfflineException(msg);
         }
     }
-    
-    /**
-     * Checks that the current time is within the signers "signing validity".
-     * @param workerId Id of worker
-     * @param checkcertvalidity If certificate validity should be checked
-     * @param checkprivatekeyvalidity If private key usage period should be checked
-     * @param minremainingcertvalidity The minimum remaining certificate validity
-     * @param cert Signer certificate
-     * @throws CryptoTokenOfflineException with an error message if the signer 
-     * was not within the validity time or there was an error obtaining the time
-     */
-    public static void checkSignerValidity(final WorkerIdentifier workerId, final boolean checkcertvalidity, final boolean checkprivatekeyvalidity, final int minremainingcertvalidity, final X509Certificate cert) throws CryptoTokenOfflineException {
-        // Check certificate, privatekey and minremaining validities
-        final Date notBefore =
-                ValidityTimeUtils.getSigningValidity(false, workerId, checkcertvalidity, checkprivatekeyvalidity, minremainingcertvalidity, cert);
-        final Date notAfter =
-                ValidityTimeUtils.getSigningValidity(true, workerId, checkcertvalidity, checkprivatekeyvalidity, minremainingcertvalidity, cert);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("The signer validity is from '"
-                    + notBefore + "' until '" + notAfter + "'");
-        }
-        checkValidityTime(workerId, notBefore, notAfter);
-    }
-    
 }

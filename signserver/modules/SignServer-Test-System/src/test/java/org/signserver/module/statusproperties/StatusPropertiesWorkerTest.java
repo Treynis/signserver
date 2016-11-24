@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.module.statusproperties;
 
-import org.signserver.testutils.WebTestCase;
 import java.io.ByteArrayInputStream;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -28,7 +27,6 @@ import org.signserver.statusrepo.common.StatusName;
 import org.signserver.web.*;
 import static org.junit.Assert.*;
 import org.junit.Test;
-import org.signserver.common.WorkerConfig;
 
 /**
  * Tests that the right HTTP status codes are returned in different situations.
@@ -57,7 +55,6 @@ public class StatusPropertiesWorkerTest extends WebTestCase {
     public void test00SetupDatabase() throws Exception {
         Properties properties = new Properties();
         properties.setProperty("GLOB.WORKER" + WORKERID + ".CLASSPATH", "org.signserver.module.statusproperties.StatusPropertiesWorker");
-        properties.setProperty("WORKER" + WORKERID + "." + WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.statusproperties.StatusPropertiesWorker");
         properties.setProperty("WORKER" + WORKERID + ".NAME", WORKERNAME);
         properties.setProperty("WORKER" + WORKERID + ".AUTHTYPE", "NOAUTH");
         setProperties(properties);
@@ -69,7 +66,7 @@ public class StatusPropertiesWorkerTest extends WebTestCase {
      */
     @Test
     public void test01HttpStatus200() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("workerName", WORKERNAME);
         fields.put("data", "");
         assertStatusReturned(fields, 200);
@@ -83,12 +80,12 @@ public class StatusPropertiesWorkerTest extends WebTestCase {
      */
     @Test
     public void test02NoArgumentsReturnsAll() throws Exception {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("workerName", WORKERNAME);
         fields.put("data", "");
         
         Map<String, StatusEntry> allEntries = getStatusSession().getAllEntries();
-        Set<String> allValidNames = new HashSet<>();
+        Set<String> allValidNames = new HashSet<String>();
         for (String name : allEntries.keySet()) {
             if (getStatusSession().getValidEntry(name) != null) {
                 allValidNames.add(name);
@@ -114,7 +111,7 @@ public class StatusPropertiesWorkerTest extends WebTestCase {
      */
     @Test
     public void test03GetAProperty() throws Exception {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("workerName", WORKERNAME);
         fields.put("data", "GET=SERVER_STARTED");
         
@@ -143,7 +140,7 @@ public class StatusPropertiesWorkerTest extends WebTestCase {
      */
     @Test
     public void test04GetMultipleProperties() throws Exception {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("workerName", WORKERNAME);
         fields.put("data", "GET=TEST_PROPERTY1,TEST_PROPERTY2,TEST_PROPERTY3");
         
@@ -184,7 +181,7 @@ public class StatusPropertiesWorkerTest extends WebTestCase {
         long expiration2 = System.currentTimeMillis() + 20 * 60 * 1000;
         long expiration3 = 0;
         
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("workerName", WORKERNAME);
         fields.put("data", 
                   "TEST_PROPERTY1.VALUE=VALUE11\n"

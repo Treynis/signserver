@@ -13,16 +13,11 @@
 package org.signserver.server.archive;
 
 import java.math.BigInteger;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import javax.xml.namespace.QName;
-import javax.xml.ws.BindingProvider;
-import javax.xml.ws.handler.MessageContext;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.tsp.TSPAlgorithms;
 import org.bouncycastle.tsp.TimeStampRequest;
@@ -33,14 +28,7 @@ import org.signserver.common.*;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
-import org.signserver.client.clientws.ClientWS;
-import org.signserver.client.clientws.ClientWSService;
-import org.signserver.client.clientws.DataResponse;
-import org.signserver.client.clientws.InternalServerException_Exception;
-import org.signserver.client.clientws.Metadata;
-import org.signserver.client.clientws.RequestFailedException_Exception;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Re-usable test case for archiving.
@@ -52,59 +40,56 @@ public class ArchiveTestCase extends ModulesTestCase {
     
     private Random random = new Random();
     
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     @Before
-    @Override
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
-        setupSSLKeystores();
+//        TestingSecurityManager.install();
     }
 
     @After
-    @Override
     public void tearDown() throws Exception {
         TestingSecurityManager.remove();
-    }
+    }	
     
-    private DataResponse processWithClientWS(WorkerIdentifier wi, byte[] document, final String xForwardedFor) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException, InternalServerException_Exception, RequestFailedException_Exception {
-        final String url = "https://" + getHTTPHost() + ":" + getPublicHTTPSPort() + "/signserver/ClientWSService/ClientWS?wsdl";
-        final ClientWSService service;
-        try {
-            service = new ClientWSService(new URL(url), new QName("http://clientws.signserver.org/", "ClientWSService"));
-            ClientWS wsPort = service.getClientWSPort();
-            // Add HTTP header
-            if (xForwardedFor != null) {
-                ((BindingProvider) wsPort).getRequestContext().put(MessageContext.HTTP_REQUEST_HEADERS,
-                        Collections.singletonMap("X-Forwarded-For", Collections.singletonList(xForwardedFor)));
-            }
-            return wsPort.processData(wi.hasName() ? wi.getName() : String.valueOf(wi.getId()), Collections.<Metadata>emptyList(), document);
-        } catch (MalformedURLException ex) {
-            throw new IllegalArgumentException("Malformed URL: "
-                    + url, ex);
-        }
-    }
-    
-    protected ArchiveDataVO testArchive(final String document, final String xForwardedFor) throws Exception {
+    protected ArchiveDataVO testArchive(final String document, final String remoteIP, final String xForwardedFor) throws Exception {
         // Process
-        DataResponse response = processWithClientWS(new WorkerIdentifier(getSignerIdDummy1()), document.getBytes(), xForwardedFor);
+        final GenericSignRequest signRequest =
+                new GenericSignRequest(371, document.getBytes());
+        final RequestContext context =  new RequestContext();
+        
+        if (remoteIP != null) {
+            context.put(RequestContext.REMOTE_IP, remoteIP);
+        }
+        
+        if (xForwardedFor != null) {
+            context.put(RequestContext.X_FORWARDED_FOR, xForwardedFor);
+        }
+        
+        GenericSignResponse response = (GenericSignResponse) 
+                workerSession.process(getSignerIdDummy1(), signRequest, 
+                context);
         assertNotNull("no response", response);
-
+        
         final String expectedArchiveId = response.getArchiveId();
-
+        final Archivable expectedArchiveData = response.getArchivables().iterator().next();
+        
         List<ArchiveDataVO> archiveDatas = getWorkerSession().findArchiveDataFromArchiveId(getSignerIdDummy1(), expectedArchiveId);
         ArchiveDataVO archiveData = archiveDatas.get(0);
         assertEquals("same id in db", 
                 expectedArchiveId, archiveData.getArchiveId());
         assertEquals("same signer id in db", 
                 getSignerIdDummy1(), archiveData.getSignerId());
-
+        
+        assertTrue("same archived data", 
+                Arrays.equals(expectedArchiveData.getContentEncoded(), 
+                archiveData.getArchivedBytes()));
         return archiveData;
     }
     
     protected ArchiveDataVO testArchive(final String document) throws Exception {
-        return testArchive(document, null);
+        return testArchive(document, null, null);
     }
     
     protected void testNoArchive(final String document) throws Exception {
@@ -112,8 +97,8 @@ public class ArchiveTestCase extends ModulesTestCase {
         final GenericSignRequest signRequest =
                 new GenericSignRequest(371, document.getBytes());
         GenericSignResponse response = (GenericSignResponse) 
-                processSession.process(new WorkerIdentifier(getSignerIdDummy1()), signRequest, 
-                new RemoteRequestContext());
+                workerSession.process(getSignerIdDummy1(), signRequest, 
+                new RequestContext());
         assertNotNull("no response", response);
         
         final String expectedArchiveId = response.getArchiveId();
@@ -135,8 +120,8 @@ public class ArchiveTestCase extends ModulesTestCase {
 
         final GenericSignRequest signRequest = new GenericSignRequest(reqid, requestBytes);
 
-        final GenericSignResponse signResponse = (GenericSignResponse) processSession.process(
-                new WorkerIdentifier(signerId), signRequest, new RemoteRequestContext());
+        final GenericSignResponse signResponse = (GenericSignResponse) workerSession.process(
+                signerId, signRequest, new RequestContext());
         assertNotNull("no response", signResponse);
         final byte[] responseBytes = signResponse.getProcessedData();
         final String responseHex = new String(Hex.encode(responseBytes));
@@ -148,17 +133,23 @@ public class ArchiveTestCase extends ModulesTestCase {
         final Iterator<? extends Archivable> iterator = archivables.iterator();
         final Archivable first = iterator.next();
         final Archivable second = iterator.next();
+        final Archivable request;
         final Archivable response;
         
         if (first.getType().equals(Archivable.TYPE_REQUEST)) {
+            request = first;
             response = second;
         } else {
+            request = second;
             response = first;
         }
         
         final String archiveId = response.getArchiveId();
         
         assertEquals("same archiveId for all", archiveId, response.getArchiveId());
+        
+        assertEquals("same response", responseHex, new String(Hex.encode(response.getContentEncoded())));
+        assertEquals("same request", requestHex, new String(Hex.encode(request.getContentEncoded())));
         
         final List<ArchiveDataVO> allArchiveData = getWorkerSession().findArchiveDataFromArchiveId(signerId, archiveId);
         
@@ -184,9 +175,11 @@ public class ArchiveTestCase extends ModulesTestCase {
 
         final GenericSignRequest signRequest = new GenericSignRequest(reqid, requestBytes);
 
-        final GenericSignResponse signResponse = (GenericSignResponse) processSession.process(
-                new WorkerIdentifier(signerId), signRequest, new RemoteRequestContext());
+        final GenericSignResponse signResponse = (GenericSignResponse) workerSession.process(
+                signerId, signRequest, new RequestContext());
         assertNotNull("no response", signResponse);
+        final byte[] responseBytes = signResponse.getProcessedData();
+        final String responseHex = new String(Hex.encode(responseBytes));
         
         final Collection<? extends Archivable> archivables = signResponse.getArchivables();
         
@@ -196,17 +189,23 @@ public class ArchiveTestCase extends ModulesTestCase {
         final Archivable first = iterator.next();
         final Archivable second = iterator.next();
         final Archivable request;
+        final Archivable response;
         
         if (first.getType().equals(Archivable.TYPE_REQUEST)) {
             request = first;
+            response = second;
         } else {
             request = second;
+            response = first;
         }
         
         final String archiveId = request.getArchiveId();
         
-        assertEquals("same archiveId for all", archiveId, request.getArchiveId());
-
+        assertEquals("same archiveId for all", archiveId, response.getArchiveId());
+        
+        assertEquals("same response", responseHex, new String(Hex.encode(response.getContentEncoded())));
+        assertEquals("same request", requestHex, new String(Hex.encode(request.getContentEncoded())));
+        
         final List<ArchiveDataVO> allArchiveData = getWorkerSession().findArchiveDataFromArchiveId(signerId, archiveId);
         
         assertEquals("one request", 1, allArchiveData.size());
@@ -231,8 +230,8 @@ public class ArchiveTestCase extends ModulesTestCase {
 
         final GenericSignRequest signRequest = new GenericSignRequest(reqid, requestBytes);
 
-        final GenericSignResponse signResponse = (GenericSignResponse) processSession.process(
-                new WorkerIdentifier(signerId), signRequest, new RemoteRequestContext());
+        final GenericSignResponse signResponse = (GenericSignResponse) workerSession.process(
+                signerId, signRequest, new RequestContext());
         assertNotNull("no response", signResponse);
         final byte[] responseBytes = signResponse.getProcessedData();
         final String responseHex = new String(Hex.encode(responseBytes));
@@ -258,7 +257,10 @@ public class ArchiveTestCase extends ModulesTestCase {
         final String archiveId = request.getArchiveId();
         
         assertEquals("same archiveId for all", archiveId, response.getArchiveId());
-
+        
+        assertEquals("same response", responseHex, new String(Hex.encode(response.getContentEncoded())));
+        assertEquals("same request", requestHex, new String(Hex.encode(request.getContentEncoded())));
+        
         final List<ArchiveDataVO> allArchiveData = getWorkerSession().findArchiveDataFromArchiveId(signerId, archiveId);
         
         assertEquals("two responses", 2, allArchiveData.size());

@@ -24,8 +24,7 @@ import org.bouncycastle.tsp.TimeStampToken;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.InternalProcessSessionLocal;
+import org.signserver.ejb.interfaces.IInternalWorkerSession;
 import org.signserver.server.tsa.InternalTimeStampTokenFetcher;
 import xades4j.UnsupportedAlgorithmException;
 import xades4j.providers.MessageDigestEngineProvider;
@@ -43,7 +42,7 @@ public class InternalTimeStampTokenProvider implements TimeStampTokenProvider {
     /** Mapping from digest URI (xml-sec) to OID. */
     private static final Map<String, ASN1ObjectIdentifier> digestUriToOidMap;
     static {
-        digestUriToOidMap = new HashMap<>(6);
+        digestUriToOidMap = new HashMap<String, ASN1ObjectIdentifier>(6);
         digestUriToOidMap.put(MessageDigestAlgorithm.ALGO_ID_DIGEST_NOT_RECOMMENDED_MD5, TSPAlgorithms.MD5);
         digestUriToOidMap.put(MessageDigestAlgorithm.ALGO_ID_DIGEST_RIPEMD160, TSPAlgorithms.RIPEMD160);
         digestUriToOidMap.put(MessageDigestAlgorithm.ALGO_ID_DIGEST_SHA1, TSPAlgorithms.SHA1);
@@ -57,9 +56,9 @@ public class InternalTimeStampTokenProvider implements TimeStampTokenProvider {
     private final InternalTimeStampTokenFetcher fetcher;
 
     public InternalTimeStampTokenProvider(final MessageDigestEngineProvider messageDigestProvider,
-            final InternalProcessSessionLocal session, final WorkerIdentifier wi, final String username, final String password) {
+            final IInternalWorkerSession session, final String workerNameOrId, final String username, final String password) {
         this.messageDigestProvider = messageDigestProvider;
-        this.fetcher = new InternalTimeStampTokenFetcher(session, wi, username, password);
+        this.fetcher = new InternalTimeStampTokenFetcher(session, workerNameOrId, username, password);
     }
 
     @Override
