@@ -17,10 +17,10 @@ import java.util.List;
 import javax.persistence.EntityManager;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.data.Request;
 import org.signserver.server.IAuthorizer;
 import org.signserver.server.IProcessable;
 import org.signserver.server.WorkerContext;
@@ -50,15 +50,15 @@ public class AuthorizedUsernameAliasSelector implements AliasSelector {
 
     @Override
     public String getAlias(final int purpose, final IProcessable processble,
-                           final Request signRequest,
+                           final ProcessRequest signRequest,
                            final RequestContext requestContext)
             throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
         if (requestContext != null) {
             final LogMap logMap = LogMap.getInstance(requestContext);
-            final Object loggable = logMap.get(IAuthorizer.LOG_USERNAME);
+            final String username = logMap.get(IAuthorizer.LOG_USERNAME);
             
-            if (loggable != null) {
-                return prefix + loggable.toString();
+            if (username != null) {
+                return prefix + username;
             } else {
                 return null;
             }

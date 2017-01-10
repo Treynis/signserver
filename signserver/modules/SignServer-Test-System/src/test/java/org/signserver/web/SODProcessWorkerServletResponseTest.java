@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.web;
 
-import org.signserver.testutils.WebTestCase;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,7 +21,6 @@ import org.signserver.module.mrtdsodsigner.MRTDSODSigner;
 import org.signserver.server.signers.EchoRequestMetadataSigner;
 
 import org.junit.Test;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.testutils.ModulesTestCase;
 
 /**
@@ -67,7 +65,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
     public void test00SetupDatabase() throws Exception {
         addSigner(MRTDSODSigner.class.getName(), false);
         addSigner(EchoRequestMetadataSigner.class.getName(), 123, "DummySigner123", true);
-        getWorkerSession().activateSigner(new WorkerIdentifier(getSignerIdDummy1()), ModulesTestCase.KEYSTORE_PASSWORD);
+        getWorkerSession().activateSigner(getSignerIdDummy1(), ModulesTestCase.KEYSTORE_PASSWORD);
     }
 
     private void assertStatusReturned(final Map<String, String> fields,
@@ -88,7 +86,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test01HttpStatus200() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("workerName", getSignerNameDummy1());
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
@@ -106,7 +104,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test02HttpStatus200_overrideRequestParamWorkerName() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         
         fields.put("workerName", UNEXISTING_WORKER_NAME);
         fields.put("dataGroup1", "Yy==");
@@ -124,7 +122,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test03HttpStatus200_overrideRequestParamWorkerId() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("workerId", String.valueOf(UNEXISTING_WORKER_ID));
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
@@ -140,7 +138,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test04HttpStatus404() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -158,7 +156,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test05HttpStatus404_setCorrectWorkerNameRequestParam() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -177,7 +175,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test06HttpStatus404_setCorrectWorkerIdRequestParam() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -197,7 +195,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test07HttpStatus404_setCorrectWorkerIdAndNameRequestParam() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -215,7 +213,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test08HttpStatus404_emptyWorkerName() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("data", "<root/>");
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
@@ -232,7 +230,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test09HttpStatus404_emptyWorkerNameWithWorkerNameRequestParam() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -249,7 +247,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test10HttpStatus404_emptyWorkerNameWithWorkerIdRequestParam() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -266,7 +264,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test11HttpStatus404_emptyWorkerNameNoSlash() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -283,7 +281,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test12HttpStatus404_emptyWorkerNameNoSlashWithWorkerNameRequestParam() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -300,7 +298,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test13HttpStatus404_emptyWorkerNameNoSlashWithWorkerIdRequestParam() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -316,7 +314,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test14HttpStatus404_extraSlashBeforeWorkerName() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");
@@ -335,7 +333,7 @@ public class SODProcessWorkerServletResponseTest extends WebTestCase {
      */
     @Test
     public void test15HttpStatus404_extraSlashBeforeServletName() {
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("dataGroup1", "Yy==");
         fields.put("dataGroup2", "Yy==");
         fields.put("dataGroup3", "Yy==");

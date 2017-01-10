@@ -46,7 +46,7 @@ public abstract class BaseTimedService extends BaseWorker implements ITimedServi
 
     private final Set<ITimedService.LogType> logTypes =
             EnumSet.noneOf(ITimedService.LogType.class);
-    private final List<String> fatalErrors = new LinkedList<>();
+    private final List<String> fatalErrors = new LinkedList<String>();
     
     protected BaseTimedService() {
     }
@@ -109,7 +109,7 @@ public abstract class BaseTimedService extends BaseWorker implements ITimedServi
                 Date nextDate = ce.getNextValidTimeAfter(new Date());
                 retval = (long) (nextDate.getTime() - System.currentTimeMillis());
             } catch (ParseException e) {
-                log.error("Error in Service configuration, illegal CRON expression : " + cronExpression + " defined for service with ID " + workerId);
+                log.error("Error in Service configuration, illegal CRON expression : " + cronExpression + " defined for service with id " + workerId);
             }
         }
         return retval;
@@ -144,12 +144,12 @@ public abstract class BaseTimedService extends BaseWorker implements ITimedServi
     }
 
     @Override
-    public WorkerStatusInfo getStatus(final List<String> additionalFatalErrors, final IServices services) {
-        final List<String> fatalErrorsIncludingAdditionalErrors = new LinkedList<>(additionalFatalErrors);
-        fatalErrorsIncludingAdditionalErrors.addAll(getFatalErrors(services));
+    public WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services) {
+        final List<String> fatalErrorsIncludingAdditionalErrors = new LinkedList<String>(additionalFatalErrors);
+        fatalErrorsIncludingAdditionalErrors.addAll(getFatalErrors());
 
-        List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<>();
-        List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<>();
+        List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<WorkerStatusInfo.Entry>();
+        List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<WorkerStatusInfo.Entry>();
 
         // Worker status
         briefEntries.add(new WorkerStatusInfo.Entry("Worker status", fatalErrorsIncludingAdditionalErrors.isEmpty() ? "Active" : "Offline"));
@@ -163,11 +163,7 @@ public abstract class BaseTimedService extends BaseWorker implements ITimedServi
         }
         completeEntries.add(new WorkerStatusInfo.Entry("Active Properties are", configValue.toString()));
 
-        return new WorkerStatusInfo(workerId, config.getProperty("NAME"),
-                                    "Service", WorkerStatus.STATUS_ACTIVE,
-                                    briefEntries,
-                                    fatalErrorsIncludingAdditionalErrors,
-                                    completeEntries, config);
+        return new StaticWorkerStatus(new WorkerStatusInfo(workerId, config.getProperty("NAME"), "Service", WorkerStatus.STATUS_ACTIVE, briefEntries, fatalErrorsIncludingAdditionalErrors, completeEntries, config));
     }
 
     /**
@@ -185,8 +181,8 @@ public abstract class BaseTimedService extends BaseWorker implements ITimedServi
     }
 
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final List<String> errors = new LinkedList<>(super.getFatalErrors(services));
+    protected List<String> getFatalErrors() {
+        final List<String> errors = new LinkedList<String>(super.getFatalErrors());
         
         errors.addAll(fatalErrors);
         return errors;

@@ -13,7 +13,8 @@
 package org.signserver.module.xades.signer;
 
 import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.File;
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
@@ -34,6 +35,7 @@ import javax.persistence.EntityManager;
 import javax.xml.crypto.dsig.SignatureMethod;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.apache.xml.security.keys.KeyInfo;
 import org.apache.xml.security.keys.content.X509Data;
@@ -46,24 +48,21 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import static org.junit.Assert.*;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerType;
 import org.signserver.module.xades.signer.MockedTimeStampTokenProvider.MockedTimeStampVerificationProvider;
 import org.signserver.server.CertificateClientCredential;
 import org.signserver.server.UsernamePasswordClientCredential;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.server.data.impl.CloseableReadableData;
-import org.signserver.server.data.impl.CloseableWritableData;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.test.utils.builders.CertBuilder;
 import org.signserver.test.utils.builders.CertExt;
 import org.signserver.test.utils.builders.CryptoUtils;
 import org.signserver.test.utils.mock.MockedCryptoToken;
-import org.signserver.testutils.ModulesTestCase;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXParseException;
@@ -191,7 +190,6 @@ public class XAdESSignerUnitTest {
         LOG.info("init");
         int signerId = 4711;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("XADESFORM", "T");
         config.setProperty("TSA_URL", "http://example.com/?test=5");
         config.setProperty("TSA_USERNAME", "username123");
@@ -209,7 +207,7 @@ public class XAdESSignerUnitTest {
         assertEquals("TSA_USERNAME", "username123", param.getTsaParameters().getUsername());
         assertEquals("TSA_PASSWORD", "password123", param.getTsaParameters().getPassword());
         
-        assertEquals(Collections.EMPTY_LIST, instance.getFatalErrors(null));
+        assertEquals(Collections.EMPTY_LIST, instance.getFatalErrors());
     }
     
     /**
@@ -220,7 +218,6 @@ public class XAdESSignerUnitTest {
         LOG.info("init");
         int signerId = 4711;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("XADESFORM", "_NonExisting_");
         config.setProperty("TSA_URL", "http://example.com/?test=5");
         config.setProperty("TSA_USERNAME", "username123");
@@ -231,7 +228,7 @@ public class XAdESSignerUnitTest {
         XAdESSigner instance = new MockedXAdESSigner(tokenRSA);
         instance.init(signerId, config, workerContext, em);
         
-        String errors = instance.getFatalErrors(null).toString();
+        String errors = instance.getFatalErrors().toString();
         assertTrue("error: " + errors, errors.contains("XADESFORM"));
     }
     
@@ -243,7 +240,6 @@ public class XAdESSignerUnitTest {
         LOG.info("init");
         int signerId = 4711;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("XADESFORM", "T");
         // Not set: config.setProperty("TSA_URL", ...
         config.setProperty("TSA_USERNAME", "username123");
@@ -254,7 +250,7 @@ public class XAdESSignerUnitTest {
         XAdESSigner instance = new MockedXAdESSigner(tokenRSA);
         instance.init(signerId, config, workerContext, em);
         
-        String errors = instance.getFatalErrors(null).toString();
+        String errors = instance.getFatalErrors().toString();
         assertTrue("error: " + errors, errors.contains("TSA_URL"));
     }
     
@@ -266,7 +262,6 @@ public class XAdESSignerUnitTest {
         LOG.info("init");
         int signerId = 4711;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         // Not set: config.setProperty("XADESFORM", "T");
         
         WorkerContext workerContext = null;
@@ -278,7 +273,7 @@ public class XAdESSignerUnitTest {
         
         assertEquals("XADESFORM", "BES", param.getXadesForm().name());
         
-        assertEquals(Collections.EMPTY_LIST, instance.getFatalErrors(null));
+        assertEquals(Collections.EMPTY_LIST, instance.getFatalErrors());
     }
 
     /**
@@ -311,24 +306,18 @@ public class XAdESSignerUnitTest {
             requestContext.put(RequestContext.CLIENT_CREDENTIAL, cred);
         }
         
-        byte[] data;
-        try (
-                CloseableReadableData requestData = ModulesTestCase.createRequestData(toSign.getBytes(StandardCharsets.UTF_8));
-                CloseableWritableData responseData = ModulesTestCase.createResponseData(false);
-            ) {
-            SignatureRequest request = new SignatureRequest(100, requestData, responseData);
-            instance.processData(request, requestContext);
-
-            data = responseData.toReadableData().getAsByteArray();
-            final String signedXml = new String(data, StandardCharsets.UTF_8);
-            LOG.debug("signedXml: " + signedXml);
-        }
+        GenericSignRequest request = new GenericSignRequest(100, toSign.getBytes("UTF-8"));
+        GenericSignResponse response = (GenericSignResponse) instance.processData(request, requestContext);
+        
+        byte[] data = response.getProcessedData();
+        final String signedXml = new String(data);
+        LOG.debug("signedXml: " + signedXml);
         
         // Validation: setup
         CertStore certStore = CertStore.getInstance("Collection", new CollectionCertStoreParameters());
         KeyStore trustAnchors = KeyStore.getInstance("JKS");
         trustAnchors.load(null, "foo123".toCharArray());
-        List<Certificate> chain = token.getCertificateChain(ICryptoTokenV4.PURPOSE_SIGN);
+        List<Certificate> chain = token.getCertificateChain(ICryptoToken.PURPOSE_SIGN);
         System.out.println("trust anchor: " + chain.get(chain.size() - 1));
         trustAnchors.setCertificateEntry("rootcert", chain.get(chain.size() - 1)); // Simply assume last cert in chain is the trust anchor
         
@@ -392,7 +381,6 @@ public class XAdESSignerUnitTest {
         
         
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         
         if (commitmentTypesProperty != null) {
             config.setProperty("COMMITMENT_TYPES", commitmentTypesProperty);
@@ -417,7 +405,7 @@ public class XAdESSignerUnitTest {
 
         final QualifyingProperties qp = r.getQualifyingProperties();
         
-        final Set<String> foundUris = new HashSet<>();
+        final Set<String> foundUris = new HashSet<String>();
         
         final SignedProperties sp = qp.getSignedProperties();
        
@@ -470,8 +458,6 @@ public class XAdESSignerUnitTest {
      * Test of processData method for basic signing, of class XAdESSigner.
      * Test that by default, no commitment types are included.
      * Also test that the default signature algorithm is SHA256withRSA for an RSA key.
-     * 
-     * @throws java.lang.Exception
      */
     @Test
     public void testProcessData_basicSigning() throws Exception {
@@ -700,7 +686,6 @@ public class XAdESSignerUnitTest {
         LOG.info("testProcessData_basicSigningNoCommitmentType");
         int signerId = 4711;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("COMMITMENT_TYPES", "");
         
         WorkerContext workerContext = null;
@@ -708,7 +693,7 @@ public class XAdESSignerUnitTest {
         XAdESSigner instance = new MockedXAdESSigner(tokenRSA);
         instance.init(signerId, config, workerContext, em);
         
-        String errors = instance.getFatalErrors(null).toString();
+        String errors = instance.getFatalErrors().toString();
         assertTrue("error: " + errors, errors.contains("can not be empty"));
     }
     
@@ -718,7 +703,6 @@ public class XAdESSignerUnitTest {
 
         XAdESSigner instance = new MockedXAdESSigner(tokenRSA);
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         
         config.setProperty("XADESFORM", "T");
         config.setProperty("TSA_URL", "http://example.com/?test=5");
@@ -731,23 +715,18 @@ public class XAdESSignerUnitTest {
         
         RequestContext requestContext = new RequestContext();
         requestContext.put(RequestContext.TRANSACTION_ID, "0000-100-1");
-        byte[] data;
-        try (
-                CloseableReadableData requestData = ModulesTestCase.createRequestData("<test100/>".getBytes(StandardCharsets.UTF_8));
-                CloseableWritableData responseData = ModulesTestCase.createResponseData(false);
-            ) {
-            SignatureRequest request = new SignatureRequest(100, requestData, responseData);
-            instance.processData(request, requestContext);
-            data = responseData.toReadableData().getAsByteArray();
-        }
+        GenericSignRequest request = new GenericSignRequest(100, "<test100/>".getBytes("UTF-8"));
+        GenericSignResponse response = (GenericSignResponse) instance.processData(request, requestContext);
+        
+        byte[] data = response.getProcessedData();
         final String signedXml = new String(data);
         LOG.debug("signedXml: " + signedXml);
         
         // Validation: setup
-        CertStore certStore = CertStore.getInstance("Collection", new CollectionCertStoreParameters(tokenRSA.getCertificateChain(ICryptoTokenV4.PURPOSE_SIGN)));
+        CertStore certStore = CertStore.getInstance("Collection", new CollectionCertStoreParameters(tokenRSA.getCertificateChain(ICryptoToken.PURPOSE_SIGN)));
         KeyStore trustAnchors = KeyStore.getInstance("JKS");
         trustAnchors.load(null, "foo123".toCharArray());
-        trustAnchors.setCertificateEntry("cert", tokenRSA.getCertificate(ICryptoTokenV4.PURPOSE_SIGN));
+        trustAnchors.setCertificateEntry("cert", tokenRSA.getCertificate(ICryptoToken.PURPOSE_SIGN));
         
         CertificateValidationProvider certValidator = new PKIXCertificateValidationProvider(trustAnchors, false, certStore);
         
@@ -785,7 +764,6 @@ public class XAdESSignerUnitTest {
         LOG.info("testUnknownCommitmentType");
         int signerId = 4711;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("COMMITMENT_TYPES", "foobar");
         
         WorkerContext workerContext = null;
@@ -793,7 +771,7 @@ public class XAdESSignerUnitTest {
         XAdESSigner instance = new MockedXAdESSigner(tokenRSA);
         instance.init(signerId, config, workerContext, em);
         
-        String errors = instance.getFatalErrors(null).toString();
+        String errors = instance.getFatalErrors().toString();
         assertTrue("error: " + errors, errors.contains("commitment type"));
     }
     
@@ -808,7 +786,6 @@ public class XAdESSignerUnitTest {
         LOG.info("testUnknownCommitmentType");
         int signerId = 4711;
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("COMMITMENT_TYPES", "PROOF_OF_ORIGIN, foobar");
         
         WorkerContext workerContext = null;
@@ -816,20 +793,15 @@ public class XAdESSignerUnitTest {
         XAdESSigner instance = new MockedXAdESSigner(tokenRSA);
         instance.init(signerId, config, workerContext, em);
         
-        String errors = instance.getFatalErrors(null).toString();
+        String errors = instance.getFatalErrors().toString();
         assertTrue("error: " + errors, errors.contains("commitment type"));
     }
     
-    /**
-     * Tests including 3 certificate levels in the document.
-     * 
-     * @throws java.lang.Exception
-     */
+    /** Tests including 3 certificate levels in the document. */
     @Test
     public void testSigningWithIntermediateCert_3levels() throws Exception {
-        LOG.info("testSigningWithIntermediateCert_3levels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "3");
         
         final XAdESVerificationResult r = getVerificationResult(tokenWithIntermediateCert, config, "<testroot/>", false, null);
@@ -837,7 +809,7 @@ public class XAdESSignerUnitTest {
         KeyInfo keyInfo = r.getXmlSignature().getKeyInfo();
         
         // Gather all certificates
-        List<X509Certificate> certs = new LinkedList<>();
+        List<X509Certificate> certs = new LinkedList<X509Certificate>();
         for (int i = 0; i < keyInfo.lengthX509Data(); i++) {
             X509Data x509Data = keyInfo.itemX509Data(i);
             if (x509Data.containsCertificate()) {
@@ -848,19 +820,14 @@ public class XAdESSignerUnitTest {
         }
         
         // Check that the intermediate cert is included in the chain
-        assertEquals(tokenWithIntermediateCert.getCertificateChain(ICryptoTokenV4.PURPOSE_SIGN), certs);   
+        assertEquals(tokenWithIntermediateCert.getCertificateChain(ICryptoToken.PURPOSE_SIGN), certs);   
     }
     
-    /**
-     * Tests specifying many more certificates than available to including all 3 certificate levels in the document.
-     * 
-     * @throws java.lang.Exception
-     */
+    /** Tests specifying many more certificates than available to including all 3 certificate levels in the document. */
     @Test
     public void testSigningWithIntermediateCert_99levels() throws Exception {
-        LOG.info("testSigningWithIntermediateCert_99levels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "99");
         
         final XAdESVerificationResult r = getVerificationResult(tokenWithIntermediateCert, config, "<testroot/>", false, null);
@@ -868,7 +835,7 @@ public class XAdESSignerUnitTest {
         KeyInfo keyInfo = r.getXmlSignature().getKeyInfo();
         
         // Gather all certificates
-        List<X509Certificate> certs = new LinkedList<>();
+        List<X509Certificate> certs = new LinkedList<X509Certificate>();
         for (int i = 0; i < keyInfo.lengthX509Data(); i++) {
             X509Data x509Data = keyInfo.itemX509Data(i);
             if (x509Data.containsCertificate()) {
@@ -878,19 +845,14 @@ public class XAdESSignerUnitTest {
             }
         }
         // Check that the intermediate cert is included in the chain
-        assertEquals(tokenWithIntermediateCert.getCertificateChain(ICryptoTokenV4.PURPOSE_SIGN), certs);   
+        assertEquals(tokenWithIntermediateCert.getCertificateChain(ICryptoToken.PURPOSE_SIGN), certs);   
     }
     
-    /**
-     * Tests including 1 certificate level in the document.
-     * 
-     * @throws java.lang.Exception
-     */
+    /** Tests including 1 certificate level in the document. */
     @Test
     public void testSigningWithoutIntermediateCert_1levels() throws Exception {
-        LOG.info("testSigningWithoutIntermediateCert_1levels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "1");
         
         final XAdESVerificationResult r = getVerificationResult(tokenRSA, config, "<testroot/>", false, null);
@@ -898,7 +860,7 @@ public class XAdESSignerUnitTest {
         KeyInfo keyInfo = r.getXmlSignature().getKeyInfo();
         
         // Gather all certificates
-        List<X509Certificate> certs = new LinkedList<>();
+        List<X509Certificate> certs = new LinkedList<X509Certificate>();
         for (int i = 0; i < keyInfo.lengthX509Data(); i++) {
             X509Data x509Data = keyInfo.itemX509Data(i);
             if (x509Data.containsCertificate()) {
@@ -908,19 +870,14 @@ public class XAdESSignerUnitTest {
             }
         }
         // Check that the signer certificate is the only certificate included
-        assertEquals(Arrays.asList(tokenRSA.getCertificate(ICryptoTokenV4.PURPOSE_SIGN)), certs);   
+        assertEquals(Arrays.asList(tokenRSA.getCertificate(ICryptoToken.PURPOSE_SIGN)), certs);   
     }
     
-    /**
-     * Tests not specifying any level and using the default value of 1 certificate level.
-     * 
-     * @throws java.lang.Exception
-     */
+    /** Tests not specifying any level and using the default value of 1 certificate level. */
     @Test
     public void testSigningWithoutIntermediateCert_defaultLevels() throws Exception {
-        LOG.info("testSigningWithoutIntermediateCert_defaultLevels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         // Note: No INCLUDE_CERTIFICATE_LEVELS set
         
         final XAdESVerificationResult r = getVerificationResult(tokenRSA, config, "<testroot/>", false, null);
@@ -928,7 +885,7 @@ public class XAdESSignerUnitTest {
         KeyInfo keyInfo = r.getXmlSignature().getKeyInfo();
         
         // Gather all certificates
-        List<X509Certificate> certs = new LinkedList<>();
+        List<X509Certificate> certs = new LinkedList<X509Certificate>();
         for (int i = 0; i < keyInfo.lengthX509Data(); i++) {
             X509Data x509Data = keyInfo.itemX509Data(i);
             if (x509Data.containsCertificate()) {
@@ -938,19 +895,14 @@ public class XAdESSignerUnitTest {
             }
         }
         // Check that the signer certificate is the only certificate included
-        assertEquals(Arrays.asList(tokenRSA.getCertificate(ICryptoTokenV4.PURPOSE_SIGN)), certs);   
+        assertEquals(Arrays.asList(tokenRSA.getCertificate(ICryptoToken.PURPOSE_SIGN)), certs);   
     }
     
-    /**
-     * Tests including 2 certificate levels in the document.
-     * 
-     * @throws java.lang.Exception
-     */
+    /** Tests including 2 certificate levels in the document. */
     @Test
     public void testSigningWithIntermediateCert_2levels() throws Exception {
-        LOG.info("testSigningWithIntermediateCert_2levels");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "2");
         
         final XAdESVerificationResult r = getVerificationResult(tokenWithIntermediateCert, config, "<testroot/>", false, null);
@@ -958,7 +910,7 @@ public class XAdESSignerUnitTest {
         KeyInfo keyInfo = r.getXmlSignature().getKeyInfo();
         
         // Gather all certificates
-        List<X509Certificate> actual = new LinkedList<>();
+        List<X509Certificate> actual = new LinkedList<X509Certificate>();
         for (int i = 0; i < keyInfo.lengthX509Data(); i++) {
             X509Data x509Data = keyInfo.itemX509Data(i);
             if (x509Data.containsCertificate()) {
@@ -970,38 +922,33 @@ public class XAdESSignerUnitTest {
         
         // Check that the intermediate cert is included in the chain
         List<Certificate> expected = Arrays.asList(
-                tokenWithIntermediateCert.getCertificateChain(ICryptoTokenV4.PURPOSE_SIGN).get(0),
-                tokenWithIntermediateCert.getCertificateChain(ICryptoTokenV4.PURPOSE_SIGN).get(1)
+                tokenWithIntermediateCert.getCertificateChain(ICryptoToken.PURPOSE_SIGN).get(0),
+                tokenWithIntermediateCert.getCertificateChain(ICryptoToken.PURPOSE_SIGN).get(1)
         );
         assertEquals(expected, actual);
     }
     
-    /**
-     * Tests incorrect values for the INCLUDE_CERTIFICATE_LEVELS worker property.
-     * 
-     * @throws java.lang.Exception
-     */
+    /** Tests incorrect values for the INCLUDE_CERTIFICATE_LEVELS worker property. */
     @Test
     public void testInit_includeCertificateLevelsProperty() throws Exception {
-        LOG.info("testInit_includeCertificateLevelsProperty");
+        LOG.info("testSigningWithIntermediateCert");
         WorkerConfig config = new WorkerConfig();
-        config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "0");
         XAdESSigner instance = new MockedXAdESSigner(tokenRSA);
         instance.init(4711, config, null, null);
-        List<String> actualErrors = instance.getFatalErrors(null);
+        List<String> actualErrors = instance.getFatalErrors();
         assertTrue("message: " + actualErrors, actualErrors.toString().contains("INCLUDE_CERTIFICATE_LEVELS"));
         
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "-1");
         instance = new MockedXAdESSigner(tokenRSA);
         instance.init(4711, config, null, null);
-        actualErrors = instance.getFatalErrors(null);
+        actualErrors = instance.getFatalErrors();
         assertTrue("message: " + actualErrors, actualErrors.toString().contains("INCLUDE_CERTIFICATE_LEVELS"));
         
         config.setProperty("INCLUDE_CERTIFICATE_LEVELS", "qwerty");
         instance = new MockedXAdESSigner(tokenRSA);
         instance.init(4711, config, null, null);
-        actualErrors = instance.getFatalErrors(null);
+        actualErrors = instance.getFatalErrors();
         assertTrue("message: " + actualErrors, actualErrors.toString().contains("INCLUDE_CERTIFICATE_LEVELS"));
     }
     
@@ -1108,9 +1055,7 @@ public class XAdESSignerUnitTest {
             "  <!ELEMENT foo ANY >\n" +
             "]><foo/>\n";
         try {
-            final WorkerConfig config = new WorkerConfig();
-            config.setProperty(WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
-            getVerificationResult(tokenRSA, config, xmlWithDoctype, false, null);
+            getVerificationResult(tokenRSA, new WorkerConfig(), xmlWithDoctype, false, null);
             fail("Should have thrown IllegalRequestException as the document contained a DTD");
         } catch (IllegalRequestException expected) {
             if (expected.getCause() instanceof SAXParseException) {

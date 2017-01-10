@@ -22,12 +22,11 @@ import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.AccessDeniedException;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.data.Request;
 import org.signserver.server.log.LogMap;
-import org.signserver.server.log.Loggable;
 
 /**
  * Authorizer only accepting requests from certain IP addresses.
@@ -79,8 +78,8 @@ public class RemoteAddressAuthorizer implements IAuthorizer {
 
     // allow the test (same package) to set the allow list manually
     void setAllowFromProperty(final String allowFromProperty) {
-        allowFromAddresses = new HashSet<>();
-        fatalErrors = new LinkedList<>();
+        allowFromAddresses = new HashSet<InetAddress>();
+        fatalErrors = new LinkedList<String>();
 
         if (allowFromProperty != null) {
             final String[] allowFromStrings = allowFromProperty.split(",");
@@ -106,14 +105,13 @@ public class RemoteAddressAuthorizer implements IAuthorizer {
      * Throws AuthorizationRequiredException unless the requestor's IP address
      * is allowed.
      *
-     * @param request Process request
-     * @param requestContext Request context
-     * @throws AccessDeniedException If not authorized
+     * @param request
+     * @param requestContext
      * @throws SignServerException
      * @throws IllegalRequestException
      */
     @Override
-    public void isAuthorized(final Request request,
+    public void isAuthorized(final ProcessRequest request,
             final RequestContext requestContext)
             throws AccessDeniedException, SignServerException, IllegalRequestException {
 
@@ -129,13 +127,7 @@ public class RemoteAddressAuthorizer implements IAuthorizer {
             throw new AccessDeniedException("Remote address not authorized");
         }
         
-        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_REMOTEADDRESS,
-                        new Loggable() {
-                            @Override
-                            public String toString() {
-                                return remote;
-                            }
-                        });
+        LogMap.getInstance(requestContext).put(IAuthorizer.LOG_REMOTEADDRESS, remote);
     }
 
     // allow test (same package) to run the authorization functionallity directly

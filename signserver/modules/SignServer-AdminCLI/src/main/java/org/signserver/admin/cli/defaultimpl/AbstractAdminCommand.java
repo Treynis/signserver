@@ -19,10 +19,9 @@ import org.apache.log4j.Logger;
 import org.signserver.cli.spi.AbstractCommand;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.common.AuthorizedClient;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
-import org.signserver.statusrepo.StatusRepositorySessionRemote;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession.IRemote;
+import org.signserver.statusrepo.IStatusRepositorySession;
 
 /**
  * Implements methods useful for Commands.
@@ -33,32 +32,18 @@ import org.signserver.statusrepo.StatusRepositorySessionRemote;
 public abstract class AbstractAdminCommand extends AbstractCommand {
     
     /** Log4j instance for actual implementing class. */
-    private final Logger logger = Logger.getLogger(this.getClass());
+    private Logger logger = Logger.getLogger(this.getClass());
     
-    private final AdminCommandHelper delegate = new AdminCommandHelper();
+    private AdminCommandHelper delegate = new AdminCommandHelper();
 
     /**
-     * Gets worker session.
-     * 
-     * @return Worker session
-     * @throws java.rmi.RemoteException If failing to lookup remote session
-     * @see AdminCommandHelper#getProcessSession()
+     * @see AdminCommandHelper#getWorkerSession()
      */
-    protected WorkerSessionRemote getWorkerSession() throws RemoteException {
+    protected IRemote getWorkerSession() throws RemoteException {
         return delegate.getWorkerSession();
     }
-    
-    protected ProcessSessionRemote getProcessSession() throws RemoteException {
-        return delegate.getProcessSession();
-    }
 
     /**
-     * Gets worker ID
-     * 
-     * @param workerIdOrName
-     * @return Worker ID given a worker name, or a worker ID
-     * @throws java.rmi.RemoteException If failing to lookup remote session
-     * @throws org.signserver.cli.spi.IllegalCommandArgumentsException
      * @see AdminCommandHelper#getWorkerId(java.lang.String) 
      */
     protected int getWorkerId(String workerIdOrName) throws RemoteException, IllegalCommandArgumentsException {
@@ -66,33 +51,20 @@ public abstract class AbstractAdminCommand extends AbstractCommand {
     }
 
     /**
-     * Gets the StatusRepositorySession instance.
-     * 
-     * @return Status repository session
-     * @throws java.rmi.RemoteException If failing to lookup remote session
      * @see AdminCommandHelper#getStatusRepositorySession() 
      */
-    protected StatusRepositorySessionRemote getStatusRepositorySession() throws RemoteException {
+    protected IStatusRepositorySession.IRemote getStatusRepositorySession() throws RemoteException {
         return delegate.getStatusRepositorySession();
     }
 
     /**
-     * Returns the GlobalConfigurationSession instance.
-     * 
-     * @return Global configuration session
-     * @throws java.rmi.RemoteException If failing to lookup remote session
      * @see AdminCommandHelper#getGlobalConfigurationSession() 
      */
-    protected GlobalConfigurationSessionRemote getGlobalConfigurationSession() throws RemoteException {
+    protected IGlobalConfigurationSession.IRemote getGlobalConfigurationSession() throws RemoteException {
         return delegate.getGlobalConfigurationSession();
     }
 
     /**
-     * Checks if a worker is processable
-     * 
-     * @param signerid Worker ID to check
-     * @throws java.rmi.RemoteException If failing to lookup remote session
-     * @throws org.signserver.cli.spi.IllegalCommandArgumentsException
      * @see AdminCommandHelper#checkThatWorkerIsProcessable(int) 
      */
     protected void checkThatWorkerIsProcessable(int signerid) throws RemoteException, IllegalCommandArgumentsException {

@@ -18,17 +18,16 @@ import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
-import org.signserver.common.WorkerStatusInfo;
-import org.signserver.common.data.CertificateValidationRequest;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
 import org.signserver.server.BaseProcessable;
 import org.signserver.server.IServices;
 import org.signserver.server.WorkerContext;
+import org.signserver.validationservice.common.ValidateRequest;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 
 /**
@@ -48,17 +47,12 @@ public class ValidationServiceWorker extends BaseProcessable {
     
     /**
      * Initialization method creating the validation service
-     * 
-     * @param workerId  Worker ID
-     * @param config Worker configuration
-     * @param workerContext Worker context
-     * @param workerEntityManager Enitity manager
      * @see org.signserver.server.BaseWorker#init(int, org.signserver.common.WorkerConfig, javax.persistence.EntityManager)
      */
     @Override
     public void init(int workerId, WorkerConfig config, WorkerContext workerContext, EntityManager workerEntityManager) {
         super.init(workerId, config, workerContext, workerEntityManager);
-        fatalErrors = new LinkedList<>();
+        fatalErrors = new LinkedList<String>();
         
         try {
             validationService = createValidationService(config);
@@ -84,9 +78,15 @@ public class ValidationServiceWorker extends BaseProcessable {
                 Class<?> implClass = Class.forName(classPath);
                 retval = (IValidationService) implClass.newInstance();
 
-                retval.init(workerId, config, em);
+                retval.init(workerId, config, em, getCryptoToken());
             }
-        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+        } catch (ClassNotFoundException e) {
+            error = "Error instatiating Validation Service, check that the TYPE setting of workerid : " + workerId + " have the correct class path.";
+            LOG.error(error, e);
+        } catch (IllegalAccessException e) {
+            error = "Error instatiating Validation Service, check that the TYPE setting of workerid : " + workerId + " have the correct class path.";
+            LOG.error(error, e);
+        } catch (InstantiationException e) {
             error = "Error instatiating Validation Service, check that the TYPE setting of workerid : " + workerId + " have the correct class path.";
             LOG.error(error, e);
         }
@@ -105,31 +105,30 @@ public class ValidationServiceWorker extends BaseProcessable {
      * @see org.signserver.server.IProcessable#processData(org.signserver.common.ProcessRequest, org.signserver.common.RequestContext) 
      */
     @Override
-    public Response processData(Request processRequest,
+    public ProcessResponse processData(ProcessRequest processRequest,
             RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
 
-        if (processRequest instanceof CertificateValidationRequest) {
-            return validationService.validate((CertificateValidationRequest) processRequest);
+        if (processRequest instanceof ValidateRequest) {
+            return validationService.validate((ValidateRequest) processRequest);
         } else {
-            throw new IllegalRequestException("The process request sent to validation service with ID " + workerId + " isn't supported");
+            throw new IllegalRequestException("The process request sent to validation service with id " + workerId + " isn't supported");
         }
     }
 
     /**
-     * @return The status
      * @see org.signserver.server.BaseProcessable#getStatus()
      */
     @Override
-    public WorkerStatusInfo getStatus(final List<String> additionalFatalErrors, final IServices services) {
+    public WorkerStatus getStatus(final List<String> additionalFatalErrors, final IServices services) {
         return validationService.getStatus(services);
     }
 
     @Override
-    protected List<String> getFatalErrors(IServices services) {
-        final List<String> errors = new LinkedList<>();
+    protected List<String> getFatalErrors() {
+        final List<String> errors = new LinkedList<String>();
         
-        errors.addAll(super.getFatalErrors(services));
+        errors.addAll(super.getFatalErrors());
         errors.addAll(fatalErrors);
 
         return errors;

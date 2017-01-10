@@ -22,11 +22,10 @@ import org.signserver.common.GenericValidationResponse;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
-import org.signserver.common.RemoteRequestContext;
+import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.ServiceLocator;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Implements ISigningAndValidation using EJB remote interface.
@@ -36,7 +35,7 @@ import org.signserver.ejb.interfaces.ProcessSessionRemote;
  */
 public class SigningAndValidationEJB implements ISigningAndValidation {
 
-    private final ProcessSessionRemote processSession;
+    private final IWorkerSession.IRemote signserver;
 
     /**
      * Creates an instance of SigningAndValidationEJB which lookups the 
@@ -45,14 +44,14 @@ public class SigningAndValidationEJB implements ISigningAndValidation {
      * @throws NamingException If an naming exception is encountered.
      */
     public SigningAndValidationEJB() throws NamingException {
-        processSession = ServiceLocator.getInstance().lookupRemote(
-                ProcessSessionRemote.class);
+        signserver = ServiceLocator.getInstance().lookupRemote(
+                IWorkerSession.IRemote.class);
     }
 
     @Override
     public GenericSignResponse sign(String signerIdOrName, byte[] xmlDocument) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
         GenericSignRequest request = new GenericSignRequest(1, xmlDocument);
-        ProcessResponse resp = process(signerIdOrName, request, new RemoteRequestContext());
+        ProcessResponse resp = process(signerIdOrName, request, new RequestContext());
         if (!(resp instanceof GenericSignResponse)) {
             throw new SignServerException("Unexpected response type: " + resp.getClass().getName());
         }
@@ -61,15 +60,29 @@ public class SigningAndValidationEJB implements ISigningAndValidation {
 
     @Override
     public GenericValidationResponse validate(String validatorIdOrName, byte[] xmlDocument) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-        ProcessResponse resp = process(validatorIdOrName, new GenericValidationRequest(1, xmlDocument), new RemoteRequestContext());
+        ProcessResponse resp = process(validatorIdOrName, new GenericValidationRequest(1, xmlDocument), new RequestContext());
         if (!(resp instanceof GenericValidationResponse)) {
             throw new SignServerException("Unexpected response type: " + resp.getClass().getName());
         }
         return (GenericValidationResponse) resp;
     }
 
+    private int getWorkerId(String workerIdOrName) throws IllegalRequestException {
+        int retval = 0;
+
+        if (workerIdOrName.substring(0, 1).matches("\\d")) {
+            retval = Integer.parseInt(workerIdOrName);
+        } else {
+            retval = signserver.getWorkerId(workerIdOrName);
+            if (retval == 0) {
+                throw new IllegalRequestException("Error: No worker with the given name could be found");
+            }
+        }
+        return retval;
+    }
+
     @Override
-    public ProcessResponse process(String workerIdOrName, ProcessRequest request, RemoteRequestContext context) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-        return processSession.process(WorkerIdentifier.createFromIdOrName(workerIdOrName), request, context);
+    public ProcessResponse process(String workerIdOrName, ProcessRequest request, RequestContext context) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+        return signserver.process(getWorkerId(workerIdOrName), request, context);
     }
 }

@@ -20,8 +20,8 @@ import java.util.Map;
 import javax.jws.WebService;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.certificates.certificate.request.PKCS10RequestMessage;
-import org.cesecore.certificates.certificate.request.RequestMessageUtils;
+import org.ejbca.core.protocol.PKCS10RequestMessage;
+import org.ejbca.util.RequestMessageUtils;
 import org.signserver.module.renewal
         .ejbcaws.gen.AlreadyRevokedException_Exception;
 import org.signserver.module.renewal.ejbcaws.gen.ApprovalException_Exception;
@@ -81,9 +81,6 @@ public class MockEjbcaWS {
 
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(MockEjbcaWS.class);
-
-    public static final int MATCH_WITH_USERNAME = 0;
-    public static final int MATCH_TYPE_EQUALS = 0;
 
     private boolean findUserCalled;
     private boolean editUserCalled;
@@ -323,8 +320,8 @@ public class MockEjbcaWS {
             EjbcaException_Exception {
         try {
             final UserMatchEq match1 = new UserMatchEq();
-            match1.setMatchwith(MATCH_WITH_USERNAME);
-            match1.setMatchtype(MATCH_TYPE_EQUALS);
+            match1.setMatchwith(RenewalWorkerTest.MATCH_WITH_USERNAME);
+            match1.setMatchtype(RenewalWorkerTest.MATCH_TYPE_EQUALS);
             match1.setMatchvalue(username);
             List<UserDataVOWS> users = findUser(match1);
             if (users.size() < 1) {

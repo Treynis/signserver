@@ -59,7 +59,7 @@ public class CertBuilder implements Cloneable {
     
     private KeyPair _subjectKeyPair;
     private boolean version3 = true;
-    private Set<CertExt> extensions = new HashSet<>();
+    private Set<CertExt> extensions = new HashSet<CertExt>();
     private boolean[] issuerUniqueId;
     private boolean[] subjectUniqueId;
 
@@ -205,7 +205,13 @@ public class CertBuilder implements Cloneable {
                 ContentSigner contentSigner = new JcaContentSignerBuilder(getSignatureAlgorithm()).setProvider("BC").build(getIssuerPrivateKey());
                 return builder.build(contentSigner);
             }
-        } catch (OperatorCreationException | NoSuchAlgorithmException | NoSuchProviderException | CertIOException ex) {
+        } catch (OperatorCreationException ex) {
+            throw new CertBuilderException(ex);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new CertBuilderException(ex);
+        } catch (NoSuchProviderException ex) {
+            throw new CertBuilderException(ex);
+        } catch (CertIOException ex) {
             throw new CertBuilderException(ex);
         }
     }

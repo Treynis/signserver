@@ -37,7 +37,6 @@ import org.signserver.admin.cli.defaultimpl.AdminCommandHelper;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
 import org.signserver.cli.spi.UnexpectedCommandFailureException;
-import org.signserver.common.WorkerIdentifier;
 import org.signserver.server.cryptotokens.TokenEntry;
 import org.signserver.server.cryptotokens.TokenSearchResults;
 
@@ -90,18 +89,18 @@ public class QueryTokenEntriesCommand extends AbstractAdminCommand {
         OPTIONS.addOption(LIMIT, true, "Maximum number of search results");
         OPTIONS.addOption(VERBOSE, false, "Output the certificate chain and other information available in each entry");
         
-        longFields = new HashSet<>();
+        longFields = new HashSet<String>();
         longFields.add(AuditRecordData.FIELD_SEQUENCENUMBER);
         
-        dateFields = new HashSet<>();
+        dateFields = new HashSet<String>();
         dateFields.add(AuditRecordData.FIELD_TIMESTAMP);
         
-        noArgOps = new HashSet<>();
+        noArgOps = new HashSet<RelationalOperator>();
         noArgOps.add(RelationalOperator.NULL);
         noArgOps.add(RelationalOperator.NOTNULL);
         
         // allowed fields
-        allowedFields = new HashSet<>();
+        allowedFields = new HashSet<String>();
         allowedFields.add("alias"); // TODO: Defined in CryptoTokenHelper.TokenEntryFields
     }
     
@@ -127,7 +126,7 @@ public class QueryTokenEntriesCommand extends AbstractAdminCommand {
         }
         
         try {
-            final WorkerIdentifier wi = WorkerIdentifier.createFromIdOrName(tokenIdOrName);
+            final int tokenId = getWorkerId(tokenIdOrName);
 
             final QueryCriteria qc = QueryCriteria.create();
             
@@ -141,7 +140,7 @@ public class QueryTokenEntriesCommand extends AbstractAdminCommand {
             int startIndex = from;
             final int max = limit < 1 ? 10 : limit;
             do {
-                searchResults = helper.getWorkerSession().searchTokenEntries(wi, startIndex, max, qc, verbose, Collections.<String, Object>emptyMap());
+                searchResults = helper.getWorkerSession().searchTokenEntries(tokenId, startIndex, max, qc, verbose, Collections.<String, Object>emptyMap());
             
                 int i = startIndex;
                 for (TokenEntry entry : searchResults.getEntries()) {
@@ -218,7 +217,7 @@ public class QueryTokenEntriesCommand extends AbstractAdminCommand {
         
         final String[] criterias = line.getOptionValues(CRITERIA);
         
-        terms = new LinkedList<>();
+        terms = new LinkedList<Elem>();
         if (criterias != null && criterias.length > 0) {
             for (final String criteria : criterias) {
                 try {

@@ -16,7 +16,6 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -33,20 +32,11 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.security.cert.X509Certificate;
-import java.util.Collection;
-import javax.servlet.AsyncContext;
-import javax.servlet.DispatcherType;
 import javax.servlet.RequestDispatcher;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
 import javax.servlet.ServletInputStream;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import javax.servlet.http.Part;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -159,8 +149,8 @@ public class CredentialUtilsTest {
         String username = "user1";
         String password = "foo456";
         RequestContext context = new RequestContext();
-        HashMap<String, String> headers = new HashMap<>();
-        headers.put("Authorization", "basic " + Base64.toBase64String((username + ":" + password).getBytes(StandardCharsets.UTF_8)));
+        HashMap<String, String> headers = new HashMap<String, String>();
+        headers.put("Authorization", "basic " + Base64.toBase64String((username + ":" + password).getBytes("UTF-8")));
         HttpServletRequest req = new MockedHttpServletRequest(headers);
         CertificateFactory factory = CertificateFactory.getInstance("X.509");
         X509Certificate cert = (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(Base64.decode(CERT)));
@@ -193,8 +183,8 @@ public class CredentialUtilsTest {
         String username = "user1";
         String password = "foo456";
         RequestContext context = new RequestContext();
-        HashMap<String, String> headers = new HashMap<>();
-        headers.put("Authorization", "basic " + Base64.toBase64String((username + ":" + password).getBytes(StandardCharsets.UTF_8)));
+        HashMap<String, String> headers = new HashMap<String, String>();
+        headers.put("Authorization", "basic " + Base64.toBase64String((username + ":" + password).getBytes("UTF-8")));
         HttpServletRequest req = new MockedHttpServletRequest(headers);
 
         CredentialUtils.addToRequestContext(context, req, null);
@@ -217,10 +207,10 @@ public class CredentialUtilsTest {
         LOG.info("testAddToRequestContext_incorrectSyntax");
 
         // Missing colon is not correct
-        assertNotAddedToContext("no colon", "Authorization", "basic " + Base64.toBase64String("NoColon".getBytes(StandardCharsets.UTF_8)));
+        assertNotAddedToContext("no colon", "Authorization", "basic " + Base64.toBase64String("NoColon".getBytes("UTF-8")));
 
         // Empty data in base64 is not correct
-        assertNotAddedToContext("empty user+pass", "Authorization", "basic " + Base64.toBase64String("".getBytes(StandardCharsets.UTF_8)));
+        assertNotAddedToContext("empty user+pass", "Authorization", "basic " + Base64.toBase64String("".getBytes("UTF-8")));
 
         // Missing base64 is not correct
         assertNotAddedToContext("empty after basic 1", "Authorization", "basic ");
@@ -244,7 +234,7 @@ public class CredentialUtilsTest {
      */
     private void assertNotAddedToContext(String message, String headerKey, String headerValue) throws UnsupportedEncodingException{
         RequestContext context = new RequestContext();
-        HashMap<String, String> headers = new HashMap<>();
+        HashMap<String, String> headers = new HashMap<String, String>();
         if (headerKey != null) {
             headers.put(headerKey, headerValue);
         }
@@ -387,7 +377,6 @@ public class CredentialUtilsTest {
         }
 
         @Override
-        @SuppressWarnings("deprecation")
         public boolean isRequestedSessionIdFromUrl() {
             throw new UnsupportedOperationException("Not supported yet.");
         }
@@ -513,88 +502,7 @@ public class CredentialUtilsTest {
         }
 
         @Override
-        @SuppressWarnings("deprecation")
         public String getRealPath(String string) {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public boolean authenticate(HttpServletResponse response) throws IOException, ServletException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public Part getPart(String name) throws IOException, ServletException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public Collection<Part> getParts() throws IOException, ServletException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public void login(String username, String password) throws ServletException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public void logout() throws ServletException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public AsyncContext getAsyncContext() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public DispatcherType getDispatcherType() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public String getLocalAddr() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public String getLocalName() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public int getLocalPort() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public int getRemotePort() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public ServletContext getServletContext() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public boolean isAsyncStarted() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public boolean isAsyncSupported() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public AsyncContext startAsync() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public AsyncContext startAsync(ServletRequest request, ServletResponse response) {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 

@@ -48,8 +48,6 @@ public class SignServerWSClientFactory {
      * @param clientType One of the CLIENTTYPE_ constants indication the High-Availability policy that should be used.
      * @param hosts host names of the server to connect to.
      * @param useHTTPS indicates if HTTPS should be used.
-     * @param faultCallback fault callback
-     * @return SignServerWSClient using the default port
      */
     public ISignServerWSClient generateSignServerWSClient(String clientType, String[] hosts, boolean useHTTPS, IFaultCallback faultCallback) {
         return generateSignServerWSClient(clientType, hosts, useHTTPS, faultCallback, DEFAULT_PORT, DEFAULT_TIMEOUT, DEFAULT_WSDL_URL);
@@ -62,9 +60,7 @@ public class SignServerWSClientFactory {
      * @param clientType One of the CLIENTTYPE_ constants indication the High-Availability policy that should be used.
      * @param hosts host names of the server to connect to.
      * @param useHTTPS indicates if HTTPS should be used.
-     * @param faultCallback
      * @param port to connect to
-     * @return SignServerWSClient using default timeout and WSDL URL
      */
     public ISignServerWSClient generateSignServerWSClient(String clientType, String[] hosts, boolean useHTTPS, IFaultCallback faultCallback, int port) {
         return generateSignServerWSClient(clientType, hosts, useHTTPS, faultCallback, port, DEFAULT_TIMEOUT, DEFAULT_WSDL_URL);
@@ -77,10 +73,8 @@ public class SignServerWSClientFactory {
      * @param clientType One of the CLIENTTYPE_ constants indication the High-Availability policy that should be used.
      * @param hosts host names of the server to connect to.
      * @param useHTTPS indicates if HTTPS should be used.
-     * @param faultCallback
      * @param port to connect to
      * @param timeOut in milliseconds
-     * @return SignServerWSClient using the default WSDL URL
      */
     public ISignServerWSClient generateSignServerWSClient(String clientType, String[] hosts, boolean useHTTPS, IFaultCallback faultCallback, int port, int timeOut) {
         return generateSignServerWSClient(clientType, hosts, useHTTPS, faultCallback, port, timeOut, DEFAULT_WSDL_URL);
@@ -93,11 +87,9 @@ public class SignServerWSClientFactory {
      * @param clientType One of the CLIENTTYPE_ constants indication the High-Availability policy that should be used.
      * @param hosts host names of the server to connect to.
      * @param useHTTPS indicates if HTTPS should be used.
-     * @param faultCallback
      * @param port to connect to
      * @param timeOut in milliseconds
      * @param customAppURI the path to the sign server URI where the WS is deployed.
-     * @return WS client instance
      */
     public ISignServerWSClient generateSignServerWSClient(String clientType, String[] hosts, boolean useHTTPS, IFaultCallback faultCallback, int port, int timeOut, String customAppURI) {
         return generateSignServerWSClient(clientType, hosts, useHTTPS, faultCallback, port, timeOut, DEFAULT_WSDL_URL, null);
@@ -110,13 +102,11 @@ public class SignServerWSClientFactory {
      * @param clientType One of the CLIENTTYPE_ constants indication the High-Availability policy that should be used.
      * @param hosts host names of the server to connect to.
      * @param useHTTPS indicates if HTTPS should be used.
-     * @param faultCallback
      * @param port to connect to
      * @param timeOut in milliseconds
      * @param customAppURI the path to the sign server URI where the WS is deployed.
      * @param sSLSocketFactory the SSLSocketFactory to use, null means that the Default 
      * SSLSocketFactory will be used if necessary. 
-     * @return WS client instance
      */
     public ISignServerWSClient generateSignServerWSClient(String clientType, String[] hosts, boolean useHTTPS, IFaultCallback faultCallback, int port, int timeOut, String customAppURI, SSLSocketFactory sSLSocketFactory) {
         ISignServerWSClient retval = null;

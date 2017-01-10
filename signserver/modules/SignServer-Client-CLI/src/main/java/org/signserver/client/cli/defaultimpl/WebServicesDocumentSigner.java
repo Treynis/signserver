@@ -73,7 +73,7 @@ public class WebServicesDocumentSigner extends AbstractDocumentSigner {
         final int requestId = random.nextInt();
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Sending sign request with ID " + requestId
+            LOG.debug("Sending sign request with id " + requestId
                     + " containing data of length " + size + " bytes"
                     + " to worker " + workerName);
         }
@@ -82,9 +82,8 @@ public class WebServicesDocumentSigner extends AbstractDocumentSigner {
         final long startTime = System.nanoTime();
 
         // RequestContext is used by this API to transfer the metadata
-        RemoteRequestContext context = new RemoteRequestContext();
-        RequestMetadata requestMetadata = new RequestMetadata();
-        context.setMetadata(requestMetadata);
+        RequestContext context = new RequestContext();
+        RequestMetadata requestMetadata = RequestMetadata.getInstance(context);
         
         if (metadata != null) {
             requestMetadata.putAll(metadata);
@@ -111,8 +110,8 @@ public class WebServicesDocumentSigner extends AbstractDocumentSigner {
                     (GenericSignResponse) response;
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug(String.format("Got sign response with ID %d, "
-                        + "archive ID %d, signed data of length %d bytes "
+                LOG.debug(String.format("Got sign response with id %d, "
+                        + "archive id %d, signed data of length %d bytes "
                         + "signed by signer with certificate:\n%s.",
                         signResponse.getRequestID(),
                         signResponse.getArchiveId(),

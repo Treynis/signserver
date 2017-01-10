@@ -28,7 +28,7 @@ import org.signserver.testutils.CLITestHelper;
 import org.signserver.testutils.ModulesTestCase;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Tests for the timestamp command of Client CLI.
@@ -49,7 +49,7 @@ public class TimeStampCommandTest extends ModulesTestCase {
     private static final String SAMPLE_RESPONSE_FILE = "res/test/sample.tsr";
     private static final String SAMPLE_RESPONSE_CERTREQ_FILE = "res/test/sample-certreq.tsr";
 
-    private final WorkerSession workerSession = getWorkerSession();
+    private final IWorkerSession workerSession = getWorkerSession();
     
     @Before
     @Override
@@ -61,7 +61,6 @@ public class TimeStampCommandTest extends ModulesTestCase {
     public void test00SetupDatabase() throws Exception {
         addTimeStampSigner(getSignerIdTimeStampSigner1(), getSignerNameTimeStampSigner1(), true);
         workerSession.setWorkerProperty(getSignerIdTimeStampSigner1(), "DEFAULTTSAPOLICYOID", "1.2.13.1");
-        workerSession.removeWorkerProperty(getSignerIdTimeStampSigner1(), "ACCEPTANYPOLICY");
         workerSession.setWorkerProperty(getSignerIdTimeStampSigner1(), "ACCEPTEDPOLICIES", "1.2.13.1;1.2.13.9");
         workerSession.reloadConfiguration(getSignerIdTimeStampSigner1());
     }

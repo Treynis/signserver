@@ -13,6 +13,7 @@
 package org.signserver.protocol.ws.client;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.net.ssl.KeyManager;
@@ -33,15 +34,13 @@ import org.signserver.protocol.ws.gen.ProcessResponseWS;
 public class WSClientUtil {
 
     /**
-     * Method used to convert a coded SignRequestWS to a auto generated SignRequestWS.
-     * 
-     * @param signRequestWS
-     * @return Generated requests
+     * Method used to convert a coded SignRequestWS to a auto generated SignRequestWS
      */
     public static List<ProcessRequestWS> convertProcessRequestWS(
             List<org.signserver.protocol.ws.ProcessRequestWS> signRequestWS) {
-        List<ProcessRequestWS> retval = new ArrayList<>();
-        for (org.signserver.protocol.ws.ProcessRequestWS next : signRequestWS) {
+        List<ProcessRequestWS> retval = new ArrayList<ProcessRequestWS>();
+        for (Iterator<org.signserver.protocol.ws.ProcessRequestWS> iterator = signRequestWS.iterator(); iterator.hasNext();) {
+            org.signserver.protocol.ws.ProcessRequestWS next = iterator.next();
             ProcessRequestWS temp = new ProcessRequestWS();
             temp.setRequestDataBase64(next.getRequestDataBase64());
             retval.add(temp);
@@ -50,16 +49,14 @@ public class WSClientUtil {
     }
 
     /**
-     * Method used to convert a auto generated ProcessResponseWS to a coded ProcessResponseWS.
-     *
-     * @param signResponseWS
-     * @return Generated responses
+     * Method used to convert a auto generated ProcessResponseWS to a coded ProcessResponseWS 
      */
     public static List<org.signserver.protocol.ws.ProcessResponseWS> convertProcessResponseWS(
             List<ProcessResponseWS> signResponseWS) {
-        List<org.signserver.protocol.ws.ProcessResponseWS> retval = new ArrayList<>();
+        List<org.signserver.protocol.ws.ProcessResponseWS> retval = new ArrayList<org.signserver.protocol.ws.ProcessResponseWS>();
 
-        for (ProcessResponseWS next : signResponseWS) {
+        for (Iterator<ProcessResponseWS> iterator = signResponseWS.iterator(); iterator.hasNext();) {
+            ProcessResponseWS next = iterator.next();
             org.signserver.protocol.ws.ProcessResponseWS temp = new org.signserver.protocol.ws.ProcessResponseWS();
             temp.setResponseDataBase64(next.getResponseDataBase64());
             temp.setRequestID(next.getRequestID());
@@ -67,7 +64,7 @@ public class WSClientUtil {
                 temp.setWorkerCertificate(convertCertificate(next.getWorkerCertificate()));
             }
             if (next.getWorkerCertificateChain() != null) {
-                ArrayList<Certificate> certChain = new ArrayList<>();
+                ArrayList<Certificate> certChain = new ArrayList<Certificate>();
                 for (org.signserver.protocol.ws.gen.Certificate cert : next.getWorkerCertificateChain()) {
                     certChain.add(convertCertificate(cert));
                 }
@@ -100,7 +97,6 @@ public class WSClientUtil {
      * @param trustKeyStore Path to JKS containing all trusted CA certificates
      * @param trustKeyStorePwd password to unlock trust key store.
      * @return a generated custom SSLSocketFactory
-     * @throws java.lang.Exception In case of error
      */
     public static SSLSocketFactory genCustomSSLSocketFactory(String clientKeyStore,
             String clientKeyStorePwd, String trustKeyStore, String trustKeyStorePwd) throws Exception {

@@ -12,13 +12,11 @@
  *************************************************************************/
 package org.signserver.testutils;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.security.InvalidKeyException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -30,7 +28,6 @@ import java.security.cert.CertificateException;
 import java.util.*;
 import javax.naming.NamingException;
 import junit.framework.TestCase;
-import org.apache.commons.fileupload.FileUploadException;
 import org.apache.log4j.Logger;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequest;
@@ -43,24 +40,14 @@ import org.signserver.common.GenericSignResponse;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.InvalidWorkerIdException;
-import org.signserver.common.RemoteRequestContext;
+import org.signserver.common.RequestContext;
 import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.common.WorkerType;
 import org.signserver.common.util.PathUtil;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSessionRemote;
-import org.signserver.server.data.impl.ByteArrayReadableData;
-import org.signserver.server.data.impl.CloseableReadableData;
-import org.signserver.server.data.impl.CloseableWritableData;
-import org.signserver.server.data.impl.FileReadableData;
-import org.signserver.server.data.impl.TemporarlyWritableData;
-import org.signserver.server.data.impl.UploadConfig;
-import org.signserver.server.log.AdminInfo;
-import org.signserver.statusrepo.StatusRepositorySessionRemote;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
+import org.signserver.statusrepo.IStatusRepositorySession;
 
 /**
  * Base class for test cases.
@@ -94,12 +81,12 @@ public class ModulesTestCase extends TestCase {
     private static final int XML_VALIDATOR_WORKER_ID = 5882;
     private static final String XML_VALIDATOR_WORKER_NAME = "TestXMLValidator";
 
-    protected static final String KEYSTORE_SIGNER1_FILE = "res/test/dss10/dss10_signer1.p12";
-    protected static final String KEYSTORE_SIGNER1_ALIAS = "Signer 1";
-    protected static final String KEYSTORE_TSSIGNER1_FILE = "res/test/dss10/dss10_tssigner1.p12";
-    protected static final String KEYSTORE_TSSIGNER1_ALIAS = "TS Signer 1";
-    protected static final String KEYSTORE_AUTHCODESIGNER1_FILE = "res/test/dss10/dss10_authcodesigner1.p12";
-    protected static final String KEYSTORE_AUTHCODESIGNER1_ALIAS = "Auth Code Signer 1";
+    private static final String KEYSTORE_SIGNER1_FILE = "res/test/dss10/dss10_signer1.p12";
+    private static final String KEYSTORE_SIGNER1_ALIAS = "Signer 1";
+    private static final String KEYSTORE_TSSIGNER1_FILE = "res/test/dss10/dss10_tssigner1.p12";
+    private static final String KEYSTORE_TSSIGNER1_ALIAS = "TS Signer 1";
+    private static final String KEYSTORE_AUTHCODESIGNER1_FILE = "res/test/dss10/dss10_authcodesigner1.p12";
+    private static final String KEYSTORE_AUTHCODESIGNER1_ALIAS = "Auth Code Signer 1";
     public static final String KEYSTORE_PASSWORD = "foo123";
 
     /**
@@ -174,10 +161,9 @@ public class ModulesTestCase extends TestCase {
        +"AwIBhjAJBgcqhkjOOAQDAzAAMC0CFQCEGSmvJf6rxy6u7ZqY25qE7Hy21gIUPW4q"
        +"++YIS2fHyu+H4Pjgnodx5zI=";
    
-    private WorkerSessionRemote workerSession;
-    private ProcessSessionRemote processSession;
-    private GlobalConfigurationSessionRemote globalSession;
-    private StatusRepositorySessionRemote statusSession;
+    private IWorkerSession.IRemote workerSession;
+    private IGlobalConfigurationSession globalSession;
+    private IStatusRepositorySession statusSession;
 
     private static File signServerHome;
 
@@ -227,36 +213,26 @@ public class ModulesTestCase extends TestCase {
         }
         return clientCLI;
     }
+    
+    
 
-    public WorkerSessionRemote getWorkerSession() {
+    public IWorkerSession.IRemote getWorkerSession() {
         if (workerSession == null) {
             try {
                 workerSession = ServiceLocator.getInstance().lookupRemote(
-                    WorkerSessionRemote.class);
+                    IWorkerSession.IRemote.class);
             } catch (NamingException ex) {
-                fail("Could not lookup WorkerSession: " + ex.getMessage());
+                fail("Could not lookup IWorkerSession: " + ex.getMessage());
             }
         }
         return workerSession;
     }
-    
-    public ProcessSessionRemote getProcessSession() {
-        if (processSession == null) {
-            try {
-                processSession = ServiceLocator.getInstance().lookupRemote(
-                    ProcessSessionRemote.class);
-            } catch (NamingException ex) {
-                fail("Could not lookup WorkerSession: " + ex.getMessage());
-            }
-        }
-        return processSession;
-    }
 
-    public GlobalConfigurationSessionRemote getGlobalSession() {
+    public IGlobalConfigurationSession getGlobalSession() {
         if (globalSession == null) {
             try {
                 globalSession = ServiceLocator.getInstance().lookupRemote(
-                    GlobalConfigurationSessionRemote.class);
+                    IGlobalConfigurationSession.IRemote.class);
             } catch (NamingException ex) {
                 fail("Could not lookup IGlobalConfigurationSession: "
                         + ex.getMessage());
@@ -265,11 +241,11 @@ public class ModulesTestCase extends TestCase {
         return globalSession;
     }
 
-    public StatusRepositorySessionRemote getStatusSession() {
+    public IStatusRepositorySession getStatusSession() {
         if (statusSession == null) {
             try {
                 statusSession = ServiceLocator.getInstance().lookupRemote(
-                StatusRepositorySessionRemote.class);
+                IStatusRepositorySession.IRemote.class);
             } catch (NamingException ex) {
                 fail("Could not lookup IStatusRepositorySession: "
                         + ex.getMessage());
@@ -371,10 +347,16 @@ public class ModulesTestCase extends TestCase {
      * @throws CertificateException in case a certificate could not be decoded 
      */
     public void setProperties(final File file) throws IOException, CertificateException {
-        try (InputStream in = new FileInputStream(file)) {
+        InputStream in = null;
+        try {
+            in = new FileInputStream(file);
             Properties properties = new Properties();
             properties.load(in);
             setProperties(properties);
+        } finally {
+            if (in != null) {
+                in.close();
+            }
         }
     }
     
@@ -421,7 +403,7 @@ public class ModulesTestCase extends TestCase {
 
                     if (key.startsWith("SIGNERCERTCHAIN")) {
                         String certs[] = value.split(";");
-                        ArrayList<byte[]> chain = new ArrayList<>();
+                        ArrayList<byte[]> chain = new ArrayList<byte[]>();
                         for (String base64cert : certs) {
                             byte[] cert = Base64.decode(base64cert.getBytes());
                             chain.add(cert);
@@ -452,9 +434,11 @@ public class ModulesTestCase extends TestCase {
     }
     
     public void addDummySigner(final String className, final String cryptoTokenClassName, final int signerId, final String signerName, final File keystore, final String password, final String alias) {
-        getWorkerSession().setWorkerProperty(signerId, WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
-        getWorkerSession().setWorkerProperty(signerId, "IMPLEMENTATION_CLASS", className);
-        getWorkerSession().setWorkerProperty(signerId, "CRYPTOTOKEN_IMPLEMENTATION_CLASS", cryptoTokenClassName);
+        getGlobalSession().setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+            "WORKER" + signerId + ".CLASSPATH", className);
+        getGlobalSession().setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+            "WORKER" + signerId + ".SIGNERTOKEN.CLASSPATH",
+            cryptoTokenClassName);
         getWorkerSession().setWorkerProperty(signerId, "NAME", signerName);
         getWorkerSession().setWorkerProperty(signerId, "AUTHTYPE", "NOAUTH");
         getWorkerSession().setWorkerProperty(signerId, "KEYSTOREPATH", keystore.getAbsolutePath());
@@ -468,7 +452,7 @@ public class ModulesTestCase extends TestCase {
         getWorkerSession().reloadConfiguration(signerId);
         try {
             assertNotNull("Check signer available",
-                    getWorkerSession().getStatus(new WorkerIdentifier(signerId)));
+                    getWorkerSession().getStatus(signerId));
         } catch (InvalidWorkerIdException ex) {
             fail("Worker was not added succefully: " + ex.getMessage());
         }
@@ -477,7 +461,6 @@ public class ModulesTestCase extends TestCase {
     public void addTimeStampSigner(final int signerId, final String signerName, final boolean autoActivate) throws CertificateException, FileNotFoundException {
         addP12DummySigner("org.signserver.module.tsa.TimeStampSigner", signerId, signerName, new File(getSignServerHome(), KEYSTORE_TSSIGNER1_FILE), autoActivate ? KEYSTORE_PASSWORD : null, KEYSTORE_TSSIGNER1_ALIAS);
         getWorkerSession().setWorkerProperty(signerId, "DEFAULTTSAPOLICYOID", "1.2.3");
-        getWorkerSession().setWorkerProperty(signerId, "ACCEPTANYPOLICY", "true");
         getWorkerSession().reloadConfiguration(signerId);
     }
     
@@ -493,22 +476,11 @@ public class ModulesTestCase extends TestCase {
         addP12DummySigner("org.signserver.module.jarchive.signer.JArchiveSigner", signerId, signerName, new File(getSignServerHome(), KEYSTORE_AUTHCODESIGNER1_FILE), autoActivate ? KEYSTORE_PASSWORD : null, KEYSTORE_AUTHCODESIGNER1_ALIAS);
     }
     
+    
     public void addXMLValidator() throws Exception {
         // VALIDATION SERVICE
-        getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID, WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
-        getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.validationservice.server.ValidationServiceWorker");
-        getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS, "org.signserver.server.cryptotokens.KeystoreCryptoToken");
-        getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID,
-                "KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" + File.separator +
-                        "test" + File.separator + "dss10" + File.separator +
-                        "dss10_signer1.p12");
-        getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID,
-                "KEYSTORETYPE", "PKCS12");
-        getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID,
-                "KEYSTOREPASSWORD", "foo123");
-        getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID,
-                "DEFAULTKEY", "Signer 1");
+        getGlobalSession().setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + VALIDATION_SERVICE_WORKER_ID + ".CLASSPATH", "org.signserver.validationservice.server.ValidationServiceWorker");
+        getGlobalSession().setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + VALIDATION_SERVICE_WORKER_ID + ".SIGNERTOKEN.CLASSPATH", "org.signserver.server.cryptotokens.HardCodedCryptoToken");
         getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID, "AUTHTYPE", "NOAUTH");
         getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID, "NAME", VALIDATION_SERVICE_WORKER_NAME);
         getWorkerSession().setWorkerProperty(VALIDATION_SERVICE_WORKER_ID, "VAL1.CLASSPATH", "org.signserver.validationservice.server.DummyValidator");
@@ -519,8 +491,7 @@ public class ModulesTestCase extends TestCase {
         getWorkerSession().reloadConfiguration(VALIDATION_SERVICE_WORKER_ID);
 
         // XMLVALIDATOR
-        getWorkerSession().setWorkerProperty(XML_VALIDATOR_WORKER_ID, WorkerConfig.TYPE, WorkerType.PROCESSABLE.name());
-        getWorkerSession().setWorkerProperty(XML_VALIDATOR_WORKER_ID, WorkerConfig.IMPLEMENTATION_CLASS, "org.signserver.module.xmlvalidator.XMLValidator");
+        getGlobalSession().setProperty(GlobalConfiguration.SCOPE_GLOBAL, "WORKER" + XML_VALIDATOR_WORKER_ID + ".CLASSPATH", "org.signserver.module.xmlvalidator.XMLValidator");
         getWorkerSession().setWorkerProperty(XML_VALIDATOR_WORKER_ID, "NAME", XML_VALIDATOR_WORKER_NAME);
         getWorkerSession().setWorkerProperty(XML_VALIDATOR_WORKER_ID, "AUTHTYPE", "NOAUTH");
         getWorkerSession().setWorkerProperty(XML_VALIDATOR_WORKER_ID, "VALIDATIONSERVICEWORKER", VALIDATION_SERVICE_WORKER_NAME);
@@ -621,7 +592,7 @@ public class ModulesTestCase extends TestCase {
     public GenericSignResponse signGenericDocument(final int workerId, final byte[] data) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
         final int requestId = random.nextInt();
         final GenericSignRequest request = new GenericSignRequest(requestId, data);
-        final GenericSignResponse response = (GenericSignResponse) getProcessSession().process(new WorkerIdentifier(workerId), request, new RemoteRequestContext());
+        final GenericSignResponse response = (GenericSignResponse) getWorkerSession().process(workerId, request, new RequestContext());
         assertEquals("requestId", requestId, response.getRequestID());
         Certificate signercert = response.getSignerCertificate();
         assertNotNull(signercert);
@@ -633,28 +604,5 @@ public class ModulesTestCase extends TestCase {
         final JcaPKCS10CertificationRequest jcaPKCS10CertificationRequest =
                 new JcaPKCS10CertificationRequest(req);
         return jcaPKCS10CertificationRequest.getPublicKey();
-    }
-    
-    public static CloseableReadableData createRequestData(byte[] data) throws FileUploadException {
-        return new ByteArrayReadableData(data, new UploadConfig().getRepository());
-    }
-    
-    public static CloseableReadableData createRequestData(Properties properties) throws FileUploadException, IOException {
-        try (ByteArrayOutputStream bout = new ByteArrayOutputStream()) {
-            properties.store(bout, null);
-            return new ByteArrayReadableData(bout.toByteArray(), new UploadConfig().getRepository());
-        }
-    }
-    
-    public static CloseableReadableData createRequestDataKeepingFile(File file) throws FileUploadException {
-        return new FileReadableData(file);
-    }
-    
-    public static CloseableWritableData createResponseData(final boolean defaultToDisk) {
-        return new TemporarlyWritableData(defaultToDisk, new UploadConfig().getRepository());
-    }
-    
-    public static AdminInfo createAdminInfo() {
-        return new AdminInfo("CN=Unit Tester", "CN=Testing CA", new BigInteger("4242"));
     }
 }

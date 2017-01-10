@@ -38,7 +38,7 @@ public class StatisticsManager {
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(StatisticsManager.class);
 
-    private static HashMap<Integer, IStatisticsCollector> instances = new HashMap<>();
+    private static HashMap<Integer, IStatisticsCollector> instances = new HashMap<Integer, IStatisticsCollector>();
 
     /**
      * Method used to signal to the StatisticsManager to create a statistics event using the
@@ -123,7 +123,7 @@ public class StatisticsManager {
             instances.put(workerId, sc);
             return sc;
         } catch (Exception e) {
-            LOG.error("Error generating statistics for worker with ID " + workerId + " check that the worker property " + StatisticsConstants.TYPE + " is configured propertly. It currently have the value '" + typeValue + " the error was of type " + e.getClass().getName() + " and had the following message : " + e.getMessage() + ". Statistics will be disabled until next reload.");
+            LOG.error("Error generating statistics for worker with id " + workerId + " check that the worker property " + StatisticsConstants.TYPE + " is configured propertly. It currently have the value '" + typeValue + " the error was of type " + e.getClass().getName() + " and had the following message : " + e.getMessage() + ". Statistics will be disabled until next reload.");
             LOG.debug("Stacktrace :", e);
         }
         return null;

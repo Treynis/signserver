@@ -5,14 +5,13 @@
     <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer-Modules</artifactId>
-        <version>4.1.0-SNAPSHOT</version>
+        <version>3.7.4.2</version>
     </parent>
     <artifactId>SignServer-Module-Renewal</artifactId>
     <name>SignServer-Module-Renewal</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <dist.jar>${project.build.finalName}.jar</dist.jar>
-        <skipTests>true</skipTests>
         <module.name>module.renewal</module.name>
         <module.priority>40</module.priority>
     </properties>
@@ -20,10 +19,17 @@
         <dependency>
             <groupId>commons-logging</groupId>
             <artifactId>commons-logging</artifactId>
+            <version>1.1.1</version>
         </dependency>
         <dependency>
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
+            <version>1.2.14</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>SignServer-Lib-EJBCA-Util</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -47,13 +53,15 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.16</version>
                 <configuration>
-                    <skipTests>${skipTests}</skipTests>
+                    <skipTests>true</skipTests>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jvnet.jax-ws-commons</groupId>
                 <artifactId>jaxws-maven-plugin</artifactId>
+                <version>2.3</version>
                 <executions>
                     <execution>
                         <goals>
@@ -87,6 +95,25 @@
                     <target>2.0</target>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>1.4</version>
+                <executions>
+                  <execution>
+                    <id>add-sources</id>
+                    <phase>generate-sources</phase>
+                    <goals>
+                      <goal>add-source</goal>
+                    </goals>
+                    <configuration>
+                      <sources>
+                        <source>${project.build.directory}/generated-sources</source>
+                      </sources>
+                    </configuration>
+                  </execution>
+                </executions>
+              </plugin>
         </plugins>
     </build>
 </project>

@@ -15,15 +15,14 @@ package org.signserver.server.signers;
 import org.apache.log4j.Logger;
 import org.signserver.common.CryptoTokenAuthenticationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.GenericSignRequest;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerStatus;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.common.data.SignatureResponse;
-import org.signserver.server.IServices;
 
 /**
  * Dummy Signer used for test and demonstration purposes.
@@ -57,16 +56,10 @@ public class DummySigner extends BaseSigner {
      * 
      *  Expects GenericSignRequests
      * 
-     * @param signRequest Signing request
-     * @param requestContext Request context
-     * @return Process response
-     * @throws IllegalRequestException 
-     * @throws CryptoTokenOfflineException If set to offline
-     * @throws SignServerException 
      * @see org.signserver.server.IProcessable#processData(org.signserver.common.ProcessRequest, org.signserver.common.RequestContext)
      */
     @Override
-    public Response processData(Request signRequest,
+    public ProcessResponse processData(ProcessRequest signRequest,
             RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
 
@@ -80,9 +73,9 @@ public class DummySigner extends BaseSigner {
             LOG.info(e.getMessage());
         }
 
-        SignatureRequest req = (SignatureRequest) signRequest;
+        GenericSignRequest req = (GenericSignRequest) signRequest;
 
-        return new SignatureResponse(req.getRequestID(), req.getResponseData(), null, null, null, "text/plain");
+        return new GenericServletResponse(req.getRequestID(), req.getRequestData(), null, null, null, "text/plain");
     }
 
     private long getWaitTime() {
@@ -98,16 +91,11 @@ public class DummySigner extends BaseSigner {
     }
 
     /**
-     * Dummy implementation that doesn't check the auth code.
-     * 
-     * @param authenticationCode PIN
-     * @param services Services
-     * @throws CryptoTokenAuthenticationFailureException
-     * @throws CryptoTokenOfflineException
+     * Dummy implementation that doesn't check the auth code
      * @see org.signserver.server.BaseProcessable#activateSigner(java.lang.String)
      */
     @Override
-    public void activateSigner(String authenticationCode, IServices services)
+    public void activateSigner(String authenticationCode)
             throws CryptoTokenAuthenticationFailureException,
             CryptoTokenOfflineException {
         this.active = true;
@@ -117,13 +105,13 @@ public class DummySigner extends BaseSigner {
      * @see org.signserver.server.BaseProcessable#deactivateSigner()
      */
     @Override
-    public boolean deactivateSigner(IServices services) throws CryptoTokenOfflineException {
+    public boolean deactivateSigner() throws CryptoTokenOfflineException {
         this.active = false;
         return true;
     }
 
     @Override
-    public int getCryptoTokenStatus(IServices services) {
+    public int getCryptoTokenStatus() {
         return active ? WorkerStatus.STATUS_ACTIVE : WorkerStatus.STATUS_OFFLINE;
     }    
 }

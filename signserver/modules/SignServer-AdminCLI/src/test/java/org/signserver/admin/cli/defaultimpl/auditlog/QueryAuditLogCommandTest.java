@@ -92,7 +92,6 @@ public class QueryAuditLogCommandTest extends TestCase {
     
     /**
      * Test the NULL operator.
-     * @throws java.lang.Exception
      */
     public void test05ParseCriteriaNull() throws Exception {
         final String criteria = "searchDetail2 NULL";
@@ -173,7 +172,7 @@ public class QueryAuditLogCommandTest extends TestCase {
         
         assertEquals("Operation", RelationalOperator.EQ, term.getOperator());
         assertEquals("Name", AuditRecordData.FIELD_TIMESTAMP, term.getName());
-        assertEquals("Value", 1360587600000L, term.getValue()); 
+        assertEquals("Value", Long.valueOf(1360587600000L), term.getValue()); 
     }
     
     public void test11DateInvalid() throws Exception {

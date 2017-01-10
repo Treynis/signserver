@@ -12,11 +12,11 @@
  *************************************************************************/
 package org.signserver.test.utils.mock;
 
+import java.util.List;
 import java.util.Properties;
 import org.signserver.common.GlobalConfiguration;
 import org.signserver.common.ResyncException;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionLocal;
-import org.signserver.ejb.interfaces.GlobalConfigurationSessionRemote;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
 import org.signserver.server.log.AdminInfo;
 
 /**
@@ -26,18 +26,13 @@ import org.signserver.server.log.AdminInfo;
  * @version $Id$
  */
 public class GlobalConfigurationSessionMock implements
-        GlobalConfigurationSessionRemote,
-        GlobalConfigurationSessionLocal {
+        IGlobalConfigurationSession.IRemote,
+        IGlobalConfigurationSession.ILocal {
 
     private GlobalConfiguration globalConfiguration;
-    private final Properties config;
+    private Properties config = new Properties();
 
     public GlobalConfigurationSessionMock() {
-         this(new Properties());
-    }
-    
-    public GlobalConfigurationSessionMock(Properties config) {
-        this.config = config;
          globalConfiguration = new GlobalConfiguration(config,
                  GlobalConfiguration.STATE_INSYNC, "SignServer 4.7.11alpha0");
     }

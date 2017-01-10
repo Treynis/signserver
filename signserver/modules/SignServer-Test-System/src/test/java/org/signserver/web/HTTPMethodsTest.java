@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.web;
 
-import org.signserver.testutils.WebTestCase;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.After;
@@ -40,7 +39,6 @@ public class HTTPMethodsTest extends WebTestCase {
 	}
 
 	@Before
-        @Override
 	public void setUp() throws Exception {
 		// set up dummy signer
 		addDummySigner1(true);
@@ -48,7 +46,6 @@ public class HTTPMethodsTest extends WebTestCase {
 	}
 
 	@After
-        @Override
 	public void tearDown() throws Exception {
 		// remove dummy signer
 		removeWorker(getSignerIdDummy1());
@@ -59,7 +56,7 @@ public class HTTPMethodsTest extends WebTestCase {
      */
     @Test
     public void test01HttpPUT() throws Exception {
-        final Map<String, String> fields = new HashMap<>();
+        final Map<String, String> fields = new HashMap<String, String>();
         fields.put("data", "<root/>");
         final int actual = queryStatusReturned(fields, "PUT");
         assertTrue("status returned: " + actual, actual == 403 || actual == 405);
@@ -70,7 +67,7 @@ public class HTTPMethodsTest extends WebTestCase {
      */
     @Test
     public void test02HttpDELETE() throws Exception {
-        final Map<String, String> fields = new HashMap<>();
+        final Map<String, String> fields = new HashMap<String, String>();
         fields.put("data", "<root/>");
         final int actual = queryStatusReturned(fields, "DELETE");
         assertTrue("status returned: " + actual, actual == 403 || actual == 405);
@@ -81,12 +78,11 @@ public class HTTPMethodsTest extends WebTestCase {
 	 * should fail with error 403
 	 */
     @Test
-	public void test03HttpOPTIONS() throws Exception {
-		Map<String, String> fields = new HashMap<>();
+	public void test03HttpOPTIONS() {
+		Map<String, String> fields = new HashMap<String, String>();
 		fields.put("data", "<root/>");
 
-                final int actual = queryStatusReturned(fields, "OPTIONS");
-		assertTrue("status returned: " + actual, actual == 403 || actual == 405);
+		assertStatusReturned(fields, "OPTIONS", 403);
 	}
 
 	/**
@@ -96,7 +92,7 @@ public class HTTPMethodsTest extends WebTestCase {
 	 */
     @Test
 	public void test04HttpTRACE() {
-		Map<String, String> fields = new HashMap<>();
+		Map<String, String> fields = new HashMap<String, String>();
 		useProcess = false;
 		
 		assertStatusReturnedNotEqual(fields, "TRACE", 200);

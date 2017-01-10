@@ -139,7 +139,7 @@ public abstract class AbstractWSClientsCommand extends AbstractAdminCommand {
             if (admins != null) {
                 entries = ClientEntry.clientEntriesFromProperty(admins);
             } else {
-                entries = new HashSet<>();
+                entries = new HashSet<ClientEntry>();
             }
                 
             if (LIST.equals(operation)) {

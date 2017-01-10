@@ -12,28 +12,22 @@
  *************************************************************************/
 package org.signserver.server.signers;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import javax.persistence.EntityManager;
-import org.apache.commons.io.IOUtils;
 import org.signserver.common.CryptoTokenOfflineException;
+import org.signserver.common.GenericServletRequest;
+import org.signserver.common.GenericServletResponse;
+import org.signserver.common.GenericSignRequest;
+import org.signserver.common.GenericSignResponse;
+import org.signserver.common.ISignRequest;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
+import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import org.signserver.server.WorkerContext;
 import org.apache.log4j.Logger;
 import org.signserver.server.BaseProcessable;
-import org.signserver.common.data.ReadableData;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.common.data.SignatureRequest;
-import org.signserver.common.data.SignatureResponse;
-import org.signserver.common.data.WritableData;
 
 /**
  * Worker simply echoing the request back.
@@ -60,56 +54,50 @@ public class EchoWorker extends BaseProcessable {
     }
 
     @Override
-    public Response processData(Request signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+    public ProcessResponse processData(ProcessRequest signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
+        
+        ProcessResponse signResponse;
 
-        // Check that the request is of right type
-        if (!(signRequest instanceof SignatureRequest)) {
-            throw new IllegalRequestException("Unexpected request type");
+        // Check that the request contains a valid GenericSignRequest object with a byte[].
+        if (!(signRequest instanceof GenericSignRequest)) {
+            throw new IllegalRequestException("Received request wasn't a expected GenericSignRequest.");
         }
-        final SignatureRequest request = (SignatureRequest) signRequest;
-
+        
+        final ISignRequest sReq = (ISignRequest) signRequest;
+        
+        if (!(sReq.getRequestData() instanceof byte[])) {
+            throw new IllegalRequestException("Received request data wasn't a expected byte[].");
+        }
+        
         // The result is simply the data from the request
-        final ReadableData requestData = request.getRequestData();
-        final WritableData responseData = request.getResponseData();
-        if (requestData.isFile()) {
-            // If request is a file, we can just use that as response
-            try {
-                Files.move(requestData.getAsFile().toPath(), responseData.getAsFile().toPath(), StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException ex) {
-                throw new SignServerException("Unable to obtain data", ex);
-            }
-        } else {
-            try (
-                    InputStream in = requestData.getAsInputStream();
-                    OutputStream out = responseData.getAsOutputStream();
-                ) {
-                    IOUtils.copyLarge(in, out);
-            } catch (IOException ex) {
-                throw new SignServerException("Unable to obtain data", ex);
-            }
-        }
-
-        String archiveId = createArchiveId(new byte[0], (String) requestContext.get(RequestContext.TRANSACTION_ID));
+        byte[] signedbytes = (byte[]) sReq.getRequestData();
+        
+        String archiveId = createArchiveId(signedbytes, (String) requestContext.get(RequestContext.TRANSACTION_ID));
         
         // Simulate crypto operations by sleeping
-        if (sleep > 0) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Simulating crypto operation for " + sleep + " seconds");
-            }
-            try {
-                Thread.sleep(sleep);
-            } catch (InterruptedException ex) {
-                throw new SignServerException("Interrupted", ex);
-            }
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Done with crypto");
-            }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Simulating crypto operation for " + sleep + " seconds");
         }
-
+        try {
+            Thread.sleep(sleep);
+        } catch (InterruptedException ex) {
+            throw new SignServerException("Interrupted", ex);
+        }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Done with crypto");
+        }
+        
         // Return the response as usual
-        return new SignatureResponse(request.getRequestID(), responseData,
+        if (signRequest instanceof GenericServletRequest) {
+            signResponse = new GenericServletResponse(sReq.getRequestID(), signedbytes,
                     null,
                     archiveId, null, "application/octet-stream");
+        } else {
+            signResponse = new GenericSignResponse(sReq.getRequestID(), signedbytes,
+                    null,
+                    archiveId, null);
+        }
+        return signResponse;
     }
 
 }

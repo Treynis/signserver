@@ -52,7 +52,7 @@ import org.cesecore.util.query.QueryCriteria;
 public class SignServerLog4jDevice implements AuditLogDevice {
 	private static final Logger LOG = Logger.getLogger(SignServerLog4jDevice.class);
 	private static final String UNSUPPORTED = SignServerLog4jDevice.class.getSimpleName() + " does not support query, verification or export operations.";
-	private final List<Log4jDeviceErrorHandler> errorHandlers = new ArrayList<>();
+	private final List<Log4jDeviceErrorHandler> errorHandlers = new ArrayList<Log4jDeviceErrorHandler>();
 	
 	public SignServerLog4jDevice() {
 		final Enumeration<Appender> enumeration = LOG.getAllAppenders();
@@ -105,7 +105,6 @@ public class SignServerLog4jDevice implements AuditLogDevice {
 			throws AuditRecordStorageException {
 		final StringBuilder str = new StringBuilder();	
 		str.append("EVENT: ").append(eventType.toString()).append("; ")
-                .append("OUTCOME: ").append(eventStatus.toString()).append("; ")
 		.append("MODULE: ").append(moduleType.toString()).append("; ")
 		.append("ADMINISTRATOR: ").append(authToken).append("; ")
 		.append("ISSUER: ").append(customId).append("; ")

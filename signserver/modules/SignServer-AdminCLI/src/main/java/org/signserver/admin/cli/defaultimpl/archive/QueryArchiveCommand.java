@@ -87,17 +87,17 @@ public class QueryArchiveCommand extends AbstractCommand {
         OPTIONS.addOption(RESPONSE, false, "Search for responses");
         OPTIONS.addOption(OUTPATH, true, "Directory to write output to");
     
-        intFields = new HashSet<>();
+        intFields = new HashSet<String>();
         intFields.add(ArchiveMetadata.SIGNER_ID);
         
-        dateFields = new HashSet<>();
+        dateFields = new HashSet<String>();
         dateFields.add(ArchiveMetadata.TIME);
         
-        noArgOps = new HashSet<>();
+        noArgOps = new HashSet<RelationalOperator>();
         noArgOps.add(RelationalOperator.NULL);
         noArgOps.add(RelationalOperator.NOTNULL);
      
-        allowedFields = new HashSet<>();
+        allowedFields = new HashSet<String>();
         allowedFields.add(ArchiveMetadata.ARCHIVE_ID);
         allowedFields.add(ArchiveMetadata.REQUEST_CERT_SERIAL_NUMBER);
         allowedFields.add(ArchiveMetadata.REQUEST_IP);
@@ -246,7 +246,7 @@ public class QueryArchiveCommand extends AbstractCommand {
         
         final String[] criterias = line.getOptionValues(CRITERIA);
         
-        final List<Elem> terms = new LinkedList<>();
+        final List<Elem> terms = new LinkedList<Elem>();
         
         if (criterias != null && criterias.length > 0) {
             for (final String criteria : criterias) {

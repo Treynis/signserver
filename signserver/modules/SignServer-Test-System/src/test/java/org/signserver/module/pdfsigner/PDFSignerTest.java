@@ -23,8 +23,8 @@ import java.security.cert.CertificateParsingException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
-import org.bouncycastle.util.encoders.Base64;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.Base64;
+import org.ejbca.util.CertTools;
 import org.junit.After;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
@@ -33,8 +33,7 @@ import org.signserver.testutils.ModulesTestCase;
 import org.signserver.testutils.TestingSecurityManager;
 import org.junit.Before;
 import org.junit.Test;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * Unit tests for the PDFSigner.
@@ -54,11 +53,9 @@ public class PDFSignerTest extends ModulesTestCase {
     private static final String TESTPDF_2CATALOGS = "2catalogs.pdf";
     private static final String TESTPDF_SIGNED = "pdf/sample-signed.pdf";
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
 
     @Before
-    @Override
     public void setUp() throws Exception {
         SignServerUtil.installBCProvider();
     }
@@ -67,7 +64,6 @@ public class PDFSignerTest extends ModulesTestCase {
      * @see junit.framework.TestCase#tearDown()
      */
     @After
-    @Override
     public void tearDown() throws Exception {
         TestingSecurityManager.remove();
     }
@@ -170,15 +166,15 @@ public class PDFSignerTest extends ModulesTestCase {
         final PdfReader reader = new PdfReader(res.getProcessedData());
         assertFalse("isTampered", reader.isTampered());
 
-        try ( // TODO: verify PDF file
-                FileOutputStream fos = new FileOutputStream(getSignServerHome() + "/tmp/signedpdf.pdf")) {
-            fos.write((byte[]) res.getProcessedData());
-        }
+        // TODO: verify PDF file
+        FileOutputStream fos = new FileOutputStream(getSignServerHome() + "/tmp/signedpdf.pdf");
+        fos.write((byte[]) res.getProcessedData());
+        fos.close();
     }
 
     @Test
     public void test02GetStatus() throws Exception {
-        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(WORKERID));
+        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(WORKERID);
         assertTrue(stat.getTokenStatus() == WorkerStatus.STATUS_ACTIVE);
     }
 
@@ -317,7 +313,7 @@ public class PDFSignerTest extends ModulesTestCase {
         cal.set(Calendar.MONTH, 3);
         cal.set(Calendar.DAY_OF_MONTH, 10);
         Date date = cal.getTime();
-        Map<String, String> fields = new HashMap<>();
+        Map<String, String> fields = new HashMap<String, String>();
         fields.put("WORKERID", "4311");
 
         SimpleDateFormat sdf = new SimpleDateFormat("MMMMMMMMM");
@@ -523,7 +519,7 @@ public class PDFSignerTest extends ModulesTestCase {
             CryptoTokenOfflineException, SignServerException {
         final GenericSignRequest request = new GenericSignRequest(1234,
                 data);
-        final GenericSignResponse response = (GenericSignResponse) processSession.process(new WorkerIdentifier(workerId), request, new RemoteRequestContext());
+        final GenericSignResponse response = (GenericSignResponse) workerSession.process(workerId, request, new RequestContext());
         return response;
     }
 
@@ -532,11 +528,15 @@ public class PDFSignerTest extends ModulesTestCase {
 
         final File file = new File(getSignServerHome(),
                 "res" + File.separator + "test" + File.separator + name);
-        try (FileInputStream in = new FileInputStream(file)) {
+        FileInputStream in = null;
+        try {
+            in = new FileInputStream(file);
             int c;
             while ((c = in.read()) != -1) {
                 bout.write(c);
             }
+        } finally {
+            in.close();
         }
         return bout.toByteArray();
     }

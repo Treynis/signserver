@@ -10,16 +10,12 @@ package org.signserver.common;
 public interface ISignRequest {
 
     /**
-     * Should contain a unique request id used to identify the request.
-     * 
-     * @return Request ID
+     * Should contain a unique request id used to identify the request
      */
     int getRequestID();
 
     /**
      * Should contain the data that should be signed.
-     * 
-     * @return Request data
      */
     Object getRequestData();
 }

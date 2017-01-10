@@ -39,7 +39,6 @@ public class SetPropertiesCommand extends AbstractAdminCommand {
                     + "Example 2: signserver setproperties -host node3.someorg.com mysettings.properties\n\n";
     }
 
-    @Override
     public int execute(String... args) throws IllegalCommandArgumentsException, CommandFailureException, UnexpectedCommandFailureException {
         if (args.length != 1) {
             throw new IllegalCommandArgumentsException("Wrong number of arguments");
@@ -55,11 +54,7 @@ public class SetPropertiesCommand extends AbstractAdminCommand {
             this.getOutputStream().println("\n\n");
             return 0;
         } catch (Exception e) {
-            if ("java.lang.ClassNotFoundException: javax.persistence.PersistenceException".equals(e.getMessage())) {
-                throw new CommandFailureException("Persistence failure. Check that the worker name does not already exist.");
-            } else {
-                throw new UnexpectedCommandFailureException(e);
-            }
+            throw new UnexpectedCommandFailureException(e);
         }
     }
 

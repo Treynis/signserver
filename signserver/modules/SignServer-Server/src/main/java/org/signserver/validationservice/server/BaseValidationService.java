@@ -17,14 +17,14 @@ import java.util.*;
 import java.util.Map.Entry;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
-import org.cesecore.util.CertTools;
+import org.ejbca.util.CertTools;
 import org.signserver.common.SignServerException;
 import org.signserver.common.StaticWorkerStatus;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerStatus;
 import org.signserver.common.WorkerStatusInfo;
 import org.signserver.server.IServices;
-import org.signserver.server.cryptotokens.ICryptoTokenV4;
+import org.signserver.server.cryptotokens.ICryptoToken;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 import org.signserver.validationservice.server.validcache.ValidationCache;
 
@@ -43,6 +43,7 @@ public abstract class BaseValidationService implements IValidationService {
     protected int workerId;
     protected WorkerConfig config;
     protected EntityManager em;
+    protected ICryptoToken ct;
     protected HashMap<Integer, IValidator> validators;
     protected ValidationCache validationCache;
 
@@ -52,13 +53,14 @@ public abstract class BaseValidationService implements IValidationService {
      * @see org.signserver.server.IWorker#init(int, org.signserver.common.WorkerConfig, org.signserver.server.WorkerContext, javax.persistence.EntityManager)
      */
     @Override
-    public void init(int workerId, WorkerConfig config, EntityManager em) {
+    public void init(int workerId, WorkerConfig config, EntityManager em, ICryptoToken ct) {
         this.workerId = workerId;
         this.config = config;
         this.em = em;
+        this.ct = ct;
 
         try {
-            validators = ValidationHelper.genValidators(workerId, config, em);
+            validators = ValidationHelper.genValidators(workerId, config, em, ct);
         } catch (SignServerException e) {
             log.error(e.getMessage(), e);
         }
@@ -75,12 +77,12 @@ public abstract class BaseValidationService implements IValidationService {
     }
 
     private List<String> getCachedIssuers(Properties props) {
-        ArrayList<String> retval = new ArrayList<>();
+        ArrayList<String> retval = new ArrayList<String>();
         String fullString = props.getProperty(ValidationServiceConstants.VALIDATIONSERVICE_CACHEDISSUERS);
         if (fullString != null) {
             String[] issuerDNs = fullString.split(";");
-            for (String suerDN : issuerDNs) {
-                retval.add(CertTools.stringToBCDNString(suerDN));
+            for (int i = 0; i < issuerDNs.length; i++) {
+                retval.add(CertTools.stringToBCDNString(issuerDNs[i]));
             }
         }
 
@@ -88,18 +90,15 @@ public abstract class BaseValidationService implements IValidationService {
     }
 
     /**
-     * @param services Services to use
      * @see org.signserver.validationservice.server.IValidationService#getStatus()
      */
     @Override
-    public WorkerStatusInfo getStatus(final IServices services) {
-        final List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<>();
-        final List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<>();
+    public WorkerStatus getStatus(final IServices services) {
+        final List<WorkerStatusInfo.Entry> briefEntries = new LinkedList<WorkerStatusInfo.Entry>();
+        final List<WorkerStatusInfo.Entry> completeEntries = new LinkedList<WorkerStatusInfo.Entry>();
 
         // Number of validators
-        if (validators != null) {
-            briefEntries.add(new WorkerStatusInfo.Entry("Number of validators", String.valueOf(validators.size())));
-        }
+        briefEntries.add(new WorkerStatusInfo.Entry("Number of validators", String.valueOf(validators.size())));
 
         // Properties
         final StringBuilder configValue = new StringBuilder();
@@ -123,18 +122,11 @@ public abstract class BaseValidationService implements IValidationService {
         }
         completeEntries.add(new WorkerStatusInfo.Entry("Validators", validatorsValue.toString()));
 
-        return new WorkerStatusInfo(workerId, config.getProperty("NAME"),
-                                    "Validation Service",
-                                    WorkerStatus.STATUS_ACTIVE, briefEntries,
-                                    Collections.<String>emptyList(),
-                                    completeEntries, config);
+        return new StaticWorkerStatus(new WorkerStatusInfo(workerId, config.getProperty("NAME"), "Validation Service", WorkerStatus.STATUS_ACTIVE, briefEntries, Collections.<String>emptyList(), completeEntries, config));
     }
 
     /**
      * Method returning the configured cert type checker if it wasn't configured properly.
-     * 
-     * @return The configured cert purpose checker 
-     * @throws SignServerException
      */
     protected ICertPurposeChecker getCertPurposeChecker() throws SignServerException {
         if (certTypeChecker == null) {
@@ -143,7 +135,11 @@ public abstract class BaseValidationService implements IValidationService {
                 Class<?> c = ValidationHelper.class.getClassLoader().loadClass(classpath);
                 certTypeChecker = (ICertPurposeChecker) c.newInstance();
                 certTypeChecker.init(config);
-            } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            } catch (ClassNotFoundException e) {
+                throw new SignServerException("Error Validation Service with workerId " + workerId + " have got bad classpath  " + classpath + " for the setting " + ValidationServiceConstants.VALIDATIONSERVICE_CERTPURPOSECHECKER);
+            } catch (InstantiationException e) {
+                throw new SignServerException("Error Validation Service with workerId " + workerId + " have got bad classpath  " + classpath + " for the setting " + ValidationServiceConstants.VALIDATIONSERVICE_CERTPURPOSECHECKER);
+            } catch (IllegalAccessException e) {
                 throw new SignServerException("Error Validation Service with workerId " + workerId + " have got bad classpath  " + classpath + " for the setting " + ValidationServiceConstants.VALIDATIONSERVICE_CERTPURPOSECHECKER);
             }
         }

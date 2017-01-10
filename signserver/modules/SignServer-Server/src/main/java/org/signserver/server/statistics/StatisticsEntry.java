@@ -49,16 +49,14 @@ public class StatisticsEntry implements Delayed {
     }
 
     /**
-     * Method to add the records of this event to the statistics collector.
-     * 
-     * @param event Event to add
+     * Method to add the records of this event to the statistics collector. 
      */
     public void addEvent(Event event) {
         numberOfEvents++;
         if (event.getCustomData() != null) {
             for (String next : event.getCustomData().keySet()) {
                 if (customData == null) {
-                    customData = new HashMap<>();
+                    customData = new HashMap<String, Integer>();
                 }
                 if (customData.get(next) == null) {
                     customData.put(next, event.getCustomData().get(next));

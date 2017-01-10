@@ -12,8 +12,6 @@
  *************************************************************************/
 package org.signserver.ejb;
 
-import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,8 +25,8 @@ import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
-import org.signserver.ejb.interfaces.ProcessSessionRemote;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IGlobalConfigurationSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 
 /**
  * TODO: Document me!
@@ -38,32 +36,26 @@ import org.signserver.ejb.interfaces.WorkerSession;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class WorkerSessionBeanTest extends ModulesTestCase {
 
-    private final WorkerSession workerSession = getWorkerSession();
-    private final ProcessSessionRemote processSession = getProcessSession();
+    private final IWorkerSession workerSession = getWorkerSession();
+    private final IGlobalConfigurationSession globalSession = getGlobalSession();
     
     /**
      * Set up the test case
      */
     @Before
-    @Override
     protected void setUp() throws Exception {
         SignServerUtil.installBCProvider();
     }
 
     @Test
     public void test00SetupDatabase() throws Exception {
-        workerSession.setWorkerProperty(3, WorkerConfig.IMPLEMENTATION_CLASS,
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                "WORKER3.CLASSPATH",
                 "org.signserver.module.mrtdsigner.MRTDSigner");
-        workerSession.setWorkerProperty(3, WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS,
-                "org.signserver.server.cryptotokens.KeystoreCryptoToken");
+        globalSession.setProperty(GlobalConfiguration.SCOPE_GLOBAL,
+                "WORKER3.SIGNERTOKEN.CLASSPATH",
+                "org.signserver.server.cryptotokens.HardCodedCryptoToken");
 
-        workerSession.setWorkerProperty(3, "KEYSTOREPATH",
-                getSignServerHome() + File.separator + "res" + File.separator +
-                        "test" + File.separator + "dss10" + File.separator +
-                        "dss10_signer1.p12");
-        workerSession.setWorkerProperty(3, "KEYSTORETYPE", "PKCS12");
-        workerSession.setWorkerProperty(3, "KEYSTOREPASSWORD", "foo123");
-        workerSession.setWorkerProperty(3, "DEFAULTKEY", "Signer 1");
         workerSession.setWorkerProperty(3, "AUTHTYPE", "NOAUTH");
         workerSession.setWorkerProperty(3, "NAME", "testWorker");
         workerSession.reloadConfiguration(3);
@@ -78,7 +70,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
     public void test01SignData() throws Exception {
 
         int reqid = 11;
-        ArrayList<byte[]> signrequests = new ArrayList<>();
+        ArrayList<byte[]> signrequests = new ArrayList<byte[]>();
 
         byte[] signreq1 = "Hello World".getBytes();
         byte[] signreq2 = "Hello World2".getBytes();
@@ -86,7 +78,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
         signrequests.add(signreq2);
 
         MRTDSignRequest req = new MRTDSignRequest(reqid, signrequests);
-        MRTDSignResponse res = (MRTDSignResponse) processSession.process(new WorkerIdentifier(3), req, new RemoteRequestContext());
+        MRTDSignResponse res = (MRTDSignResponse) workerSession.process(3, req, new RequestContext());
 
         assertTrue(reqid == res.getRequestID());
 
@@ -115,13 +107,13 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
      */
     @Test
     public void test02GetStatus() throws Exception {
-        assertTrue(((StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(3))).getTokenStatus() == WorkerStatus.STATUS_ACTIVE
-                || ((StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(3))).getTokenStatus() == WorkerStatus.STATUS_OFFLINE);
+        assertTrue(((StaticWorkerStatus) workerSession.getStatus(3)).getTokenStatus() == WorkerStatus.STATUS_ACTIVE
+                || ((StaticWorkerStatus) workerSession.getStatus(3)).getTokenStatus() == WorkerStatus.STATUS_OFFLINE);
     }
 
     @Test
     public void test02GetStatus_ok() throws Exception {
-        final WorkerStatus actual = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+        final WorkerStatus actual = workerSession.getStatus(getSignerIdDummy1());
         assertEquals("getStatus: ", 0, actual.getFatalErrors().size());
         assertEquals(getSignerIdDummy1(), actual.getWorkerId());
     }
@@ -129,7 +121,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
     @Test
     public void test02GetStatus_cryptoTokenOffline() throws Exception {
         // First check that there isn't any other problem
-        final WorkerStatus before = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+        final WorkerStatus before = workerSession.getStatus(getSignerIdDummy1());
         if (!before.getFatalErrors().isEmpty()) {
             throw new Exception("Test case expected the worker status to be OK before it will run");
         }
@@ -139,7 +131,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
         workerSession.removeWorkerProperty(getSignerIdDummy1(), "KEYSTOREPATH");
         workerSession.reloadConfiguration(getSignerIdDummy1());
         
-        final WorkerStatus actual = workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1()));
+        final WorkerStatus actual = workerSession.getStatus(getSignerIdDummy1());
         
         // Restore
         workerSession.setWorkerProperty(getSignerIdDummy1(), "KEYSTOREPATH", keyDataBefore);
@@ -255,16 +247,16 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
         workerSession.reloadConfiguration(getSignerIdDummy1());
         
         // First test that there isn't anything wrong with the worker before
-        GenericSignRequest request = new GenericSignRequest(123, "<test/>".getBytes(StandardCharsets.UTF_8));
-        processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, new RemoteRequestContext());
+        GenericSignRequest request = new GenericSignRequest(123, "<test/>".getBytes("UTF-8"));
+        workerSession.process(getSignerIdDummy1(), request, new RequestContext());
         
         try {
             workerSession.setWorkerProperty(getSignerIdDummy1(), "DISABLED", "TRUE");
             workerSession.reloadConfiguration(getSignerIdDummy1());
             
             // Test signing
-            request = new GenericSignRequest(124, "<test/>".getBytes(StandardCharsets.UTF_8));
-            processSession.process(new WorkerIdentifier(getSignerIdDummy1()), request, new RemoteRequestContext());
+            request = new GenericSignRequest(124, "<test/>".getBytes("UTF-8"));
+            workerSession.process(getSignerIdDummy1(), request, new RequestContext());
             fail("Request should have failed as worker is disabled");
         } catch (CryptoTokenOfflineException ex) { // OK
             assertTrue("message should say that worker is disabled: " + ex.getMessage(), ex.getMessage().contains("disabled") || ex.getMessage().contains("Disabled"));
@@ -290,9 +282,10 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
             
             final WorkerConfig config =
                     workerSession.getCurrentWorkerConfig(getSignerIdDummy1());
+            final ProcessableConfig pc = new ProcessableConfig(config);
             
             assertTrue("Should not contain authclients",
-                    config.getAuthorizedClients().isEmpty());
+                    pc.getAuthorizedClients().isEmpty());
         } finally {
             workerSession.removeAuthorizedClient(getSignerIdDummy1(),
                new AuthorizedClient("123456789", "CN=SomeUser"));
@@ -317,7 +310,7 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
             workerSession.reloadConfiguration(getSignerIdDummy1());
             
             final List<String> fatalErrors =
-                    workerSession.getStatus(new WorkerIdentifier(getSignerIdDummy1())).getFatalErrors();
+                    workerSession.getStatus(getSignerIdDummy1()).getFatalErrors();
             boolean foundError = false;
             for (final String fatalError : fatalErrors) {
                 // check for an error message mentioning WORKERLOGGER

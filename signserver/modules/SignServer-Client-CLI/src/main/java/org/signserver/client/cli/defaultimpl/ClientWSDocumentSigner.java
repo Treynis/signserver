@@ -23,10 +23,9 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import javax.xml.namespace.QName;
 import javax.xml.ws.BindingProvider;
-import javax.xml.ws.soap.MTOMFeature;
 import org.apache.log4j.Logger;
 import org.apache.commons.io.IOUtils;
-import org.bouncycastle.util.encoders.Base64;
+import org.ejbca.util.Base64;
 import org.signserver.client.clientws.ClientWS;
 import org.signserver.client.clientws.ClientWSService;
 import org.signserver.client.clientws.DataResponse;
@@ -71,7 +70,7 @@ public class ClientWSDocumentSigner extends AbstractDocumentSigner {
                     + url, ex);
         }
         
-        this.signServer = service.getPort(new QName("http://clientws.signserver.org/", "ClientWSPort"), ClientWS.class, new MTOMFeature(true));
+        this.signServer = service.getClientWSPort();
         this.workerName = workerName;
         this.pdfPassword = pdfPassword;
         this.metadata = metadata;
@@ -83,7 +82,6 @@ public class ClientWSDocumentSigner extends AbstractDocumentSigner {
         }
     }
 
-    @Override
     protected void doSign(final InputStream data, final long size, final String encoding,
             final OutputStream out, final Map<String, Object> requestContext)
             throws IllegalRequestException,
@@ -93,7 +91,7 @@ public class ClientWSDocumentSigner extends AbstractDocumentSigner {
             final int requestId = random.nextInt();
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Sending sign request with ID " + requestId
+                LOG.debug("Sending sign request with id " + requestId
                         + " containing data of length " + size + " bytes"
                         + " to worker " + workerName);
             }
@@ -102,7 +100,7 @@ public class ClientWSDocumentSigner extends AbstractDocumentSigner {
             final long startTime = System.nanoTime();
 
             // Metadata        
-            final LinkedList<Metadata> requestMetadata = new LinkedList<>();
+            final LinkedList<Metadata> requestMetadata = new LinkedList<Metadata>();
             
             if (metadata != null) {
                 for (final String key : metadata.keySet()) {
@@ -131,20 +129,20 @@ public class ClientWSDocumentSigner extends AbstractDocumentSigner {
                 requestMetadata.add(fileNameMetadata);
             }
             
-            final DataResponse response = getWSPort().processData(workerName,
+            final DataResponse response = signServer.processData(workerName,
                     requestMetadata, IOUtils.toByteArray(data));
 
             // Take stop time
             final long estimatedTime = System.nanoTime() - startTime;
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug(String.format("Got sign response with ID %d, "
-                        + "archive ID %s, signed data of length %d bytes "
+                LOG.debug(String.format("Got sign response with id %d, "
+                        + "archive id %s, signed data of length %d bytes "
                         + "signed by signer with certificate:\n%s.",
                         response.getRequestId(),
                         response.getArchiveId(),
                         response.getData().length,
-                        response.getSignerCertificate() == null ? "(null)" : Base64.toBase64String(response.getSignerCertificate())));
+                        new String(Base64.encode(response.getSignerCertificate()))));
             }
 
             // Write the signed data
@@ -159,9 +157,5 @@ public class ClientWSDocumentSigner extends AbstractDocumentSigner {
             throw new IllegalRequestException("Client request failed: " + ex.getLocalizedMessage(), ex);
         }
 
-    }
-    
-    protected ClientWS getWSPort() {
-        return signServer;
     }
 }

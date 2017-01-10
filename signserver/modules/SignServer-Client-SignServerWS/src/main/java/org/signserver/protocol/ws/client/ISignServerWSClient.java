@@ -59,7 +59,6 @@ public interface ISignServerWSClient {
      * 
      * @param requests a list of requests to process
      * @param workerIdOrName name or id of worker.
-     * @return List of process responses
      * 
      */
     List<ProcessResponseWS> process(String workerIdOrName, List<ProcessRequestWS> requests);

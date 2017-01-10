@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import javax.xml.ws.soap.SOAPFaultException;
 import org.apache.commons.cli.*;
 import org.apache.log4j.Logger;
+import org.ejbca.ui.cli.util.ConsolePasswordReader;
 import org.signserver.cli.spi.AbstractCommand;
 import org.signserver.cli.spi.CommandFailureException;
 import org.signserver.cli.spi.IllegalCommandArgumentsException;
@@ -255,9 +256,9 @@ public class SignDocumentCommand extends AbstractCommand implements ConsolePassw
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         final HelpFormatter formatter = new HelpFormatter();
         
-        try (PrintWriter pw = new PrintWriter(bout)) {
-            formatter.printHelp(pw, HelpFormatter.DEFAULT_WIDTH, "signdocument <-workername WORKERNAME | -workerid WORKERID> [options]",  getDescription(), OPTIONS, HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, footer.toString());
-        }
+        PrintWriter pw = new PrintWriter(bout);
+        formatter.printHelp(pw, HelpFormatter.DEFAULT_WIDTH, "signdocument <-workername WORKERNAME | -workerid WORKERID> [options]",  getDescription(), OPTIONS, HelpFormatter.DEFAULT_LEFT_PAD, HelpFormatter.DEFAULT_DESC_PAD, footer.toString());
+        pw.close();
         
         return bout.toString();
     }
@@ -268,7 +269,7 @@ public class SignDocumentCommand extends AbstractCommand implements ConsolePassw
      * @param line The command line to read from
      */
     private void parseCommandLine(final CommandLine line)
-        throws IllegalCommandArgumentsException, CommandFailureException {
+        throws IllegalCommandArgumentsException {
         if (line.hasOption(WORKERNAME)) {
             workerName = line.getOptionValue(WORKERNAME, null);
         }
@@ -351,7 +352,11 @@ public class SignDocumentCommand extends AbstractCommand implements ConsolePassw
             }
         } catch (IOException ex) {
             throw new IllegalCommandArgumentsException("Failed to read password: " + ex.getLocalizedMessage());
-        } catch (NoSuchAlgorithmException | CertificateException | KeyStoreException ex) {
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalCommandArgumentsException("Failure setting up keystores: " + ex.getMessage());
+        } catch (CertificateException ex) {
+            throw new IllegalCommandArgumentsException("Failure setting up keystores: " + ex.getMessage());
+        } catch (KeyStoreException ex) {
             throw new IllegalCommandArgumentsException("Failure setting up keystores: " + ex.getMessage());
         }
     }
@@ -361,7 +366,7 @@ public class SignDocumentCommand extends AbstractCommand implements ConsolePassw
      */
     @Override
     public ConsolePasswordReader createConsolePasswordReader() {
-        return new DefaultConsolePasswordReader();
+        return new ConsolePasswordReader();
     }
 
     /**
@@ -504,7 +509,7 @@ public class SignDocumentCommand extends AbstractCommand implements ConsolePassw
         try {
             final long size;
 
-            Map<String, Object> requestContext = new HashMap<>();
+            Map<String, Object> requestContext = new HashMap<String, Object>();
             if (inFile == null) {
                 byte[] bs = data.getBytes();
                 fin = new ByteArrayInputStream(bs);
@@ -588,6 +593,21 @@ public class SignDocumentCommand extends AbstractCommand implements ConsolePassw
             if (manager != null) {
                 manager.registerFailure();
             }
+        } catch (IllegalRequestException ex) {
+            LOG.error("Failure for " + (inFile == null ? "" : inFile.getName()) + ": " + ex.getMessage());
+            if (manager != null) {
+                manager.registerFailure();
+            }
+        } catch (CryptoTokenOfflineException ex) {
+            LOG.error("Failure for " + (inFile == null ? "" : inFile.getName()) + ": " + ex.getMessage());
+            if (manager != null) {
+                manager.registerFailure();
+            }
+        } catch (SignServerException ex) {
+            LOG.error("Failure for " + (inFile == null ? "" : inFile.getName()) + ": " + ex.getMessage());
+            if (manager != null) {
+                manager.registerFailure();
+            }
         } catch (SOAPFaultException ex) {
             if (ex.getCause() instanceof AuthorizationRequiredException) {
                 final AuthorizationRequiredException authEx =
@@ -614,7 +634,7 @@ public class SignDocumentCommand extends AbstractCommand implements ConsolePassw
                     manager.registerFailure();
                 }
             }
-        } catch (IllegalRequestException | CryptoTokenOfflineException | SignServerException | IOException ex) {
+        } catch (IOException ex) {
             LOG.error("Failure for " + (inFile == null ? "" : inFile.getName()) + ": " + ex.getMessage());
             if (manager != null) {
                 manager.registerFailure();
@@ -645,7 +665,7 @@ public class SignDocumentCommand extends AbstractCommand implements ConsolePassw
                     threads = DEFAULT_THREADS;
                 }
                 final int threadCount = threads > inFiles.length ? inFiles.length : threads;
-                final ArrayList<TransferThread> consumers = new ArrayList<>();
+                final ArrayList<TransferThread> consumers = new ArrayList<TransferThread>();
                 
                 final Thread.UncaughtExceptionHandler handler = new Thread.UncaughtExceptionHandler() {
                     @Override

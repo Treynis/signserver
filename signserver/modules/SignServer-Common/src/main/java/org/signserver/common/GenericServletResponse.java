@@ -15,7 +15,6 @@ package org.signserver.common;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.util.Collection;
 import org.signserver.server.archive.Archivable;
@@ -41,12 +40,6 @@ public class GenericServletResponse extends GenericSignResponse {
     /**
      * Creates a GenericWorkResponse, works as a simple VO.
      * 
-     * @param requestID
-     * @param processedData
-     * @param signerCertificate
-     * @param archiveId
-     * @param archivables
-     * @param contentType
      * @see org.signserver.common.ProcessRequest
      */
     public GenericServletResponse(int requestID, byte[] processedData,
@@ -63,13 +56,13 @@ public class GenericServletResponse extends GenericSignResponse {
         int stringSize = in.readInt();
         byte[] data = new byte[stringSize];
         in.readFully(data);
-        contentType = new String(data, StandardCharsets.UTF_8);
+        contentType = new String(data, "UTF-8");
     }
 
     @Override
     public void serialize(DataOutput out) throws IOException {
         super.serialize(out);
-        byte[] stringData = contentType.getBytes(StandardCharsets.UTF_8);
+        byte[] stringData = contentType.getBytes("UTF-8");
         out.writeInt(stringData.length);
         out.write(stringData);
     }

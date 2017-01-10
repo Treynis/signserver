@@ -13,20 +13,16 @@
 package org.signserver.server;
 
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Date;
-import java.util.List;
 import java.util.Properties;
 import java.util.TimeZone;
+import javax.naming.NamingException;
 import org.apache.log4j.Logger;
-import org.signserver.common.RequestContext;
-import org.signserver.common.SignServerException;
-import org.signserver.common.WorkerStatusInfo;
-import org.signserver.server.log.LogMap;
+import org.signserver.common.ServiceLocator;
+import org.signserver.statusrepo.IStatusRepositorySession;
 import org.signserver.statusrepo.common.NoSuchPropertyException;
 import org.signserver.statusrepo.common.StatusEntry;
 import org.signserver.statusrepo.common.StatusName;
-import org.signserver.statusrepo.StatusRepositorySessionLocal;
 
 /**
  * ITimeSource taking the current time from the computer clock as long as the 
@@ -46,17 +42,15 @@ public class StatusReadingLocalComputerTimeSource implements ITimeSource {
     private static final Logger LOG = Logger.getLogger(
             StatusReadingLocalComputerTimeSource.class);
 
+    /** Status repository session. */
+    private IStatusRepositorySession statusSession;
+
     private final StatusName insyncPropertyName = StatusName.TIMESOURCE0_INSYNC;
     private final StatusName leapsecondPropertyName = StatusName.LEAPSECOND;
 
     // property constants
     private static final String LEAPSECOND_HANDLING = "LEAPSECOND_HANDLING";
     
-    // log values
-    private static final String LEAP_UPCOMING = "LEAP_UPCOMING";
-    private static final String LEAP_PERIOD = "LEAP_PERIOD";
-    private static final String LEAP_ACTION = "LEAP_ACTION";
-
     /** defines leap second handling strategies */
     protected enum LeapSecondHandlingStrategy {
         /** Don't do anything special for leap seconds. **/
@@ -79,7 +73,6 @@ public class StatusReadingLocalComputerTimeSource implements ITimeSource {
     
     private static final String LEAPSECOND_HANDLING_DEFAULT = "NONE";
    
-    private String leapSecondHandlingString;
     private LeapSecondHandlingStrategy leapSecondHandlingStrategy;
     
     // number of milliseconds to sleep when waiting for a leapsecond to pass
@@ -97,16 +90,19 @@ public class StatusReadingLocalComputerTimeSource implements ITimeSource {
      */
     @Override
     public void init(final Properties props) {
-        leapSecondHandlingString = props.getProperty(LEAPSECOND_HANDLING, LEAPSECOND_HANDLING_DEFAULT);
+        final String leapHandling = props.getProperty(LEAPSECOND_HANDLING, LEAPSECOND_HANDLING_DEFAULT);
         try {
-            leapSecondHandlingStrategy =
-                    LeapSecondHandlingStrategy.valueOf(leapSecondHandlingString);
+            statusSession = ServiceLocator.getInstance().lookupLocal(
+                        IStatusRepositorySession.class);
+            leapSecondHandlingStrategy = LeapSecondHandlingStrategy.valueOf(leapHandling);
 
             if (LOG.isDebugEnabled()) {
             	LOG.debug("Leap second handling strategy: " + leapSecondHandlingStrategy.name());
             }
         } catch (IllegalArgumentException ex) {
-            LOG.error("Illegal value for leap second handling strategy: " + leapSecondHandlingString);
+            LOG.error("Illegal value for leap second handling strategy: " + leapHandling);
+        } catch (NamingException ex) {
+            LOG.error("Looking up status repository session", ex);
         }
     }
 
@@ -115,98 +111,80 @@ public class StatusReadingLocalComputerTimeSource implements ITimeSource {
      * @return an accurate current time or null if it is not available.
      */
     @Override
-    public Date getGenTime(final RequestContext context) throws SignServerException {
+    public Date getGenTime() {
         try {
             final Date result;
-            final StatusRepositorySessionLocal statusSession = context.getServices().get(StatusRepositorySessionLocal.class);
             final StatusEntry entry = statusSession.getValidEntry(insyncPropertyName.name());
             
-            final LogMap logMap = LogMap.getInstance(context);
-
-            if (leapSecondHandlingStrategy == null) {
-                throw new SignServerException("Illegal leap second strategy: " + leapSecondHandlingString);
-            }
-            
-            logMap.put(LEAP_ACTION, leapSecondHandlingStrategy.name());
-
             if (entry != null && Boolean.valueOf(entry.getValue())) {
-                Date date = getCurrentDate();                    
-                // check if a leapsecond is near
-                final StatusEntry leapsecond = statusSession.getValidEntry(leapsecondPropertyName.name());
+                Date date = getCurrentDate();
 
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Check for leapsecond");
-                }
-
-                if (leapsecond == null) {
-                    if (leapSecondHandlingStrategy == LeapSecondHandlingStrategy.NONE) {
-                        result = date;
-                    } else {
+                // If we are handling leap seconds
+                if (leapSecondHandlingStrategy == LeapSecondHandlingStrategy.PAUSE
+                        || leapSecondHandlingStrategy == LeapSecondHandlingStrategy.STOP) {
+                    
+                    // check if a leapsecond is near
+                    final StatusEntry leapsecond = statusSession.getValidEntry(leapsecondPropertyName.name());
+                    
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Check for leapsecond");
+                    }
+                    
+                    if (leapsecond == null) {
                         // leapsecond property is expired
                         LOG.error("Leapsecond status has expired");
                         result = null;
-                    }
-                    logMap.put(LEAP_PERIOD, String.valueOf(isPotentialLeapsecond(date)));
-                    logMap.put(LEAP_UPCOMING, "unknown");
-                } else {
-                    final String leapsecondValue = leapsecond.getValue();
-                    boolean potentialLeap = isPotentialLeapsecond(date);
+                    } else {
+                        final String leapsecondValue = leapsecond.getValue();
+                        if (LEAPSECOND_POSITIVE.equals(leapsecondValue) ||
+                            LEAPSECOND_NEGATIVE.equals(leapsecondValue)) {
+                            boolean potentialLeap = isPotentialLeapsecond(date);
 
-                    logMap.put(LEAP_PERIOD, Boolean.toString(potentialLeap));
-
-                    if (LEAPSECOND_POSITIVE.equals(leapsecondValue) ||
-                        LEAPSECOND_NEGATIVE.equals(leapsecondValue)) {
-                        
-                        logMap.put(LEAP_UPCOMING, Boolean.TRUE.toString());
-
-                        // Handle leap second strategy STOP
-                        if (leapSecondHandlingStrategy == LeapSecondHandlingStrategy.STOP 
-                                && potentialLeap) {
-                            LOG.info("Stopping issuance");
-                            result = null;
-                        } else if (leapSecondHandlingStrategy ==
-                                   LeapSecondHandlingStrategy.PAUSE) {
-                            for (int i = 0; i < 6 && potentialLeap; i++) {
-                                    // sleep for the amount of time nessesary to skip over the leap second
-                                    try {
-                                            LOG.info("Waiting for leapsecond to pass");
-
-                                            pause();
-
-                                            if (LOG.isDebugEnabled()) {
-                                                LOG.debug("Pause finished");
-                                            }
-
-                                    } catch (InterruptedException ex) {
-                                            // if the thread gets interrupted while pausing,
-                                            // return time source not available
-                                            LOG.error("Interrupted while pausing");
-                                            potentialLeap = true;
-                                            break;
-                                    }
-
-                                    date = getCurrentDate();
-                                    potentialLeap = isPotentialLeapsecond(date);
-                            }
-
-                            if (potentialLeap) {
-                                LOG.error("Still potentially leap second after maximum pause");
+                            // Handle leap second strategy STOP
+                            if (leapSecondHandlingStrategy == LeapSecondHandlingStrategy.STOP 
+                                    && potentialLeap) {
+                                LOG.info("Stopping issuance");
                                 result = null;
                             } else {
-                                result = date;
+
+                                for (int i = 0; i < 6 && potentialLeap; i++) {
+                                        // sleep for the amount of time nessesary to skip over the leap second
+                                        try {
+                                                LOG.info("Waiting for leapsecond to pass");
+
+                                                pause();
+
+                                                if (LOG.isDebugEnabled()) {
+                                                    LOG.debug("Pause finished");
+                                                }
+
+                                        } catch (InterruptedException ex) {
+                                                // if the thread gets interrupted while pausing,
+                                                // return time source not available
+                                                LOG.error("Interrupted while pausing");
+                                                potentialLeap = true;
+                                                break;
+                                        }
+
+                                        date = getCurrentDate();
+                                        potentialLeap = isPotentialLeapsecond(date);
+                                }
+
+                                if (potentialLeap) {
+                                    LOG.error("Still potentially leap second after maximum pause");
+                                    result = null;
+                                } else {
+                                    result = date;
+                                }
                             }
                         } else {
-                            // Strategy == NONE
                             result = date;
                         }
-                    } else {
-                        logMap.put(LEAP_UPCOMING, Boolean.FALSE.toString());
-                        result = date;
                     }
+                } else {
+                    result = date;
                 }
             } else {
-                logMap.put(LEAP_UPCOMING, "unknown");
-                logMap.put(LEAP_PERIOD, "unknown");
                 result = null;
             }
             return result;
@@ -229,7 +207,17 @@ public class StatusReadingLocalComputerTimeSource implements ITimeSource {
     protected void pause() throws InterruptedException {
     	Thread.sleep(LEAPSECOND_WAIT_PERIOD);
     }
-
+    
+    /**
+     * Set the status session.
+     * This is visible for the unit test
+     * 
+     * @param statusSession
+     */
+    protected void setStatusSession(final IStatusRepositorySession statusSession) {
+        this.statusSession = statusSession;
+    }
+    
     /**
      * Sets the handle leapsecond-handling strategy.
      * This is available for the unit test.
@@ -280,18 +268,5 @@ public class StatusReadingLocalComputerTimeSource implements ITimeSource {
         return (day == 1 && hour == 0 && min == 0 && sec <= 1 && milli <= 10) ||
         	(day == lastDayOfMonth && hour == 23 && min == 59 && ((sec == 58 && milli >= 989) || sec >= 59));
     }
-   
-    @Override
-    public List<WorkerStatusInfo.Entry> getStatusBriefEntries() {
-        return Collections.singletonList(
-                new WorkerStatusInfo.Entry("Leapsecond strategy",
-                                           leapSecondHandlingStrategy != null ?
-                                           leapSecondHandlingStrategy.name() :
-                                           "invalid"));
-    }
-    
-    @Override
-    public List<WorkerStatusInfo.Entry> getStatusCompleteEntries() {
-        return Collections.emptyList();
-    }
+
 }

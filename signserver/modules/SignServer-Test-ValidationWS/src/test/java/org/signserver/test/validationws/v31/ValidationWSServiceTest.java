@@ -22,7 +22,7 @@ import javax.xml.namespace.QName;
 import org.apache.log4j.Logger;
 import org.junit.FixMethodOrder;
 import org.junit.runners.MethodSorters;
-import org.signserver.ejb.interfaces.WorkerSession;
+import org.signserver.ejb.interfaces.IWorkerSession;
 import org.signserver.testutils.ModulesTestCase;
 import org.signserver.validationservice.common.ValidationServiceConstants;
 
@@ -150,16 +150,12 @@ public class ValidationWSServiceTest extends ModulesTestCase {
         ws =  wsService.getValidationWSPort();
     }
 
-    /**
-     * Overridden by org.signserver.test.validationws.v32.ValidationWSServiceTest.
-     * 
-     * @return WS endpoint URL
-     */
+    /** Overridden by org.signserver.test.validationws.v32.ValidationWSServiceTest */
     protected String getWsEndPointUrl() {
     	return ENDPOINT;
     }
     
-    WorkerSession workerSession = getWorkerSession();
+    IWorkerSession workerSession = getWorkerSession();
     
     public void test00SetupDatabase() throws Exception {
         addSigner("org.signserver.validationservice.server.ValidationServiceWorker", 7101, "ValidationWSServiceTest_CertValidationWorker1", true);
@@ -213,7 +209,10 @@ public class ValidationWSServiceTest extends ModulesTestCase {
                     ValidationServiceConstants.CERTPURPOSE_ELECTRONIC_SIGNATURE,
                     response.getValidCertificatePurposes());
             assertNotNull("validationDate", response.getValidationDate());
-        } catch (IllegalRequestException_Exception | SignServerException_Exception ex) {
+        } catch (IllegalRequestException_Exception ex) {
+            LOG.error(ex, ex);
+            fail(ex.getMessage());
+        } catch (SignServerException_Exception ex) {
             LOG.error(ex, ex);
             fail(ex.getMessage());
         }

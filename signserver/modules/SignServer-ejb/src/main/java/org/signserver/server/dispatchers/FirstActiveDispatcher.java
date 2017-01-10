@@ -15,20 +15,19 @@ package org.signserver.server.dispatchers;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
+import org.signserver.common.ProcessRequest;
 import org.signserver.common.ProcessResponse;
 import org.signserver.common.RequestContext;
+import org.signserver.common.ServiceLocator;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerIdentifier;
-import org.signserver.common.data.Request;
-import org.signserver.common.data.Response;
-import org.signserver.ejb.interfaces.DispatcherProcessSessionLocal;
+import org.signserver.ejb.interfaces.IDispatcherWorkerSession;
 import org.signserver.server.WorkerContext;
-import org.signserver.server.log.AdminInfo;
 
 /**
  * Dispatching requests to the first active worker found.
@@ -48,33 +47,39 @@ public class FirstActiveDispatcher extends BaseDispatcher {
     /** Property WORKERS. */
     private static final String PROPERTY_WORKERS = "WORKERS";
 
-    /** List of workers. */
-    private List<String> workers = new LinkedList<>();
+    /** Workersession. */
+    private IDispatcherWorkerSession workerSession;
 
-    private String name;
+    /** List of workers. */
+    private List<String> workers = new LinkedList<String>();
+
 
     @Override
     public void init(final int workerId, final WorkerConfig config,
             final WorkerContext workerContext, final EntityManager workerEM) {
-        super.init(workerId, config, workerContext, workerEM);
+        try {
+            super.init(workerId, config, workerContext, workerEM);
 
-        name = config.getProperty("NAME");
-
-        workers = new LinkedList<>();
-        final String workersValue = config.getProperty(PROPERTY_WORKERS);
-        if (workersValue == null) {
-            LOG.error("Property WORKERS missing!");
-        } else {
-            workers.addAll(Arrays.asList(workersValue.split(",")));
+            workers = new LinkedList<String>();
+            final String workersValue = config.getProperty(PROPERTY_WORKERS);
+            if (workersValue == null) {
+                LOG.error("Property WORKERS missing!");
+            } else {
+                workers.addAll(Arrays.asList(workersValue.split(",")));
+            }
+            workerSession = ServiceLocator.getInstance().lookupLocal(
+                        IDispatcherWorkerSession.class);
+        } catch (NamingException ex) {
+            LOG.error("Unable to lookup worker session", ex);
         }
     }
 
     @Override
-    public Response processData(final Request signRequest,
+    public ProcessResponse processData(final ProcessRequest signRequest,
             final RequestContext requestContext) throws IllegalRequestException,
             CryptoTokenOfflineException, SignServerException {
 
-        Response response = null;
+        ProcessResponse response = null;
 
         // TODO: Look for loops
 
@@ -85,14 +90,15 @@ public class FirstActiveDispatcher extends BaseDispatcher {
         nextContext.put(RequestContext.DISPATCHER_AUTHORIZED_CLIENT, true);
 
         for (String workerName : workers) {
-            workerName = workerName.trim();
             try {
-                if (name.equals(workerName)) {
+                id = workerSession.getWorkerId(workerName);
+                if (id == 0) {
+                    LOG.warn("Non existing worker: \"" + workerName + "\"");
+                } else if (id == workerId) {
                     LOG.warn("Ignoring dispatching to it self (worker "
-                            + name + ")");
+                            + id + ")");
                 } else {
-                    response = requestContext.getServices().get(DispatcherProcessSessionLocal.class).process(new AdminInfo("Client user", null, null), 
-                            new WorkerIdentifier(workerName), signRequest,
+                    response = workerSession.process(id, signRequest,
                             nextContext);
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Dispatched to worker: "

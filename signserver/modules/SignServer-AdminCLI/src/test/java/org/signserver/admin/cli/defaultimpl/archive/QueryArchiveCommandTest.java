@@ -85,12 +85,11 @@ public class QueryArchiveCommandTest extends TestCase {
         
         assertEquals("Operation", RelationalOperator.GT, term.getOperator());
         assertEquals("Name", ArchiveMetadata.SIGNER_ID, term.getName());
-        assertEquals("Value", 1, term.getValue());
+        assertEquals("Value", Integer.valueOf(1), term.getValue());
     }
     
     /**
      * Test the NULL operator.
-     * @throws java.lang.Exception
      */
     public void test05ParseCriteriaNull() throws Exception {
         final String criteria = "requestCertSerialnumber NULL";
@@ -171,7 +170,7 @@ public class QueryArchiveCommandTest extends TestCase {
         
         assertEquals("Operation", RelationalOperator.EQ, term.getOperator());
         assertEquals("Name", ArchiveMetadata.TIME, term.getName());
-        assertEquals("Value", 1360587600000L, term.getValue()); 
+        assertEquals("Value", Long.valueOf(1360587600000L), term.getValue()); 
     }
     
     public void test11DateInvalid() throws Exception {

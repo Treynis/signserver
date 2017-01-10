@@ -18,10 +18,11 @@ import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerStatusInfo;
-import org.signserver.common.data.CertificateValidationRequest;
-import org.signserver.common.data.CertificateValidationResponse;
+import org.signserver.common.WorkerStatus;
 import org.signserver.server.IServices;
+import org.signserver.server.cryptotokens.ICryptoToken;
+import org.signserver.validationservice.common.ValidateRequest;
+import org.signserver.validationservice.common.ValidateResponse;
 
 /**
  * Interface all Validation Services have to implement.
@@ -42,8 +43,9 @@ public interface IValidationService {
      * @param workerId the unique id of the worker
      * @param config the configuration stored in database
      * @param em reference to the entity manager
+     * @param ct the crypto token used by the validation service.
      */
-    void init(int workerId, WorkerConfig config, EntityManager em);
+    void init(int workerId, WorkerConfig config, EntityManager em, ICryptoToken ct);
 
     /**
      * Method used to check the validation of a certificate
@@ -56,13 +58,12 @@ public interface IValidationService {
      * @see org.signserver.validationservice.common.ValidateRequest
      * @see org.signserver.validationservice.common.ValidateResponse
      */
-    CertificateValidationResponse validate(CertificateValidationRequest validationRequest) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException;
+    ValidateResponse validate(ValidateRequest validationRequest) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException;
 
     /**
      * Should return the actual status of the service, status could be if
      * the signer is activated or not, or equivalent for a service.
-     * @param services Services for implementations to use
      * @return a WorkerStatus object.
      */
-    WorkerStatusInfo getStatus(IServices services);
+    WorkerStatus getStatus(IServices services);
 }

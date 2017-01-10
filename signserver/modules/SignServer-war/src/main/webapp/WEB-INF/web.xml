@@ -1,31 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:j2ee="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
     <display-name>SignServer Server Servlet Configuration</display-name>
-    <filter>
-        <filter-name>ClickjackFilterDeny</filter-name>
-        <filter-class>org.signserver.web.common.owasp.filters.ClickjackFilter</filter-class>
-        <init-param>
-            <param-name>mode</param-name>
-            <param-value>DENY</param-value>
-        </init-param>
-    </filter>
-    <filter>
-        <filter-name>ContentSecurityPolicyFilter</filter-name>
-        <filter-class>org.signserver.web.common.owasp.filters.ContentSecurityPolicyFilter</filter-class>
-    </filter>
-    <filter-mapping>
-        <filter-name>ClickjackFilterDeny</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-    <filter-mapping>
-        <filter-name>ContentSecurityPolicyFilter</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-    <session-config>
-        <cookie-config>
-            <http-only>true</http-only>
-        </cookie-config>
-    </session-config>
     <servlet>
         <servlet-name>GenericProcessServlet</servlet-name>
         <servlet-class>org.signserver.web.GenericProcessServlet</servlet-class>
@@ -33,6 +8,16 @@
     <servlet>
         <servlet-name>GenericProcessWorkerServlet</servlet-name>
         <servlet-class>org.signserver.web.GenericProcessWorkerServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>StartServiceServlet</servlet-name>
+        <servlet-class>org.signserver.web.StartServicesServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet>
+        <servlet-name>GenericWSServlet</servlet-name>
+        <servlet-class>org.signserver.web.GenericWSServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
     </servlet>
     <servlet>
         <servlet-name>SODProcessServlet</servlet-name>
@@ -53,10 +38,6 @@
     <servlet>
         <servlet-name>AdminGUIDistServlet</servlet-name>
         <servlet-class>org.signserver.web.AdminGUIDistServlet</servlet-class>
-    </servlet>
-    <servlet>
-        <servlet-name>ClientCLIDistServlet</servlet-name>
-        <servlet-class>org.signserver.web.ClientCLIDistServlet</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>WS31Dispatcher</servlet-name>
@@ -83,6 +64,14 @@
         <url-pattern>/worker/*</url-pattern>
     </servlet-mapping>
     <servlet-mapping>
+        <servlet-name>StartServiceServlet</servlet-name>
+        <url-pattern>/startservices</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GenericWSServlet</servlet-name>
+        <url-pattern>/ws/*</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
         <servlet-name>SODProcessServlet</servlet-name>
         <url-pattern>/sod</url-pattern>
     </servlet-mapping>
@@ -106,10 +95,6 @@
         <servlet-name>AdminGUIDistServlet</servlet-name>
         <url-pattern>/admingui-dist/signserver-admingui.zip</url-pattern>
     </servlet-mapping>
-    <servlet-mapping>
-        <servlet-name>ClientCLIDistServlet</servlet-name>
-        <url-pattern>/clientcli-dist/signserver-clientcli.zip</url-pattern>
-    </servlet-mapping>
     <welcome-file-list>
         <welcome-file>index.jsp</welcome-file>
     </welcome-file-list>
@@ -119,15 +104,12 @@
     </error-page>
     <error-page>
         <error-code>400</error-code>
-        <location>/errorpages/error400.jsp</location>
+    <location>/errorpages/error400.jsp</location>
+    
     </error-page>
     <error-page>
         <error-code>403</error-code>
         <location>/errorpages/error403.jsp</location>
-    </error-page>
-    <error-page>
-        <error-code>413</error-code>
-        <location>/errorpages/error413.jsp</location>
     </error-page>
     <error-page>
         <error-code>500</error-code>
@@ -137,4 +119,5 @@
         <error-code>503</error-code>
         <location>/errorpages/error503.jsp</location>
     </error-page>
+
 </web-app>

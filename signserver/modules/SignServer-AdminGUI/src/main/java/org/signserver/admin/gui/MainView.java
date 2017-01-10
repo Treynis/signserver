@@ -95,8 +95,6 @@ import org.signserver.admin.gui.adminws.gen.WsWorkerConfig;
 import org.signserver.admin.gui.adminws.gen.WsWorkerStatus;
 import org.signserver.common.ArchiveMetadata;
 import org.signserver.common.GlobalConfiguration;
-import org.signserver.common.WorkerConfig;
-import org.signserver.common.WorkerType;
 import org.signserver.common.util.PropertiesDumper;
 
 /**
@@ -116,8 +114,8 @@ public class MainView extends FrameView {
 
     private ResourceBundle texts = ResourceBundle.getBundle("org/signserver/admin/gui/resources/SignServerAdminGUIApplication");
     
-    private List<Worker> allWorkers = new ArrayList<>();
-    private List<Worker> selectedWorkers = new ArrayList<>();
+    private List<Worker> allWorkers = new ArrayList<Worker>();
+    private List<Worker> selectedWorkers = new ArrayList<Worker>();
     private Worker selectedWorker;
     private Worker selectedWorkerBeforeRefresh;
     
@@ -163,7 +161,7 @@ public class MainView extends FrameView {
         // Set the application icon
         ResourceMap resourceMap = getResourceMap();
         getFrame().setIconImage(resourceMap.getImageIcon("applicationIcon").getImage());
-
+        
         final int rowHeights = new JComboBox/*<String>*/().getPreferredSize().height;
 
         // workaround a bug in the NetBeans form editor where the download
@@ -238,7 +236,7 @@ public class MainView extends FrameView {
             @Override
             public void valueChanged(final ListSelectionEvent evt) {
                 if (!evt.getValueIsAdjusting()) {
-                    selectedWorkers = new ArrayList<>();
+                    selectedWorkers = new ArrayList<Worker>();
 
                     for(Object o : workersList.getSelectedValues()) {
                         if (o instanceof Worker) {
@@ -477,6 +475,18 @@ public class MainView extends FrameView {
         jSeparator3 = new javax.swing.JPopupMenu.Separator();
         javax.swing.JMenu helpMenu = new javax.swing.JMenu();
         javax.swing.JMenuItem aboutMenuItem = new javax.swing.JMenuItem();
+        jToolBar1 = new javax.swing.JToolBar();
+        refreshButton = new javax.swing.JButton();
+        jSeparator1 = new javax.swing.JToolBar.Separator();
+        activateButton = new javax.swing.JButton();
+        deactivateButton = new javax.swing.JButton();
+        jSeparator2 = new javax.swing.JToolBar.Separator();
+        renewKeyButton = new javax.swing.JButton();
+        testKeyButton = new javax.swing.JButton();
+        generateRequestsButton = new javax.swing.JButton();
+        installCertificatesButton = new javax.swing.JButton();
+        jSeparator6 = new javax.swing.JToolBar.Separator();
+        renewSignerButton = new javax.swing.JButton();
         statusPanel = new javax.swing.JPanel();
         statusMessageLabel = new javax.swing.JLabel();
         statusAnimationLabel = new javax.swing.JLabel();
@@ -493,18 +503,6 @@ public class MainView extends FrameView {
         passwordPanelField = new javax.swing.JPasswordField();
         jTabbedPane1 = new javax.swing.JTabbedPane();
         mainPanel = new javax.swing.JPanel();
-        jToolBar1 = new javax.swing.JToolBar();
-        refreshButton = new javax.swing.JButton();
-        jSeparator1 = new javax.swing.JToolBar.Separator();
-        activateButton = new javax.swing.JButton();
-        deactivateButton = new javax.swing.JButton();
-        jSeparator2 = new javax.swing.JToolBar.Separator();
-        renewKeyButton = new javax.swing.JButton();
-        testKeyButton = new javax.swing.JButton();
-        generateRequestsButton = new javax.swing.JButton();
-        installCertificatesButton = new javax.swing.JButton();
-        jSeparator6 = new javax.swing.JToolBar.Separator();
-        renewSignerButton = new javax.swing.JButton();
         jSplitPane1 = new javax.swing.JSplitPane();
         jScrollPane2 = new javax.swing.JScrollPane();
         workersList = new javax.swing.JList();
@@ -622,7 +620,7 @@ public class MainView extends FrameView {
         menuBar.setName("menuBar"); // NOI18N
 
         fileMenu.setMnemonic('F');
-        org.jdesktop.application.ResourceMap resourceMap = org.jdesktop.application.Application.getInstance().getContext().getResourceMap(MainView.class);
+        org.jdesktop.application.ResourceMap resourceMap = org.jdesktop.application.Application.getInstance(org.signserver.admin.gui.SignServerAdminGUIApplication.class).getContext().getResourceMap(MainView.class);
         fileMenu.setText(resourceMap.getString("fileMenu.text")); // NOI18N
         fileMenu.setName("fileMenu"); // NOI18N
 
@@ -635,7 +633,7 @@ public class MainView extends FrameView {
         });
         fileMenu.add(addWorkerItem);
 
-        javax.swing.ActionMap actionMap = org.jdesktop.application.Application.getInstance().getContext().getActionMap(MainView.class, this);
+        javax.swing.ActionMap actionMap = org.jdesktop.application.Application.getInstance(org.signserver.admin.gui.SignServerAdminGUIApplication.class).getContext().getActionMap(MainView.class, this);
         exportMenuItem.setAction(actionMap.get("exportConfig")); // NOI18N
         exportMenuItem.setText(resourceMap.getString("exportMenuItem.text")); // NOI18N
         exportMenuItem.setName("exportMenuItem"); // NOI18N
@@ -798,134 +796,8 @@ public class MainView extends FrameView {
 
         menuBar.add(helpMenu);
 
-        statusPanel.setName("statusPanel"); // NOI18N
-
-        statusMessageLabel.setName("statusMessageLabel"); // NOI18N
-
-        statusAnimationLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        statusAnimationLabel.setName("statusAnimationLabel"); // NOI18N
-
-        progressBar.setName("progressBar"); // NOI18N
-
-        javax.swing.GroupLayout statusPanelLayout = new javax.swing.GroupLayout(statusPanel);
-        statusPanel.setLayout(statusPanelLayout);
-        statusPanelLayout.setHorizontalGroup(
-            statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, statusPanelLayout.createSequentialGroup()
-                .addContainerGap(1209, Short.MAX_VALUE)
-                .addComponent(progressBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(statusAnimationLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE))
-            .addGroup(statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(statusPanelLayout.createSequentialGroup()
-                    .addGap(135, 135, 135)
-                    .addComponent(statusMessageLabel)
-                    .addContainerGap(1273, Short.MAX_VALUE)))
-        );
-        statusPanelLayout.setVerticalGroup(
-            statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                .addComponent(statusAnimationLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(progressBar, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-            .addGroup(statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(statusPanelLayout.createSequentialGroup()
-                    .addContainerGap()
-                    .addComponent(statusMessageLabel)
-                    .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-        );
-
-        authEditPanel.setName("authEditPanel"); // NOI18N
-
-        jLabel4.setText(resourceMap.getString("jLabel4.text")); // NOI18N
-        jLabel4.setName("jLabel4"); // NOI18N
-
-        editSerialNumberTextfield.setName("editSerialNumberTextfield"); // NOI18N
-
-        jLabel5.setText(resourceMap.getString("jLabel5.text")); // NOI18N
-        jLabel5.setName("jLabel5"); // NOI18N
-
-        editIssuerDNTextfield.setName("editIssuerDNTextfield"); // NOI18N
-
-        editUpdateAllCheckbox.setText(resourceMap.getString("editUpdateAllCheckbox.text")); // NOI18N
-        editUpdateAllCheckbox.setName("editUpdateAllCheckbox"); // NOI18N
-
-        loadCertButton.setText(resourceMap.getString("loadCertButton.text")); // NOI18N
-        loadCertButton.setName("loadCertButton"); // NOI18N
-        loadCertButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                loadFromCertificateButtonPerformed(evt);
-            }
-        });
-
-        javax.swing.GroupLayout authEditPanelLayout = new javax.swing.GroupLayout(authEditPanel);
-        authEditPanel.setLayout(authEditPanelLayout);
-        authEditPanelLayout.setHorizontalGroup(
-            authEditPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(authEditPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(authEditPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(editSerialNumberTextfield, javax.swing.GroupLayout.DEFAULT_SIZE, 331, Short.MAX_VALUE)
-                    .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, 331, Short.MAX_VALUE)
-                    .addComponent(editIssuerDNTextfield, javax.swing.GroupLayout.DEFAULT_SIZE, 331, Short.MAX_VALUE)
-                    .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, 331, Short.MAX_VALUE)
-                    .addComponent(editUpdateAllCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, 331, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(loadCertButton, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE))
-        );
-        authEditPanelLayout.setVerticalGroup(
-            authEditPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(authEditPanelLayout.createSequentialGroup()
-                .addGap(51, 51, 51)
-                .addComponent(jLabel4)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(authEditPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(editSerialNumberTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(loadCertButton))
-                .addGap(18, 18, 18)
-                .addComponent(jLabel5)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(editIssuerDNTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(45, 45, 45)
-                .addComponent(editUpdateAllCheckbox)
-                .addContainerGap(60, Short.MAX_VALUE))
-        );
-
-        passwordPanel.setName("passwordPanel"); // NOI18N
-
-        passwordPanelLabel.setText(resourceMap.getString("passwordPanelLabel.text")); // NOI18N
-        passwordPanelLabel.setName("passwordPanelLabel"); // NOI18N
-
-        passwordPanelField.setText(resourceMap.getString("passwordPanelField.text")); // NOI18N
-        passwordPanelField.setName("passwordPanelField"); // NOI18N
-
-        javax.swing.GroupLayout passwordPanelLayout = new javax.swing.GroupLayout(passwordPanel);
-        passwordPanel.setLayout(passwordPanelLayout);
-        passwordPanelLayout.setHorizontalGroup(
-            passwordPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, passwordPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(passwordPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(passwordPanelField, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 391, Short.MAX_VALUE)
-                    .addComponent(passwordPanelLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 391, Short.MAX_VALUE))
-                .addContainerGap())
-        );
-        passwordPanelLayout.setVerticalGroup(
-            passwordPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(passwordPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(passwordPanelLabel)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(passwordPanelField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-
-        jTabbedPane1.setName("jTabbedPane1"); // NOI18N
-
-        mainPanel.setName("mainPanel"); // NOI18N
-
-        jToolBar1.setFloatable(false);
         jToolBar1.setRollover(true);
-        jToolBar1.setName("Toolbar"); // NOI18N
+        jToolBar1.setName("jToolBar1"); // NOI18N
 
         refreshButton.setAction(actionMap.get("refreshWorkers")); // NOI18N
         refreshButton.setText(resourceMap.getString("refreshButton.text")); // NOI18N
@@ -999,6 +871,131 @@ public class MainView extends FrameView {
         renewSignerButton.setName("renewSignerButton"); // NOI18N
         renewSignerButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         jToolBar1.add(renewSignerButton);
+
+        statusPanel.setName("statusPanel"); // NOI18N
+
+        statusMessageLabel.setName("statusMessageLabel"); // NOI18N
+
+        statusAnimationLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        statusAnimationLabel.setName("statusAnimationLabel"); // NOI18N
+
+        progressBar.setName("progressBar"); // NOI18N
+
+        javax.swing.GroupLayout statusPanelLayout = new javax.swing.GroupLayout(statusPanel);
+        statusPanel.setLayout(statusPanelLayout);
+        statusPanelLayout.setHorizontalGroup(
+            statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, statusPanelLayout.createSequentialGroup()
+                .addContainerGap(1209, Short.MAX_VALUE)
+                .addComponent(progressBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(statusAnimationLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE))
+            .addGroup(statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(statusPanelLayout.createSequentialGroup()
+                    .addGap(135, 135, 135)
+                    .addComponent(statusMessageLabel)
+                    .addContainerGap(1273, Short.MAX_VALUE)))
+        );
+        statusPanelLayout.setVerticalGroup(
+            statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                .addComponent(statusAnimationLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(progressBar, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(statusPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(statusPanelLayout.createSequentialGroup()
+                    .addContainerGap()
+                    .addComponent(statusMessageLabel)
+                    .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+        );
+
+        authEditPanel.setName("authEditPanel"); // NOI18N
+
+        jLabel4.setText(resourceMap.getString("jLabel4.text")); // NOI18N
+        jLabel4.setName("jLabel4"); // NOI18N
+
+        editSerialNumberTextfield.setName("editSerialNumberTextfield"); // NOI18N
+
+        jLabel5.setText(resourceMap.getString("jLabel5.text")); // NOI18N
+        jLabel5.setName("jLabel5"); // NOI18N
+
+        editIssuerDNTextfield.setName("editIssuerDNTextfield"); // NOI18N
+
+        editUpdateAllCheckbox.setText(resourceMap.getString("editUpdateAllCheckbox.text")); // NOI18N
+        editUpdateAllCheckbox.setName("editUpdateAllCheckbox"); // NOI18N
+
+        loadCertButton.setText(resourceMap.getString("loadCertButton.text")); // NOI18N
+        loadCertButton.setName("loadCertButton"); // NOI18N
+        loadCertButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                loadFromCertificateButtonPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout authEditPanelLayout = new javax.swing.GroupLayout(authEditPanel);
+        authEditPanel.setLayout(authEditPanelLayout);
+        authEditPanelLayout.setHorizontalGroup(
+            authEditPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(authEditPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(authEditPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(editSerialNumberTextfield, javax.swing.GroupLayout.DEFAULT_SIZE, 331, Short.MAX_VALUE)
+                    .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, 331, Short.MAX_VALUE)
+                    .addComponent(editIssuerDNTextfield, javax.swing.GroupLayout.DEFAULT_SIZE, 331, Short.MAX_VALUE)
+                    .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, 331, Short.MAX_VALUE)
+                    .addComponent(editUpdateAllCheckbox, javax.swing.GroupLayout.PREFERRED_SIZE, 331, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(loadCertButton, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE))
+        );
+        authEditPanelLayout.setVerticalGroup(
+            authEditPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(authEditPanelLayout.createSequentialGroup()
+                .addGap(51, 51, 51)
+                .addComponent(jLabel4)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(authEditPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(editSerialNumberTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(loadCertButton))
+                .addGap(18, 18, 18)
+                .addComponent(jLabel5)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(editIssuerDNTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(45, 45, 45)
+                .addComponent(editUpdateAllCheckbox)
+                .addContainerGap(60, Short.MAX_VALUE))
+        );
+
+        passwordPanel.setName("passwordPanel"); // NOI18N
+
+        passwordPanelLabel.setText(resourceMap.getString("passwordPanelLabel.text")); // NOI18N
+        passwordPanelLabel.setName("passwordPanelLabel"); // NOI18N
+
+        passwordPanelField.setText(resourceMap.getString("passwordPanelField.text")); // NOI18N
+        passwordPanelField.setName("passwordPanelField"); // NOI18N
+
+        javax.swing.GroupLayout passwordPanelLayout = new javax.swing.GroupLayout(passwordPanel);
+        passwordPanel.setLayout(passwordPanelLayout);
+        passwordPanelLayout.setHorizontalGroup(
+            passwordPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, passwordPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(passwordPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(passwordPanelField, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 391, Short.MAX_VALUE)
+                    .addComponent(passwordPanelLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 391, Short.MAX_VALUE))
+                .addContainerGap())
+        );
+        passwordPanelLayout.setVerticalGroup(
+            passwordPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(passwordPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(passwordPanelLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(passwordPanelField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        jTabbedPane1.setName("jTabbedPane1"); // NOI18N
+
+        mainPanel.setName("mainPanel"); // NOI18N
 
         jSplitPane1.setName("jSplitPane1"); // NOI18N
 
@@ -1074,13 +1071,13 @@ public class MainView extends FrameView {
         statusPropertiesTabLayout.setHorizontalGroup(
             statusPropertiesTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, statusPropertiesTabLayout.createSequentialGroup()
-                .addContainerGap(965, Short.MAX_VALUE)
+                .addContainerGap(969, Short.MAX_VALUE)
                 .addComponent(statusPropertiesDetailsButton, javax.swing.GroupLayout.PREFERRED_SIZE, 84, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
             .addGroup(statusPropertiesTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(statusPropertiesTabLayout.createSequentialGroup()
                     .addContainerGap()
-                    .addComponent(statusPropertiesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 937, Short.MAX_VALUE)
+                    .addComponent(statusPropertiesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 941, Short.MAX_VALUE)
                     .addGap(112, 112, 112)))
         );
         statusPropertiesTabLayout.setVerticalGroup(
@@ -1088,11 +1085,11 @@ public class MainView extends FrameView {
             .addGroup(statusPropertiesTabLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(statusPropertiesDetailsButton)
-                .addContainerGap(775, Short.MAX_VALUE))
+                .addContainerGap(678, Short.MAX_VALUE))
             .addGroup(statusPropertiesTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(statusPropertiesTabLayout.createSequentialGroup()
                     .addContainerGap()
-                    .addComponent(statusPropertiesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 788, Short.MAX_VALUE)
+                    .addComponent(statusPropertiesScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 709, Short.MAX_VALUE)
                     .addContainerGap()))
         );
 
@@ -1161,7 +1158,7 @@ public class MainView extends FrameView {
             configurationTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, configurationTabLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 927, Short.MAX_VALUE)
+                .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 931, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(configurationTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(addButton)
@@ -1177,7 +1174,7 @@ public class MainView extends FrameView {
             .addGroup(configurationTabLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(configurationTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 788, Short.MAX_VALUE)
+                    .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 709, Short.MAX_VALUE)
                     .addGroup(configurationTabLayout.createSequentialGroup()
                         .addComponent(addButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
@@ -1259,7 +1256,7 @@ public class MainView extends FrameView {
         authorizationTabLayout.setHorizontalGroup(
             authorizationTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(authorizationTabLayout.createSequentialGroup()
-                .addContainerGap(950, Short.MAX_VALUE)
+                .addContainerGap(954, Short.MAX_VALUE)
                 .addGroup(authorizationTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(authAddButton, javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(authEditButton, javax.swing.GroupLayout.Alignment.TRAILING)
@@ -1268,7 +1265,7 @@ public class MainView extends FrameView {
             .addGroup(authorizationTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(authorizationTabLayout.createSequentialGroup()
                     .addGap(6, 6, 6)
-                    .addComponent(jScrollPane7, javax.swing.GroupLayout.DEFAULT_SIZE, 931, Short.MAX_VALUE)
+                    .addComponent(jScrollPane7, javax.swing.GroupLayout.DEFAULT_SIZE, 935, Short.MAX_VALUE)
                     .addGap(124, 124, 124)))
         );
 
@@ -1283,11 +1280,11 @@ public class MainView extends FrameView {
                 .addComponent(authEditButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(authRemoveButton)
-                .addContainerGap(707, Short.MAX_VALUE))
+                .addContainerGap(574, Short.MAX_VALUE))
             .addGroup(authorizationTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(authorizationTabLayout.createSequentialGroup()
                     .addContainerGap()
-                    .addComponent(jScrollPane7, javax.swing.GroupLayout.DEFAULT_SIZE, 788, Short.MAX_VALUE)
+                    .addComponent(jScrollPane7, javax.swing.GroupLayout.DEFAULT_SIZE, 709, Short.MAX_VALUE)
                     .addContainerGap()))
         );
 
@@ -1449,7 +1446,7 @@ public class MainView extends FrameView {
         );
         tokenEntriesErrorPanelLayout.setVerticalGroup(
             tokenEntriesErrorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane9, javax.swing.GroupLayout.DEFAULT_SIZE, 712, Short.MAX_VALUE)
+            .addComponent(jScrollPane9, javax.swing.GroupLayout.DEFAULT_SIZE, 617, Short.MAX_VALUE)
         );
 
         tokenEntriesPanel.add(tokenEntriesErrorPanel, "tokenEntriesErrorCard");
@@ -1461,9 +1458,9 @@ public class MainView extends FrameView {
             .addGroup(cryptoTokenTabLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(cryptoTokenTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, 1037, Short.MAX_VALUE)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, 1041, Short.MAX_VALUE)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, cryptoTokenTabLayout.createSequentialGroup()
-                        .addComponent(tokenEntriesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 876, Short.MAX_VALUE)
+                        .addComponent(tokenEntriesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 816, Short.MAX_VALUE)
                         .addGap(18, 18, 18)
                         .addGroup(cryptoTokenTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(cryptoTokenTabLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
@@ -1525,7 +1522,7 @@ public class MainView extends FrameView {
                         .addComponent(tokenEntriesRemoveButton)
                         .addGap(18, 18, 18)
                         .addComponent(tokenEntriesDetailsButton))
-                    .addComponent(tokenEntriesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 712, Short.MAX_VALUE))
+                    .addComponent(tokenEntriesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 617, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
@@ -1538,8 +1535,8 @@ public class MainView extends FrameView {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(workerTabbedPane, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 1081, Short.MAX_VALUE)
-                    .addComponent(workerComboBox, javax.swing.GroupLayout.Alignment.LEADING, 0, 1081, Short.MAX_VALUE))
+                    .addComponent(workerTabbedPane, javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(workerComboBox, javax.swing.GroupLayout.Alignment.LEADING, 0, 1085, Short.MAX_VALUE))
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
@@ -1548,7 +1545,7 @@ public class MainView extends FrameView {
                 .addContainerGap()
                 .addComponent(workerComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
-                .addComponent(workerTabbedPane, javax.swing.GroupLayout.DEFAULT_SIZE, 847, Short.MAX_VALUE))
+                .addComponent(workerTabbedPane, javax.swing.GroupLayout.DEFAULT_SIZE, 784, Short.MAX_VALUE))
         );
 
         jSplitPane1.setRightComponent(jPanel1);
@@ -1557,18 +1554,16 @@ public class MainView extends FrameView {
         mainPanel.setLayout(mainPanelLayout);
         mainPanelLayout.setHorizontalGroup(
             mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jToolBar1, javax.swing.GroupLayout.DEFAULT_SIZE, 1388, Short.MAX_VALUE)
             .addGroup(mainPanelLayout.createSequentialGroup()
-                .addGap(12, 12, 12)
+                .addContainerGap()
                 .addComponent(jSplitPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 1364, Short.MAX_VALUE)
-                .addGap(12, 12, 12))
+                .addContainerGap())
         );
         mainPanelLayout.setVerticalGroup(
             mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(mainPanelLayout.createSequentialGroup()
-                .addComponent(jToolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jSplitPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 909, Short.MAX_VALUE)
+                .addContainerGap()
+                .addComponent(jSplitPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 857, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -1653,7 +1648,7 @@ public class MainView extends FrameView {
                         .addComponent(jButtonAuditConditionAdd)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButtonAuditConditionRemove))
-                    .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 87, Short.MAX_VALUE))
+                    .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 92, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
@@ -1759,9 +1754,9 @@ public class MainView extends FrameView {
         );
         auditlogTablePanelLayout.setVerticalGroup(
             auditlogTablePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 727, Short.MAX_VALUE)
+            .addGap(0, 658, Short.MAX_VALUE)
             .addGroup(auditlogTablePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addComponent(auditlogTableScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 727, Short.MAX_VALUE))
+                .addComponent(auditlogTableScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 658, Short.MAX_VALUE))
         );
 
         auditlogPanel.add(auditlogTablePanel, "auditlogTableCard");
@@ -1778,11 +1773,11 @@ public class MainView extends FrameView {
         auditlogErrorPanel.setLayout(auditlogErrorPanelLayout);
         auditlogErrorPanelLayout.setHorizontalGroup(
             auditlogErrorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane5, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 1340, Short.MAX_VALUE)
+            .addComponent(jScrollPane5, javax.swing.GroupLayout.Alignment.TRAILING)
         );
         auditlogErrorPanelLayout.setVerticalGroup(
             auditlogErrorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 727, Short.MAX_VALUE)
+            .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 658, Short.MAX_VALUE)
         );
 
         auditlogPanel.add(auditlogErrorPanel, "auditlogErrorCard");
@@ -1810,7 +1805,7 @@ public class MainView extends FrameView {
                 .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 156, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(auditlogMaxEntriesTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, 56, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(454, Short.MAX_VALUE))
+                .addContainerGap(402, Short.MAX_VALUE))
             .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(jPanel3Layout.createSequentialGroup()
                     .addContainerGap()
@@ -1835,11 +1830,11 @@ public class MainView extends FrameView {
                         .addComponent(auditlogDisplayingToIndex)
                         .addComponent(jLabel8)
                         .addComponent(auditlogMaxEntriesTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(754, Short.MAX_VALUE))
+                .addContainerGap(674, Short.MAX_VALUE))
             .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
                     .addGap(59, 59, 59)
-                    .addComponent(auditlogPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 727, Short.MAX_VALUE)
+                    .addComponent(auditlogPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addContainerGap()))
         );
 
@@ -1860,7 +1855,7 @@ public class MainView extends FrameView {
             auditPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(auditPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jSplitPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 930, Short.MAX_VALUE)
+                .addComponent(jSplitPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 857, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -1946,7 +1941,7 @@ public class MainView extends FrameView {
                         .addComponent(jButtonArchiveAuditConditionAdd)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jButtonArchiveConditionRemove))
-                    .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 87, Short.MAX_VALUE))
+                    .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 92, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
@@ -2047,7 +2042,7 @@ public class MainView extends FrameView {
         );
         archiveTablePanelLayout.setVerticalGroup(
             archiveTablePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(archiveTableScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 696, Short.MAX_VALUE)
+            .addComponent(archiveTableScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 609, Short.MAX_VALUE)
         );
 
         archiveContentPanel.add(archiveTablePanel, "archiveTableCard");
@@ -2064,11 +2059,11 @@ public class MainView extends FrameView {
         archiveErrorPanel.setLayout(archiveErrorPanelLayout);
         archiveErrorPanelLayout.setHorizontalGroup(
             archiveErrorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane8, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 1340, Short.MAX_VALUE)
+            .addComponent(jScrollPane8, javax.swing.GroupLayout.Alignment.TRAILING)
         );
         archiveErrorPanelLayout.setVerticalGroup(
             archiveErrorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane8, javax.swing.GroupLayout.DEFAULT_SIZE, 696, Short.MAX_VALUE)
+            .addComponent(jScrollPane8, javax.swing.GroupLayout.DEFAULT_SIZE, 609, Short.MAX_VALUE)
         );
 
         archiveContentPanel.add(archiveErrorPanel, "archiveErrorCard");
@@ -2096,7 +2091,7 @@ public class MainView extends FrameView {
                 .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 156, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(archiveMaxEntriesTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, 56, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(454, Short.MAX_VALUE))
+                .addContainerGap(402, Short.MAX_VALUE))
             .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(jPanel5Layout.createSequentialGroup()
                     .addContainerGap()
@@ -2121,11 +2116,11 @@ public class MainView extends FrameView {
                         .addComponent(archiveDisplayingToIndex)
                         .addComponent(jLabel13))
                     .addComponent(archivePreviousButton, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap(723, Short.MAX_VALUE))
+                .addContainerGap(625, Short.MAX_VALUE))
             .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                 .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel5Layout.createSequentialGroup()
                     .addGap(59, 59, 59)
-                    .addComponent(archiveContentPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 696, Short.MAX_VALUE)
+                    .addComponent(archiveContentPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addContainerGap()))
         );
 
@@ -2152,7 +2147,7 @@ public class MainView extends FrameView {
             archivePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(archivePanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jSplitPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 899, Short.MAX_VALUE)
+                .addComponent(jSplitPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 808, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(downloadArchiveEntriesButton)
                 .addContainerGap())
@@ -2212,7 +2207,7 @@ public class MainView extends FrameView {
                 .addContainerGap())
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, reloadPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(reloadAllWorkersRadioButton, javax.swing.GroupLayout.DEFAULT_SIZE, 372, Short.MAX_VALUE)
+                .addComponent(reloadAllWorkersRadioButton, javax.swing.GroupLayout.PREFERRED_SIZE, 372, Short.MAX_VALUE)
                 .addContainerGap())
             .addGroup(reloadPanelLayout.createSequentialGroup()
                 .addContainerGap()
@@ -2282,7 +2277,7 @@ public class MainView extends FrameView {
                 .addContainerGap())
             .addGroup(exportPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(exportAllUnrelatedGlobalCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, 451, Short.MAX_VALUE)
+                .addComponent(exportAllUnrelatedGlobalCheckbox, javax.swing.GroupLayout.PREFERRED_SIZE, 451, Short.MAX_VALUE)
                 .addContainerGap())
             .addGroup(exportPanelLayout.createSequentialGroup()
                 .addContainerGap()
@@ -2613,7 +2608,7 @@ public class MainView extends FrameView {
             if (o instanceof X509Certificate) {
                 certificates = Collections.singletonList((X509Certificate) o);
             } else if (o instanceof Collection) {
-                certificates = new LinkedList<>();
+                certificates = new LinkedList<X509Certificate>();
                 for (Object c : (Collection) o) {
                     if (c instanceof X509Certificate) {
                         certificates.add((X509Certificate) c);
@@ -2842,7 +2837,7 @@ private void tokenEntriesGenerateCSRButtonActionPerformed(java.awt.event.ActionE
     if (selectedWorker != null) {
         final int[] sels = tokenEntriesTable.getSelectedRows();
         if (sels.length > 0) {
-            final List<String> aliases = new LinkedList<>();
+            final List<String> aliases = new LinkedList<String>();
             for (int sel : sels) {
                 aliases.add(tokenEntriesModel.getRow(sel).getAlias());
             }
@@ -2857,14 +2852,14 @@ private void tokenEntriesImportButtonActionPerformed(java.awt.event.ActionEvent 
     if (selectedWorker != null) {
         final int[] sels = tokenEntriesTable.getSelectedRows();
         if (sels.length > 0) {
-            final List<String> aliases = new LinkedList<>();
+            final List<String> aliases = new LinkedList<String>();
             for (int sel : sels) {
                 aliases.add(tokenEntriesModel.getRow(sel).getAlias());
             }
             InstallCertificatesDialog dlg = new InstallCertificatesDialog(
                     getFrame(), true, selectedWorker, aliases, true);
             if (dlg.showDialog() == InstallCertificatesDialog.OK) {
-                getContext().getTaskService().execute(reloadTokenEntries());
+                getContext().getTaskService().execute(reloadTokenEntries()); 
             }
         }
     }
@@ -3013,7 +3008,7 @@ private void displayLogEntryAction() {
             if (worker.isCryptoConfigured()) {
                 loadCryptoTokenEntries(worker);
                 
-                if (!new HashSet<>(Arrays.asList(workerTabbedPane.getComponents())).contains(cryptoTokenTab)) {
+                if (!new HashSet<Component>(Arrays.asList(workerTabbedPane.getComponents())).contains(cryptoTokenTab)) {
                     workerTabbedPane.add("CryptoToken", cryptoTokenTab);
                 }
                 tokenEntriesStartIndexTextfield.setText(String.valueOf(1));
@@ -3050,17 +3045,17 @@ private void displayLogEntryAction() {
 
             setProgress(0);
 
-            List<Worker> newSigners = new ArrayList<>();
+            List<Worker> newSigners = new ArrayList<Worker>();
 
             try {
                 Properties globalConfig = toProperties(SignServerAdminGUIApplication.getAdminWS().getGlobalConfiguration());
                 List<Integer> workerIds = SignServerAdminGUIApplication
                         .getAdminWS()
-                        .getWorkers(WorkerConfig.WORKERTYPE_ALL);
+                        .getWorkers(GlobalConfiguration.WORKERTYPE_ALL);
                 int workers = 0;
                 for (Integer workerId : workerIds) {
                     setProgress(workers, 0, workerIds.size());
-                    final Vector<Object> workerInfo = new Vector<>();
+                    final Vector<Object> workerInfo = new Vector<Object>();
                     final WsWorkerConfig config = SignServerAdminGUIApplication.getAdminWS().getCurrentWorkerConfig(workerId);
                     final Properties properties = asProperties(config);
                     final String name = properties.getProperty("NAME");
@@ -3090,7 +3085,7 @@ private void displayLogEntryAction() {
                         LOG.debug("workerId: " + workerId + ", name: " + name);
                     }
                     // Configuration
-                    ArrayList<String> propertyNames = new ArrayList<>(properties.stringPropertyNames());
+                    ArrayList<String> propertyNames = new ArrayList<String>(properties.stringPropertyNames());
                     Collections.sort(propertyNames);
                     Object[][] configProperties = new Object[properties.size()][];
                     int j = 0;
@@ -3130,8 +3125,8 @@ private void displayLogEntryAction() {
                         LOG.error("Error in certificate", ex);
                     }
                     final Collection<AuthorizedClient> authClients = SignServerAdminGUIApplication.getAdminWS().getAuthorizedClients(workerId);
-                    final boolean isCryptoWorker = WorkerType.CRYPTO_WORKER.name().equals(properties.get(WorkerConfig.TYPE));
-                    final boolean hasCrypto = properties.containsKey(WorkerConfig.CRYPTOTOKEN_IMPLEMENTATION_CLASS);
+                    final boolean isCryptoWorker = "org.signserver.server.signers.CryptoWorker".equals(globalConfig.getProperty("GLOB.WORKER" + workerId + ".CLASSPATH"));
+                    final boolean hasCrypto = globalConfig.containsKey("GLOB.WORKER" + workerId + ".SIGNERTOKEN.CLASSPATH");
                     newSigners.add(new Worker(workerId, name, statusSummary, statusProperties, configProperties, properties, active, authClients, isCryptoWorker, hasCrypto));
                     workers++;
                 }
@@ -3195,7 +3190,7 @@ private void displayLogEntryAction() {
                 
             } else {
                 // Save selection
-                ArrayList<Integer> indices = new ArrayList<>();
+                ArrayList<Integer> indices = new ArrayList<Integer>();
                 
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Selected signers: " + selectedWorkers);
@@ -3534,7 +3529,7 @@ private void displayLogEntryAction() {
         if (certs == null || certs.size() < 1) {
             results = null;
         } else {
-            results = new LinkedList<>();
+            results = new LinkedList<X509Certificate>();
             for (byte[] certbytes : certs) {
                 X509Certificate cert = null;
                 if (certbytes != null && certbytes.length > 0) {
@@ -3636,12 +3631,14 @@ private void displayLogEntryAction() {
                 // on a background thread, so don't reference
                 // the Swing GUI from here.
                 final ArrayList<QueryCondition> conditions =
-                        new ArrayList<>(auditlogConditionsModel.getEntries());
+                        new ArrayList<QueryCondition>(auditlogConditionsModel.getEntries());
                 final QueryOrdering order = new QueryOrdering();
                 order.setColumn(AuditRecordData.FIELD_TIMESTAMP);
                 order.setOrder(Order.DESC);
                 return SignServerAdminGUIApplication.getAdminWS().queryAuditLog(startIndex, maxEntries, conditions, Collections.singletonList(order));
-            } catch (AdminNotAuthorizedException_Exception | SignServerException_Exception ex) {
+            } catch (AdminNotAuthorizedException_Exception ex) {
+                exception = ex;
+            } catch (SignServerException_Exception ex) {
                 exception = ex;
             } catch (Exception ex) {
                 LOG.error("Reload failed", ex);
@@ -3706,14 +3703,16 @@ private void displayLogEntryAction() {
                 // on a background thread, so don't reference
                 // the Swing GUI from here.
                 final ArrayList<QueryCondition> conditions =
-                        new ArrayList<>(archiveConditionsModel.getEntries());
+                        new ArrayList<QueryCondition>(archiveConditionsModel.getEntries());
                 final QueryOrdering order = new QueryOrdering();
                 order.setColumn(ArchiveMetadata.TIME);
                 order.setOrder(Order.DESC);
                 return SignServerAdminGUIApplication.getAdminWS()
                         .queryArchive(startIndex, maxEntries, conditions,
                         Collections.singletonList(order), false);
-            } catch (AdminNotAuthorizedException_Exception | SignServerException_Exception ex) {
+            } catch (AdminNotAuthorizedException_Exception ex) {
+                exception = ex;
+            } catch (SignServerException_Exception ex) {
                 exception = ex;
             } catch (Exception ex) {
                 LOG.error("Reload failed", ex);
@@ -3793,7 +3792,7 @@ private void displayLogEntryAction() {
 
         private List<ArchiveEntry> getSelectedEntries() {
             final List<ArchiveEntry> entries = archiveModel.getEntries();
-            final List<ArchiveEntry> result = new ArrayList<>();
+            final List<ArchiveEntry> result = new ArrayList<ArchiveEntry>();
             
             for (final int row : archiveTable.getSelectedRows()) {
                 final ArchiveEntry entry = entries.get(row);
@@ -3805,7 +3804,7 @@ private void displayLogEntryAction() {
         
         @Override
         protected Boolean doInBackground() throws Exception {
-            final List<String> uniqueIds = new ArrayList<>();
+            final List<String> uniqueIds = new ArrayList<String>();
             
             // if no directory was selected, silently return
             if (outputDirectory == null) {
@@ -3824,9 +3823,16 @@ private void displayLogEntryAction() {
                     final File out =
                             new File(outputDirectory, 
                                     constructDumpFilename(entry));
+                    FileOutputStream os = null;
+
                     // TODO: check if output files already exists
-                    try (FileOutputStream os = new FileOutputStream(out)) {
+                    try {
+                        os = new FileOutputStream(out);
                         os.write(entry.getArchiveData());
+                    } finally {
+                        if (os != null) {
+                            os.close();
+                        }
                     }
                 }
                 // TODO: maybe we should check if all items where received
@@ -4020,7 +4026,7 @@ private void displayLogEntryAction() {
                 alias = aliasTextField.getText();
                 if (res == JOptionPane.OK_OPTION && !alias.isEmpty()) {
                     res = JOptionPane.showConfirmDialog(getFrame(), 
-                            "WARNING: Will attempt to permanently remove the following key:\n" +
+                            "WARNING: Will attempt to permantently remove the following key:\n" +
                             alias + "\n" +
                             "\n" +
                             "Note: the key might be used by multiple workers.\n" +
@@ -4051,7 +4057,15 @@ private void displayLogEntryAction() {
                 errorMessage = "Authorization denied:\n" + ex.getLocalizedMessage();
             } catch (CryptoTokenOfflineException_Exception ex) {
                 errorMessage = "Unable to remove key because token was not active:\n" + ex.getLocalizedMessage();
-            } catch (InvalidWorkerIdException_Exception | KeyStoreException_Exception | SignServerException_Exception | SOAPFaultException | EJBException ex) {
+            } catch (InvalidWorkerIdException_Exception ex) {
+                errorMessage = "Unable to remove key:\n" + ex.getLocalizedMessage();
+            } catch (KeyStoreException_Exception ex) {
+                errorMessage = "Unable to remove key:\n" + ex.getLocalizedMessage();
+            } catch (SignServerException_Exception ex) {
+                errorMessage = "Unable to remove key:\n" + ex.getLocalizedMessage();
+            } catch (SOAPFaultException ex) {
+                errorMessage = "Unable to remove key:\n" + ex.getLocalizedMessage();
+            } catch (EJBException ex) {
                 errorMessage = "Unable to remove key:\n" + ex.getLocalizedMessage();
             }
             return success;
@@ -4214,7 +4228,7 @@ private void displayLogEntryAction() {
                 if (exportAll) {
                     workers = allWorkers;
                 } else if (exportSelected) {
-                    workers = new ArrayList<>();
+                    workers = new ArrayList<Worker>();
                     for (int row : selected) {
                         workers.add(allWorkers.get(row));
                     }
@@ -4258,7 +4272,7 @@ private void displayLogEntryAction() {
         }
 
         private Collection<org.signserver.common.AuthorizedClient> convert(Collection<AuthorizedClient> wsList) {
-            Collection<org.signserver.common.AuthorizedClient> result = new LinkedList<>();
+            Collection<org.signserver.common.AuthorizedClient> result = new LinkedList<org.signserver.common.AuthorizedClient>();
             for (AuthorizedClient client : wsList) {
                 result.add(new org.signserver.common.AuthorizedClient(client.getCertSN(), client.getIssuerDN()));
             }
@@ -4310,7 +4324,37 @@ private Properties toProperties(WsGlobalConfiguration wsgc) {
                         Collections.<QueryCondition>emptyList(),
                         Arrays.asList(ordering),
                         true);
-            } catch (AdminNotAuthorizedException_Exception | AuthorizationDeniedException_Exception | CryptoTokenOfflineException_Exception | InvalidWorkerIdException_Exception | OperationUnsupportedException_Exception | QueryException_Exception | SignServerException_Exception ex) {
+            } catch (AdminNotAuthorizedException_Exception ex) {
+                exception = ex;
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Error during token entries query", ex);
+                }
+            } catch (AuthorizationDeniedException_Exception ex) {
+                exception = ex;
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Error during token entries query", ex);
+                }
+            } catch (CryptoTokenOfflineException_Exception ex) {
+                exception = ex;
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Error during token entries query", ex);
+                }
+            } catch (InvalidWorkerIdException_Exception ex) {
+                exception = ex;
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Error during token entries query", ex);
+                }
+            } catch (OperationUnsupportedException_Exception ex) {
+                exception = ex;
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Error during token entries query", ex);
+                }
+            } catch (QueryException_Exception ex) {
+                exception = ex;
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Error during token entries query", ex);
+                }
+            } catch (SignServerException_Exception ex) {
                 exception = ex;
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Error during token entries query", ex);
