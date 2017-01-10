@@ -1,0 +1,128 @@
+<project name="JSign Ant tests">
+
+  <taskdef name="signexe" classname="net.jsign.PESignerTask"/>
+  
+  <property name="keystore" value="keystore.jks"/>
+  <property name="alias"    value="test"/>
+  <property name="keypass"  value="password"/>
+
+  <target name="missing-keystore">
+    <signexe file="wineyes-signed-with-ant.exe"/>
+  </target>
+
+  <target name="unsupported-keystore">
+    <signexe file="wineyes-signed-with-ant.exe" keystore="keystore.jks" storetype="ABC"/>
+  </target>
+
+  <target name="keystore-not-found">
+    <signexe file="wineyes-signed-with-ant.exe" keystore="keystore2.jks"/>
+  </target>
+
+  <target name="corrupted-keystore">
+    <signexe file="wineyes-signed-with-ant.exe" keystore="wineyes.exe"/>
+  </target>
+
+  <target name="missing-alias">
+    <signexe file="wineyes-signed-with-ant.exe" keystore="keystore.jks"/>
+  </target>
+
+  <target name="alias-not-found">
+    <signexe file="wineyes-signed-with-ant.exe" keystore="keystore.jks" alias="unknown"/>
+  </target>
+
+  <target name="certificate-not-found">
+    <signexe file="wineyes-signed-with-ant.exe" keystore="keystore.jks" storepass="" alias="foo"/>
+  </target>
+
+  <target name="missing-file">
+    <signexe keystore="keystore.jks" alias="test" keypass="password"/>
+  </target>
+
+  <target name="file-not-found">
+    <signexe file="wineyes-foo.exe" keystore="keystore.jks" alias="test" keypass="password"/>
+  </target>
+
+  <target name="corrupted-file">
+    <signexe file="keystore.jks" keystore="keystore.jks" alias="test" keypass="password"/>
+  </target>
+
+  <target name="conflicting-attributes">
+    <signexe file="wineyes-signed-with-ant.exe" keystore="keystore.jks" alias="test" keyfile="privatekey.pvk" certfile="certificates.spc"/>
+  </target>
+
+  <target name="missing-certfile">
+    <signexe file="wineyes-signed-with-ant.exe" keyfile="privatekey.pvk"/>
+  </target>
+
+  <target name="missing-keyfile">
+    <signexe file="wineyes-signed-with-ant.exe" certfile="certificates.spc"/>
+  </target>
+
+  <target name="certfile-not-found">
+    <signexe file="wineyes-signed-with-ant.exe" certfile="certificate2.spc" keyfile="privatekey.pvk"/>
+  </target>
+
+  <target name="keyfile-not-found">
+    <signexe file="wineyes-signed-with-ant.exe" certfile="certificate.spc" keyfile="privatekey2.pvk"/>
+  </target>
+
+  <target name="corrupted-certfile">
+    <signexe file="wineyes-signed-with-ant.exe" certfile="privatekey.pvk" keyfile="privatekey.pvk"/>
+  </target>
+
+  <target name="corrupted-keyfile">
+    <signexe file="wineyes-signed-with-ant.exe" certfile="certificate.spc" keyfile="certificate.spc"/>
+  </target>
+
+  <target name="unsupported-digest-algorithm">
+    <signexe file="wineyes-signed-with-ant.exe" alg="SHA-123" keystore="keystore.jks" alias="test" keypass="password"/>
+  </target>
+
+  <target name="signing">
+    <signexe file="wineyes-signed-with-ant.exe"
+             name="WinEyes"
+             url="http://www.steelblue.com/WinEyes"
+             alg="SHA-1"
+             keystore="${keystore}"
+             alias="${alias}"
+             keypass="${keypass}"/>
+  </target>
+
+  <target name="signing-pkcs12">
+    <signexe file="wineyes-signed-with-ant.exe"
+             name="WinEyes"
+             url="http://www.steelblue.com/WinEyes"
+             alg="SHA-256"
+             keystore="keystore.p12"
+             alias="test"
+             storepass="password"/>
+  </target>
+
+  <target name="signing-pvk-spc">
+    <signexe file="wineyes-signed-with-ant.exe"
+             certfile="certificate.spc"
+             keyfile="privatekey-encrypted.pvk"
+             keypass="password"/>
+  </target>
+
+  <target name="timestamping-authenticode">
+    <copy file="wineyes.exe" tofile="wineyes-timestamped-with-ant-authenticode.exe" overwrite="true"/>
+    <signexe file="wineyes-timestamped-with-ant-authenticode.exe"
+             keystore="${keystore}"
+             alias="${alias}"
+             keypass="${keypass}"
+             tsaurl="http://timestamp.comodoca.com/authenticode"
+             tsmode="authenticode"/>
+  </target>
+
+  <target name="timestamping-rfc3161">
+    <copy file="wineyes.exe" tofile="wineyes-timestamped-with-ant-rfc3161.exe" overwrite="true"/>
+    <signexe file="wineyes-timestamped-with-ant-rfc3161.exe"
+             keystore="${keystore}"
+             alias="${alias}"
+             keypass="${keypass}"
+             tsaurl="http://timestamp.comodoca.com/rfc3161"
+             tsmode="rfc3161"/>
+  </target>
+
+</project>
