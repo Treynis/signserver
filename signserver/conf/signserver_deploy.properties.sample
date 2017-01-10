@@ -166,10 +166,6 @@
 # Default: true
 #admingui.enabled=true
 
-# Set to enable deployment of the AdminWeb
-# Default: true
-#adminweb.enabled=true
-
 # Set to enable build of the ClientCLI
 # Default: true
 #clientcli.enabled=true
@@ -191,13 +187,7 @@
 #module.tsa-enterprise.enabled=false
 
 
-# -------------- Web Deployment Configuration -----------------------------------
-
-# The private port exposed externally, i.e. if you run an Apache proxy in front of JBoss
-# the port may be 443 instead.
-# Default: 8443
-#httpserver.external.privhttps=8443
-#httpserver.external.privhttps=443
+# -------------- Additional Web Deployments -----------------------------------
 
 # Deploy the documentation.
 #

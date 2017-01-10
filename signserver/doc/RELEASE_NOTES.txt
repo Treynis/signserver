@@ -1,12 +1,3 @@
-SignServer 4.1.0
-----------------
-
-Notice:
- - If you are customizing the SignServer public web to be embedded in a frame, 
-   note that SignServer now uses the X-FRAME-OPTIONS HTTP header, preventing
-   web GUIs from being framed in modern browsers.
-
-
 SignServer 4.0.1
 ----------------
 
@@ -19,7 +10,6 @@ Improvements:
     - Additional PKCS#11 library definitions
     - Make inclusion of IssuerSerial in SigningCertificate in Time-stamp tokens
       optional
-    - Security hardening
 
 Bug fixes:
     - A security issue
