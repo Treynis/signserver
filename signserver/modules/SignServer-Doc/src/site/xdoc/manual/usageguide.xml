@@ -220,7 +220,7 @@ The 'resync' command is used after a SignServer had a complete database failure.
                         <p>
 This commands can be used for processable workers that have archiving turned on. They 
 are used to find specific archived responses. It's up to the implementation of the 
-worker if it supports archiving or not and it is up to the choosen Archiver if it 
+worker if it supports archiving or not and it is up to the chosen Archiver if it 
 archives the data in way that it can be queried using this commands. For Archivers 
 other than the default "OldDatabaseArchiver" and Base64DatabaseArchiver querying 
 might have to be done directly in a database, filesystem or by some custom 
@@ -908,8 +908,8 @@ if next key is choosen that key becomes the new default key.
                         </p>
                         <p>
 At least one of "Signer certificate" and "Signer certificate chain" columns needs to be filled in.
-If a file is choosen for "Signer certificate" then the first certificate from that file will be used as signer certificate. It will also be added to the beginning of the certificate chain (if it is not already there).
-If a file is choosen for "Signer certificate chain" then all of the certificates from that file will be included in the certificate chain. The first certificate will be used as signer certificate (if a "Signer certificate" was not choosen).
+If a file is chosen for "Signer certificate" then the first certificate from that file will be used as signer certificate. It will also be added to the beginning of the certificate chain (if it is not already there).
+If a file is chosen for "Signer certificate chain" then all of the certificates from that file will be included in the certificate chain. The first certificate will be used as signer certificate (if a "Signer certificate" was not chosen).
                         </p>
                         <p>
 If the "Install in token" check box is selected, the certificate chain will be
@@ -1130,15 +1130,6 @@ If this property is not set (or an invalid file is given), the maintenance funct
 <source>healthcheck.maintenancepropertyname</source> - The property name to be used in the maintenance file. This will also
 affect the error message returned when in maintenance mode (the part of the string after <code>MAINT:</code> 
 (defaults to <code>DOWN_FOR_MAINTENANCE</code>).
-                    </p>
-                    <p>
-<source>healthcheck.customerrormessage</source> - If this set to a non-empty value, the value is used for the error message
-instead of details describing the errors (thus not exposing internal details).
-                    </p>
-                    <p>
-<source>healthcheck.sendservererror</source> - If this property is set to true (the default value), HTTP status 500 is returned
-with an error page containing the error message if health monitoring fails.
-If set to false a plain text result with HTTP status 200 is returned instead in this case.
                     </p>
                 
                 <h4>Available tests and responses</h4>

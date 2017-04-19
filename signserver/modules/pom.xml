@@ -4,11 +4,11 @@
     <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer</artifactId>
-        <version>4.1.0-pk4</version>
+        <version>4.0.2-pk1</version>
     </parent>
     <groupId>org.signserver</groupId>
     <artifactId>SignServer-Modules</artifactId>
-    <version>4.1.0-pk4</version>
+    <version>4.0.2-pk1</version>
     <packaging>pom</packaging>
     <name>SignServer Modules</name>
     <properties>
@@ -42,8 +42,6 @@
         <module>CESeCore-jars</module>
         
         <!-- Interfaces -->
-        <module>SignServer-Admin-Common</module>
-        <module>SignServer-Web-Common</module>
         <module>SignServer-war</module>
         <module>SignServer-war-Healthcheck</module>
         <module>SignServer-AdminCLI</module>
@@ -97,7 +95,8 @@
         <!-- Documentation -->
         <module>SignServer-Doc</module>
         <module>SignServer-Doc-web</module>
-    </modules>
+
+  </modules>
     <dependencies>
         <dependency>
             <artifactId>${bouncycastle.bcpkix.artifact}</artifactId>

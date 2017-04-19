@@ -51,9 +51,6 @@ Properties that have common use among most signers:
                     <p>
 <b>REQUESTDN</b> = Subject DN to be included in a certificate signing request (CSR) by default. Used by interfaces such as the Admin GUI to have a default value already filled in.
                     </p>
-                    <p>
-<b>NO_REQUEST_ARCHIVING</b> = When set to true, instruct the signer that archiving of request data is not to be considered. This implies the signer can make optimizations such as not keeping the the original request data intact while doing modifications. This is not allowed to be set to true when archivers used are configured to archive request data. Default: false.
-                    </p>
                 </subsection>
 
                 <subsection name="Time-stamp Signer">
@@ -1129,7 +1126,15 @@ Currently the signer certificate is always included.
                             <b>ALLOW_DETACHEDSIGNATURE_OVERRIDE</b> = property specifying if the requestor can request an other value for DETACHEDIGSNATURE than what is configured. Default is false.<br/>
                             If set to true a request could include a metadata property with an other value for DETACHEDSIGNATURE.
                         </p>
-
+                        <p>
+                            <b>DER_RE_ENCODE</b> = Property specifying if the resulting data structure should be parsed and re-encoded using DER encoding. Note that this option is performed in memory and thus does not support large files. Default is false.
+                        </p>
+                        <p>
+                            <b>CONTENTOID</b> = Property specifying the content OID to use in the signedData object by default. If not specified, the default CMS data OID (1.2.840.113549.1.7.1) is used.
+                        </p>
+                        <p>
+                            <b>ALLOW_CONTENTOID_OVERRIDE</b> = Property specifying if the content OID to use in the signedData object should be allowed to be overridden by request metadata (CONTENTOID request parameter). Default is false.
+                        </p> 
                 </subsection>
                 
                 <subsection name="MS Authenticode Signer">
@@ -1142,11 +1147,8 @@ The signer has the fully qualified class name: org.signserver.module.msauthcode.
                     </p>
                     <h4>Overview</h4>
                         <p>
-The signer signs portable executable files such as Windows executables and shared libraries (.exe, .dll and .ocx etc) according to the Windows Authenticode Portable Executable Signature Format and also Windows installer packages (.msi)
+The signer signs portable executable files such as Windows executables and shared libraries (.exe, .dll and .ocx etc) according to the Windows Authenticode Portable Executable Signature Format.
 The signature can optionally include a timestamp response from a TSA using the Authenticode format.
-                        </p>
-                        <p>
-Currently MSI files larger than 2 GB are not supported.
                         </p>
 
                     <h4>Available Properties</h4>

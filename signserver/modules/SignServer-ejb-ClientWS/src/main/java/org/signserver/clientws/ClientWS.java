@@ -79,7 +79,7 @@ public class ClientWS {
     private DataFactory dataFactory;
     
     @PostConstruct
-    protected void init() {
+    public void init() {
         dataFactory = DataUtils.createDataFactory();
     }
     
@@ -334,14 +334,7 @@ public class ClientWS {
         if (xForwardedFor != null) {
             requestContext.put(RequestContext.X_FORWARDED_FOR, xForwardedFor);
         }
-
-        // Add and log the X-SignServer-Custom-1 header if available
-        final String xCustom1 = servletRequest.getHeader(RequestContext.X_SIGNSERVER_CUSTOM_1);
-        if (xCustom1 != null && !xCustom1.isEmpty()) {
-            requestContext.put(RequestContext.X_SIGNSERVER_CUSTOM_1, xCustom1);            
-        }
-        logMap.put(IWorkerLogger.LOG_XCUSTOM1, xCustom1);
-
+        
         if (requestMetadata == null) {
             requestContext.remove(RequestContext.REQUEST_METADATA);
         } else {

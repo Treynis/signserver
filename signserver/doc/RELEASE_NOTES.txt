@@ -1,10 +1,14 @@
-SignServer 4.1.0
+SignServer 4.0.2
 ----------------
 
-Notice:
- - If you are customizing the SignServer public web to be embedded in a frame, 
-   note that SignServer now uses the X-FRAME-OPTIONS HTTP header, preventing
-   web GUIs from being framed in modern browsers.
+New features:
+    - Support for configurable content OID in CMS signatures
+    - Support for DER encoding of CMS signatures
+
+Bug fixes:
+    - Master list signer was only working with certificate installed in token
+    - Issues with PDF permissions when PDF version gets upgraded
+    - Regression: TimeMonitor manual was not available in the SignServer manual
 
 
 SignServer 4.0.1
@@ -19,7 +23,6 @@ Improvements:
     - Additional PKCS#11 library definitions
     - Make inclusion of IssuerSerial in SigningCertificate in Time-stamp tokens
       optional
-    - Security hardening
 
 Bug fixes:
     - A security issue

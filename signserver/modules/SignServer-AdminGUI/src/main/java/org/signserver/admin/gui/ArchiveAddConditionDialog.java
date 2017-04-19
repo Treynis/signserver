@@ -12,8 +12,6 @@
  *************************************************************************/
 package org.signserver.admin.gui;
 
-import org.signserver.admin.common.query.ArchiveColumn;
-
 /**
  * Dialog to add archive query conditions.
  * 

@@ -109,8 +109,6 @@ public class WorkerFactory {
             final String className = config.getImplementationClass();
             if (className == null) {
                 result = new UnloadableWorker("Missing property " + WorkerConfig.IMPLEMENTATION_CLASS);
-            } else if (className.isEmpty()) {
-                result = new UnloadableWorker("Empty property " + WorkerConfig.IMPLEMENTATION_CLASS);
             } else {
                 try {
                     if (LOG.isDebugEnabled()) {

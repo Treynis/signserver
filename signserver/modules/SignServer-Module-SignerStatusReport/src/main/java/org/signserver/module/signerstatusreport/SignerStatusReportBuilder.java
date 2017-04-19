@@ -13,9 +13,9 @@
 package org.signserver.module.signerstatusreport;
 
 import java.security.cert.Certificate;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import org.apache.commons.lang.time.FastDateFormat;
 import org.apache.log4j.Logger;
 import org.signserver.common.*;
 import org.signserver.server.KeyUsageCounterHash;
@@ -24,7 +24,7 @@ import org.signserver.server.entities.KeyUsageCounter;
 import org.signserver.ejb.interfaces.WorkerSessionLocal;
 
 /**
- * Builds a signer's status report for the choosen signers in a special format.
+ * Builds a signer's status report for the chosen signers in a special format.
  *
  * @author Markus Kilås
  * @version $Id$
@@ -40,8 +40,8 @@ public class SignerStatusReportBuilder implements ReportBuilder {
     private static final String SEPARATOR = ", ";
     
     /** Validity date time format. */
-    private final FastDateFormat dateFormat =
-            FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss z");
+    private final SimpleDateFormat dateFormat
+            = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
     
     /** List of worker names. */
     private final List<String> workers;

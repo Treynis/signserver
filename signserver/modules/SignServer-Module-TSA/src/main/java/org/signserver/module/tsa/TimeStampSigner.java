@@ -27,6 +27,7 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -273,6 +274,8 @@ public class TimeStampSigner extends BaseSigner {
     private static final String DEFAULT_SIGNATUREALGORITHM = "SHA1withRSA";
     private static final String DEFAULT_ORDERING = "FALSE";
     private static final String DEFAULT_CERTIFICATE_DIGEST_ALGORITHM = "SHA256";
+    
+    private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
 
     private ITimeSource timeSource = null;
     private String signatureAlgorithm;

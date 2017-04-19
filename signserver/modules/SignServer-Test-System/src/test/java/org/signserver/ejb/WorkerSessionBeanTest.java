@@ -27,7 +27,6 @@ import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
-import org.signserver.admin.common.config.RekeyUtil;
 import org.signserver.ejb.interfaces.ProcessSessionRemote;
 import org.signserver.ejb.interfaces.WorkerSession;
 
@@ -235,15 +234,15 @@ public class WorkerSessionBeanTest extends ModulesTestCase {
     public void test09nextAliasInSequence() throws Exception {
 
         assertEquals("KeyAlias2",
-                RekeyUtil.nextAliasInSequence("KeyAlias1"));
+                WorkerSessionBean.nextAliasInSequence("KeyAlias1"));
         assertEquals("MyKey00002",
-                RekeyUtil.nextAliasInSequence("MyKey00001"));
+                WorkerSessionBean.nextAliasInSequence("MyKey00001"));
         assertEquals("MyKey2",
-                RekeyUtil.nextAliasInSequence("MyKey"));
+                WorkerSessionBean.nextAliasInSequence("MyKey"));
         assertEquals("MyKey00001",
-                RekeyUtil.nextAliasInSequence("MyKey00000"));
+                WorkerSessionBean.nextAliasInSequence("MyKey00000"));
         assertEquals("MyKeys1_0038",
-                RekeyUtil.nextAliasInSequence("MyKeys1_0037"));
+                WorkerSessionBean.nextAliasInSequence("MyKeys1_0037"));
     }
     
     /**

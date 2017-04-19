@@ -4,12 +4,12 @@
     <parent>
     <artifactId>SignServer-Modules</artifactId>
     <groupId>org.signserver</groupId>
-    <version>4.1.0-pk4</version>
+    <version>4.0.2-pk1</version>
   </parent>
 
     <groupId>org.signserver</groupId>
     <artifactId>SignServer-Doc-web</artifactId>
-    <version>4.1.0-pk4</version>
+    <version>4.0.2-pk1</version>
     <packaging>war</packaging>
 
     <name>SignServer-Doc-web</name>
@@ -23,7 +23,7 @@
         <module.name>webdoc</module.name>
         <module.priority>30</module.priority>
         <module.web.web-uri>${dist.jar}</module.web.web-uri>
-        <module.web.context>/doc</module.web.context>
+        <module.web.context-root>/signserver/doc</module.web.context-root>
         <doc.dir>../../doc/htdocs</doc.dir>
         <doc.root>../../doc</doc.root>
     </properties>
@@ -37,11 +37,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>SignServer-Doc</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>SignServer-Web-Common</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

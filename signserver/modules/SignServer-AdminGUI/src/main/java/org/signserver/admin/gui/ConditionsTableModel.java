@@ -12,16 +12,14 @@
  *************************************************************************/
 package org.signserver.admin.gui;
 
-import org.signserver.admin.common.query.QueryOperator;
-import org.signserver.admin.common.query.QueryColumn;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import javax.swing.table.AbstractTableModel;
-import org.apache.commons.lang.time.FastDateFormat;
-import org.cesecore.util.query.elems.RelationalOperator;
-import org.signserver.admin.common.query.QueryCondition;
+import org.signserver.admin.gui.adminws.gen.QueryCondition;
+import org.signserver.admin.gui.adminws.gen.RelationalOperator;
 
 /**
  * Abstract Table Model for the query conditions.
@@ -37,7 +35,7 @@ public abstract class ConditionsTableModel extends AbstractTableModel {
                 "Column", "Condition", "Value"
             };
     
-    private final FastDateFormat fdf = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ssZ");
+    private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
     
     private List<QueryCondition> entries = new ArrayList<>();
    
@@ -68,7 +66,7 @@ public abstract class ConditionsTableModel extends AbstractTableModel {
                 if (col.getType() == QueryColumn.Type.TIME && result instanceof String) {
                     try {
                         final long time = Long.parseLong((String) result);
-                        result = fdf.format(new Date(time)) + " (" + time + ")";
+                        result = sdf.format(new Date(time)) + " (" + time + ")";
                     } catch (NumberFormatException ignored) {}
                 }
             } break;
