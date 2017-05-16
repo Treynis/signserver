@@ -41,7 +41,6 @@ import org.cesecore.authentication.tokens.UsernamePrincipal;
 import org.cesecore.authorization.AuthorizationDeniedException;
 import org.cesecore.util.CertTools;
 import org.cesecore.util.query.QueryCriteria;
-import org.signserver.admin.common.config.RekeyUtil;
 import org.signserver.common.*;
 import org.signserver.common.KeyTestResult;
 import org.signserver.common.util.PropertiesConstants;
@@ -428,7 +427,7 @@ public class WorkerSessionBean implements WorkerSessionLocal, WorkerSessionRemot
                 if (currentAlias == null) {
                     throw new IllegalArgumentException("No key alias specified");
                 } else {
-                    alias = RekeyUtil.nextAliasInSequence(currentAlias);
+                    alias = nextAliasInSequence(currentAlias);
                 }
             }
             
@@ -506,6 +505,34 @@ public class WorkerSessionBean implements WorkerSessionLocal, WorkerSessionRemot
             }
         }
         return result;
+    }
+
+    static String nextAliasInSequence(final String currentAlias) {
+
+        String prefix = currentAlias;
+        String nextSequence = "2";
+
+        final String[] entry = currentAlias.split("[0-9]+$");
+        if (entry.length == 1) {
+            prefix = entry[0];
+            final String currentSequence
+                    = currentAlias.substring(prefix.length());
+            final int sequenceChars = currentSequence.length();
+            if (sequenceChars > 0) {
+                final long nextSequenceNumber = Long.parseLong(currentSequence) + 1;
+                final String nextSequenceNumberString
+                        = String.valueOf(nextSequenceNumber);
+                if (sequenceChars > nextSequenceNumberString.length()) {
+                    nextSequence = currentSequence.substring(0,
+                            sequenceChars - nextSequenceNumberString.length())
+                            + nextSequenceNumberString;
+                } else {
+                    nextSequence = nextSequenceNumberString;
+                }
+            }
+        }
+
+        return prefix + nextSequence;
     }
 
     @Override

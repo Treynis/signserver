@@ -166,10 +166,6 @@
 # Default: true
 #admingui.enabled=true
 
-# Set to enable deployment of the AdminWeb
-# Default: true
-#adminweb.enabled=true
-
 # Set to enable build of the ClientCLI
 # Default: true
 #clientcli.enabled=true
@@ -191,19 +187,7 @@
 #module.tsa-enterprise.enabled=false
 
 
-# -------------- Web Deployment Configuration -----------------------------------
-
-# The private port exposed externally, i.e. if you run an Apache proxy in front of JBoss
-# the port may be 443 instead.
-# Default: 8443
-#httpserver.external.privhttps=8443
-#httpserver.external.privhttps=443
-
-# Custom context-root
-# Default: /signserver
-#httpserver.context.root=/signserver
-#httpserver.context.root=/instance1/signserver
-
+# -------------- Additional Web Deployments -----------------------------------
 
 # Deploy the documentation.
 #
@@ -277,16 +261,6 @@
 # Default: DOWN_FOR_MAINTENANCE
 #healthcheck.maintenancepropertyname=DOWN_FOR_MAINTENANCE
 
-# Parameter to configure a custom error message
-# When this is not set (the default), details describing the errors will be
-# included in the error page
-#healthcheck.customerrormessage=NOTOK
-
-# Parameter to configure whether health check errors should be reported as
-# HTTP response code 500 (internal server error) with an error page, or as
-# HTTP response code 200 (OK) with a plain text body
-# Default: true (send error), set to false to get the plain text behavior
-#healthcheck.sendservererror=false
 
 # ------------- Status Repository Configuration --------------------------------
 

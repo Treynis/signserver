@@ -24,25 +24,18 @@ import java.security.interfaces.DSAPublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import javax.persistence.EntityManager;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.DEROutputStream;
 import org.bouncycastle.asn1.cms.CMSObjectIdentifiers;
-import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.cert.jcajce.JcaCertStore;
 import org.bouncycastle.cms.*;
 import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
 import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.DefaultDigestAlgorithmIdentifierFinder;
-import org.bouncycastle.operator.DigestAlgorithmIdentifierFinder;
-import org.bouncycastle.operator.DigestCalculator;
-import org.bouncycastle.operator.DigestCalculatorProvider;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
@@ -80,13 +73,7 @@ public class CMSSigner extends BaseSigner {
     public static final String SIGNATUREALGORITHM_PROPERTY = "SIGNATUREALGORITHM";
     public static final String DETACHEDSIGNATURE_PROPERTY = "DETACHEDSIGNATURE";
     public static final String ALLOW_SIGNATURETYPE_OVERRIDE_PROPERTY = "ALLOW_DETACHEDSIGNATURE_OVERRIDE";
-    public static final String CLIENTSIDEHASHING = "CLIENTSIDEHASHING";
-    public static final String ALLOW_CLIENTSIDEHASHING_OVERRIDE = "ALLOW_CLIENTSIDEHASHING_OVERRIDE";
-    public static final String ACCEPTED_HASHDIGEST_ALGORITHMS = "ACCEPTED_HASH_DIGEST_ALGORITHMS";
-    
-    public static final String CLIENTSIDE_HASHDIGESTALGORITHM_PROPERTY = "CLIENTSIDE_HASHDIGESTALGORITHM";
-    public static final String USING_CLIENTSUPPLIED_HASH_PROPERTY = "USING_CLIENTSUPPLIED_HASH";
-    
+
     public static final String CONTENT_OID_PROPERTY = "CONTENTOID";
     public static final String ALLOW_CONTENTOID_OVERRIDE = "ALLOW_CONTENTOID_OVERRIDE";
     private static final ASN1ObjectIdentifier DEFAULT_CONTENT_OID =
@@ -99,11 +86,7 @@ public class CMSSigner extends BaseSigner {
 
     private boolean detachedSignature;
     private boolean allowDetachedSignatureOverride;
-    private boolean clientSideHashing;
-    private boolean allowClientSideHashingOverride;
     private boolean derReEncode;
-    
-    private Set<AlgorithmIdentifier> acceptedHashDigestAlgorithms;
 
     private ASN1ObjectIdentifier contentOID;
     private boolean allowContentOIDOverride;
@@ -139,40 +122,6 @@ public class CMSSigner extends BaseSigner {
             configErrors.add("Incorrect value for property " + ALLOW_SIGNATURETYPE_OVERRIDE_PROPERTY + ". Expecting TRUE or FALSE.");
         }
         
-        final String clientSideHashingValue = config.getProperty(CLIENTSIDEHASHING);
-        if (clientSideHashingValue == null || clientSideHashingValue.isEmpty() ||
-            Boolean.FALSE.toString().equalsIgnoreCase(clientSideHashingValue)) {
-            clientSideHashing = false;
-        } else if (Boolean.TRUE.toString().equalsIgnoreCase(clientSideHashingValue)) {
-            clientSideHashing = true;
-        } else {
-            configErrors.add("Incorrect value for property " + CLIENTSIDEHASHING + ". Expecting TRUE or FALSE.");
-        }
-        
-        final String allowClientSideHashingOverrideValue = config.getProperty(ALLOW_CLIENTSIDEHASHING_OVERRIDE);
-        if (allowClientSideHashingOverrideValue == null ||
-            allowClientSideHashingOverrideValue.isEmpty() ||
-            Boolean.FALSE.toString().equalsIgnoreCase(allowClientSideHashingOverrideValue)) {
-            allowClientSideHashingOverride = false;
-        } else if (Boolean.TRUE.toString().equalsIgnoreCase(allowClientSideHashingOverrideValue)) {
-            allowClientSideHashingOverride = true;
-        } else {
-            configErrors.add("Incorrect value for property " + ALLOW_CLIENTSIDEHASHING_OVERRIDE + ". Expecting TRUE or FALSE.");
-        }
-        
-        initAcceptedHashDigestAlgorithms();
-        
-        /* require ACCEPTED_HASHDIGEST_ALGORITHMS to be set when either
-         * CLIENTSIDEHASHING is set to true or ALLOW_CLIENTSIDEHASHING_OVERRIDE
-         * is set to true
-         */
-        if (acceptedHashDigestAlgorithms == null &&
-            (allowClientSideHashingOverride || clientSideHashing)) {
-            configErrors.add("Must specify " + ACCEPTED_HASHDIGEST_ALGORITHMS +
-                             " when " + CLIENTSIDEHASHING + " or " +
-                             ALLOW_CLIENTSIDEHASHING_OVERRIDE + " is true");
-        }
-        
         final String contentOIDString = config.getProperty(CONTENT_OID_PROPERTY);
         if (contentOIDString != null && !contentOIDString.isEmpty()) {
             try {
@@ -206,223 +155,6 @@ public class CMSSigner extends BaseSigner {
         }
     }
 
-    private void initAcceptedHashDigestAlgorithms() {
-        final String acceptedHashDigestAlgorithmsValue =
-                config.getProperty(ACCEPTED_HASHDIGEST_ALGORITHMS);
-        final DigestAlgorithmIdentifierFinder algFinder = new DefaultDigestAlgorithmIdentifierFinder();
-        
-        if (acceptedHashDigestAlgorithmsValue != null &&
-            !acceptedHashDigestAlgorithmsValue.isEmpty()) {
-            acceptedHashDigestAlgorithms = new HashSet<>();
-            for (final String digestAlgorithmString :
-                 acceptedHashDigestAlgorithmsValue.split(",")) {
-                final String digestAlgorithmStringTrim = digestAlgorithmString.trim();
-                final AlgorithmIdentifier alg = algFinder.find(digestAlgorithmStringTrim);
-                
-                if (alg == null || alg.getAlgorithm() == null) {
-                    configErrors.add("Illegal algorithm specified for " + ACCEPTED_HASHDIGEST_ALGORITHMS + ": " +
-                                     digestAlgorithmStringTrim);
-                } else {
-                    acceptedHashDigestAlgorithms.add(alg);
-                }
-            }
-        }
-        
-    }
-
-    
-    private boolean shouldUseClientSideHashing(final RequestContext requestContext)
-            throws IllegalRequestException {
-        final boolean useClientSideHashing;
-        final Boolean clientSideHashingRequested =
-            getClientSuppliedHashRequest(requestContext);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Client-side hashing configured: " + clientSideHashing + "\n"
-                    + "Client-side hashing requested: " + clientSideHashingRequested);
-        }
-        if (clientSideHashingRequested == null) {
-            useClientSideHashing = clientSideHashing;
-        } else {
-            if (clientSideHashingRequested) {
-                if (!clientSideHashing && !allowClientSideHashingOverride) {
-                    throw new IllegalRequestException("Client-side hashing requested but not allowed");
-                }
-            } else {
-                if (clientSideHashing && !allowClientSideHashingOverride) {
-                    throw new IllegalRequestException("Server-side hashing requested but not allowed");
-                }
-            }
-            
-            final Boolean requestDetached =
-                    getDetachedSignatureRequest(requestContext);
-            if (requestDetached != null && !requestDetached && !detachedSignature) {
-                throw new IllegalRequestException("Client-side hashing can only be used with detached signatures");
-            }
-   
-            useClientSideHashing = clientSideHashingRequested;
-        }
-
-        return useClientSideHashing;
-    }
-    
-    private AlgorithmIdentifier getClientSideHashAlgorithm(final RequestContext requestContext)
-            throws IllegalRequestException {
-        AlgorithmIdentifier alg = null;
-        final String value = RequestMetadata.getInstance(requestContext).get(CLIENTSIDE_HASHDIGESTALGORITHM_PROPERTY);
-        if (value != null && !value.isEmpty()) {
-            final DigestAlgorithmIdentifierFinder algFinder =
-                    new DefaultDigestAlgorithmIdentifierFinder();
-            alg = algFinder.find(value);
-        }
-
-        if (alg == null) {
-            throw new IllegalRequestException("Client-side hashing request must specify hash algorithm used");
-        }
-        
-        /* DefaultDigestAlgorithmIdentifierFinder returns an AlgorithmIdentifer
-         * with a null algorithm for an unknown algorithm
-         */
-        if (alg.getAlgorithm() == null) {
-            throw new IllegalRequestException("Client specified an unknown digest algorithm");
-        }
-        
-        if (acceptedHashDigestAlgorithms != null &&
-            !acceptedHashDigestAlgorithms.isEmpty() &&
-            !acceptedHashDigestAlgorithms.contains(alg)) {
-            throw new IllegalRequestException("Client specified a non-accepted digest hash algorithm");
-        }
-        
-        return alg;
-    }
-    
-    private void signData(final ICryptoInstance crypto,
-                          final X509Certificate cert,
-                          final Collection<Certificate> certs,
-                          final RequestContext requestContext,
-                          final ReadableData requestData,
-                          final WritableData responseData,
-                          final ASN1ObjectIdentifier contentOID)
-            throws OperatorCreationException, CertificateEncodingException, CMSException, IllegalRequestException, IOException {
-        final CMSSignedDataStreamGenerator generator
-                    = new CMSSignedDataStreamGenerator();
-        final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(crypto.getPublicKey()) : signatureAlgorithm;
-        final ContentSigner contentSigner = new JcaContentSignerBuilder(sigAlg).setProvider(crypto.getProvider()).build(crypto.getPrivateKey());
-        generator.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(
-                 new JcaDigestCalculatorProviderBuilder().setProvider("BC").build())
-                 .build(contentSigner, cert));
-
-        generator.addCertificates(new JcaCertStore(certs));
-
-        // Should the content be detached or not
-        final boolean detached;
-        final Boolean detachedRequested = getDetachedSignatureRequest(requestContext);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Detached signature configured: " + detachedSignature + "\n"
-                    + "Detached signature requested: " + detachedRequested);
-        }
-        if (detachedRequested == null) {
-            detached = detachedSignature;
-        } else {
-            if (detachedRequested) {
-                if (!detachedSignature && !allowDetachedSignatureOverride) {
-                    throw new IllegalRequestException("Detached signature requested but not allowed");
-                }
-            } else {
-                if (detachedSignature && !allowDetachedSignatureOverride) {
-                    throw new IllegalRequestException("Non detached signature requested but not allowed");
-                }
-            }
-            detached = detachedRequested;
-        }
-
-        // Generate the signature
-        if (!derReEncode) {
-            try (
-                    final OutputStream responseOutputStream = requestData.isFile() && !detached ? responseData.getAsFileOutputStream() : responseData.getAsInMemoryOutputStream();
-                    final OutputStream out = generator.open(contentOID, responseOutputStream, !detached);
-                    final InputStream requestIn = requestData.getAsInputStream();
-                ) {
-                IOUtils.copyLarge(requestIn, out);
-            }
-        } else {
-            // Sign and then parse and re-encode as DER
-            // Note, this will not support large files as the above case and will not be as performant.
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Signing and then re-encoding as DER");
-            }
-            final ByteArrayOutputStream bout = new ByteArrayOutputStream();
-            try (
-                    final OutputStream out = generator.open(contentOID, bout, !detached);
-                    final InputStream requestIn = requestData.getAsInputStream();
-                ) {
-                IOUtils.copyLarge(requestIn, out);
-            }
-            try (final OutputStream responseOutputStream = requestData.isFile() && !detached ? responseData.getAsFileOutputStream() : responseData.getAsInMemoryOutputStream();) {
-                final CMSSignedData signedData = new CMSSignedData(bout.toByteArray());
-                final DEROutputStream derOut = new DEROutputStream(responseOutputStream);
-                derOut.writeObject(signedData.toASN1Structure());
-            }
-        }
-
-    }
-    
-    private void signHash(final ICryptoInstance crypto,
-                          final X509Certificate cert,
-                          final Collection<Certificate> certs,
-                          final RequestContext requestContext,
-                          final ReadableData requestData,
-                          final WritableData responseData,
-                          final ASN1ObjectIdentifier contentOID)
-            throws OperatorCreationException, CertificateEncodingException, CMSException, IOException, IllegalRequestException {
-        final CMSSignedDataGenerator generator
-                    = new CMSSignedDataGenerator();
-        final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(crypto.getPublicKey()) : signatureAlgorithm;
-        final ContentSigner contentSigner = new JcaContentSignerBuilder(sigAlg).setProvider(crypto.getProvider()).build(crypto.getPrivateKey());
-        final byte[] digestData = requestData.getAsByteArray();
-        final AlgorithmIdentifier alg = getClientSideHashAlgorithm(requestContext);
-        
-        final DigestCalculator digestCalculator = new DigestCalculator() {
-            @Override
-            public AlgorithmIdentifier getAlgorithmIdentifier() {
-                return alg;
-            }
-
-            @Override
-            public OutputStream getOutputStream() {
-                return new OutputStream() {
-                    @Override
-                    public void write(int b) throws IOException {
-                        // do nothing
-                    }
-                };
-            }
-
-            @Override
-            public byte[] getDigest() {
-                return digestData;
-            }
-            
-        };
-        
-        final DigestCalculatorProvider calcProv = new DigestCalculatorProvider() {
-            @Override
-            public DigestCalculator get(AlgorithmIdentifier digestAlgorithmIdentifier) throws OperatorCreationException {
-                return digestCalculator;
-            }  
-        };
-        
-        final JcaSignerInfoGeneratorBuilder siBuilder = new JcaSignerInfoGeneratorBuilder(calcProv);
-        final SignerInfoGenerator sig = siBuilder.build(contentSigner, cert);
-
-        generator.addSignerInfoGenerator(sig);
-        generator.addCertificates(new JcaCertStore(certs));
-        
-        // Generate the signature
-        CMSSignedData signedData = generator.generate(new CMSProcessableByteArray(contentOID, "dummy".getBytes()), false);
-        
-        responseData.getAsInMemoryOutputStream().write(signedData.getEncoded());
-    }
-    
     @Override
     public Response processData(final Request signRequest,
             final RequestContext requestContext) throws IllegalRequestException,
@@ -437,12 +169,6 @@ public class CMSSigner extends BaseSigner {
 
         if (!configErrors.isEmpty()) {
             throw new SignServerException("Worker is misconfigured");
-        }
-        
-        final boolean useClientSideHashing =
-                shouldUseClientSideHashing(requestContext);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Using client-side supplied hash");
         }
         
         final ReadableData requestData = sReq.getRequestData();
@@ -463,6 +189,38 @@ public class CMSSigner extends BaseSigner {
                 throw new IllegalArgumentException("Null certificate chain. This signer needs a certificate.");
             }
             
+            final CMSSignedDataStreamGenerator generator
+                    = new CMSSignedDataStreamGenerator();
+            final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(crypto.getPublicKey()) : signatureAlgorithm;
+            final ContentSigner contentSigner = new JcaContentSignerBuilder(sigAlg).setProvider(crypto.getProvider()).build(crypto.getPrivateKey());
+            generator.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(
+                     new JcaDigestCalculatorProviderBuilder().setProvider("BC").build())
+                     .build(contentSigner, cert));
+
+            generator.addCertificates(new JcaCertStore(certs));
+
+            // Should the content be detached or not
+            final boolean detached;
+            final Boolean detachedRequested = getDetachedSignatureRequest(requestContext);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Detached signature configured: " + detachedSignature + "\n"
+                        + "Detached signature requested: " + detachedRequested);
+            }
+            if (detachedRequested == null) {
+                detached = detachedSignature;
+            } else {
+                if (detachedRequested) {
+                    if (!detachedSignature && !allowDetachedSignatureOverride) {
+                        throw new IllegalRequestException("Detached signature requested but not allowed");
+                    }
+                } else {
+                    if (detachedSignature && !allowDetachedSignatureOverride) {
+                        throw new IllegalRequestException("Non detached signature requested but not allowed");
+                    }
+                }
+                detached = detachedRequested;
+            }
+            
             ASN1ObjectIdentifier contentOIDToUse;
             try {
                 final ASN1ObjectIdentifier requestedContentOID =
@@ -479,12 +237,33 @@ public class CMSSigner extends BaseSigner {
                 throw new IllegalRequestException("Illegal OID specified in request");
             }
 
-            if (useClientSideHashing) {
-                signHash(crypto, cert, certs, requestContext, requestData,
-                         responseData, contentOIDToUse);
+            // Generate the signature
+            if (!derReEncode) {
+                try (
+                        final OutputStream responseOutputStream = requestData.isFile() && !detached ? responseData.getAsFileOutputStream() : responseData.getAsInMemoryOutputStream();
+                        final OutputStream out = generator.open(contentOIDToUse, responseOutputStream, !detached);
+                        final InputStream requestIn = requestData.getAsInputStream();
+                    ) {
+                    IOUtils.copyLarge(requestIn, out);
+                }
             } else {
-                signData(crypto, cert, certs, requestContext, requestData,
-                         responseData, contentOIDToUse);
+                // Sign and then parse and re-encode as DER
+                // Note, this will not support large files as the above case and will not be as performant.
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Signing and then re-encoding as DER");
+                }
+                final ByteArrayOutputStream bout = new ByteArrayOutputStream();
+                try (
+                        final OutputStream out = generator.open(contentOIDToUse, bout, !detached);
+                        final InputStream requestIn = requestData.getAsInputStream();
+                    ) {
+                    IOUtils.copyLarge(requestIn, out);
+                }
+                try (final OutputStream responseOutputStream = requestData.isFile() && !detached ? responseData.getAsFileOutputStream() : responseData.getAsInMemoryOutputStream();) {
+                    final CMSSignedData signedData = new CMSSignedData(bout.toByteArray());
+                    final DEROutputStream derOut = new DEROutputStream(responseOutputStream);
+                    derOut.writeObject(signedData.toASN1Structure());
+                }
             }
 
             final String archiveId = createArchiveId(new byte[0], (String) requestContext.get(RequestContext.TRANSACTION_ID));
@@ -545,22 +324,6 @@ public class CMSSigner extends BaseSigner {
     private static Boolean getDetachedSignatureRequest(final RequestContext context) {
         Boolean result = null;
         final String value = RequestMetadata.getInstance(context).get(DETACHEDSIGNATURE_PROPERTY);
-        if (value != null && !value.isEmpty()) {
-            result = Boolean.parseBoolean(value);
-        }
-        return result;
-    }
-    
-    /**
-     * Read the request metadata property for USING_CLIENTSUPPLIED_HASH if any.
-     * Note that empty String is treated as an unset property.
-     * @param context to read from
-     * @return null if no USING_CLIENTSUPPLIED_HASH request property specified otherwise
-     * true or false.
-     */
-    private static Boolean getClientSuppliedHashRequest(final RequestContext context) {
-        Boolean result = null;
-        final String value = RequestMetadata.getInstance(context).get(USING_CLIENTSUPPLIED_HASH_PROPERTY);
         if (value != null && !value.isEmpty()) {
             result = Boolean.parseBoolean(value);
         }

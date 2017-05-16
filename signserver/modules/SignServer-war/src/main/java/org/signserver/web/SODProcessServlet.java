@@ -32,7 +32,6 @@ import org.apache.commons.io.IOUtils;
 
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.bouncycastle.util.encoders.DecoderException;
 import org.signserver.common.AccessDeniedException;
 import org.signserver.common.AuthorizationRequiredException;
 import org.signserver.common.CryptoTokenOfflineException;
@@ -206,17 +205,7 @@ public class SODProcessServlet extends AbstractProcessServlet {
                                             LOG.trace("with value " + dataStr);
                                         }
                                     }
-                                    
-                                    if (base64Encoded && data.length > 0) {
-                                        try {
-                                            data = Base64.decode(data);
-                                        } catch (DecoderException ex) {
-                                            sendBadRequest(res, "Incorrect base64 data");
-                                            return;
-                                        }
-                                    }
-
-                                    dataGroups.put(dataGroupId, data);
+                                    dataGroups.put(dataGroupId, base64Encoded ? Base64.decode(data) : data);
                                 }
                             } else {
                                 if (LOG.isDebugEnabled()) {

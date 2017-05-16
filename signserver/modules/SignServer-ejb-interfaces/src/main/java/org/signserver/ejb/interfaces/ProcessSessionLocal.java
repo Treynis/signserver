@@ -33,8 +33,7 @@ import org.signserver.server.log.AdminInfo;
 public interface ProcessSessionLocal {
     /**
      * The Worker Beans main method. Takes  requests processes them
-     * and returns a response. This method is used when no transaction should
-     * be needed.
+     * and returns a response.
      *
      * @param info Administrator information
      * @param wi id of worker who should process the request
@@ -47,24 +46,6 @@ public interface ProcessSessionLocal {
      * during process.
      */
     Response process(final AdminInfo info, WorkerIdentifier wi, Request request,
-            RequestContext requestContext)
-            throws IllegalRequestException, CryptoTokenOfflineException,
-            SignServerException;
-    
-    /**
-     * The Worker Beans main method. Takes  requests processes them
-     * and returns a response. This method is used when a transaction is needed.
-     * 
-     * @param info Administrator information
-     * @param wi id of worker who should process the request
-     * @param request the request
-     * @param requestContext
-     * @return The process response
-     * @throws IllegalRequestException
-     * @throws CryptoTokenOfflineException
-     * @throws SignServerException 
-     */
-    Response processWithTransaction(final AdminInfo info, WorkerIdentifier wi, Request request,
             RequestContext requestContext)
             throws IllegalRequestException, CryptoTokenOfflineException,
             SignServerException;

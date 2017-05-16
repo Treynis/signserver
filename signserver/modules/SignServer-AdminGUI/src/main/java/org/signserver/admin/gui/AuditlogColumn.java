@@ -12,7 +12,6 @@
  *************************************************************************/
 package org.signserver.admin.gui;
 
-import org.signserver.admin.common.query.QueryColumn;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;

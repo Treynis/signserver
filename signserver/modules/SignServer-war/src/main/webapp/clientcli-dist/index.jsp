@@ -4,7 +4,7 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
         <link rel="stylesheet" href="../publicweb.css" type="text/css"/>
-        <link rel="shortcut icon" href="../favicon.png"/>
+        <link rel="shortcut icon" href="/signserver/favicon.png"/>
         <title>SignServer - ClientCLI Download</title>
     </head>
     <body>
@@ -12,7 +12,7 @@
             <%@include file="../WEB-INF/jspf/header.jspf" %>
             <jsp:useBean class="org.signserver.web.SettingsBean" id="settings"/>
 
-            <h2>ClientCLI Download</h2>
+            <h2 style="margin-top: 4em;">ClientCLI Download</h2>
 
             <p>
                 If enabled, a binary distribution (zip-file) with the SignServer 

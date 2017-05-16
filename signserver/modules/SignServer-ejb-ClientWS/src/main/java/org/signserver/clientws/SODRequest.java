@@ -44,8 +44,6 @@ public class SODRequest {
     }
 
     /**
-     * Get the list of data group values (data or hashes).
-     *
      * @return List of datagroups
      */
     @XmlElement(name = "dataGroup", required = true, nillable = false) 
@@ -54,8 +52,6 @@ public class SODRequest {
     }
 
     /**
-     * Set the list of data group values (data or hashes).
-     *
      * @param dataGroups List of datagroups
      */
     public void setDataGroups(List<DataGroup> dataGroups) {
@@ -63,8 +59,6 @@ public class SODRequest {
     }
 
     /**
-     * Get the version of the LDS.
-     *
      * @return Version of LDS
      */
     @XmlElement(name = "ldsVersion", required=false)
@@ -73,8 +67,6 @@ public class SODRequest {
     }
 
     /**
-     * Set the version of the LDS.
-     *
      * @param ldsVersion Version of LDS
      */
     public void setLdsVersion(String ldsVersion) {
@@ -82,8 +74,6 @@ public class SODRequest {
     }
 
     /**
-     * Get the unicode version used.
-     *
      * @return Version of Unicode
      */
     @XmlElement(name = "unicodeVersion", required=false)
@@ -92,8 +82,6 @@ public class SODRequest {
     }
 
     /**
-     * Set the unicode version used.
-     *
      * @param unicodeVersion Version of Unicode
      */
     public void setUnicodeVersion(String unicodeVersion) {

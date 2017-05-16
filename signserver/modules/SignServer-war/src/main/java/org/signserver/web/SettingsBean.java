@@ -23,31 +23,21 @@ import org.signserver.common.CompileTimeSettings;
  * @version $Id$
  */
 public class SettingsBean {
-
+    
     /** Logger for this class. */
     private static final Logger LOG = Logger.getLogger(SettingsBean.class);
-
+    
     /** Key in signservercompile.properties. */
-    private static final String ADMINWEB_ENABLED_AND_AVAILABLE = "adminweb.enabled.available";
     private static final String WEBDOC_ENABLED = "webdoc.enabled";
     private static final String WEB_ADMINGUI_DIST_ENABLED = "web.admingui.dist.enabled";
     private static final String WEB_ADMINGUI_DIST_FILE = "web.admingui.dist.file";
     private static final String WEB_CLIENTCLI_DIST_ENABLED = "web.clientcli.dist.enabled";
     private static final String WEB_CLIENTCLI_DIST_FILE = "web.clientcli.dist.file";
-    private static final String HTTPSERVER_EXTERNAL_PRIVHTTPS = "httpserver.external.privhttps";
-
+    
     private final CompileTimeSettings settings = CompileTimeSettings.getInstance();
-
+    
     /**
-     * @return If the web documentation is enabled.
-     */
-    public boolean isAdminWebEnabledAndAvailable() {
-        final String enabled = settings.getProperty(ADMINWEB_ENABLED_AND_AVAILABLE);
-        return enabled != null && Boolean.parseBoolean(enabled);
-    }
-
-    /**
-     * @return If the web documentation is enabled.
+     * @return If the web documentation is enabled. 
      */
     public boolean isWebDocEnabled() {
         final String enabled = settings.getProperty(WEBDOC_ENABLED);
@@ -58,7 +48,7 @@ public class SettingsBean {
         final String enabled = settings.getProperty(WEB_ADMINGUI_DIST_ENABLED);
         return enabled != null && Boolean.parseBoolean(enabled);
     }
-
+    
     public boolean isWebClientCLIDistEnabled() {
         final String enabled = settings.getProperty(WEB_CLIENTCLI_DIST_ENABLED);
         return enabled != null && Boolean.parseBoolean(enabled);
@@ -94,7 +84,7 @@ public class SettingsBean {
         }
         return result;
     }
-
+    
     public boolean isWebClientCLIDistAvailable() {
         final boolean result;
         if (!isWebClientCLIDistEnabled()) {
@@ -117,19 +107,4 @@ public class SettingsBean {
     public String getWebClientCLIDistSize() {
         return String.format("%.2f MB", getClientCLIDistFile().length() / 1000000f);
     }
-
-    /**
-     * Port used by SignServer public web to construct a correct URL.
-     * @return The port number
-     */
-    public int getExternalPrivateHttpsPort() {
-        int value = 8443;
-        try {
-            value = Integer.parseInt(settings.getProperty(HTTPSERVER_EXTERNAL_PRIVHTTPS));
-        } catch (NumberFormatException e) { // NOPMD
-            LOG.warn("\"httpserver.external.privhttps\" is not a decimal number. Using default value: " + value);
-        }
-        return value;
-    }
-
 }

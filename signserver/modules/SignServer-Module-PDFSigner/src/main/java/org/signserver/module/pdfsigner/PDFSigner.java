@@ -23,6 +23,7 @@ import java.security.cert.*;
 import java.security.cert.Certificate;
 import java.security.interfaces.DSAPrivateKey;
 import java.security.interfaces.DSAPublicKey;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,7 +31,6 @@ import java.util.regex.Pattern;
 import javax.persistence.EntityManager;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.time.FastDateFormat;
 import org.apache.log4j.Logger;
 import org.cesecore.util.CertTools;
 import org.signserver.common.*;
@@ -695,7 +695,7 @@ public class PDFSigner extends BaseSigner {
 
             PdfStamper stp = PdfStamper.createSignature(reader, responseOut, updatedPdfVersion, responseFile, appendMode);
             PdfSignatureAppearance sap = stp.getSignatureAppearance();
-            
+
             // Set PDF permissions/encryption if:
             // - there are new permissions or
             // - the owner password has been specified or
@@ -707,7 +707,7 @@ public class PDFSigner extends BaseSigner {
                         LOG.debug("Setting default encryption algorithm");
                     }
                 }
-                
+
                 if (params.getSetOwnerPassword() != null) {
                     password = params.getSetOwnerPassword().getBytes("ISO-8859-1");
                 } else if (isUserPassword(reader, password) && newPermissions != null) {
@@ -951,7 +951,6 @@ public class PDFSigner extends BaseSigner {
         fields.put("REMOTEIP", (String) requestContext.get(RequestContext.REMOTE_IP));
         fields.put("TRANSACTIONID", (String) requestContext.get(RequestContext.TRANSACTION_ID));
         fields.put("REQUESTID", String.valueOf(sReq.getRequestID()));
-        fields.put("CUSTOMHEADER1", (String) requestContext.get(RequestContext.X_SIGNSERVER_CUSTOM_1));
 
         Object credential = requestContext.get(RequestContext.CLIENT_CREDENTIAL);
         if (credential instanceof UsernamePasswordClientCredential) {
@@ -1030,7 +1029,7 @@ public class PDFSigner extends BaseSigner {
 
             final String value;
             if (key.startsWith("DATE:")) {
-                final FastDateFormat sdf = FastDateFormat.getInstance(
+                final SimpleDateFormat sdf = new SimpleDateFormat(
                         key.substring("DATE:".length()).trim());
                 value = sdf.format(date);
             } else {

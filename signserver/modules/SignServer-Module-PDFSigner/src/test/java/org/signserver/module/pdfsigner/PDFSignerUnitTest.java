@@ -426,7 +426,7 @@ public class PDFSignerUnitTest extends ModulesTestCase {
         assertEquals("permissions of PDF without restrictions", expected, actual.asSet());
         assertEquals("security set", 1, getCryptoMode(signedPDF, "open456".getBytes()));
     }
-    
+
     /** Tests the property SET_PERMISSIONS by setting different values and make 
      * sure they end up in the signed PDF. Also tests that when not setting 
      * the property the original permissions remain.

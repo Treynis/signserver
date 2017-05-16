@@ -31,7 +31,6 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.util.encoders.Base64;
-import org.bouncycastle.util.encoders.DecoderException;
 import org.cesecore.util.CertTools;
 import org.signserver.common.*;
 import org.signserver.ejb.interfaces.ProcessSessionLocal;
@@ -243,16 +242,11 @@ public class GenericProcessServlet extends AbstractProcessServlet {
                     // Special handling of base64 encoded data. Note: no large file support for this
                     if (encoding != null && !encoding.isEmpty()) {
                         // Read in all data and base64 decode it
-                        byte[] bytes = data.getAsByteArray();
-                        if (bytes.length > 0) {
-                            try {
-                                bytes = Base64.decode(bytes);
-                            } catch (DecoderException ex) {
-                                sendBadRequest(res, "Incorrect base64 data");
-                                return;
-                            } finally {
-                                data.close();
-                            }
+                        byte[] bytes;
+                        try {
+                            bytes = Base64.decode(data.getAsByteArray());
+                        } finally {
+                            data.close();
                         }
                         
                         // Now put the decoded data
@@ -347,14 +341,7 @@ public class GenericProcessServlet extends AbstractProcessServlet {
                             if (LOG.isDebugEnabled()) {
                                 LOG.debug("Decoding base64 data");
                             }
-                            if (bytes.length > 0) {
-                                try {
-                                    bytes = Base64.decode(bytes);
-                                } catch (DecoderException ex) {
-                                    sendBadRequest(res, "Incorrect base64 data");
-                                    return;
-                                }
-                            }
+                            bytes = Base64.decode(bytes);
                         } else {
                             if (LOG.isDebugEnabled()) {
                                 LOG.debug("Unknown encoding: " + encoding);
@@ -505,13 +492,6 @@ public class GenericProcessServlet extends AbstractProcessServlet {
             context.put(RequestContext.X_FORWARDED_FOR, xForwardedFor);
         }
         
-        // Add and log the X-SignServer-Custom-1 header if available
-        final String xCustom1 = req.getHeader(RequestContext.X_SIGNSERVER_CUSTOM_1);
-        if (xCustom1 != null && !xCustom1.isEmpty()) {
-            context.put(RequestContext.X_SIGNSERVER_CUSTOM_1, xCustom1);            
-        }
-        logMap.put(IWorkerLogger.LOG_XCUSTOM1, xCustom1);
-
         // Store filename for use by archiver etc
         String strippedFileName = fileName;
         if (fileName != null) {

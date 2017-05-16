@@ -22,8 +22,6 @@ import javax.annotation.Resource;
 import javax.ejb.EJB;
 import javax.ejb.SessionContext;
 import javax.ejb.Stateless;
-import javax.ejb.TransactionAttribute;
-import javax.ejb.TransactionAttributeType;
 import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import org.apache.commons.fileupload.FileUploadBase;
@@ -90,7 +88,6 @@ import org.signserver.validationservice.common.ValidateResponse;
  * @version $Id$
  */
 @Stateless
-@TransactionAttribute(TransactionAttributeType.SUPPORTS)
 public class ProcessSessionBean implements ProcessSessionRemote, ProcessSessionLocal {
 
     /** Log4j instance for this class. */
@@ -115,7 +112,6 @@ public class ProcessSessionBean implements ProcessSessionRemote, ProcessSessionL
     private WorkerProcessImpl processImpl;
     private final AllServicesImpl servicesImpl = new AllServicesImpl();
     private DataFactory dataFactory;
-    private ProcessSessionLocal session;
 
     @PostConstruct
     public void create() {
@@ -134,8 +130,6 @@ public class ProcessSessionBean implements ProcessSessionRemote, ProcessSessionL
         }
         processImpl = new WorkerProcessImpl(em, keyUsageCounterDataService, workerManagerSession, logSession);
 
-        session = ctx.getBusinessObject(ProcessSessionLocal.class);
-        
         // XXX The lookups will fail on GlassFish V2
         // When we no longer support GFv2 we can refactor this code
         InternalProcessSessionLocal internalSession = null;
@@ -155,7 +149,7 @@ public class ProcessSessionBean implements ProcessSessionRemote, ProcessSessionL
             // Add all services
             servicesImpl.putAll(em,
                     ServiceLocator.getInstance().lookupLocal(WorkerSessionLocal.class),
-                    session,
+                    ctx.getBusinessObject(ProcessSessionLocal.class),
                     globalConfigurationSession,
                     logSession,
                     internalSession, dispatcherSession, statusSession,
@@ -319,9 +313,6 @@ public class ProcessSessionBean implements ProcessSessionRemote, ProcessSessionL
         return process(new AdminInfo("Client user", null, null), wi, request, requestContext);
     }
     
-    
-    
-    
     @Override
     public Response process(final AdminInfo adminInfo, final WorkerIdentifier wi,
             final Request request, final RequestContext requestContext)
@@ -331,25 +322,7 @@ public class ProcessSessionBean implements ProcessSessionRemote, ProcessSessionL
         if (LOG.isDebugEnabled()) {
             LOG.debug(">process: " + wi);
         }
-        
-        if (SessionUtils.needsTransaction(workerManagerSession, wi)) {
-            return session.processWithTransaction(adminInfo, wi, request, requestContext);
-        } else {
-            return processImpl.process(adminInfo, wi, request, requestContext);
-        }
+        return processImpl.process(adminInfo, wi, request, requestContext);
     }
 
-    @Override
-    @TransactionAttribute(TransactionAttributeType.REQUIRED)
-    public Response processWithTransaction(final AdminInfo info,
-                                           final WorkerIdentifier wi,
-                                           final Request request,
-                                           final RequestContext requestContext)
-            throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug(">process in transaction: " + wi);
-        }
-        
-        return processImpl.process(info, wi, request, requestContext);
-    }
 }

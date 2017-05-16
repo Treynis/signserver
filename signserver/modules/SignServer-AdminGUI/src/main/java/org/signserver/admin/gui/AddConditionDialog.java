@@ -13,15 +13,12 @@
 package org.signserver.admin.gui;
 
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
-import org.apache.commons.lang.time.FastDateFormat;
 import org.cesecore.util.ValidityDate;
-import org.cesecore.util.query.elems.RelationalOperator;
-import org.signserver.admin.common.query.QueryOperator;
-import org.signserver.admin.common.query.QueryColumn;
-import org.signserver.admin.common.query.OperatorsPerColumnUtil;
+import org.signserver.admin.gui.adminws.gen.RelationalOperator;
 
 /**
  * Dialog for adding query conditions.
@@ -30,8 +27,35 @@ import org.signserver.admin.common.query.OperatorsPerColumnUtil;
  * @version $Id$
  */
 public abstract class AddConditionDialog extends javax.swing.JDialog {
-
-    private static final FastDateFormat FDF = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ssZ");
+ 
+    /** Relational operators useful for text values. */
+    private static final QueryOperator[] TEXT_OPERATORS = {
+        QueryOperator.fromEnum(RelationalOperator.EQ),
+        QueryOperator.fromEnum(RelationalOperator.LIKE),
+        QueryOperator.fromEnum(RelationalOperator.NEQ),
+        QueryOperator.fromEnum(RelationalOperator.NOTNULL),
+        QueryOperator.fromEnum(RelationalOperator.NULL)
+    };
+    
+    /** Relational operators useful for fixed-type values. */
+    private static final QueryOperator[] TYPE_OPERATORS = {
+        QueryOperator.fromEnum(RelationalOperator.EQ),
+        QueryOperator.fromEnum(RelationalOperator.NEQ)
+    };
+    
+    /** Relational operators useful for number values. */
+    private static final QueryOperator[] NUMBER_OPERATORS = {
+        QueryOperator.fromEnum(RelationalOperator.EQ),
+        QueryOperator.fromEnum(RelationalOperator.NEQ),
+        QueryOperator.fromEnum(RelationalOperator.GE),
+        QueryOperator.fromEnum(RelationalOperator.GT),
+        QueryOperator.fromEnum(RelationalOperator.LE),
+        QueryOperator.fromEnum(RelationalOperator.LT),
+        QueryOperator.fromEnum(RelationalOperator.NOTNULL),
+        QueryOperator.fromEnum(RelationalOperator.NULL)
+    };
+    
+    private static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
     
     private boolean okPressed;
     private QueryColumn column;
@@ -199,7 +223,7 @@ private void columnComboboxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN
         } else if (col.getType() == QueryColumn.Type.TIME) {
             // prepopulate with time values
             final long time = System.currentTimeMillis();
-            final String[] timeValues = {FDF.format(new Date(time)), String.valueOf(time)};
+            final String[] timeValues = {SDF.format(new Date(time)), String.valueOf(time)};
                 
             valueCombobox.setModel(new DefaultComboBoxModel(timeValues));
         } else {
@@ -211,12 +235,12 @@ private void columnComboboxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN
     private QueryOperator[] getOperatorsForColumn(final QueryColumn column) {
         switch (column.getType()) {
             case TEXT:
-                return OperatorsPerColumnUtil.TEXT_OPERATORS;
+                return TEXT_OPERATORS;
             case NUMBER:
             case TIME:
-                return OperatorsPerColumnUtil.NUMBER_OPERATORS;
+                return NUMBER_OPERATORS;
             case TYPE:
-                return OperatorsPerColumnUtil.TYPE_OPERATORS;
+                return TYPE_OPERATORS;
             default:
                 throw new IllegalArgumentException("Unknown column type");
         }

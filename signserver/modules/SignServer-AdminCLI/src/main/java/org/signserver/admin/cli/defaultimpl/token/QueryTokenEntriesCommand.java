@@ -13,6 +13,7 @@
 package org.signserver.admin.cli.defaultimpl.token;
 
 import java.security.cert.CertificateException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -24,14 +25,13 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.lang.time.FastDateFormat;
 import org.cesecore.audit.impl.integrityprotected.AuditRecordData;
 import org.cesecore.dbprotection.DatabaseProtectionException;
 import org.cesecore.util.query.Elem;
 import org.cesecore.util.query.QueryCriteria;
 import org.cesecore.util.query.elems.RelationalOperator;
 import org.cesecore.util.query.elems.Term;
-import org.signserver.admin.common.query.QueryUtil;
+import org.signserver.admin.cli.AdminCLIUtils;
 import org.signserver.admin.cli.defaultimpl.AbstractAdminCommand;
 import org.signserver.admin.cli.defaultimpl.AdminCommandHelper;
 import org.signserver.cli.spi.CommandFailureException;
@@ -73,8 +73,9 @@ public class QueryTokenEntriesCommand extends AbstractAdminCommand {
     private int limit = 0;
     private boolean verbose = false;
     private List<Elem> terms;
-
-    private final FastDateFormat fdf = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ssZ");
+    
+        
+    private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
     
     @Override
     public String getDescription() {
@@ -131,7 +132,7 @@ public class QueryTokenEntriesCommand extends AbstractAdminCommand {
             final QueryCriteria qc = QueryCriteria.create();
             
             if (terms != null && !terms.isEmpty()) {
-                qc.add(QueryUtil.andAll(terms, 0));
+                qc.add(AdminCLIUtils.andAll(terms, 0));
             }
 
             // Perform the query
@@ -239,7 +240,7 @@ public class QueryTokenEntriesCommand extends AbstractAdminCommand {
     
     static Term parseCriteria(final String criteria)
             throws IllegalArgumentException, NumberFormatException, java.text.ParseException {
-        return QueryUtil.parseCriteria(criteria, allowedFields, noArgOps,
+        return AdminCLIUtils.parseCriteria(criteria, allowedFields, noArgOps,
                 Collections.<String>emptySet(), longFields, dateFields);
     }
     
