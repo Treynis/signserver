@@ -55,15 +55,6 @@ public interface WorkerSession {
     WorkerStatus getStatus(WorkerIdentifier wi) throws InvalidWorkerIdException;
 
     /**
-     * Returns if the associated crypto token is active or not.
-     *
-     * @param workerId of the worker to check
-     * @return true if the crypto token is active
-     * @throws InvalidWorkerIdException  in case the worker does not exist
-     */
-    boolean isTokenActive(WorkerIdentifier workerId) throws InvalidWorkerIdException;
-
-    /**
      * Returns the Id of a worker given a name
      *
      * @param workerName of the worker, cannot be null
@@ -479,14 +470,4 @@ public interface WorkerSession {
      * @return list of worker IDs 
      */
     List<Integer> getAllWorkers();
-
-    /**
-     * Checks if there are any issues using this certificate chain with the specfied worker.
-     *
-     * @param workerId worker to ask about the certificate chain
-     * @param certificateChain to check
-     * @return each certificate issue found
-     * @throws InvalidWorkerIdException in case a worker with the specified ID is not available
-     */
-    List<String> getCertificateIssues(int workerId, List<Certificate> certificateChain) throws InvalidWorkerIdException;
 }

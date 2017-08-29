@@ -181,7 +181,7 @@ public class CMSSigner extends BaseSigner {
                 configErrors.add("Illegal content OID specified: " + contentOIDString);
             }
         } else {
-            contentOID = getDefaultContentOID();
+            contentOID = DEFAULT_CONTENT_OID;
         }
         
         final String allowContentOIDOverrideValue = config.getProperty(ALLOW_CONTENTOID_OVERRIDE);
@@ -204,42 +204,6 @@ public class CMSSigner extends BaseSigner {
         } else {
             configErrors.add("Incorrect value for property " + DER_RE_ENCODE_PROPERTY + ". Expecting TRUE or FALSE.");
         }
-    }
-    
-    /**
-     * Get the default content OID to use when not explicitly set, or overridden
-     * in the request.
-     * 
-     * @return Content OID
-     */
-    protected ASN1ObjectIdentifier getDefaultContentOID() {
-        return DEFAULT_CONTENT_OID;
-    }
-    
-    /**
-     * Returns true if the signer wants to augment the CMSSignedData instance.
-     * This can be overridden by extending implementations.
-     * 
-     * @return True if the implementation expects extendCMSData to be called
-     */
-    protected boolean extendsCMSData() {
-        return false;
-    }
-    
-    /**
-     * Augment CMSSignedData object with extended attributes.
-     * Must be overridden by extending implementations when extendCMSData
-     * returns true.
-     * 
-     * @param cms Basic CMS signature data
-     * @param context Request context
-     * @return CMS signature data with additional attributes
-     * @throws java.io.IOException
-     * @throws org.bouncycastle.cms.CMSException
-     */
-    protected CMSSignedData extendCMSData(CMSSignedData cms, RequestContext context)
-        throws IOException, CMSException {
-        throw new UnsupportedOperationException("Base CMS signer doesn't support extending CMS data");
     }
 
     private void initAcceptedHashDigestAlgorithms() {
@@ -301,7 +265,7 @@ public class CMSSigner extends BaseSigner {
         return useClientSideHashing;
     }
     
-    protected final AlgorithmIdentifier getClientSideHashAlgorithm(final RequestContext requestContext)
+    private AlgorithmIdentifier getClientSideHashAlgorithm(final RequestContext requestContext)
             throws IllegalRequestException {
         AlgorithmIdentifier alg = null;
         final String value = RequestMetadata.getInstance(requestContext).get(CLIENTSIDE_HASHDIGESTALGORITHM_PROPERTY);
@@ -334,7 +298,6 @@ public class CMSSigner extends BaseSigner {
     private void signData(final ICryptoInstance crypto,
                           final X509Certificate cert,
                           final Collection<Certificate> certs,
-                          final String sigAlg,
                           final RequestContext requestContext,
                           final ReadableData requestData,
                           final WritableData responseData,
@@ -342,13 +305,14 @@ public class CMSSigner extends BaseSigner {
             throws OperatorCreationException, CertificateEncodingException, CMSException, IllegalRequestException, IOException {
         final CMSSignedDataStreamGenerator generator
                     = new CMSSignedDataStreamGenerator();
+        final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(crypto.getPublicKey()) : signatureAlgorithm;
         final ContentSigner contentSigner = new JcaContentSignerBuilder(sigAlg).setProvider(crypto.getProvider()).build(crypto.getPrivateKey());
         generator.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(
                  new JcaDigestCalculatorProviderBuilder().setProvider("BC").build())
                  .build(contentSigner, cert));
-        
+
         generator.addCertificates(new JcaCertStore(certs));
-        
+
         // Should the content be detached or not
         final boolean detached;
         final Boolean detachedRequested = getDetachedSignatureRequest(requestContext);
@@ -372,7 +336,7 @@ public class CMSSigner extends BaseSigner {
         }
 
         // Generate the signature
-        if (!derReEncode && !extendsCMSData()) {
+        if (!derReEncode) {
             try (
                     final OutputStream responseOutputStream = requestData.isFile() && !detached ? responseData.getAsFileOutputStream() : responseData.getAsInMemoryOutputStream();
                     final OutputStream out = generator.open(contentOID, responseOutputStream, !detached);
@@ -393,20 +357,10 @@ public class CMSSigner extends BaseSigner {
                 ) {
                 IOUtils.copyLarge(requestIn, out);
             }
-            
-            CMSSignedData signedData = new CMSSignedData(bout.toByteArray());
-            
-            if (extendsCMSData()) {
-                signedData = extendCMSData(signedData, requestContext);
-            } 
-            
             try (final OutputStream responseOutputStream = requestData.isFile() && !detached ? responseData.getAsFileOutputStream() : responseData.getAsInMemoryOutputStream();) {
-                if (derReEncode) {
-                    final DEROutputStream derOut = new DEROutputStream(responseOutputStream);
-                    derOut.writeObject(signedData.toASN1Structure());
-                } else {
-                    responseOutputStream.write(signedData.getEncoded());
-                }
+                final CMSSignedData signedData = new CMSSignedData(bout.toByteArray());
+                final DEROutputStream derOut = new DEROutputStream(responseOutputStream);
+                derOut.writeObject(signedData.toASN1Structure());
             }
         }
 
@@ -415,7 +369,6 @@ public class CMSSigner extends BaseSigner {
     private void signHash(final ICryptoInstance crypto,
                           final X509Certificate cert,
                           final Collection<Certificate> certs,
-                          final String sigAlg,
                           final RequestContext requestContext,
                           final ReadableData requestData,
                           final WritableData responseData,
@@ -423,6 +376,7 @@ public class CMSSigner extends BaseSigner {
             throws OperatorCreationException, CertificateEncodingException, CMSException, IOException, IllegalRequestException {
         final CMSSignedDataGenerator generator
                     = new CMSSignedDataGenerator();
+        final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(crypto.getPublicKey()) : signatureAlgorithm;
         final ContentSigner contentSigner = new JcaContentSignerBuilder(sigAlg).setProvider(crypto.getProvider()).build(crypto.getPrivateKey());
         final byte[] digestData = requestData.getAsByteArray();
         final AlgorithmIdentifier alg = getClientSideHashAlgorithm(requestContext);
@@ -466,10 +420,6 @@ public class CMSSigner extends BaseSigner {
         // Generate the signature
         CMSSignedData signedData = generator.generate(new CMSProcessableByteArray(contentOID, "dummy".getBytes()), false);
         
-        if (extendsCMSData()) {
-            signedData = extendCMSData(signedData, requestContext);
-        }
-        
         responseData.getAsInMemoryOutputStream().write(signedData.getEncoded());
     }
     
@@ -488,11 +438,17 @@ public class CMSSigner extends BaseSigner {
         if (!configErrors.isEmpty()) {
             throw new SignServerException("Worker is misconfigured");
         }
-
+        
+        final boolean useClientSideHashing =
+                shouldUseClientSideHashing(requestContext);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Using client-side supplied hash");
+        }
+        
         final ReadableData requestData = sReq.getRequestData();
         final WritableData responseData = sReq.getResponseData();
-        final X509Certificate cert;
-        final List<Certificate> certs;
+        X509Certificate cert = null;
+        List<Certificate> certs = null;
         ICryptoInstance crypto = null;
         try {
             crypto = acquireCryptoInstance(ICryptoTokenV4.PURPOSE_SIGN, signRequest, requestContext);
@@ -522,11 +478,14 @@ public class CMSSigner extends BaseSigner {
             } catch (IllegalArgumentException e) {
                 throw new IllegalRequestException("Illegal OID specified in request");
             }
-            
-            final String sigAlg = signatureAlgorithm == null ? getDefaultSignatureAlgorithm(crypto.getPublicKey()) : signatureAlgorithm;
 
-            sign(crypto, cert, certs, sigAlg, requestContext, requestData,
+            if (useClientSideHashing) {
+                signHash(crypto, cert, certs, requestContext, requestData,
                          responseData, contentOIDToUse);
+            } else {
+                signData(crypto, cert, certs, requestContext, requestData,
+                         responseData, contentOIDToUse);
+            }
 
             final String archiveId = createArchiveId(new byte[0], (String) requestContext.get(RequestContext.TRANSACTION_ID));
             final Collection<? extends Archivable> archivables = Arrays.asList(new DefaultArchivable(Archivable.TYPE_RESPONSE, CONTENT_TYPE, responseData.toReadableData(), archiveId));
@@ -615,20 +574,5 @@ public class CMSSigner extends BaseSigner {
             result = new ASN1ObjectIdentifier(value);
         }
         return result;
-    }
-
-    protected void sign(ICryptoInstance crypto, X509Certificate cert, List<Certificate> certs, String sigAlg, RequestContext requestContext, ReadableData requestData, WritableData responseData, ASN1ObjectIdentifier contentOIDToUse) throws IllegalRequestException, OperatorCreationException, CertificateEncodingException, CMSException, IOException {
-        final boolean useClientSideHashing =
-                shouldUseClientSideHashing(requestContext);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Using client-side supplied hash");
-        }
-        if (useClientSideHashing) {
-            signHash(crypto, cert, certs, sigAlg, requestContext, requestData,
-                     responseData, contentOIDToUse);
-        } else {
-            signData(crypto, cert, certs, sigAlg, requestContext, requestData,
-                     responseData, contentOIDToUse);
-        }
     }
 }

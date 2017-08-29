@@ -59,15 +59,15 @@ import org.bouncycastle.operator.bc.BcDigestCalculatorProvider;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.tsp.TSPAlgorithms;
 import org.bouncycastle.tsp.TSPException;
-import org.bouncycastle.tsp.TimeStampRequest;
 import org.bouncycastle.tsp.TimeStampToken;
-import org.bouncycastle.tsp.TimeStampTokenGenerator;
 import org.cesecore.util.Base64;
 import org.signserver.common.*;
 import org.signserver.common.data.Request;
 import org.signserver.common.data.Response;
+import org.signserver.module.tsa.bc.TimeStampRequest;
 import org.signserver.module.tsa.bc.TimeStampResponse;
 import org.signserver.module.tsa.bc.TimeStampResponseGenerator;
+import org.signserver.module.tsa.bc.TimeStampTokenGenerator;
 import org.signserver.server.IServices;
 import org.signserver.server.ITimeSource;
 import org.signserver.server.WorkerContext;
@@ -407,7 +407,7 @@ public class TimeStampSigner extends BaseSigner {
         }
         
         includeSigningTimeAttribute = Boolean.valueOf(config.getProperty(INCLUDESIGNINGTIMEATTRIBUTE, "true"));
-
+        
         includeCmsProtectAlgorithmAttribute = Boolean.valueOf(config.getProperty(INCLUDECMSALGORITHMPROTECTATTRIBUTE, "true"));
 
         ordering = Boolean.parseBoolean(config.getProperty(ORDERING, "false"));
@@ -966,7 +966,7 @@ public class TimeStampSigner extends BaseSigner {
             }
             sigb.setSignedAttributeGenerator(
                     new FilteredSignedAttributeTableGenerator(attributesToRemove));
-
+            
             SignerInfoGenerator sig = sigb.build(cs, certHolder);
             
             timeStampTokenGen = new TimeStampTokenGenerator(sig, calc, tSAPolicyOID, includeCertIDIssuerSerial);
@@ -1132,7 +1132,35 @@ public class TimeStampSigner extends BaseSigner {
 
             // Check if certificat has the required EKU
             final Certificate certificate = getSigningCertificate(services);
-            result.addAll(checkTimeStampCertificate(certificate));
+            try {
+                if (certificate instanceof X509Certificate) {
+                    final X509Certificate cert = (X509Certificate) certificate;
+                    final List<String> ekus = cert.getExtendedKeyUsage();
+                    
+                    if (ekus == null 
+                            || !ekus.contains(KeyPurposeId.id_kp_timeStamping.getId())) {
+                        result.add("Missing extended key usage timeStamping");
+                    }
+                    if (cert.getCriticalExtensionOIDs() == null 
+                            || !cert.getCriticalExtensionOIDs().contains(org.bouncycastle.asn1.x509.X509Extension.extendedKeyUsage.getId())) {
+                        result.add("The extended key usage extension must be present and marked as critical");
+                    }
+                    // if extended key usage contains timeStamping and also other
+                    // usages
+                    if (ekus != null
+                            && ekus.contains(KeyPurposeId.id_kp_timeStamping.getId())
+                            && ekus.size() > 1) {
+                        result.add("No other extended key usages than timeStamping is allowed");
+                    }
+                } else {
+                    result.add("Unsupported certificate type");
+                }
+            } catch (CertificateParsingException ex) {
+                result.add("Unable to parse certificate");
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Signer " + workerId + ": Unable to parse certificate: " + ex.getMessage());
+                }
+            }
         } catch (CryptoTokenOfflineException ex) {
             result.add("No signer certificate available");
             if (LOG.isDebugEnabled()) {
@@ -1184,48 +1212,4 @@ public class TimeStampSigner extends BaseSigner {
 
         return status;
     }
-
-    @Override
-    public List<String> getCertificateIssues(List<Certificate> certificateChain) {
-        final List<String> results = super.getCertificateIssues(certificateChain);
-        if (!certificateChain.isEmpty()) {
-            results.addAll(checkTimeStampCertificate(certificateChain.get(0)));
-        }
-        return results;
-    }
-
-    private List<String> checkTimeStampCertificate(Certificate certificate) {
-        ArrayList<String> result = new ArrayList<>();
-        try {
-            if (certificate instanceof X509Certificate) {
-                final X509Certificate cert = (X509Certificate) certificate;
-                final List<String> ekus = cert.getExtendedKeyUsage();
-
-                if (ekus == null 
-                        || !ekus.contains(KeyPurposeId.id_kp_timeStamping.getId())) {
-                    result.add("Missing extended key usage timeStamping");
-                }
-                if (cert.getCriticalExtensionOIDs() == null 
-                        || !cert.getCriticalExtensionOIDs().contains(org.bouncycastle.asn1.x509.X509Extension.extendedKeyUsage.getId())) {
-                    result.add("The extended key usage extension must be present and marked as critical");
-                }
-                // if extended key usage contains timeStamping and also other
-                // usages
-                if (ekus != null
-                        && ekus.contains(KeyPurposeId.id_kp_timeStamping.getId())
-                        && ekus.size() > 1) {
-                    result.add("No other extended key usages than timeStamping is allowed");
-                }
-            } else {
-                result.add("Unsupported certificate type");
-            }
-        } catch (CertificateParsingException ex) {
-            result.add("Unable to parse certificate");
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Signer " + workerId + ": Unable to parse certificate: " + ex.getMessage());
-            }
-        }
-        return result;
-    }
-
 }

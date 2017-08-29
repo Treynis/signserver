@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.signserver</groupId>
     <artifactId>SignServer</artifactId>
-    <version>4.2.0-SNAPSHOT</version>
+    <version>4.1.1-pk1</version>
     <packaging>pom</packaging>
     <name>SignServer</name>
     <properties>
@@ -39,13 +39,13 @@
             <dependency>
                 <artifactId>${bouncycastle.bcpkix.artifact}</artifactId>
                 <groupId>org.bouncycastle</groupId>
-                <version>1.56</version>
+                <version>1.54</version>
             </dependency>
             <dependency>
                 <artifactId>${bouncycastle.bcprov.artifact}</artifactId>
                 <groupId>org.bouncycastle</groupId>
                 <type>jar</type>
-                <version>1.56</version>
+                <version>1.54</version>
             </dependency>
             
             <dependency>
@@ -122,24 +122,24 @@
             <dependency>
                 <groupId>org.ejbca.cesecore</groupId>
                 <artifactId>cesecore-entity</artifactId>
-                <version>6.8.0</version>
+                <version>6.4.1</version>
             </dependency>
             <dependency>
                 <artifactId>cesecore-common</artifactId>
                 <groupId>org.ejbca.cesecore</groupId>
                 <type>jar</type>
-                <version>6.8.0</version>
+                <version>6.4.1</version>
             </dependency>
             <dependency>
                 <groupId>org.ejbca.cesecore</groupId>
                 <artifactId>cesecore-interfaces</artifactId>
-                <version>6.8.0</version>
+                <version>6.4.1</version>
             </dependency>
             <dependency>
                 <artifactId>cert-cvc</artifactId>
                 <groupId>org.ejbca.cvc</groupId>
                 <type>jar</type>
-                <version>1.4.6</version>
+                <version>1.4.3</version>
             </dependency>
             
             <dependency>
@@ -162,7 +162,7 @@
                 <plugin>
                     <groupId>org.signserver.deploytools</groupId>
                     <artifactId>DeployTools-Maven</artifactId>
-                    <version>2.2</version>
+                    <version>2.0.3</version>
                 </plugin>
 
                 <plugin>

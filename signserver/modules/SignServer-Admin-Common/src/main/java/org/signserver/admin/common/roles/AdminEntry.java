@@ -28,15 +28,13 @@ public class AdminEntry {
     private boolean admin;
     private boolean auditor;
     private boolean archiveAuditor;
-    private boolean peerSystem;
     private final String hexSerialNumber;
 
-    public AdminEntry(final ClientEntry client, final boolean admin, final boolean auditor, final boolean archiveAuditor, final boolean peerSystem) {
+    public AdminEntry(final ClientEntry client, final boolean admin, final boolean auditor, final boolean archiveAuditor) {
         this.client = client;
         this.admin = admin;
         this.auditor = auditor;
         this.archiveAuditor = archiveAuditor;
-        this.peerSystem = peerSystem;
         this.hexSerialNumber = client.getSerialNumber().toString(16);
     }
 
@@ -61,10 +59,6 @@ public class AdminEntry {
         return archiveAuditor;
     }
 
-    public boolean isPeerSystem() {
-        return peerSystem;
-    }
-
     public void setAdmin(boolean admin) {
         this.admin = admin;
     }
@@ -77,23 +71,18 @@ public class AdminEntry {
         this.archiveAuditor = archiveAuditor;
     }
 
-    public void setPeerSystem(boolean peerSystem) {
-        this.peerSystem = peerSystem;
-    }
-
     public String getHexSerialNumber() {
         return hexSerialNumber;
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 41 * hash + Objects.hashCode(this.client);
-        hash = 41 * hash + (this.admin ? 1 : 0);
-        hash = 41 * hash + (this.auditor ? 1 : 0);
-        hash = 41 * hash + (this.archiveAuditor ? 1 : 0);
-        hash = 41 * hash + (this.peerSystem ? 1 : 0);
-        hash = 41 * hash + Objects.hashCode(this.hexSerialNumber);
+        int hash = 5;
+        hash = 29 * hash + Objects.hashCode(this.client);
+        hash = 29 * hash + (this.admin ? 1 : 0);
+        hash = 29 * hash + (this.auditor ? 1 : 0);
+        hash = 29 * hash + (this.archiveAuditor ? 1 : 0);
+        hash = 29 * hash + Objects.hashCode(this.hexSerialNumber);
         return hash;
     }
 
@@ -118,16 +107,10 @@ public class AdminEntry {
         if (this.archiveAuditor != other.archiveAuditor) {
             return false;
         }
-        if (this.peerSystem != other.peerSystem) {
-            return false;
-        }
         if (!Objects.equals(this.hexSerialNumber, other.hexSerialNumber)) {
             return false;
         }
-        if (!Objects.equals(this.client, other.client)) {
-            return false;
-        }
-        return true;
+        return Objects.equals(this.client, other.client);
     }
 
     public String getRoles() {
@@ -146,12 +129,6 @@ public class AdminEntry {
                 sb.append(", ");
             }
             sb.append("Archive Auditor");
-        }
-        if (peerSystem) {
-            if (sb.length() != 0) {
-                sb.append(", ");
-            }
-            sb.append("Peer System");
         }
         return sb.toString();
     }

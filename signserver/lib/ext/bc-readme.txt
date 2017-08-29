@@ -1,6 +1,6 @@
 
-Bouncy Castle version is 1.56.
+Bouncy castle version is 1.54.
 
 More information and license 
-can be found at https://www.bouncycastle.org
+can be found at http://www.bouncycastle.org
 

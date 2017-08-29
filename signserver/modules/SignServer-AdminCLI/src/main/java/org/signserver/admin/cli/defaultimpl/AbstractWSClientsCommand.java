@@ -144,7 +144,7 @@ public abstract class AbstractWSClientsCommand extends AbstractAdminCommand {
                 
             if (LIST.equals(operation)) {
                 final StringBuilder buff = new StringBuilder();
-                buff.append("Authorizations:");
+                buff.append("Authorized auditors:");
                 buff.append("\n");
                 for (ClientEntry entry : entries) {
                     buff.append(String.format("%-20s %s",
@@ -171,18 +171,18 @@ public abstract class AbstractWSClientsCommand extends AbstractAdminCommand {
                     getGlobalConfigurationSession().setProperty(
                             GlobalConfiguration.SCOPE_GLOBAL, getClientsProperty(),
                             ClientEntry.serializeClientEntries(entries));
-                    getOutputStream().println("Rule added");
+                    getOutputStream().println("Auditor added");
                 } else {
-                    getOutputStream().println("Rule already exists");
+                    getOutputStream().println("Auditor already exists");
                 }
             } else if (REMOVE.equals(operation)) {
                 if (entries.remove(new ClientEntry(certSerialNo, issuerDN))) {
                     getGlobalConfigurationSession().setProperty(
                             GlobalConfiguration.SCOPE_GLOBAL, getClientsProperty(),
                             ClientEntry.serializeClientEntries(entries));
-                    getOutputStream().println("Rule removed");
+                    getOutputStream().println("Auditor removed");
                 } else {
-                    getErrorStream().println("No such rule");
+                    getErrorStream().println("No such auditor");
                 }
             }
             return 0;

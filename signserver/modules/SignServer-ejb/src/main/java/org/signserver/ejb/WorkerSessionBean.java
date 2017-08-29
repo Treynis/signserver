@@ -295,23 +295,6 @@ public class WorkerSessionBean implements WorkerSessionLocal, WorkerSessionRemot
         }
     }
 
-    @Override
-    public boolean isTokenActive(WorkerIdentifier workerId) throws InvalidWorkerIdException {
-        boolean result;
-        try {
-            IWorker worker = workerManagerSession.getWorker(workerId);
-            if (worker instanceof IProcessable) {
-                IProcessable processable = (IProcessable) worker;
-                result = processable.getCryptoTokenStatus(servicesImpl) == WorkerStatus.STATUS_ACTIVE;
-            } else {
-                result = false; // Does not have a token
-            }
-        } catch (NoSuchWorkerException ex) {
-            throw new InvalidWorkerIdException(ex.getMessage());
-        }
-        return result;
-    }
-
     /* (non-Javadoc)
      * @see org.signserver.ejb.interfaces.WorkerSession#getWorkerId(java.lang.String)
      */
@@ -1376,21 +1359,6 @@ public class WorkerSessionBean implements WorkerSessionLocal, WorkerSessionRemot
                 return ((IProcessable) worker).searchTokenEntries(startIndex, max, qc, includeData, params, servicesImpl);
             } else {
                 throw new OperationUnsupportedException("Operation not supported by worker");
-            }
-        } catch (NoSuchWorkerException ex) {
-            throw new InvalidWorkerIdException(ex.getMessage());
-        }
-    }
-
-    @Override
-    public List<String> getCertificateIssues(int workerId, List<Certificate> certificateChain) throws InvalidWorkerIdException {
-        try {
-            final IWorker worker = workerManagerSession.getWorker(new WorkerIdentifier(workerId));
-            if (worker instanceof IProcessable) {
-                IProcessable processable = (IProcessable) worker;
-                return processable.getCertificateIssues(certificateChain);
-            } else {
-                return Collections.emptyList();
             }
         } catch (NoSuchWorkerException ex) {
             throw new InvalidWorkerIdException(ex.getMessage());

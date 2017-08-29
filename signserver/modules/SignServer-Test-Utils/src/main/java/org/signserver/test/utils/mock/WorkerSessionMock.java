@@ -164,7 +164,7 @@ public class WorkerSessionMock implements WorkerSessionLocal,
 
     @Override
     public Response processWithTransaction(AdminInfo info, WorkerIdentifier wi, Request request, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
     
     
@@ -172,11 +172,6 @@ public class WorkerSessionMock implements WorkerSessionLocal,
     @Override
     public WorkerStatus getStatus(WorkerIdentifier workerId) throws
             InvalidWorkerIdException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
-    public boolean isTokenActive(WorkerIdentifier workerId) throws InvalidWorkerIdException {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
@@ -303,12 +298,12 @@ public class WorkerSessionMock implements WorkerSessionLocal,
 
     @Override
     public boolean removeKey(AdminInfo adminInfo, WorkerIdentifier signerId, String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException, SignServerException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public boolean removeKey(WorkerIdentifier signerId, String alias) throws CryptoTokenOfflineException, InvalidWorkerIdException, KeyStoreException, SignServerException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
@@ -422,12 +417,12 @@ public class WorkerSessionMock implements WorkerSessionLocal,
 
     @Override
     public byte[] getKeystoreData(AdminInfo adminInfo, int signerId) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public void setKeystoreData(AdminInfo adminInfo, int signerId, byte[] keystoreData) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
@@ -442,12 +437,12 @@ public class WorkerSessionMock implements WorkerSessionLocal,
 
     @Override
     public TokenSearchResults searchTokenEntries(AdminInfo adminInfo, WorkerIdentifier workerId, int startIndex, int max, QueryCriteria qc, boolean includeData, Map<String, Object> params) throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, AuthorizationDeniedException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public TokenSearchResults searchTokenEntries(WorkerIdentifier workerId, int startIndex, int max, QueryCriteria qc, boolean includeData, Map<String, Object> params) throws OperationUnsupportedException, CryptoTokenOfflineException, QueryException, InvalidWorkerIdException, AuthorizationDeniedException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
@@ -462,11 +457,6 @@ public class WorkerSessionMock implements WorkerSessionLocal,
 
     public RequestContext getLastRequestContext() {
         return lastRequestContext;
-    }
-
-    @Override
-    public List<String> getCertificateIssues(int workerId, List<Certificate> certificateChain) throws InvalidWorkerIdException {
-        return new ArrayList<>();
     }
 
     private static class Worker {
