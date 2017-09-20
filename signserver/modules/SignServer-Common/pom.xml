@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer-Modules</artifactId>
-        <version>4.2.0-SNAPSHOT</version>
+        <version>4.1.1</version>
     </parent>
     <artifactId>SignServer-Common</artifactId>
     <name>SignServer-Common</name>
@@ -60,17 +60,4 @@
             <groupId>org.ejbca.cvc</groupId>
         </dependency>
     </dependencies>
-    <build>
-        <!-- Filter SignServer version and edition in signservercompile.properties. -->
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
-        <filters>
-            <filter>../../res/edition.properties</filter>
-            <filter>../../res/deploytools/app.properties</filter>
-        </filters>
-    </build>
 </project>

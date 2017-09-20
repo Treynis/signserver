@@ -278,11 +278,6 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     }
 
                     @Override
-                    public boolean isTokenActive(WorkerIdentifier workerId) throws InvalidWorkerIdException {
-                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-                    }
-
-                    @Override
                     public int getWorkerId(String workerName) {
                         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
@@ -465,11 +460,6 @@ public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
                     @Override
                     public List<Certificate> getSignerCertificateChain(WorkerIdentifier signerId, String alias) throws CryptoTokenOfflineException {
                         throw new UnsupportedOperationException("Not supported yet.");
-                    }
-
-                    @Override
-                    public List<String> getCertificateIssues(int workerId, List<Certificate> certificateChain) throws InvalidWorkerIdException {
-                        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
                     }
                 };
             }

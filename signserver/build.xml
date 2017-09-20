@@ -14,7 +14,7 @@
 <!-- Version: $Id$ -->
 <project name="signserver" default="usage" basedir=".">
     <description>SignServer targets.</description>
-    <property name="deploytools.version" value="2.2"/>
+    <property name="deploytools.version" value="2.0.3"/>
     <import file="res/deploytools/build-impl.xml"/>
 
     <!-- SignServer has some extra application server features -->
@@ -179,22 +179,15 @@ Installation Guide for details.
         <echo/>
         <echo message="Filtering jars..."/>
 
-        <!-- cesecore-common.jar -->
-        <property name="cesecore-common.jar" value="cesecore-common-6.8.0.jar"/>
-        <move todir="${tmp}" file="${app.ear.dir}/lib/${cesecore-common.jar}"/>
-        <jar destfile="${app.ear.dir}/lib/${cesecore-common.jar}">
-            <zipfileset src="${tmp}/${cesecore-common.jar}" excludes="${cesecore.common.excludes}"/>
-        </jar>
-
         <!-- cesecore-ejb.jar -->
-        <property name="cesecore-ejb.jar" value="cesecore-ejb-6.8.0.jar"/>
+        <property name="cesecore-ejb.jar" value="cesecore-ejb-6.4.1.jar"/>
         <move todir="${tmp}" file="${app.ear.dir}/${cesecore-ejb.jar}"/>
         <jar destfile="${app.ear.dir}/${cesecore-ejb.jar}">
             <zipfileset src="${tmp}/${cesecore-ejb.jar}" excludes="${cesecore-ejb-excludes}"/>
         </jar>
 
         <!-- cesecore-entities.jar -->
-        <property name="cesecore-entities.jar" value="cesecore-entity-6.8.0.jar"/>
+        <property name="cesecore-entities.jar" value="cesecore-entity-6.4.1.jar"/>
         <move todir="${tmp}" file="${app.ear.dir}/lib/${cesecore-entities.jar}"/>
         <jar destfile="${app.ear.dir}/lib/${cesecore-entities.jar}">
             <zipfileset src="${tmp}/${cesecore-entities.jar}" excludes="${cesecore.entities.excludes}"/>
@@ -378,12 +371,9 @@ Installation Guide for details.
         </antcall>
     </target>
     
-    <target name="dist:clientcli" depends="-dist-clientcli-standard,-dist-clientcli-enterprise"/>
-    
-    <target name="-dist-clientcli-standard">
+    <target name="dist:clientcli">
         <available file="${basedir}/lib/SignServer-Client-CLI.jar" property="clientcli.jar" value="SignServer-Client-CLI.jar"/>
         <available file="${basedir}/lib/SignServer-Client-CLI-${app.version.number}.jar" property="clientcli.jar" value="SignServer-Client-CLI-${app.version.number}.jar"/>
-        <available file="${basedir}/lib/SignServer-ClientCLI-Enterprise-${app.version.number}.jar" property="eeclientcli.jar" value="SignServer-ClientCLI-Enterprise-${app.version.number}.jar"/>
         <fail unless="clientcli.jar" message="Must build SignServer-Client-CLI first"/>
         <antcall target="dist">
             <param name="dist.jars" value="${clientcli.jar}"/>
@@ -395,13 +385,6 @@ Installation Guide for details.
                 res/deploytools/cesecore/defaultvalues.properties,
                 ${dist.includes.extra}
                 "/>
-        </antcall>
-    </target>
-    <target name="-dist-clientcli-enterprise" if="eeclientcli.jar">
-        <!-- Include the Enterprise ClientCLI (if available) -->
-        <antcall target="dist">
-            <param name="dist.jars" value="${eeclientcli.jar}"/>
-            <param name="dist.includes" value="_nothing_"/>
         </antcall>
     </target>
     <target name="dist:clientcli-zip" description="Create a binary ZIP distribution of the Client CLI">

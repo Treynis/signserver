@@ -1,4 +1,8 @@
-/* BC 1.56 + legacy encoding patch (DSS-1415, bcgit: 4afdba1). */
+/*
+ * copied from upstream git, this is needed for the bugfixed TimeStampRequest
+ * using code from github.com/bcgit/bc-java git tree bea9d91835fabcde3be7ec7f5e9b9d9bddcb34cf
+ * also + legacy encoding patch (DSS-1415, bcgit: 4afdba1)
+ */
 package org.signserver.module.tsa.bc;
 
 import java.io.ByteArrayInputStream;
@@ -18,7 +22,6 @@ import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.tsp.TimeStampResp;
 import org.bouncycastle.tsp.TSPException;
 import org.bouncycastle.tsp.TSPValidationException;
-import org.bouncycastle.tsp.TimeStampRequest;
 import org.bouncycastle.tsp.TimeStampToken;
 import org.bouncycastle.tsp.TimeStampTokenInfo;
 import org.bouncycastle.util.Arrays;
@@ -94,11 +97,7 @@ public class TimeStampResponse
         {
             return TimeStampResp.getInstance(new ASN1InputStream(in).readObject());
         }
-        catch (IllegalArgumentException e)
-        {
-            throw new TSPException("malformed timestamp response: " + e, e);
-        }
-        catch (ClassCastException e)
+        catch (IllegalArgumentException | ClassCastException e)
         {
             throw new TSPException("malformed timestamp response: " + e, e);
         }

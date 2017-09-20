@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer-Modules</artifactId>
-        <version>4.2.0-SNAPSHOT</version>
+        <version>4.1.1</version>
     </parent>
     <artifactId>SignServer-Test-P11</artifactId>
     <name>SignServer-Test-P11</name>
@@ -12,8 +12,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <dist.jar>${project.build.finalName}-tests.jar</dist.jar>
         <skipTests>true</skipTests>
-        <appserver.conf.folder>jboss7</appserver.conf.folder>
-        <appserver.home>/opt/jboss-as-7.1.1.Final</appserver.home>
     </properties>
     <dependencies>
         <dependency>
@@ -51,24 +49,6 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
-                    <additionalClasspathElements>
-                        <additionalClasspathElement>${basedir}/../../../lib/ext/xmlsec-1.5.8.jar</additionalClasspathElement>
-                        <additionalClasspathElement>${basedir}/../../../conf</additionalClasspathElement>
-                        <additionalClasspathElement>${basedir}/../../../conf/${appserver.conf.folder}</additionalClasspathElement>
-                        <additionalClasspathElement>${basedir}/../../../cesecore</additionalClasspathElement>
-                        <additionalClasspathElement>${basedir}/../../../lib/ext/jdbc/jdbc.jar"</additionalClasspathElement>
-                        <additionalClasspathElement>${appserver.home}/bin/client/jboss-client.jar</additionalClasspathElement>
-                        <additionalClasspathElement>${appserver.home}/client/jbossall-client.jar</additionalClasspathElement>
-                        <!-- Include res/cesecore for defaultvalues.properties. -->
-                        <additionalClasspathElement>res/deploytools/cesecore/</additionalClasspathElement>
-                        <additionalClasspathElement>../res/deploytools/cesecore/</additionalClasspathElement>
-                        <additionalClasspathElement>../../res/deploytools/cesecore/</additionalClasspathElement>
-                        <additionalClasspathElement>../../../res/deploytools/cesecore/</additionalClasspathElement>
-                        <additionalClasspathElement>../../../../res/deploytools/cesecore/</additionalClasspathElement>
-                    </additionalClasspathElements>
-                    <classpathDependencyExcludes>
-                        <classpathDependencyExcludes>org.apache.openejb:javaee-api</classpathDependencyExcludes>
-                    </classpathDependencyExcludes>
                 </configuration>
             </plugin>
             <plugin>

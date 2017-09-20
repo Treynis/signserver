@@ -56,7 +56,6 @@ import org.signserver.test.utils.mock.MockedCryptoToken;
 import org.signserver.test.utils.mock.MockedServicesImpl;
 import org.signserver.testutils.ModulesTestCase;
 import static junit.framework.TestCase.assertTrue;
-import org.bouncycastle.asn1.cms.AttributeTable;
 
 /**
  * Unit tests for the CMSSigner class.
@@ -98,7 +97,7 @@ public class CMSSignerUnitTest {
         LOG.info("testInit_incorrectDetachedSignatureValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("DETACHEDSIGNATURE", "_incorrect-value--");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -115,7 +114,7 @@ public class CMSSignerUnitTest {
         LOG.info("testInit_incorrectClientSideHashingValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CLIENTSIDEHASHING", "_incorrect-value--");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -132,7 +131,7 @@ public class CMSSignerUnitTest {
         LOG.info("testInit_incorrectAllowDetachedSignatureOverrideValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("ALLOW_DETACHEDSIGNATURE_OVERRIDE", "_incorrect-value--");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -149,7 +148,7 @@ public class CMSSignerUnitTest {
         LOG.info("testInit_incorrectAllowClientSideHashingOverrideValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("ALLOW_CLIENTSIDEHASHING_OVERRIDE", "_incorrect-value--");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -167,7 +166,7 @@ public class CMSSignerUnitTest {
         LOG.info("testInit_incorrectClientSideHashingNoAcceptedDigestAlgorithms");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CLIENTSIDEHASHING", "true");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
         
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -186,7 +185,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CLIENTSIDEHASHING", "true");
         config.setProperty("ACCEPTED_HASH_DIGEST_ALGORITHMS", "_incorrect_");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
         
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -205,7 +204,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CLIENTSIDEHASHING", "true");
         config.setProperty("ACCEPTED_HASH_DIGEST_ALGORITHMS", "SHA-256, _incorrect_");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
         
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -223,7 +222,7 @@ public class CMSSignerUnitTest {
         LOG.info("testInit_incorrectClientSideHashingOverrideNoAcceptedDigestAlgorithms");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("ALLOW_CLIENTSIDEHASHING_OVERRIDE", "true");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
         
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -244,7 +243,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CLIENTSIDEHASHING", "true");
         config.setProperty("ALLOW_CLIENTSIDEHASHING_OVERRIDE", "true");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
         
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -260,7 +259,7 @@ public class CMSSignerUnitTest {
         LOG.info("testInit_incorrectContentOID");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CONTENTOID", "incorrect_oid");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
         
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -277,7 +276,7 @@ public class CMSSignerUnitTest {
         LOG.info("testInit_incorrectAllowContentOIDOverride");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("ALLOW_CONTENTOID_OVERRIDE", "incorrect");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
         
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -293,7 +292,7 @@ public class CMSSignerUnitTest {
         LOG.info("testNoProcessOnFatalErrors");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("ALLOW_DETACHEDSIGNATURE_OVERRIDE", "_incorrect-value--");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -311,7 +310,7 @@ public class CMSSignerUnitTest {
     public void testDetachedSignatureDefaultValue() throws Exception {
         LOG.info("testDetachedSignatureDefaultValue");
         WorkerConfig config = new WorkerConfig();
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -333,7 +332,7 @@ public class CMSSignerUnitTest {
     public void testAllowDetachedSignatureOverrideDefaultValue() throws Exception {
         LOG.info("testAllowDetachedSignatureOverrideDefaultValue");
         WorkerConfig config = new WorkerConfig();
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -355,7 +354,7 @@ public class CMSSignerUnitTest {
         LOG.info("testInit_incorrectDERReEncodeValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("DER_RE_ENCODE", "_incorrect-value--");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         String errors = instance.getFatalErrors(new MockedServicesImpl()).toString();
@@ -370,7 +369,7 @@ public class CMSSignerUnitTest {
     public void testDERReEncodeDefaultValue() throws Exception {
         LOG.info("testDERReEncodeDefaultValue");
         WorkerConfig config = new WorkerConfig();
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -394,7 +393,7 @@ public class CMSSignerUnitTest {
         LOG.info("testDERReEncodeFalse");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("DER_RE_ENCODE", "False");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -418,7 +417,7 @@ public class CMSSignerUnitTest {
         LOG.info("testDERReEncodeTrue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("DER_RE_ENCODE", "TruE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -442,7 +441,7 @@ public class CMSSignerUnitTest {
     public void testAllowClientSideHashingOverrideDefaultValue() throws Exception {
         LOG.info("testAllowClientSideHashingOverrideDefaultValue");
         WorkerConfig config = new WorkerConfig();
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -465,7 +464,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("DETACHEDSIGNATURE", "TRUE");
         config.setProperty("ALLOW_DETACHEDSIGNATURE_OVERRIDE", "FALSE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -489,7 +488,7 @@ public class CMSSignerUnitTest {
         config.setProperty("CLIENTSIDEHASHING", "TRUE");
         config.setProperty("ALLOW_CLIENTSIDEHASHING_OVERRIDE", "FALSE");
         config.setProperty("ACCEPTED_HASH_DIGEST_ALGORITHMS", "SHA-256");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -512,7 +511,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("DETACHEDSIGNATURE", "FALSE");
         config.setProperty("ALLOW_DETACHEDSIGNATURE_OVERRIDE", "FALSE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -539,7 +538,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CLIENTSIDEHASHING", "FALSE");
         config.setProperty("ALLOW_CLIENTSIDEHASHING_OVERRIDE", "FALSE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -566,7 +565,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("DETACHEDSIGNATURE", "TRUE");
         config.setProperty("ALLOW_DETACHEDSIGNATURE_OVERRIDE", "FALSE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -755,7 +754,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("DETACHEDSIGNATURE", "TRUE");
         config.setProperty("ALLOW_DETACHEDSIGNATURE_OVERRIDE", "TRUE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -783,7 +782,7 @@ public class CMSSignerUnitTest {
         config.setProperty("CLIENTSIDEHASHING", "TRUE");
         config.setProperty("ALLOW_CLIENTSIDEHASHING_OVERRIDE", "TRUE");
         config.setProperty("ACCEPTED_HASH_DIGEST_ALGORITHMS", "SHA-256");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -810,7 +809,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("DETACHEDSIGNATURE", "TRUE");
         config.setProperty("ALLOW_DETACHEDSIGNATURE_OVERRIDE", "FALSE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -835,7 +834,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CLIENTSIDE_HASHING", "TRUE");
         config.setProperty("ALLOW_CLIENTSIDEHASHING_OVERRIDE", "FALSE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -853,7 +852,7 @@ public class CMSSignerUnitTest {
     public void testContentOIDDefaultValue() throws Exception {
         LOG.info("testContentOIDDefaultValue");
         WorkerConfig config = new WorkerConfig();
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -874,7 +873,7 @@ public class CMSSignerUnitTest {
         LOG.info("testContentOIDDefaultValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CONTENTOID", "1.2.3.4");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -895,7 +894,7 @@ public class CMSSignerUnitTest {
         LOG.info("testContentOIDDefaultValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("ALLOW_CONTENTOID_OVERRIDE", "true");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -921,7 +920,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CONTENTOID", "1.2.3.4");
         config.setProperty("ALLOW_CONTENTOID_OVERRIDE", "TRUE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -944,7 +943,7 @@ public class CMSSignerUnitTest {
     public void testDefaulDontAllowOverridingContentOID() throws Exception {
         LOG.info("testContentOIDDefaultValue");
         WorkerConfig config = new WorkerConfig();
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -972,7 +971,7 @@ public class CMSSignerUnitTest {
         LOG.info("testContentOIDDefaultValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CONTENTOID", "1.2.3.4");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -999,7 +998,7 @@ public class CMSSignerUnitTest {
     public void testOverrideWithDefaultContentOID() throws Exception {
         LOG.info("testContentOIDDefaultValue");
         WorkerConfig config = new WorkerConfig();
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -1024,7 +1023,7 @@ public class CMSSignerUnitTest {
         LOG.info("testContentOIDDefaultValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CONTENTOID", "1.2.3.4");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -1049,7 +1048,7 @@ public class CMSSignerUnitTest {
         LOG.info("testContentOIDDefaultValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("ALLOW_CONTENTOID_OVERRIDE", "false");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -1077,7 +1076,7 @@ public class CMSSignerUnitTest {
         LOG.info("testContentOIDDefaultValue");
         WorkerConfig config = new WorkerConfig();
         config.setProperty("ALLOW_CONTENTOID_OVERRIDE", "true");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -1107,7 +1106,7 @@ public class CMSSignerUnitTest {
         WorkerConfig config = new WorkerConfig();
         config.setProperty("CONTENTOID", "1.2.3.4");
         config.setProperty("ALLOW_CONTENTOID_OVERRIDE", "FALSE");
-        CMSSigner instance = createMockSigner(tokenRSA);
+        CMSSigner instance = new MockedCMSSigner(tokenRSA);
         instance.init(1, config, new SignServerContext(), null);
 
         final byte[] data = "my-data".getBytes("ASCII");
@@ -1124,71 +1123,7 @@ public class CMSSignerUnitTest {
             fail("Unexpected exception: " + e.getClass().getName());
         }
     }
-
-    /**
-     * Tests that with DIRECTSIGNATURE=true, no signed attributes are included.
-     * @throws Exception
-     */
-    @Test
-    public void testDirectSignatureTrue() throws Exception {
-        LOG.info("testDirectSignatureTrue");
-        WorkerConfig config = new WorkerConfig();
-        config.setProperty("DIRECTSIGNATURE", "true");
-        CMSSigner instance = new MockedCMSSigner(tokenRSA);
-        instance.init(1, config, new SignServerContext(), null);
-
-        final byte[] data = "my-data".getBytes("ASCII");
-        SimplifiedResponse response = CMSSignerUnitTest.this.signAndVerify(data, tokenRSA, config, null, false);
-
-        byte[] cms = response.getProcessedData();
-        CMSSignedData signedData = new CMSSignedData(cms);
-        AttributeTable signedAttributes = signedData.getSignerInfos().getSigners().iterator().next().getSignedAttributes();
-        assertNull("no signed attributes", signedAttributes);
-    }
-
-    /**
-     * Tests that with DIRECTSIGNATURE=false, there are some signed attributes included.
-     * @throws Exception 
-     */
-    @Test
-    public void testDirectSignatureFalse() throws Exception {
-        LOG.info("testDirectSignatureFalse");
-        WorkerConfig config = new WorkerConfig();
-        config.setProperty("DIRECTSIGNATURE", "false");
-        CMSSigner instance = new MockedCMSSigner(tokenRSA);
-        instance.init(1, config, new SignServerContext(), null);
-
-        final byte[] data = "my-data".getBytes("ASCII");
-        SimplifiedResponse response = CMSSignerUnitTest.this.signAndVerify(data, tokenRSA, config, null, false);
-
-        byte[] cms = response.getProcessedData();
-        CMSSignedData signedData = new CMSSignedData(cms);
-        AttributeTable signedAttributes = signedData.getSignerInfos().getSigners().iterator().next().getSignedAttributes();
-        assertTrue("signed attributes expected", signedAttributes.size() > 0);
-    }
     
-    /**
-     * Tests that with an empty (or with blank space actually) value for DIRECTSIGNATURE the default is false
-     * and thus signed attributes are included.
-     * @throws Exception 
-     */
-    @Test
-    public void testDirectSignatureEmptySlashDefault() throws Exception {
-        LOG.info("testDirectSignatureFalse");
-        WorkerConfig config = new WorkerConfig();
-        config.setProperty("DIRECTSIGNATURE", " ");
-        CMSSigner instance = new MockedCMSSigner(tokenRSA);
-        instance.init(1, config, new SignServerContext(), null);
-
-        final byte[] data = "my-data".getBytes("ASCII");
-        SimplifiedResponse response = CMSSignerUnitTest.this.signAndVerify(data, tokenRSA, config, null, false);
-
-        byte[] cms = response.getProcessedData();
-        CMSSignedData signedData = new CMSSignedData(cms);
-        AttributeTable signedAttributes = signedData.getSignerInfos().getSigners().iterator().next().getSignedAttributes();
-        assertTrue("signed attributes expected", signedAttributes.size() > 0);
-    }
-
     /**
      * Helper method requesting signing using a pre-computed hash.
      * Will also check that the message digest in the response matches the
@@ -1256,7 +1191,7 @@ public class CMSSignerUnitTest {
      * @throws Exception 
      */
     private SimplifiedResponse signAndVerify(final byte[] data, final byte[] originalData, MockedCryptoToken token, WorkerConfig config, RequestContext requestContext, boolean detached) throws Exception {
-        final CMSSigner instance = createMockSigner(token);
+        MockedCMSSigner instance = new MockedCMSSigner(token);
         instance.init(1, config, new SignServerContext(), null);
 
         if (requestContext == null) {
@@ -1304,17 +1239,5 @@ public class CMSSignerUnitTest {
             
             return new SimplifiedResponse(signedBytes, signerCertificate);
         }
-    }
-    
-    /**
-     * Create a mock signer instance for the tests.
-     * This method can be overridden in test classes for extending signers that
-     * want to inherit the tests from this class.
-     * 
-     * @param token Mock crypto token to use
-     * @return Mock implementation
-     */
-    protected CMSSigner createMockSigner(final MockedCryptoToken token) {
-        return new MockedCMSSigner(token);
     }
 }

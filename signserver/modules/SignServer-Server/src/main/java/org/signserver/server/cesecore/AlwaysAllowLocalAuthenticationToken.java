@@ -13,13 +13,8 @@
 package org.signserver.server.cesecore;
 
 import java.security.Principal;
-import java.util.Arrays;
 import java.util.HashSet;
-import org.cesecore.authentication.tokens.AlwaysAllowLocalAuthenticationTokenMetaData;
-import org.cesecore.authentication.tokens.AuthenticationToken;
-import org.cesecore.authentication.tokens.NestableAuthenticationToken;
-import org.cesecore.authentication.tokens.UsernamePrincipal;
-
+import org.cesecore.authentication.tokens.LocalJvmOnlyAuthenticationToken;
 import org.cesecore.authorization.user.AccessUserAspect;
 import org.cesecore.authorization.user.matchvalues.AccessMatchValue;
 
@@ -27,22 +22,23 @@ import org.cesecore.authorization.user.matchvalues.AccessMatchValue;
  * An authentication token that always matches the provided AccessUserAspectData if the AuthenticationToken was created in the same JVM as it is
  * verified.
  * 
- * Example usage: AuthenticationToken authenticationToken = new AlwaysAllowLocalAuthenticationToken("Internal function abc");
+ * Example usage: AuthenticationToken admin = new AlwaysAllowLocalAuthenticationToken(new UsernamePrincipal("Internal function abc"));
  * 
  * @version $Id$
  */
-public class AlwaysAllowLocalAuthenticationToken extends NestableAuthenticationToken {
+public class AlwaysAllowLocalAuthenticationToken extends LocalJvmOnlyAuthenticationToken {
 
     private static final long serialVersionUID = -3942437717641924829L;
 
-    public static final AlwaysAllowLocalAuthenticationTokenMetaData metaData = new AlwaysAllowLocalAuthenticationTokenMetaData();
-    
     public AlwaysAllowLocalAuthenticationToken(final Principal principal) {
-        super(new HashSet<Principal>(Arrays.asList(principal)), null);
-    }
+        super(new HashSet<Principal>() {
+            private static final long serialVersionUID = 3125729459998373943L;
 
-    public AlwaysAllowLocalAuthenticationToken(final String username) {
-        super(new HashSet<Principal>(Arrays.asList(new UsernamePrincipal(username))), null);
+            {
+                add(principal);
+            }
+        }, null);
+
     }
 
     @Override
@@ -50,16 +46,6 @@ public class AlwaysAllowLocalAuthenticationToken extends NestableAuthenticationT
        return super.isCreatedInThisJvm();  
     }
 
-    @Override
-    public int getPreferredMatchKey() {
-        return AuthenticationToken.NO_PREFERRED_MATCH_KEY; // not applicable to this type of authentication token
-    }
-    
-    @Override
-    public String getPreferredMatchValue() {
-        return null;
-    }
-    
     @Override
     public boolean equals(Object authenticationToken) {
         if (this == authenticationToken) {
@@ -77,7 +63,7 @@ public class AlwaysAllowLocalAuthenticationToken extends NestableAuthenticationT
 
     @Override
     public int hashCode() {
-        return getMetaData().getTokenType().hashCode();
+        return "AlwaysAllowLocalAuthenticationToken".hashCode();
     }
 
     @Override
@@ -86,18 +72,44 @@ public class AlwaysAllowLocalAuthenticationToken extends NestableAuthenticationT
     }
 
     @Override
-    public AccessMatchValue getMatchValueFromDatabaseValue(Integer databaseValue) {
-        // Special legacy handling for unclear reasons..?
-        return getMetaData().getAccessMatchValues().get(0);
-    }
-    
-    @Override
-    protected String generateUniqueId() {
-        return generateUniqueId(super.isCreatedInThisJvm()) + ";" + super.generateUniqueId();
+    public AccessMatchValue getDefaultMatchValue() {
+        return InternalMatchValue.DEFAULT;
     }
 
     @Override
-    public AlwaysAllowLocalAuthenticationTokenMetaData getMetaData() {
-        return metaData;
+    public AccessMatchValue getMatchValueFromDatabaseValue(Integer databaseValue) {
+        return InternalMatchValue.INSTANCE;
+    }
+    
+    private static enum InternalMatchValue implements AccessMatchValue {
+        INSTANCE(0), DEFAULT(Integer.MAX_VALUE);
+
+        private static final String TOKEN_TYPE = "AlwaysAllowAuthenticationToken";
+        
+        private final int numericValue;
+        
+        private InternalMatchValue(final int numericValue) {
+            this.numericValue = numericValue;
+        }
+        
+        @Override
+        public int getNumericValue() {         
+            return numericValue;
+        }
+
+        @Override
+        public String getTokenType() {           
+            return TOKEN_TYPE;
+        }
+
+        @Override
+        public boolean isIssuedByCa() {
+            return false;
+        }
+
+        @Override
+        public boolean isDefaultValue() {
+            return numericValue == DEFAULT.numericValue;
+        }
     }
 }

@@ -1,4 +1,8 @@
-/* BC 1.56 + legacy encoding patch (DSS-1415, bcgit: 4afdba1). */
+/*
+ * copied from upstream git, this is needed for the bugfixed 
+ * using code from github.com/bcgit/bc-java git tree bea9d91835fabcde3be7ec7f5e9b9d9bddcb34cf
+ * also + legacy encoding patch (DSS-1415, bcgit: 4afdba1)
+ */
 package org.signserver.module.tsa.bc;
 
 import java.io.IOException;
@@ -25,8 +29,6 @@ import org.bouncycastle.asn1.tsp.TimeStampResp;
 import org.bouncycastle.asn1.x509.Extensions;
 import org.bouncycastle.tsp.TSPException;
 import org.bouncycastle.tsp.TSPValidationException;
-import org.bouncycastle.tsp.TimeStampRequest;
-import org.bouncycastle.tsp.TimeStampTokenGenerator;
 
 /**
  * Generator for RFC 3161 Time Stamp Responses.
@@ -188,6 +190,7 @@ public class TimeStampResponseGenerator
      * If genTime is null a timeNotAvailable or a validation exception occurs a TSPValidationException will
      * be thrown. The parent TSPException will only occur on some sort of system failure.
      * </p>
+     * 
      * @param request the request this response is for.
      * @param serialNumber serial number for the response token.
      * @param genTime generation time for the response token.
@@ -292,7 +295,7 @@ public class TimeStampResponseGenerator
     }
 
     /**
-     * Generate a non-granted TimeStampResponse with chosen status and FailInfoField.
+     * Generate a non-granted TimeStampResponse with choosen status and FailInfoField.
      * 
      * @param status the PKIStatus to set.
      * @param failInfoField the FailInfoField to set.

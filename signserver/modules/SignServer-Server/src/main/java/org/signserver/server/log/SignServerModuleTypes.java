@@ -26,8 +26,7 @@ public enum SignServerModuleTypes implements ModuleType {
     WORKER_CONFIG,
     KEY_MANAGEMENT,   
     WORKER, 
-    STATUS_REPOSITORY,
-    ADMINWEB;
+    STATUS_REPOSITORY,; 
 
     @Override
     public boolean equals(ModuleType value) {

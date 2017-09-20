@@ -31,7 +31,7 @@ public class WSArchiveAuditorsCommand extends AbstractWSClientsCommand {
 
     @Override
     public String getDescription() {
-        return "Manages authorizations for archive auditors";
+        return "Manages authorizations for WS auditors";
     }
 
     @Override

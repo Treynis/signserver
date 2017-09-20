@@ -489,26 +489,8 @@ public class ModulesTestCase extends TestCase {
         addP12DummySigner("org.signserver.module.msauthcode.signer.MSAuthCodeSigner", signerId, signerName, new File(getSignServerHome(), KEYSTORE_AUTHCODESIGNER1_FILE), autoActivate ? KEYSTORE_PASSWORD : null, KEYSTORE_AUTHCODESIGNER1_ALIAS);
     }
     
-    public void addMSAuthCodeCMSSigner(final int signerId, final String signerName, final boolean autoActivate) throws CertificateException, FileNotFoundException {
-        addP12DummySigner("org.signserver.module.msauthcode.signer.MSAuthCodeCMSSigner", signerId, signerName, new File(getSignServerHome(), KEYSTORE_AUTHCODESIGNER1_FILE), autoActivate ? KEYSTORE_PASSWORD : null, KEYSTORE_AUTHCODESIGNER1_ALIAS);
-    }
-    
     public void addJArchiveSigner(final int signerId, final String signerName, final boolean autoActivate) throws CertificateException, FileNotFoundException {
         addP12DummySigner("org.signserver.module.jarchive.signer.JArchiveSigner", signerId, signerName, new File(getSignServerHome(), KEYSTORE_AUTHCODESIGNER1_FILE), autoActivate ? KEYSTORE_PASSWORD : null, KEYSTORE_AUTHCODESIGNER1_ALIAS);
-    }
-    
-    public void addJArchiveCMSSigner(final int signerId, final String signerName, final boolean autoActivate) throws CertificateException, FileNotFoundException {
-        addP12DummySigner("org.signserver.module.jarchive.signer.JArchiveCMSSigner", signerId, signerName, new File(getSignServerHome(), KEYSTORE_AUTHCODESIGNER1_FILE), autoActivate ? KEYSTORE_PASSWORD : null, KEYSTORE_AUTHCODESIGNER1_ALIAS);
-    }
-    
-    public void addExtendedCMSSigner(final int signerId, final String signerName,
-                                     final boolean autoActivate)
-            throws CertificateException, FileNotFoundException {
-        addP12DummySigner("org.signserver.module.extendedcmssigner.ExtendedCMSSigner",
-                          signerId, signerName,
-                          new File(getSignServerHome(), KEYSTORE_SIGNER1_FILE),
-                                   autoActivate ? KEYSTORE_PASSWORD : null,
-                                   KEYSTORE_SIGNER1_ALIAS);
     }
     
     public void addXMLValidator() throws Exception {
