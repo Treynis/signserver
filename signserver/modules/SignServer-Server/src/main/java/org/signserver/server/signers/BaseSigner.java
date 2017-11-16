@@ -196,7 +196,7 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
         // Clients
         final StringBuilder clientsValue = new StringBuilder();
         for (AuthorizedClient client : config.getAuthorizedClients()) {
-            clientsValue.append(client.getCertSN()).append(", ").append(client.getIssuerDN()).append("\n");
+            clientsValue.append(client.getCertSN()).append(", ").append(properties.getProperty(client.getIssuerDN())).append("\n");
         }
         completeEntries.add(new WorkerStatusInfo.Entry("Authorized clients (serial number, issuer DN)", clientsValue.toString()));
 
@@ -321,12 +321,6 @@ public abstract class BaseSigner extends BaseProcessable implements ISigner {
             try {
                 ValidityTimeUtils.checkSignerValidity(new WorkerIdentifier(workerId), getConfig(), (X509Certificate) certificate);
             } catch (CryptoTokenOfflineException ex) {
-                result.add(ex.getMessage());
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Signer " + workerId + ": Signer certificate validity time check failed: " + ex.getMessage());
-                }
-            } // Invalid value for minRemainingCertValidity parameter gives NumberFormatException 
-            catch (NumberFormatException ex) {
                 result.add(ex.getMessage());
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Signer " + workerId + ": Signer certificate validity time check failed: " + ex.getMessage());

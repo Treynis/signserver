@@ -50,8 +50,6 @@ import org.signserver.server.archive.DefaultArchivable;
 import org.signserver.server.cryptotokens.ICryptoInstance;
 import org.signserver.server.cryptotokens.ICryptoTokenV4;
 import org.signserver.server.signers.BaseSigner;
-import static org.signserver.common.SignServerConstants.DEFAULT_NULL;
-import org.signserver.server.HashDigestUtils;
 
 /**
  * A Signer creating a signed Security Object Data (SOD) file to be stored in ePassports.
@@ -110,13 +108,13 @@ public class MRTDSODSigner extends BaseSigner {
     public void init(int workerId, WorkerConfig config,
             WorkerContext workerContext, EntityManager workerEM) {
         super.init(workerId, config, workerContext, workerEM);
-
+        
         configErrors = new LinkedList<>();
-
+        
         if (hasSetIncludeCertificateLevels) {
             configErrors.add(WorkerConfig.PROPERTY_INCLUDE_CERTIFICATE_LEVELS + " is not supported.");
         }
-        }
+    }
 
     @Override
     public Response processData(Request signRequest, RequestContext requestContext) throws IllegalRequestException, CryptoTokenOfflineException, SignServerException {
@@ -127,10 +125,6 @@ public class MRTDSODSigner extends BaseSigner {
         // Check that the request contains a valid SODSignRequest object.
         if (!(signRequest instanceof SODRequest)) {
             throw new IllegalRequestException("Received request wasn't an expected SODSignRequest.");
-        }
-        
-         if (!configErrors.isEmpty()) {
-            throw new SignServerException("Worker is misconfigured");
         }
         
         final SODRequest sodRequest = (SODRequest) signRequest;
@@ -146,9 +140,9 @@ public class MRTDSODSigner extends BaseSigner {
             }
             if (status != WorkerStatus.STATUS_ACTIVE) {
                 log.info("Crypto token status is not active, will see if we can autoactivate.");
-                String pin = config.getPropertyThatCouldBeEmpty("PIN");
+                String pin = config.getProperty("PIN");
                 if (pin == null) {
-                    pin = config.getPropertyThatCouldBeEmpty("pin");
+                    pin = config.getProperty("pin");
                 }
                 if (pin != null) {
                     log.info("Deactivating and re-activating crypto token.");
@@ -217,25 +211,12 @@ public class MRTDSODSigner extends BaseSigner {
                         dghashes.put(dgId.getKey(), result);
                     }
                 }
-            } else {
-                for (Map.Entry<Integer, byte[]> dgId : dgvalues.entrySet()) {
-                    final byte[] value = dgId.getValue();
-                    if (log.isDebugEnabled()) {
-                        log.debug("Hashing data group " + dgId + ", value is of length: " + value.length);
-                    }
-                    if ((value != null) && (value.length > 0)) {
-                        boolean isSuppliedHashDigestLengthOk = HashDigestUtils.isSuppliedHashDigestLengthValid(digestAlgorithm, value.length);
-                        if (!isSuppliedHashDigestLengthOk) {
-                            throw new IllegalRequestException("Client-side hashing data length must match with the length of client specified digest algorithm");
-                        }
-                    }
-                }
             }
 
             // Version values from configuration
             String ldsVersion = config.getProperty(PROPERTY_LDSVERSION,
                     DEFAULT_LDSVERSION);
-            String unicodeVersion = config.getProperty(PROPERTY_UNICODEVERSION, DEFAULT_NULL);
+            String unicodeVersion = config.getProperty(PROPERTY_UNICODEVERSION);
 
             // Version values in request overrides configuration
             final String ldsVersionRequest = sodRequest.getLdsVersion();
@@ -275,9 +256,7 @@ public class MRTDSODSigner extends BaseSigner {
             // Reconstruct the sod
             sod = new SODFile(new ByteArrayInputStream(constructedSod.getEncoded()));
 
-        } catch (NoSuchAlgorithmException ex) {
-            throw new SignServerException("Problem constructing SOD as configured algorithm not supported", ex);
-        } catch (CertificateException ex) {
+        } catch (NoSuchAlgorithmException | CertificateException ex) {
             throw new SignServerException("Problem constructing SOD", ex);
         } catch (IOException ex) {
             throw new SignServerException("Problem reconstructing SOD", ex);

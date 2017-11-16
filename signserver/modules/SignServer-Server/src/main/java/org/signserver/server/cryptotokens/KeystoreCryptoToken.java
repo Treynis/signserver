@@ -76,6 +76,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
 
     private char[] authenticationCode;
 
+    private WorkerSessionLocal workerSession;
     private int workerId;
     private Integer keygenerationLimit;
 
@@ -280,6 +281,40 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         return true;
     }
 
+    private PrivateKey getPrivateKey(int purpose, IServices services)
+            throws CryptoTokenOfflineException {
+
+        if (entries == null) {
+            if (keystorepassword != null) {
+                try {
+                    activate(keystorepassword, services);
+                } catch (CryptoTokenAuthenticationFailureException e) {
+                    throw new CryptoTokenOfflineException("Error trying to autoactivating the keystore, wrong password set? " + e.getMessage());
+                }
+            } else {
+                throw new CryptoTokenOfflineException("Signtoken isn't active.");
+            }
+        }
+        KeyEntry entry = entries.get(purpose);
+        // If key for 'purpose' not available and no nextKey defined, try with
+        // default
+        if ((entry == null || entry.getPrivateKey() == null)
+                && !properties.containsKey(NEXTKEY)) {
+            entry = entries.get(PURPOSE_SIGN);
+        }
+        if (entry == null || entry.getPrivateKey() == null) {
+            throw new CryptoTokenOfflineException(
+                    "No key available for purpose: " + purpose);
+        }
+        return entry.getPrivateKey();
+    }
+
+    private PublicKey getPublicKey(int purpose, IServices services) throws
+            CryptoTokenOfflineException {
+        final Certificate cert = getKeyEntry(purpose, services).getCertificate();
+        return cert.getPublicKey();
+    }
+
     private String getProvider(int providerUsage) {
         return "BC";
     }
@@ -304,6 +339,21 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
                     "No key available for purpose: " + purposeOrAlias);
         }
         return entry;
+    }
+
+    private Certificate getCertificateFromEntries(Object purposeOrAlias, IServices services) throws CryptoTokenOfflineException {
+        try {
+            final KeyEntry entry = getKeyEntry(purposeOrAlias, services);
+            Certificate result = entry.getCertificate();
+
+            // Do not return the dummy certificate
+            if (CryptoTokenHelper.isDummyCertificate(result)) {
+                result = null;
+            }
+            return result;
+        } catch (CryptoTokenOfflineException ex) {
+            return null;
+        }
     }
 
     @Override
@@ -555,7 +605,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
                                  certChain.toArray(new Certificate[0]));
             
             // persist keystore
-            final OutputStream out;
+            OutputStream out = null;
             
             if (!TYPE_INTERNAL.equalsIgnoreCase(keystoretype)) {
                 out = new FileOutputStream(new File(keystorepath));

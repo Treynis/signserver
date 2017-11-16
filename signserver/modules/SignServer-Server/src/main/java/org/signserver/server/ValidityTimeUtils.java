@@ -61,21 +61,15 @@ public class ValidityTimeUtils {
             final WorkerConfig awc, final X509Certificate cert)
             throws CryptoTokenOfflineException {
         
-        boolean checkcertvalidity = awc.getProperty(
+        boolean checkcertvalidity = awc.getProperties().getProperty(
                 SignServerConstants.CHECKCERTVALIDITY, Boolean.TRUE.toString()).equalsIgnoreCase(
                 Boolean.TRUE.toString());
-        boolean checkprivatekeyvalidity = awc.getProperty(
+        boolean checkprivatekeyvalidity = awc.getProperties().getProperty(
                 SignServerConstants.CHECKCERTPRIVATEKEYVALIDITY, Boolean.TRUE.toString()).
                 equalsIgnoreCase(Boolean.TRUE.toString());
-
-        // Invalid value for minRemainingCertValidity parameter gives NumberFormatException
-        int minremainingcertvalidity;
-        try {
-            minremainingcertvalidity = Integer.valueOf(awc.getProperty(SignServerConstants.MINREMAININGCERTVALIDITY, "0"));
-        } catch (NumberFormatException ex) {
-            throw new NumberFormatException("Invalid value in worker property: " + SignServerConstants.MINREMAININGCERTVALIDITY + " " + ex.getMessage());
-        }
-
+        int minremainingcertvalidity = Integer.valueOf(awc.getProperties().
+                getProperty(SignServerConstants.MINREMAININGCERTVALIDITY, "0"));
+        
         return getSigningValidity(notAfter, workerId, checkcertvalidity, checkprivatekeyvalidity, minremainingcertvalidity, cert);
     }
     

@@ -35,7 +35,6 @@ import org.junit.runners.MethodSorters;
 import org.signserver.common.IllegalRequestException;
 import org.signserver.common.RequestContext;
 import org.signserver.common.SODSignResponse;
-import org.signserver.common.SignServerException;
 import org.signserver.common.SignServerUtil;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerIdentifier;
@@ -267,9 +266,9 @@ public class MRTDSODSignerUnitTest extends TestCase {
         Map<Integer, byte[]> dataGroups4 = new LinkedHashMap<>();
         dataGroups4.put(1, digestHelper("Dummy Value 9".getBytes(), "SHA256"));
         dataGroups4.put(2, digestHelper("Dummy Value 10".getBytes(), "SHA256"));
-        signHelper(WORKER18, 14, dataGroups4, false, "SHA256", "SHA256withECDSA");
+        signHelper(WORKER18, 14, dataGroups3, false, "SHA256", "SHA256withECDSA");
     }
-    
+
     /**
      * Requests signing of some data groups, using two different signers
      * with different algorithms and verifies the result. The signer does the
@@ -612,98 +611,6 @@ public class MRTDSODSignerUnitTest extends TestCase {
     private byte[] digestHelper(byte[] data, String digestAlgorithm) throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance(digestAlgorithm);
         return md.digest(data);
-    }
-    
-     /**
-     * Test that Signing works when parameters - SIGNATUREALGORITHM, DIGESTALGORITHM and LDSVERSION specified empty.
-     *
-     * @throws Exception
-     */
-    public void test08SignDataWithEmptyParams() throws Exception {
-
-        workerSession.setWorkerProperty(WORKER5, "LDSVERSION", " ");
-        workerSession.setWorkerProperty(WORKER5, "DIGESTALGORITHM", " ");
-        workerSession.setWorkerProperty(WORKER5, "SIGNATUREALGORITHM", " ");
-        workerSession.reloadConfiguration(WORKER5);
-
-        // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
-        dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
-        dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
-        try {
-            signHelper(WORKER5, 12, dataGroups1, false, "SHA256",
-                    "SHA256withRSA");
-        } catch (Exception ex) {
-            fail("There should not be any exception");
-        }
-    }
-    
-    /**
-     * Test that Signer process fails gracefully and displays actual problem when configured SIGNATUREALGORITHM is invalid.
-     *
-     * @throws Exception
-     */
-    public void test09SignDataWithUnSupportedSigAlgo() throws Exception {
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
-        dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
-        dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
-
-        workerSession.setWorkerProperty(WORKER1, "SIGNATUREALGORITHM", "INVALID1234");
-        workerSession.reloadConfiguration(WORKER1);
-
-        try {
-            signHelper(WORKER1, 12, dataGroups1, false, "SHA256", "INVALID1234");
-            fail("Should have failed");
-        } catch (SignServerException ignored) {
-            // OK
-            assertEquals("Problem constructing SOD as configured algorithm not supported", ignored.getMessage());
-            LOG.debug("Message was: " + ignored.getMessage());
-        }
-    }
-    
-     /**
-     * Test that when length of client supplied hash digest does not match with the length of configured digest algorithm,it fails.
-     *
-     * @throws Exception
-     */
-    public void test10SignData_MessageDigestLengthNotMatchedWithConfiguredHashAlgoFails() throws Exception {
-        // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
-        dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
-        dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
-
-        workerSession.setWorkerProperty(WORKER1, "DIGESTALGORITHM", "SHA512");
-        workerSession.reloadConfiguration(WORKER1);
-
-        try {
-            signHelper(WORKER1, 12, dataGroups1, false, "SHA512", "SHA256withRSA");
-            fail("Should have failed");
-        } catch (IllegalRequestException ignored) {
-            // OK
-            assertEquals("Client-side hashing data length must match with the length of client specified digest algorithm", ignored.getMessage());
-            LOG.debug("Message was: " + ignored.getMessage());
-        }
-    }
-    
-     /**
-     * Tests that Signer refuses to sign if worker has configuration errors.
-     * @throws Exception
-     */
-    public void test11NoSigningWhenWorkerMisconfigued() throws Exception {
-        // DG1, DG2 and default values
-        Map<Integer, byte[]> dataGroups1 = new LinkedHashMap<>();
-        dataGroups1.put(1, digestHelper("Dummy Value 1".getBytes(), "SHA256"));
-        dataGroups1.put(2, digestHelper("Dummy Value 2".getBytes(), "SHA256"));
-
-        workerSession.setWorkerProperty(WORKER1, "INCLUDE_CERTIFICATE_LEVELS", "3");
-        workerSession.reloadConfiguration(WORKER1);
-
-        try {
-            signHelper(WORKER1, 12, dataGroups1, false, "SHA256", "SHA256withRSA");
-            fail("Should have failed");
-        } catch (SignServerException expected) {
-            assertEquals("exception message", "Worker is misconfigured", expected.getMessage());
-        }
     }
 
     private void setupWorkers() {

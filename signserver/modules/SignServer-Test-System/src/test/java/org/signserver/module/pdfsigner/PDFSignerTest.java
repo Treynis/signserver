@@ -181,32 +181,6 @@ public class PDFSignerTest extends ModulesTestCase {
         StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(WORKERID));
         assertTrue(stat.getTokenStatus() == WorkerStatus.STATUS_ACTIVE);
     }
-    
-    /**
-     * Tests that Empty value for AUTHTYPE property should be allowed.
-     *
-     * @throws Exception in case of exception
-     */
-    @Test
-    public void test20EmptyAuthTypeAllowed() throws Exception {
-        final byte[] pdfOk = getTestFile(TESTPDF_OK);
-
-        workerSession.setWorkerProperty(WORKERID, "AUTHTYPE", "         ");
-        workerSession.reloadConfiguration(WORKERID);
-
-        StaticWorkerStatus stat = (StaticWorkerStatus) workerSession.getStatus(new WorkerIdentifier(WORKERID));        
-        assertTrue(stat.getFatalErrors().isEmpty());
-
-        String errorMessage = "client authentication is required";
-        try {
-            signGenericDocument(WORKERID, pdfOk);
-        } catch (Exception e) {
-            assertTrue("Should contain error", e.getMessage().contains(errorMessage));
-        } finally {
-            workerSession.setWorkerProperty(WORKERID, "AUTHTYPE", "NOAUTH");
-            workerSession.reloadConfiguration(WORKERID);
-        }
-    }
 
     /**
      * Tests default certification level.
@@ -455,16 +429,11 @@ public class PDFSignerTest extends ModulesTestCase {
     public void test13VeryLongCertChain() throws Exception {
         final byte[] pdfOk = getTestFile(TESTPDF_OK);
         byte[] certFile = getTestFile("dss10" + File.separator + "long_chain.pem");
-
-        workerSession.setWorkerProperty(WORKERID, "SIGNERCERTCHAIN", new String(certFile));
-        workerSession.reloadConfiguration(WORKERID);
-
-        try {
-            signGenericDocument(WORKERID, pdfOk);
-        } finally {
-            workerSession.removeWorkerProperty(WORKERID, "SIGNERCERTCHAIN");
-            workerSession.reloadConfiguration(WORKERID);
-        }
+        
+    	workerSession.setWorkerProperty(WORKERID, "SIGNERCERTCHAIN", new String(certFile));
+    	workerSession.reloadConfiguration(WORKERID);
+    	
+    	signGenericDocument(WORKERID, pdfOk);
     }
     
     /**
@@ -547,7 +516,6 @@ public class PDFSignerTest extends ModulesTestCase {
     @Test
     public void test99TearDownDatabase() throws Exception {
         removeWorker(5675);
-        removeWorker(TSAWORKERID);
     }
 
     private GenericSignResponse signNoCheck(final int workerId,

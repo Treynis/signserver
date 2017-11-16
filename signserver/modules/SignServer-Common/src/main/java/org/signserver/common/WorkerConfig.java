@@ -170,49 +170,24 @@ public class WorkerConfig extends UpgradeableDataHashMap {
     }
 
     /**
-     * Returns the specific property from the configuration or default value as null if the property isn't set or empty.
+     * Returns the specific property from the configuration.
      * 
      * @param key Property to get value of
-     * @return the value corresponding to that property or default Value as null if unset/empty
+     * @return the value corresponding to that property.
      */
     public String getProperty(String key) {
-        return getProperty(key, null);
-    }
-    
-    /**
-     * Returns the specific property value from the configuration and this value could be empty String.
-     * 
-     * @param key Property to get value of
-     * @return the value corresponding to that property.
-     */
-    public String getPropertyThatCouldBeEmpty(String key) {
         return ((Properties) data.get(PROPERTIES)).getProperty(key);
-    }
-    
-    /**
-     * Returns the specific property value from the configuration with a defaultValue option and this value could be empty String.
-     * @param key Property to get value of
-     * @param defaultValue Default value, if the property isn't set
-     * @return the value corresponding to that property.
-     */
-    public String getPropertyThatCouldBeEmpty(String key, String defaultValue) {
-        return ((Properties) data.get(PROPERTIES)).getProperty(key, defaultValue);
     }
 
     /**
      * Returns the specific property from the configuration with a defaultValue option.
      * 
      * @param key Property to get value of
-     * @param defaultValue Default value, if the property isn't set or empty
-     * @return the value corresponding to that property, or defaultValue if unset/empty
+     * @param defaultValue Default value, if the property isn't set
+     * @return the value corresponding to that property, or defaultValue if unset
      */
     public String getProperty(String key, String defaultValue) {
-        String s = ((Properties) data.get(PROPERTIES)).getProperty(key, defaultValue);
-        if (s == null || s.trim().isEmpty()) {
-            return defaultValue;
-        } else {
-            return s;
-        }
+        return ((Properties) data.get(PROPERTIES)).getProperty(key, defaultValue);
     }
 
     /**

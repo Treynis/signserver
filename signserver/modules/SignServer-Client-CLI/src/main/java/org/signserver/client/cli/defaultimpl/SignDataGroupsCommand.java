@@ -221,12 +221,9 @@ public class SignDataGroupsCommand extends AbstractCommand {
 
             dataGroups = new HashMap<>();
 
-            final String[] groups = data.split("\\&");
-            for(final String group : groups) {
-                final String[] entry = group.split("=", 2);
-                if (entry.length != 2) {
-                    throw new IllegalCommandArgumentsException("Malformed data group argument: " + group);
-                }
+            String[] groups = data.split("\\&");
+            for(String group : groups) {
+                String[] entry = group.split("=");
                 dataGroups.put(new Integer(entry[0]), entry[1].getBytes());
             }
         }

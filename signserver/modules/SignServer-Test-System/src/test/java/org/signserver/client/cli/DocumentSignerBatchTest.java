@@ -671,46 +671,6 @@ public class DocumentSignerBatchTest extends ModulesTestCase {
             assertEquals("calls to readPassword", 4, calls.size());
         }
     }
-    
-    /**
-     * Tests that output files are removed and input files are renamed with failed extension in case of command failure.
-     * @throws Exception
-     */
-    @Test
-    public void test05cleanUpWhenFailure() throws Exception {
-        LOG.info("test05cleanUpWhenFailure");
-        inDir.create();
-        File file1 = inDir.newFile("doc1.xml");
-        FileUtils.writeStringToFile(file1, "InvalidXML1");
-        File file2 = inDir.newFile("doc2.xml");
-        FileUtils.writeStringToFile(file2, "InvalidXML2");
-        outDir.create();
-
-        try {
-            execute("signdocument",
-                    "-workername", "TestXMLSigner",
-                    "-indir", inDir.getRoot().getAbsolutePath(),
-                    "-outdir", outDir.getRoot().getAbsolutePath());
-            fail("This should have failed");
-        } catch (CommandFailureException ex) {
-            // output files should have been deleted 
-            File outFile1 = new File(outDir.getRoot().getAbsolutePath(), "doc1.xml");
-            File outFile2 = new File(outDir.getRoot().getAbsolutePath(), "doc2.xml");
-            assertTrue("Output file1 exists: ", !outFile1.exists());
-            assertTrue("Output file2 exists: ", !outFile2.exists());
-            // input files with original names have been renamed so should not be present
-            assertTrue("Input file1 exists: ", !file1.exists());
-            assertTrue("Input file2 exists: ", !file2.exists());
-            // input file with new names (.failed) should be present
-            File renamedFile1 = new File(inDir.getRoot().getAbsolutePath(), "doc1.xml.failed");
-            File renamedFile2 = new File(inDir.getRoot().getAbsolutePath(), "doc2.xml.failed");
-            assertTrue("Failed Input file1 not exists: ", renamedFile1.exists());
-            assertTrue("Failed Input file2 not exists: ", renamedFile2.exists());
-        } finally {
-            inDir.delete();
-            outDir.delete();
-        }
-    }
 
     @Test
     public void test99TearDownDatabase() throws Exception {
