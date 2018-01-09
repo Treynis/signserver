@@ -4,7 +4,7 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.signserver.jacknji</groupId>
+  <groupId>org.signserver.jacknji11</groupId>
   <artifactId>jacknji11</artifactId>
   <version>1.0-20180109-6d6503f</version>
   <name>jacknji11</name>
