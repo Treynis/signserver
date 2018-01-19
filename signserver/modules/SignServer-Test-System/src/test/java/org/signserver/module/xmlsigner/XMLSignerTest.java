@@ -159,7 +159,7 @@ public class XMLSignerTest extends ModulesTestCase {
      */
     @Test
     public void test01BasicXmlSignRSADefaultSigAlg() throws Exception {
-        testBasicXmlSign(WORKERID, null, "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
+        testBasicXmlSign(WORKERID, null, "http://www.w3.org/2000/09/xmldsig#rsa-sha1");
     }
     
     /**
@@ -169,7 +169,7 @@ public class XMLSignerTest extends ModulesTestCase {
      */
     @Test
     public void test17BasicXmlSignEmptySigAlg() throws Exception {
-        testBasicXmlSign(WORKERID, "   ", "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
+        testBasicXmlSign(WORKERID, "   ", "http://www.w3.org/2000/09/xmldsig#rsa-sha1");
     }
     
     /**
@@ -222,7 +222,7 @@ public class XMLSignerTest extends ModulesTestCase {
 
     @Test
     public void test08BasicXmlSignDSADefaultSigAlg() throws Exception {
-        testBasicXmlSign(WORKERID2, null, "http://www.w3.org/2009/xmldsig11#dsa-sha256");
+        testBasicXmlSign(WORKERID2, null, "http://www.w3.org/2000/09/xmldsig#dsa-sha1");
     }
     
     @Test
@@ -256,7 +256,7 @@ public class XMLSignerTest extends ModulesTestCase {
      */
     @Test
     public void test14BasicXmlSignECDSADefaultSigAlg() throws Exception {
-        testBasicXmlSign(WORKERID3, null, "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256");
+        testBasicXmlSign(WORKERID3, null, "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha1");
     }
     
     /**

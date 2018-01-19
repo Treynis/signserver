@@ -246,11 +246,11 @@ public class PlainSigner extends BaseSigner {
         final String result;
 
         if (publicKey instanceof ECPublicKey) {
-            result = "SHA256withECDSA";
+            result = "SHA1withECDSA";
         }  else if (publicKey instanceof DSAPublicKey) {
-            result = "SHA256withDSA";
+            result = "SHA1withDSA";
         } else {
-            result = "SHA256withRSA";
+            result = "SHA1withRSA";
         }
 
         return result;

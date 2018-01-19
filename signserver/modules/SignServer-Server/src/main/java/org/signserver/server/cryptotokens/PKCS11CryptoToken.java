@@ -31,10 +31,6 @@ import java.security.SignatureException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
-import java.security.spec.AlgorithmParameterSpec;
-import java.security.spec.ECGenParameterSpec;
-import java.security.spec.RSAKeyGenParameterSpec;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -43,11 +39,7 @@ import java.util.Properties;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.bouncycastle.asn1.x9.X9ECParameters;
-import org.bouncycastle.crypto.ec.CustomNamedCurves;
-import org.bouncycastle.jcajce.provider.asymmetric.util.ECUtil;
 import org.bouncycastle.operator.OperatorCreationException;
-import org.cesecore.certificates.util.AlgorithmTools;
 import org.cesecore.keys.token.CryptoTokenAuthenticationFailedException;
 import org.cesecore.keys.token.p11.Pkcs11SlotLabelType;
 import org.cesecore.keys.token.p11.exception.NoSuchSlotException;
@@ -67,8 +59,6 @@ import org.signserver.common.TokenOutOfSpaceException;
 import org.signserver.common.WorkerStatus;
 import org.signserver.server.ExceptionUtil;
 import org.signserver.server.IServices;
-import static org.signserver.server.cryptotokens.CryptoTokenHelper.SECRET_KEY_PREFIX;
-import sun.security.pkcs11.wrapper.CK_ATTRIBUTE;
 
 /**
  * CryptoToken implementation wrapping the new PKCS11CryptoToken from CESeCore.
@@ -86,16 +76,15 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
 
     private static final Logger LOG = Logger.getLogger(PKCS11CryptoToken.class);
 
-    private KeyStorePKCS11CryptoToken delegate;
+    private final KeyStorePKCS11CryptoToken delegate;
 
     /** Our worker cache entry name. */
     private static final String WORKERCACHE_ENTRY = "PKCS11CryptoToken.CRYPTO_INSTANCE";
     
     private static final String PROPERTY_SIGNATUREALGORITHM = "SIGNATUREALGORITHM";
 
-    private AttributeProperties attributeProperties;
-
-    public PKCS11CryptoToken() {
+    public PKCS11CryptoToken() throws InstantiationException {
+        delegate = new KeyStorePKCS11CryptoToken();
     }
 
     private String keyAlias;
@@ -110,9 +99,6 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
     @Override
     public void init(int workerId, Properties props, org.signserver.server.IServices services) throws CryptoTokenInitializationFailureException {
         try {
-            // Check that the crypto token is not disabled
-            CryptoTokenHelper.checkEnabled(props);
-            
             // Optional property SIGNATUREALGORITHM
             final String value = props.getProperty(PROPERTY_SIGNATUREALGORITHM);
             if (!StringUtils.isBlank(value)) {
@@ -142,16 +128,6 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
                 } finally {
                     IOUtils.closeQuietly(out);
                 }
-            }
-
-            // Parse newer attribute properties
-            try {
-                attributeProperties = AttributeProperties.fromWorkerProperties(props);
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Attribute properties:\n" + attributeProperties);
-                }
-            } catch (IllegalArgumentException ex) {
-                throw new CryptoTokenInitializationFailureException("Unable to parse attributes: " + ex.getMessage());
             }
 
             // Check that both the new or the legacy properties are specified at the same time
@@ -259,6 +235,8 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
             if (slotLabelValue == null) {
                 throw new CryptoTokenInitializationFailureException("Missing " + CryptoTokenHelper.PROPERTY_SLOTLABELVALUE + " property");
             }
+            
+            delegate.init(props, null, workerId);
 
             keyAlias = props.getProperty("defaultKey");
             nextKeyAlias = props.getProperty("nextCertSignKey");
@@ -279,17 +257,11 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
                     throw new CryptoTokenInitializationFailureException("Incorrect value for " + CryptoTokenHelper.PROPERTY_KEYGENERATIONLIMIT + ": " + ex.getLocalizedMessage());
                 }
             }
-
-            delegate = new KeyStorePKCS11CryptoToken();
-            delegate.init(props, null, workerId);
         } catch (org.cesecore.keys.token.CryptoTokenOfflineException | NumberFormatException ex) {
             LOG.error("Init failed", ex);
             throw new CryptoTokenInitializationFailureException(ex.getMessage());
         } catch (NoSuchSlotException ex) {
             LOG.error("Slot not found", ex);
-            throw new CryptoTokenInitializationFailureException(ex.getMessage());
-        } catch (InstantiationException ex) {
-            LOG.error("PKCS11 key store initialization failed", ex);
             throw new CryptoTokenInitializationFailureException(ex.getMessage());
         }
     }
@@ -415,84 +387,6 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
         return delegate.getActivatedKeyStore();
     }
 
-    private void generateKeyPair(String keyAlgorithm, String keySpec, String alias, char[] authCode, Map<String, Object> params, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
-        // Keyspec for DSA is prefixed with "dsa"
-        if (keyAlgorithm != null && keyAlgorithm.equalsIgnoreCase("DSA")
-                && !keySpec.contains("dsa")) {
-            keySpec = "dsa" + keySpec;
-        }
-                
-        try {
-            // Construct the apropriate AlgorithmParameterSpec
-            final AlgorithmParameterSpec spec;
-            if ("RSA".equalsIgnoreCase(keyAlgorithm)) {
-                if (keySpec.contains("exp")) {
-                    spec = CryptoTokenHelper.getPublicExponentParamSpecForRSA(keySpec);
-                } else {
-                    spec = new RSAKeyGenParameterSpec(Integer.valueOf(keySpec), RSAKeyGenParameterSpec.F4);
-                }
-            } else if ("DSA".equalsIgnoreCase(keyAlgorithm)) {
-                spec = null; // We don't currently support setting attributes for DSA keys. This could be added in future if needed but requires changes in underlaying APIs
-            } else if ("ECDSA".equalsIgnoreCase(keyAlgorithm)) {
-                // Convert it to the OID if possible since the human friendly name might differ in the provider
-                if (ECUtil.getNamedCurveOid(keySpec) != null) {
-                    final String oidOrName = AlgorithmTools.getEcKeySpecOidFromBcName(keySpec);
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("keySpecification '" + keySpec + "' transformed into OID " + oidOrName);
-                    }
-                    spec = new ECGenParameterSpec(oidOrName);
-                } else {
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Curve did not have an OID in BC, trying to pick up Parameter spec: " + keySpec);
-                    }
-                    // This may be a new curve without OID, like curve25519 and we have to do something a bit different
-                    X9ECParameters ecP = CustomNamedCurves.getByName(keySpec);
-                    if (ecP == null) {
-                        throw new InvalidAlgorithmParameterException("Can not generate EC curve, no OID and no ECParameters found: " + keySpec);
-                    }
-                    spec = new org.bouncycastle.jce.spec.ECParameterSpec(ecP.getCurve(), ecP.getG(), ecP.getN(), ecP.getH(), ecP.getSeed()); 
-                }
-            } else {
-                throw new IllegalArgumentException("Unsupported key algorithm: " + keyAlgorithm);
-            }
-            
-            if (spec == null) {
-                // Generate the old way without support for attributes
-                delegate.generateKeyPair(keySpec, alias);
-            } else {
-                if (CryptoTokenHelper.isJREPatched()) {
-                    final CK_ATTRIBUTE[] publicTemplate = convert(attributeProperties.getPublicTemplate(keyAlgorithm));
-                    final CK_ATTRIBUTE[] privateTemplate = convert(attributeProperties.getPrivateTemplate(keyAlgorithm));
-
-                    // TODO: Later on we could override attribute properties from the params parameter
-
-                    // Use different P11AsymmetricParameterSpec classes as the underlaying library assumes the spec contains the string "RSA" or "EC"
-                    final AlgorithmParameterSpec specWithAttributes;
-                    if ("RSA".equalsIgnoreCase(keyAlgorithm)) {
-                        specWithAttributes = new RSAP11AsymmetricParameterSpec(publicTemplate, privateTemplate, spec);
-                    } else if ("ECDSA".equalsIgnoreCase(keyAlgorithm)) {
-                        specWithAttributes = new ECP11AsymmetricParameterSpec(publicTemplate, privateTemplate, spec);
-                    } else {
-                        throw new IllegalArgumentException("Unsupported key algorithm: " + keyAlgorithm);
-                    }
-                    
-                    delegate.generateKeyPair(specWithAttributes, alias);
-                } else {
-                    // Generate without support for attributes
-                    delegate.generateKeyPair(spec, alias);
-                }
-            }
-
-            if (params != null) {
-                final KeyStore ks = delegate.getActivatedKeyStore();
-                CryptoTokenHelper.regenerateCertIfWanted(alias, authCode, params, ks, ks.getProvider().getName());
-            }
-        } catch (InvalidAlgorithmParameterException | org.cesecore.keys.token.CryptoTokenOfflineException | CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException | OperatorCreationException ex) {
-            LOG.error(ex, ex);
-            throw new CryptoTokenOfflineException(ex);
-        }
-    }
-    
     @Override
     public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode, Map<String, Object> params, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
         if (keySpec == null) {
@@ -504,6 +398,11 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
         if (LOG.isDebugEnabled()) {
             LOG.debug("keyAlgorithm: " + keyAlgorithm + ", keySpec: " + keySpec
                     + ", alias: " + alias);
+        }
+        // Keyspec for DSA is prefixed with "dsa"
+        if (keyAlgorithm != null && keyAlgorithm.equalsIgnoreCase("DSA")
+                && !keySpec.contains("dsa")) {
+            keySpec = "dsa" + keySpec;
         }
 
         // Check key generation limit, if configured
@@ -519,26 +418,22 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
                 throw new TokenOutOfSpaceException("Current number of key entries could not be obtained: " + ex.getMessage(), ex);
             }
         }
-
+        
         try {
-            if (CryptoTokenHelper.isKeyAlgorithmAsymmetric(keyAlgorithm)) {
-                generateKeyPair(keyAlgorithm, keySpec, alias, authCode, params, services);
+            if ("RSA".equalsIgnoreCase(keyAlgorithm) &&
+                keySpec.contains("exp")) {
+                delegate.generateKeyPair(
+                        CryptoTokenHelper.getPublicExponentParamSpecForRSA(keySpec),
+                        alias);
             } else {
-                generateSecretKey(keyAlgorithm, keySpec, alias);
+                delegate.generateKeyPair(keySpec, alias);
             }
-        } catch (UnsupportedOperationException ex) {
-            LOG.error(ex, ex);
-            throw new CryptoTokenOfflineException(ex);
-        }
-    }
-    
-    private void generateSecretKey(String keyAlgorithm, String keySpec, String alias) throws CryptoTokenOfflineException {
-        if (keyAlgorithm.startsWith(SECRET_KEY_PREFIX)) {
-            keyAlgorithm = keyAlgorithm.substring(keyAlgorithm.indexOf(SECRET_KEY_PREFIX) + SECRET_KEY_PREFIX.length());
-        }
-        try {
-            delegate.generateKey(keyAlgorithm, Integer.valueOf(keySpec), alias);
-        } catch (IllegalArgumentException | NoSuchAlgorithmException | NoSuchProviderException | KeyStoreException | org.cesecore.keys.token.CryptoTokenOfflineException ex) {
+            
+            if (params != null) {
+                final KeyStore ks = delegate.getActivatedKeyStore();
+                CryptoTokenHelper.regenerateCertIfWanted(alias, authCode, params, ks, ks.getProvider().getName());
+            }
+        } catch (InvalidAlgorithmParameterException | org.cesecore.keys.token.CryptoTokenOfflineException | CertificateException | IOException | KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException | OperatorCreationException ex) {
             LOG.error(ex, ex);
             throw new CryptoTokenOfflineException(ex);
         }
@@ -568,7 +463,7 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
     @Override
     public TokenSearchResults searchTokenEntries(final int startIndex, final int max, final QueryCriteria qc, final boolean includeData, Map<String, Object> params, final IServices services) throws CryptoTokenOfflineException, QueryException {
         try {
-            return CryptoTokenHelper.searchTokenEntries(getKeyStore(), startIndex, max, qc, includeData, services, null);
+            return CryptoTokenHelper.searchTokenEntries(getKeyStore(), startIndex, max, qc, includeData);
         } catch (KeyStoreException ex) {
             throw new CryptoTokenOfflineException(ex);
         }
@@ -633,17 +528,6 @@ public class PKCS11CryptoToken extends BaseCryptoToken {
     @Override
     public void releaseCryptoInstance(ICryptoInstance instance, RequestContext context) {
         // NOP
-    }
-
-    private CK_ATTRIBUTE[] convert(List<AttributeProperties.Attribute> attributes) {
-        if (attributes == null) {
-            return new CK_ATTRIBUTE[0];
-        }
-        final List<CK_ATTRIBUTE> result = new ArrayList<>(attributes.size());
-        for (AttributeProperties.Attribute attribute : attributes) {
-            result.add(new CK_ATTRIBUTE(attribute.getId(), attribute.getValue()));
-        }
-        return result.toArray(new CK_ATTRIBUTE[0]);
     }
 
     private static class KeyStorePKCS11CryptoToken extends org.cesecore.keys.token.PKCS11CryptoToken {

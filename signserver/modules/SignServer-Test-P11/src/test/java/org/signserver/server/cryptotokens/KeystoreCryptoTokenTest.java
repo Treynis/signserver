@@ -54,8 +54,6 @@ import org.signserver.common.WorkerType;
 import org.signserver.ejb.interfaces.WorkerSessionLocal;
 import org.signserver.server.IServices;
 import org.signserver.server.ServicesImpl;
-import org.signserver.server.entities.IKeyUsageCounterDataService;
-import org.signserver.server.entities.KeyUsageCounter;
 import org.signserver.server.log.AdminInfo;
 import org.signserver.test.utils.mock.MockedServicesImpl;
 
@@ -65,15 +63,16 @@ import org.signserver.test.utils.mock.MockedServicesImpl;
  * @author Markus Kilås
  * @version $Id$
  */
-public class InternalKeystoreCryptoTokenTest extends CryptoTokenTestBase {
+public class KeystoreCryptoTokenTest extends CryptoTokenTestBase {
     /** Logger for this class */
-    private static final Logger LOG = Logger.getLogger(InternalKeystoreCryptoTokenTest.class);
+    private static final Logger LOG = Logger.getLogger(KeystoreCryptoTokenTest.class);
     
     private final MockedKeystoreInConfig instance = new MockedKeystoreInConfig();
     
-    private final String existingKey1 = getConfig().getProperty("test.p11.existingkey1");    
+    private final String existingKey1 = getConfig().getProperty("test.p11.existingkey1");
+    private final String existingKey2 = getConfig().getProperty("test.p11.existingkey2");
 
-    public InternalKeystoreCryptoTokenTest() {
+    public KeystoreCryptoTokenTest() {
     }
     
     @Before
@@ -98,13 +97,13 @@ public class InternalKeystoreCryptoTokenTest extends CryptoTokenTestBase {
         initKeystore();
         searchTokenEntriesHelper(existingKey1);
     }
-   
+
     @Test
     public void testImportCertificateChain() throws Exception {
         initKeystore();
         importCertificateChainHelper(existingKey1);
     }
-    
+
     @Test
     public void testExportCertificateChain() throws Exception {
         initKeystore();
@@ -113,7 +112,7 @@ public class InternalKeystoreCryptoTokenTest extends CryptoTokenTestBase {
 
     @Override
     protected TokenSearchResults searchTokenEntries(int startIndex, int max, QueryCriteria qc, boolean includeData) throws CryptoTokenOfflineException, QueryException {
-        return instance.searchTokenEntries(startIndex, max, qc, includeData, null, instance.getMockedServices());
+        return instance.searchTokenEntries(startIndex, max, qc, includeData, null, new ServicesImpl());
     }
 
     @Override
@@ -165,12 +164,11 @@ public class InternalKeystoreCryptoTokenTest extends CryptoTokenTestBase {
         * @return A mocked IServices with the same WorkerSessionLocal as a call
         * to getWorkerSession() would return
         */
-        public IServices getMockedServices() {
-            IServices servicesImpl = new ServicesImpl();
-            servicesImpl.put(WorkerSessionLocal.class, getWorkerSession(null));
-            servicesImpl.put(IKeyUsageCounterDataService.class, getKeyUsageCounterDataService());
-            return servicesImpl;
-        }
+       public IServices getMockedServices() {
+           IServices servicesImpl = new ServicesImpl();
+           servicesImpl.put(WorkerSessionLocal.class, getWorkerSession(null));
+           return servicesImpl;
+       }
     
         @Override
         protected WorkerSessionLocal getWorkerSession(final IServices services) { // TODO Extract to adaptor
@@ -477,30 +475,5 @@ public class InternalKeystoreCryptoTokenTest extends CryptoTokenTestBase {
             }
             return workerSession;
         }
-    }
-    
-     private static IKeyUsageCounterDataService getKeyUsageCounterDataService() {
-        IKeyUsageCounterDataService KeyUsageCounterDataService = new IKeyUsageCounterDataService() {
-            @Override
-            public void create(String keyHash) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-
-            @Override
-            public KeyUsageCounter getCounter(String keyHash) {
-                return null;
-            }
-
-            @Override
-            public boolean incrementIfWithinLimit(String keyHash, long limit) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-
-            @Override
-            public boolean isWithinLimit(String keyHash, long keyUsageLimit) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-        };
-        return KeyUsageCounterDataService;
     }
 }
