@@ -16,29 +16,33 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.KeyPair;
+import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
+import java.security.ProviderException;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.UnrecoverableEntryException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.DSAKey;
 import java.security.interfaces.ECKey;
 import java.security.interfaces.RSAKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -61,6 +65,8 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
 import org.bouncycastle.util.encoders.Base64;
 import org.bouncycastle.util.encoders.Hex;
+import org.cesecore.certificates.util.AlgorithmConstants;
+import org.cesecore.certificates.util.AlgorithmTools;
 import org.cesecore.keys.token.p11.Pkcs11SlotLabelType;
 import org.cesecore.util.CertTools;
 import org.cesecore.util.QueryParameterException;
@@ -71,19 +77,14 @@ import org.cesecore.util.query.elems.LogicOperator;
 import org.cesecore.util.query.elems.Operation;
 import org.cesecore.util.query.elems.Term;
 import org.signserver.common.Base64SignerCertReqData;
-import org.signserver.common.CryptoTokenInitializationFailureException;
 import org.signserver.common.CryptoTokenOfflineException;
 import org.signserver.common.ICertReqData;
 import org.signserver.common.ISignerCertReqInfo;
 import org.signserver.common.KeyTestResult;
 import org.signserver.common.PKCS10CertReqInfo;
 import org.signserver.common.QueryException;
-import org.signserver.common.SignServerConstants;
 import org.signserver.common.SignServerException;
-import org.signserver.server.IServices;
 import org.signserver.server.KeyUsageCounterHash;
-import org.signserver.server.entities.IKeyUsageCounterDataService;
-import org.signserver.server.entities.KeyUsageCounter;
 
 /**
  * Helper methods used by the CryptoTokens.
@@ -113,25 +114,6 @@ public class CryptoTokenHelper {
     public static final String PROPERTY_SELFSIGNED_DN = "SELFSIGNED_DN";
     public static final String PROPERTY_SELFSIGNED_VALIDITY = "SELFSIGNED_VALIDITY";
     public static final String PROPERTY_SELFSIGNED_SIGNATUREALGORITHM = "SELFSIGNED_SIGNATUREALGORITHM";
-
-    public static final String INFO_KEY_SPECIFICATION = "Key specification";
-    public static final String INFO_KEY_ALGORITHM = "Key algorithm";
-    public static final String INFO_KEY_PUBLIC_EXPONENT = "Public exponent";
-    public static final String INFO_KEY_SIGNINGS = "Signings";
-    public static final String INFO_KEY_WRAPPING_KEY = "Wrapping Key";
-    public static final String INFO_KEY_WRAPPING_CIPHER = "Wrapping Cipher";
-    
-    public static final String INFO_KEY_MODIFIABLE = "Modifiable";
-    public static final String INFO_KEY_PKCS11_ATTRIBUTES = "PKCS#11 Attributes";
-    public static final String INFO_KEY_ALLOWED_MECHANISMS = "Allowed Mechanisms";
-
-    public static final String PROPERTY_ALLOWED_MECHANISMS = "ALLOWED_MECHANISMS";
-    
-    public static final String SECRET_KEY_PREFIX = "SEC:";
-    public static final String CKM_SECRET_KEY_ALGO_SUFFIX = "_KEY_GEN";
-    public static final String CKM_PREFIX = "CKM_";
-    public static final String PROPERTY_WRAPPING_CIPHER_ALGORITHM = "WRAPPING_CIPHER_ALGORITHM";
-    public static final String DEFAULT_WRAPPING_CIPHER_ALGORITHM = "CKM_AES_CBC_PAD";
     
     private static final long DEFAULT_BACKDATE = (long) 10 * 60; // 10 minutes in seconds
     private static final long DEFAULT_VALIDITY_S = (long) 30 * 24 * 60 * 60 * 365; // 30 year in seconds
@@ -139,7 +121,7 @@ public class CryptoTokenHelper {
 
     public enum TokenEntryFields {
         /** Key alias of entry. */
-        keyAlias,
+        alias,
         
         /**
          * Type of entry.
@@ -157,14 +139,7 @@ public class CryptoTokenHelper {
     private static final String CESECORE_SUBJECT_DUMMY_L = "L=around";
     private static final String CESECORE_SUBJECT_DUMMY_C = "C=US";
     private static final String CESECORE_SUBJECT_DN_6_8 = "CN=Dummy certificate created by a CESeCore application"; // Since ~6.8.0
-    public static final String SUBJECT_DUMMY_4_3_0 = "CN=Dummy cert for ";
     
-    private static final String[] KNOWNSECRETKEYALGONAMES = {
-        "AES",
-        "DES"};
-    private static final String SECRET_KEY_ALGO_DESede = "DESede";
-    private static final String SECRET_KEY_ALGO_Triple_DES = "DES3";
-        
     /**
      * A workaround for the feature in SignServer 2.0 that property keys are 
      * always converted to upper case. The EJBCA CA Tokens usually use mixed case properties.
@@ -235,7 +210,7 @@ public class CryptoTokenHelper {
      * @throws KeyStoreException for keystore related errors
      * @throws SignServerException if the keystore did not contain a key with the specified alias
      */
-    public static boolean removeKey(final KeyStoreDelegator keyStore, final String alias) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
+    public static boolean removeKey(final KeyStore keyStore, final String alias) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
         if (keyStore == null) {
             throw new CryptoTokenOfflineException("Token offline");
         }
@@ -256,7 +231,7 @@ public class CryptoTokenHelper {
      * @return The results for each key found
      * @throws CryptoTokenOfflineException In case the key could not be used
      */
-    public static Collection<KeyTestResult> testKey(KeyStoreDelegator keyStore, String alias, char[] authCode, String signatureProvider, String signatureAlgorithm) throws CryptoTokenOfflineException {
+    public static Collection<KeyTestResult> testKey(KeyStore keyStore, String alias, char[] authCode, String signatureProvider, String signatureAlgorithm) throws CryptoTokenOfflineException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("testKey for alias: " + alias);
         }
@@ -264,9 +239,9 @@ public class CryptoTokenHelper {
         final Collection<KeyTestResult> result = new LinkedList<>();
 
         try {
-            for (final TokenEntry entry : keyStore.getEntries()) {
-                final String keyAlias = entry.getAlias();
-                
+            final Enumeration<String> e = keyStore.aliases();
+            while (e.hasMoreElements()) {
+                final String keyAlias = e.nextElement();
                 if (alias.equalsIgnoreCase(ICryptoTokenV4.ALL_KEYS)
                         || alias.equals(keyAlias)) {
                     if (LOG.isDebugEnabled()) {
@@ -278,28 +253,17 @@ public class CryptoTokenHelper {
                         String publicKeyHash = null;
                         boolean success = false;
                         try {
-                            final Key key = keyStore.getKey(keyAlias, authCode);
-                            
-                            if (!(key instanceof PrivateKey)) {
-                                if (key instanceof SecretKey) {
-                                    status = "Not testing keys with alias: " + keyAlias + ". Not a private key.";
-                                } else {
-                                    status = "No such key: " + keyAlias;
-                                }
-                                success = false;
+                            final PrivateKey privateKey = (PrivateKey) keyStore.getKey(keyAlias, authCode);
+                            final Certificate entryCert = keyStore.getCertificate(keyAlias);
+                            if (entryCert != null) {
+                                final PublicKey publicKey = entryCert.getPublicKey();
+                                publicKeyHash = createKeyHash(publicKey);
+                                testSignAndVerify(privateKey, publicKey, signatureProvider, signatureAlgorithm);
+                                success = true;
+                                status = "";
                             } else {
-                                final PrivateKey privateKey = (PrivateKey) key;
-                                final Certificate entryCert = keyStore.getCertificate(keyAlias);
-                                if (entryCert != null) {
-                                    final PublicKey publicKey = entryCert.getPublicKey();
-                                    publicKeyHash = createKeyHash(publicKey);
-                                    testSignAndVerify(privateKey, publicKey, signatureProvider, signatureAlgorithm);
-                                    success = true;
-                                    status = "";
-                                } else {
-                                    status = "Not testing keys with alias "
-                                            + keyAlias + ". No certificate exists.";
-                                }
+                                status = "Not testing keys with alias "
+                                        + keyAlias + ". No certificate exists.";
                             }
                         } catch (ClassCastException ce) {
                             status = "Not testing keys with alias "
@@ -491,10 +455,9 @@ public class CryptoTokenHelper {
      * @return True if the certificate looks like a dummy certificate DN
      */
     public static boolean isDummyCertificateDN(final String dn) {
-        return dn.contains(SUBJECT_DUMMY)
-                || (dn.contains(CESECORE_SUBJECT_DN_6_8))
-                || (dn.contains(CESECORE_SUBJECT_DUMMY_CN) && dn.contains(CESECORE_SUBJECT_DUMMY_L) && dn.contains(CESECORE_SUBJECT_DUMMY_C))
-                || dn.contains(SUBJECT_DUMMY_4_3_0);
+        return dn.contains(CryptoTokenHelper.SUBJECT_DUMMY)
+                    || (dn.contains(CESECORE_SUBJECT_DN_6_8))
+                    || (dn.contains(CESECORE_SUBJECT_DUMMY_CN) && dn.contains(CESECORE_SUBJECT_DUMMY_L) && dn.contains(CESECORE_SUBJECT_DUMMY_C));
     }
     
     /**
@@ -515,7 +478,7 @@ public class CryptoTokenHelper {
     }
     
     private static String getDummyCertificateDN(String commonName) {
-        return "CN=" + commonName + ", " + SUBJECT_DUMMY + ", C=SE";
+        return "CN=" + commonName + ", " + CryptoTokenHelper.SUBJECT_DUMMY + ", C=SE";
     }
     
     private static X509Certificate getSelfCertificate (String myname,
@@ -547,44 +510,106 @@ public class CryptoTokenHelper {
         return new JcaX509CertificateConverter().getCertificate(cg.build(contentSigner));
     }
 
-    public static TokenSearchResults searchTokenEntries(final KeyStoreDelegator keyStore, final int startIndex, final int max, final QueryCriteria qc, final boolean includeData, IServices services, char[] authCode) throws CryptoTokenOfflineException, QueryException {
+    public static TokenSearchResults searchTokenEntries(final KeyStore keyStore, final int startIndex, final int max, final QueryCriteria qc, final boolean includeData) throws CryptoTokenOfflineException, QueryException {
         final TokenSearchResults result;
         try {
             final ArrayList<TokenEntry> tokenEntries = new ArrayList<>();
-
-            final List<TokenEntry> entries = keyStore.getEntries();
-            final List<TokenEntry> filteredEntries = new LinkedList<>();
-            
-            for (final TokenEntry entry : entries) {
-                if (shouldBeIncluded(entry, qc)) {
-                    filteredEntries.add(entry);
-                }
-            }
+            final Enumeration<String> e = keyStore.aliases(); // We assume the order is the same for every call unless entries has been added or removed
             
             final long maxIndex = (long) startIndex + max;
-            
-            for (int i = startIndex; i < maxIndex && i < filteredEntries.size(); i++) {
-                final TokenEntry entry = filteredEntries.get(i);
-                final String keyAlias = entry.getAlias();
-             
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("checking keyAlias: " + keyAlias);
+            for (int i = 0; i < maxIndex && e.hasMoreElements();) {
+                final String keyAlias = e.nextElement();
+                
+                final String type;
+                if (keyStore.entryInstanceOf(keyAlias, KeyStore.PrivateKeyEntry.class)) {
+                    type = TokenEntry.TYPE_PRIVATEKEY_ENTRY;
+                } else if (keyStore.entryInstanceOf(keyAlias, KeyStore.SecretKeyEntry.class)) {
+                    type = TokenEntry.TYPE_SECRETKEY_ENTRY;
+                } else if (keyStore.entryInstanceOf(keyAlias, KeyStore.TrustedCertificateEntry.class)) {
+                    type = TokenEntry.TYPE_TRUSTED_ENTRY;
+                }  else {
+                    type = null;
                 }
+                
+                TokenEntry entry = new TokenEntry(keyAlias, type);
+                
+                if (shouldBeIncluded(entry, qc)) {
+                    if (i < startIndex) {
+                        i++;
+                        continue;
+                    }
 
-                // Add additional data
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("checking keyAlias: " + keyAlias);
+                    }
 
-                if (includeData) {
-                    keyStore.addAdditionalDataToEntry(entry, authCode, services);
+                    // Add additional data
+                    if (includeData) {
+                        Map<String, String> info = new HashMap<>();
+                        try {
+                            Date creationDate = keyStore.getCreationDate(keyAlias);
+                            entry.setCreationDate(creationDate);
+                        } catch (ProviderException ex) {} // NOPMD: We ignore if it is not supported
+
+                        if (TokenEntry.TYPE_PRIVATEKEY_ENTRY.equals(type)) {
+                            final Certificate[] chain = keyStore.getCertificateChain(keyAlias);
+                            if (chain.length > 0) {
+                                final PublicKey pubKey = chain[0].getPublicKey();
+                                final String keyAlgorithm =
+                                        AlgorithmTools.getKeyAlgorithm(pubKey);
+                                info.put(INFO_KEY_ALGORITHM, keyAlgorithm);
+                                info.put(INFO_KEY_SPECIFICATION,
+                                         AlgorithmTools.getKeySpecification(pubKey));
+                                if (AlgorithmConstants.KEYALGORITHM_RSA.equals(keyAlgorithm)) {
+                                    final RSAPublicKey rsaKey = (RSAPublicKey) pubKey;
+                                    
+                                    info.put(INFO_KEY_PUBLIC_EXPONENT,
+                                             rsaKey.getPublicExponent().toString(10));
+                                }
+                            }
+                            try {
+                                entry.setParsedChain(chain);
+                            } catch (CertificateEncodingException ex) {
+                                info.put("Error", ex.getMessage());
+                                LOG.error("Certificate could not be encoded for alias: " + keyAlias, ex);
+                            }
+                        } else if (TokenEntry.TYPE_TRUSTED_ENTRY.equals(type)) {
+                            Certificate certificate = keyStore.getCertificate(keyAlias);
+                            try {
+                                entry.setParsedTrustedCertificate(certificate);
+                            } catch (CertificateEncodingException ex) {
+                                info.put("Error", ex.getMessage());
+                                LOG.error("Certificate could not be encoded for alias: " + keyAlias, ex);
+                            }
+                        } else if (TokenEntry.TYPE_SECRETKEY_ENTRY.equals(type)) {
+                            try {
+                                KeyStore.Entry entry1 = keyStore.getEntry(keyAlias, null);
+                                SecretKey secretKey = ((KeyStore.SecretKeyEntry) entry1).getSecretKey();
+
+                                info.put(INFO_KEY_ALGORITHM, secretKey.getAlgorithm());
+                                //info.put(INFO_KEY_SPECIFICATION, AlgorithmTools.getKeySpecification(chain[0].getPublicKey())); // TODO: Key specification support for secret keys
+                            } catch (NoSuchAlgorithmException | UnrecoverableEntryException ex) {
+                                info.put("Error", ex.getMessage());
+                                LOG.error("Unable to get secret key for alias: " + keyAlias, ex);
+                            }
+                        }
+                        entry.setInfo(info);
+                    }
+                    tokenEntries.add(entry);
+
+                    // Increase index
+                    i++;
                 }
-                tokenEntries.add(entry);
             }
-
-            result = new TokenSearchResults(tokenEntries, filteredEntries.size() > maxIndex);
+            result = new TokenSearchResults(tokenEntries, e.hasMoreElements());
         } catch (KeyStoreException ex) {
             throw new CryptoTokenOfflineException(ex);
         }
         return result;
     }
+    public static final String INFO_KEY_SPECIFICATION = "Key specification";
+    public static final String INFO_KEY_ALGORITHM = "Key algorithm";
+    public static final String INFO_KEY_PUBLIC_EXPONENT = "Public exponent";
     
     private static boolean shouldBeIncluded(TokenEntry tokenEntry, QueryCriteria qc) throws QueryException {
         final List<Elem> terms = new ArrayList<>();
@@ -626,7 +651,7 @@ public class CryptoTokenHelper {
         
         final Object actualValue;
         switch (TokenEntryFields.valueOf(term.getName())) {
-            case keyAlias: {
+            case alias: {
                 actualValue = entry.getAlias();
                 break;
             }
@@ -692,7 +717,7 @@ public class CryptoTokenHelper {
      * @throws KeyStoreException if the keystore has not been initialized
      * @throws CryptoTokenOfflineException in case the keys does not match
      */
-    public static void ensureNewPublicKeyMatchesOld(KeyStoreDelegator keyStore, String alias, Certificate newCertificate) throws KeyStoreException, CryptoTokenOfflineException {
+    public static void ensureNewPublicKeyMatchesOld(KeyStore keyStore, String alias, Certificate newCertificate) throws KeyStoreException, CryptoTokenOfflineException {
         Certificate oldCert = keyStore.getCertificate(alias);
         if (!oldCert.getPublicKey().equals(newCertificate.getPublicKey())) {
             throw new CryptoTokenOfflineException("New certificate public key does not match current one");
@@ -712,7 +737,7 @@ public class CryptoTokenHelper {
      * @return
      * @throws InvalidAlgorithmParameterException 
      */
-    public static RSAKeyGenParameterSpec getPublicExponentParamSpecForRSA(final String keySpec)
+    public static AlgorithmParameterSpec getPublicExponentParamSpecForRSA(final String keySpec)
         throws InvalidAlgorithmParameterException {
         final String[] parts = keySpec.split("exp");
 
@@ -752,177 +777,39 @@ public class CryptoTokenHelper {
      * @see CryptoTokenHelper#PROPERTY_SELFSIGNED_SIGNATUREALGORITHM
      * @see CryptoTokenHelper#PROPERTY_SELFSIGNED_VALIDITY
      */
-    public static void regenerateCertIfWanted(final String alias, final char[] authCode, final Map<String, Object> params, final KeyStoreDelegator keyStore, final String provider) throws KeyStoreException, NoSuchAlgorithmException, UnrecoverableKeyException, OperatorCreationException, CertificateException {
+    public static void regenerateCertIfWanted(final String alias, final char[] authCode, final Map<String, Object> params, final KeyStore keyStore, final String provider) throws KeyStoreException, NoSuchAlgorithmException, UnrecoverableKeyException, OperatorCreationException, CertificateException {
         String dn = (String) params.get(PROPERTY_SELFSIGNED_DN);
         Long validity = (Long) params.get(PROPERTY_SELFSIGNED_VALIDITY);
         String signatureAlgorithm = (String) params.get(PROPERTY_SELFSIGNED_SIGNATUREALGORITHM);
-        
+
         // If any of the params are specified, we should re-generate the certificate
         if (dn != null || validity != null || signatureAlgorithm != null) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Regenerate self signed certificate requested with values: "
+                        + "DN: " + dn + ", "
+                        + "validity: " + validity + ", "
+                        + "signature algorithm: " + signatureAlgorithm);
+            }
+            // Our default DN
+            if (dn == null) {
+                dn = getDummyCertificateDN(alias);
+            }
+            
+            // Our default validity
+            if (validity == null) {
+                validity = DEFAULT_VALIDITY_S;
+            }
+            
+            // Our default signature algorithm
+            if (signatureAlgorithm == null) {
+                signatureAlgorithm = DEFAULT_SIGNATUREALGORITHM;
+            }
+            
             final PrivateKey key = (PrivateKey) keyStore.getKey(alias, authCode);
             final X509Certificate oldCert = (X509Certificate) keyStore.getCertificate(alias);
-            final X509Certificate newCert = createDummyCertificate(alias, params, new KeyPair(oldCert.getPublicKey(), key), provider);
+            final X509Certificate newCert = getSelfCertificate(dn, DEFAULT_BACKDATE, validity, signatureAlgorithm, new KeyPair(oldCert.getPublicKey(), key), provider);
 
             keyStore.setKeyEntry(alias, key, authCode, new Certificate[] { newCert });
         }
-    }
-    
-    /**
-     * Create a dummy certificate with the provided parameters.
-     * @param alias to use in the name
-     * @param params map of parameters to use
-     * @param keyPair where the public key will be in the certificate and the private used to sign it
-     * @param provider for the keys
-     * @return the new certificate
-     * @throws OperatorCreationException
-     * @throws CertificateException 
-     */
-    public static X509Certificate createDummyCertificate(final String alias, final Map<String, Object> params, final KeyPair keyPair, final String provider) throws OperatorCreationException, CertificateException {
-        String dn = (String) params.get(PROPERTY_SELFSIGNED_DN);
-        Long validity = (Long) params.get(PROPERTY_SELFSIGNED_VALIDITY);
-        String signatureAlgorithm = (String) params.get(PROPERTY_SELFSIGNED_SIGNATUREALGORITHM);
-        return createDummyCertificate(alias, dn, validity, signatureAlgorithm, keyPair, provider);
-    }
-    
-    private static X509Certificate createDummyCertificate(final String alias, String dn, Long validity, String signatureAlgorithm, final KeyPair keyPair, final String provider) throws OperatorCreationException, CertificateException {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Regenerate self signed certificate requested with values: "
-                    + "DN: " + dn + ", "
-                    + "validity: " + validity + ", "
-                    + "signature algorithm: " + signatureAlgorithm);
-        }
-        // Our default DN
-        if (dn == null) {
-            dn = getDummyCertificateDN(alias);
-        }
-
-        // Our default validity
-        if (validity == null) {
-            validity = DEFAULT_VALIDITY_S;
-        }
-
-        // Our default signature algorithm
-        if (signatureAlgorithm == null) {
-            signatureAlgorithm = DEFAULT_SIGNATUREALGORITHM;
-        }
-
-        return getSelfCertificate(dn, DEFAULT_BACKDATE, validity, signatureAlgorithm, keyPair, provider);
-    }
-    
-    /**
-     * Fetches the counter value for number of signing from database for provided public key.
-     *
-     * @param publicKey public Key associated with signer certificate
-     * @param services required for acquiring database service
-     * @return long value representing signing counter.
-     */
-    public static long getNoOfSignings(PublicKey publicKey, final IServices services) {
-        long keyUsageCounterValue = 0;
-        KeyUsageCounter counter = services.get(IKeyUsageCounterDataService.class).getCounter(KeyUsageCounterHash.create(publicKey));
-        if (counter != null) {
-            keyUsageCounterValue = counter.getCounter();
-        }
-        return keyUsageCounterValue;
-    }
-    
-    /**
-     * @return True if the JRE has been patched with additional PKCS#11 features
-     */
-    public static boolean isJREPatched() {
-        boolean result = true;
-        try {
-            Class.forName("sun.security.pkcs11.P11AsymmetricParameterSpec");
-            LOG.debug("JRE patched");
-        } catch (ClassNotFoundException ex) {
-            result = false;
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("JRE not patched: " + ex.getMessage());
-            }
-        }
-        return result;
-    }  
-        
-    /**
-     * Identifies whether KeyPair or Key should be generated for provided keyAlgorithm.
-     *
-     * @param keyAlgorithm user provided keyAlgorithm
-     * @return True if keyAlgorithm identified as Asymmetric
-     */
-    public static boolean isKeyAlgorithmAsymmetric(String keyAlgorithm) {
-        return !isKeyAlgoSymmetric(keyAlgorithm.trim());
-    }
-    
-    private static boolean isKeyAlgoSymmetric(String keyAlgorithm) {
-        if (keyAlgorithm.startsWith(SECRET_KEY_PREFIX)) {
-            return true;
-        } else {
-            return Arrays.asList(KNOWNSECRETKEYALGONAMES).contains(keyAlgorithm);
-        }
-    }
-    
-    /**
-     * Determines Constant value for provided algorithm name with respect to JacKNJI11 Provider.
-     * @param algorithm
-     * @return
-     */
-    public static long getProviderAlgoValue(String algorithm) {
-        String providerAlgoName = algorithm + CKM_SECRET_KEY_ALGO_SUFFIX;
-        Long longValue = MechanismNames.longFromName(providerAlgoName);
-
-        if (longValue == null && algorithm.equals(SECRET_KEY_ALGO_DESede)) {
-            longValue = MechanismNames.longFromName(SECRET_KEY_ALGO_Triple_DES + CKM_SECRET_KEY_ALGO_SUFFIX);
-        }
-        
-        if (longValue != null) {
-            return longValue;
-        } else {
-            throw new IllegalArgumentException("Secret key algorithm " + algorithm + " not supported");
-        }
-    }
-    
-    /**
-     * Determines constant value for provided cipher algorithm name with respect to JacKNJI11 Provider.
-     * @param cipherAlgorithm cipher Algorithm name starting with prefix CKM_
-     * @return
-     */
-    public static long getProviderCipherAlgoValue(String cipherAlgorithm) {
-        String providerAlgoName = cipherAlgorithm.substring(cipherAlgorithm.indexOf(CKM_PREFIX) + CKM_PREFIX.length());
-        Long longValue = MechanismNames.longFromName(providerAlgoName);
-        if (longValue != null) {
-            return longValue;
-        } else {
-            throw new IllegalArgumentException("Cipher algorithm " + cipherAlgorithm + " not supported");
-        }
-    }
-
-    /**
-     * Checks that the crypto token is enabled, i.e. that it is not disabled.
-     * Otherwise throws an exception.
-     *
-     * @param config worker configuration
-     * @throws CryptoTokenInitializationFailureException in case it is disabled
-     * @see SignServerConstants#DISABLED
-     */
-    public static void checkEnabled(Properties config) throws CryptoTokenInitializationFailureException {
-        if (Boolean.parseBoolean(config.getProperty(SignServerConstants.DISABLED))) {
-            throw new CryptoTokenInitializationFailureException("Disabled");
-        }
-    }
-    
-    /**
-     * Utility method to get CKA attribute map from list of provided CKA attribute property.
-     *
-     * @param attributes list of CKA attribute property
-     * @return map of CKA attribute constant as key and its value 
-     */
-    public static Map<Long, Object> convertCKAAttributeListToMap(List<AttributeProperties.Attribute> attributes) {
-        if (attributes == null) {
-            return Collections.emptyMap();
-        }
-        final Map<Long, Object> result = new HashMap<>();
-        for (AttributeProperties.Attribute attribute : attributes) {
-            result.put(attribute.getId(), attribute.getValue());
-        }
-        return result;
     }
 }

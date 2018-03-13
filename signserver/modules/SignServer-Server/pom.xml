@@ -5,7 +5,7 @@
   <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer-Modules</artifactId>
-        <version>4.3.0-SNAPSHOT</version>
+        <version>4.2.2</version>
     </parent>
   <artifactId>SignServer-Server</artifactId>
   <name>SignServer-Server</name>
@@ -74,16 +74,6 @@
         <artifactId>javaee-api</artifactId>
         <scope>provided</scope>
     </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>SignServer-Compile</artifactId>
-      <version>${project.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.signserver.jacknji11</groupId>
-      <artifactId>jacknji11</artifactId>
-    </dependency>    
   </dependencies>
 </project>
 

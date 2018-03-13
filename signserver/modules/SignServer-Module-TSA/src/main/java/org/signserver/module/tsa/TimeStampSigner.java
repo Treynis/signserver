@@ -277,7 +277,7 @@ public class TimeStampSigner extends BaseSigner {
         }
     }
 
-    private static final String DEFAULT_SIGNATUREALGORITHM = "SHA256withRSA";
+    private static final String DEFAULT_SIGNATUREALGORITHM = "SHA1withRSA";
     private static final String DEFAULT_ORDERING = "FALSE";
     private static final String DEFAULT_CERTIFICATE_DIGEST_ALGORITHM = "SHA256";
 
@@ -640,15 +640,15 @@ public class TimeStampSigner extends BaseSigner {
                             false));
                 }
             });
-            
+
             // Create the response
-            TimeStampResponse timeStampResponse;            
+            TimeStampResponse timeStampResponse;
             if (date == null) {
                 // Generate failure response
                 final TimeStampResponseGenerator timeStampResponseGen = getTimeStampResponseGenerator(null);
                 timeStampResponse = timeStampResponseGen.generateRejectedResponse(new TSPValidationException("The time source is not available.", PKIFailureInfo.timeNotAvailable));
             } else {
-                try {
+            try {
                     // Validate according to policy
                     timeStampRequest.validate(getAcceptedAlgorithms(), acceptAnyPolicy ? null : this.getAcceptedPolicies(), getAcceptedExtensions());
 
@@ -659,17 +659,17 @@ public class TimeStampSigner extends BaseSigner {
                     
                     // Generate the response
                     timeStampResponse = timeStampResponseGen.generateGrantedResponse(timeStampRequest,
-                                    serialNumber, date,
-                                    includeStatusString ? "Operation Okay" : null,
-                                    additionalExtensions);                    
-                } catch (TSPException e) {
+                                serialNumber, date,
+                                includeStatusString ? "Operation Okay" : null,
+                                additionalExtensions);
+            } catch (TSPException e) {
                     // Generate failure response
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Got exception generating response: ", e);
-                    }
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Got exception generating response: ", e);
+                }
                     final TimeStampResponseGenerator timeStampResponseGen = getTimeStampResponseGenerator(null);
                     timeStampResponse = timeStampResponseGen.generateRejectedResponse(e);
-                }
+            }
             }
 
             final TimeStampToken token = timeStampResponse.getTimeStampToken();
@@ -964,7 +964,7 @@ public class TimeStampSigner extends BaseSigner {
                     new FilteredSignedAttributeTableGenerator(attributesToRemove));
 
             SignerInfoGenerator sig = sigb.build(cs, certHolder);
-            
+
             timeStampTokenGen = new TimeStampTokenGenerator(sig, calc, tSAPolicyOID, includeCertIDIssuerSerial);
 
             if (config.getProperty(ACCURACYMICROS, DEFAULT_NULL) != null) {

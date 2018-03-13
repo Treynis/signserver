@@ -60,7 +60,7 @@
     </script>
     </head>
 
-<body pageid="16222896">
+<body pageid="5286104">
 
 <div id="ht-loader">
     <noscript>
@@ -110,7 +110,7 @@
                     <a href="../"><img src="projectlogo.png"></a>
                 </h1>
                 <div class="ht-version">
-                    <p>Version: 4.3.0</p>
+                    <p>Version: 4.2.2</p>
                 </div>
             </header>
 
@@ -180,10 +180,6 @@
 
             </li>
                                         <li class="leaf">
-        <a class="ht-nav-page-link" href="Setting_up_Key_Wrapping.html">Setting up Key Wrapping</a>
-
-            </li>
-                                        <li class="leaf">
         <a class="ht-nav-page-link" href="Troubleshooting.html">Troubleshooting</a>
 
             </li>
@@ -233,10 +229,6 @@
             </li>
                                         <li class="leaf">
         <a class="ht-nav-page-link" href="Stresstest_CLI.html">Stresstest CLI</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="P11NG_CLI.html">P11NG CLI</a>
 
             </li>
                             </ul>
@@ -591,10 +583,6 @@
         <a class="ht-nav-page-link" href="SignerStatusReportWorker.html">SignerStatusReportWorker</a>
 
             </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="JackNJI11KeyWrappingCryptoWorker.html">JackNJI11KeyWrappingCryptoWorker</a>
-
-            </li>
                             </ul>
             </li>
                             </ul>
@@ -653,14 +641,6 @@
             </li>
                                         <li class="leaf">
         <a class="ht-nav-page-link" href="PKCS11CryptoToken.html">PKCS11CryptoToken</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="JackNJI11CryptoToken.html">JackNJI11CryptoToken</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="JackNJI11KeyWrappingCryptoToken.html">JackNJI11KeyWrappingCryptoToken</a>
 
             </li>
                             </ul>
@@ -839,10 +819,6 @@
             </li>
                                         <li class="leaf">
         <a class="ht-nav-page-link" href="Status_Repository_Logging.html">Status Repository Logging</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="Client_Logging.html">Client Logging</a>
 
             </li>
                             </ul>
@@ -1087,10 +1063,6 @@
         <a class="ht-nav-page-link" href="Client-Side_Hashing.html">Client-Side Hashing</a>
 
             </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="Key_Wrapping.html">Key Wrapping</a>
-
-            </li>
                             </ul>
             </li>
                                     </ul>
@@ -1131,13 +1103,13 @@
                                         <li class="shortcut"><a href="SignServer_Reference.html">SignServer Reference</a></li>
                                                                                      <li><a href="Logging.html">Logging</a></li>
                                                             </ul>
-</div>            <h1 id="src-16221419"> <span>CESeCore Security Events Logger</span></h1>
+</div>            <h1 id="src-11573661"> <span>CESeCore Security Events Logger</span></h1>
         </header>
 
         <div id="main-content" class="wiki-content sp-grid-section" data-index-for-search="true">
 
     <p  >The default logging implementation, <strong class=" ">org.signserver.server.log.SignServerLog4jDevice</strong> uses Log4J and a similar logging format as the old SystemLogger.    </p>
-    <div class="section section-1" id="src-16221419_id-.CESeCoreSecurityEventsLoggerv4.3.0-Signedlog">
+    <div class="section section-1" id="src-11573661_id-.CESeCoreSecurityEventsLoggerv4.2.1-Signedlog">
         <h1 class="heading "><span>Signed log</span></h1>
     <p  >    </p>
     <p  ><span class="status blue ">ENTERPRISE EDITION</span> This is a SignServer Enterprise Edition (EE) feature.An example configuration for CESeCore is provided in <strong class=" ">conf/cesecore.properties.sample</strong>.    </p>
@@ -1149,17 +1121,7 @@
 <div class="line"><code class="plain">databaseprotection.enableverify.AuditRecordData = true</code></div>
 </div>
     </div>
-    <p  >If <strong class=" ">enableverify</strong> is set to <i class=" ">true</i>, all individual log entries that are displayed using CLI, GUI or over web services are verified at the server side and in case of inconsistent signatures an error message is displayed. This verification will not discover missing log entries. To verify the complete log for all nodes as well as detect gaps in the sequence numbering, run the <a   href="Database_CLI.html">Database CLI</a>.    </p>
-    <div  class="confbox admonition admonition-note">
-                            <span class="admonition-icon confluence-information-macro-icon"></span>
-                <div class="admonition-body">
-    <p  >Each SignServer node writing to the audit log needs to use different node IDs. By default, the hostname is used. If multiple instances are running from the same host, set the node ID manually in <strong class=" ">conf/cesecore.properties</strong> as <i class=" ">cluster.nodeid</i>.    </p>
-        </div>
-    </div>
-    <p  >If signing and/or verification is enabled one or more crypto tokens needs to be configured.    </p>
-    <div class="section section-2" id="src-16221419_safe-id-aWQtLkNFU2VDb3JlU2VjdXJpdHlFdmVudHNMb2dnZXJ2NC4zLjAtUEtDUyMxMUV4YW1wbGV1c2luZ0RlZmF1bHRQcm92aWRlcg">
-        <h2 class="heading "><span>PKCS#11 Example using Default Provider</span></h2>
-    <p  >It is recommended to use the same type of PKCS#11 provider for database protection as the other signers are also using. If the signers are using the <a   href="PKCS11CryptoToken.html">PKCS11CryptoToken</a> the below crypto token called org.cesecore.keys.token.PKCS11CryptoToken should be used:    </p>
+    <p  >Configure a key-pair to use for signing and verification of the log with something similar to this:    </p>
     <div  class="confbox programlisting">
                 <div xmlns="http://www.w3.org/1999/xhtml" class="defaultnew syntaxhighlighter scroll-html-formatted-code">
 <div class="line"><code class="plain">databaseprotection.keyid = 400</code></div>
@@ -1172,30 +1134,16 @@
 <div class="line"><code class="plain">databaseprotection.version.0 = 2</code></div>
 </div>
     </div>
-    <p  >    </p>
+    <div  class="confbox admonition admonition-note">
+                            <span class="admonition-icon confluence-information-macro-icon"></span>
+                <div class="admonition-body">
+    <p  >Each SignServer node writing to the audit log needs to use different node IDs. By default, the hostname is used. If multiple instances are running from the same host, set the node ID manually in <strong class=" ">conf/cesecore.properties</strong> as <i class=" ">cluster.nodeid</i>.    </p>
+        </div>
     </div>
-    <div class="section section-2" id="src-16221419_safe-id-aWQtLkNFU2VDb3JlU2VjdXJpdHlFdmVudHNMb2dnZXJ2NC4zLjAtUEtDUyMxMUV4YW1wbGV1c2luZ0phY2tOSkkxMVByb3ZpZGVy">
-        <h2 class="heading prettyprint"><span>PKCS#11 Example using JackNJI11 Provider</span></h2>
-    <p  >It is recommended to use the same type of PKCS#11 provider for database protection as the other signers are also using. If the signers are using the <a   href="JackNJI11CryptoToken.html">JackNJI11CryptoToken</a> the below crypto token called     <span style="color: #000000;">
-org.signserver.p11ng.common.cryptotoken.JackNJI11DatabaseProtectionCryptoToken    </span>
- should be used:    </p>
-    <div  class="confbox programlisting">
-                <div xmlns="http://www.w3.org/1999/xhtml" class="defaultnew syntaxhighlighter scroll-html-formatted-code">
-<div class="line"><code class="plain">databaseprotection.keyid = 400</code></div>
-<div class="line"><code class="plain">databaseprotection.keyid.0 = 400</code></div>
-<div class="line"><code class="plain">databaseprotection.keylabel.0 = testkey0</code></div>
-<div class="line"><code class="plain">databaseprotection.classname.0 = org.signserver.p11ng.common.cryptotoken.JackNJI11DatabaseProtectionCryptoToken</code></div>
-<div class="line"><code class="plain">databaseprotection.properties.0 = SHAREDLIBRARYNAME=Utimaco, SLOTLABELTYPE=SLOT_NUMBER, SLOTLABELVALUE=1, pin=userpin1</code></div>
-<div class="line"><code class="plain">databaseprotection.data.0 =</code></div>
-<div class="line"><code class="plain">databaseprotection.tokenpin.0 = userpin1</code></div>
-<div class="line"><code class="plain">databaseprotection.version.0 = 2</code></div>
-<div class="line"><code class="plain">databaseprotection.sigalg.2 = SHA256WithRSA</code></div>
-</div>
+    <p  class="prettyprint">If <strong class=" ">enableverify</strong> is set to <i class=" ">true</i>, all individual log entries that are displayed using CLI, GUI or over web services are verified at the server side and in case of inconsistent signatures an error message is displayed. This verification will not discover missing log entries. To verify the complete log for all nodes as well as detect gaps in the sequence numbering, run the <a   href="Database_CLI.html">Database CLI</a>.    </p>
     </div>
-    </div>
-    </div>
-    <div class="section section-1" id="src-16221419_id-.CESeCoreSecurityEventsLoggerv4.3.0-AuditRecordDatatableAuditRecordData_table">
-        <h1 class="heading "><span id="src-16221419_id-.CESeCoreSecurityEventsLoggerv4.3.0-AuditRecordData_table" class="confluence-anchor-link"></span><span>AuditRecordData table</span></h1>
+    <div class="section section-1" id="src-11573661_id-.CESeCoreSecurityEventsLoggerv4.2.1-AuditRecordDatatableAuditRecordData_table">
+        <h1 class="heading "><span id="src-11573661_id-.CESeCoreSecurityEventsLoggerv4.2.1-AuditRecordData_table" class="confluence-anchor-link"></span><span>AuditRecordData table</span></h1>
     <p  >The exact database table structure is described in the SQL scripts available under doc/sql-scripts/.    </p>
     <div  class="tablewrap">
         <table class="wrapped confluenceTable">
@@ -1457,7 +1405,7 @@ org.signserver.p11ng.common.cryptotoken.JackNJI11DatabaseProtectionCryptoToken  
         </tr>
 </tbody>        </table>
             </div>
-<pre class=" "><br/></pre>    </div>
+    </div>
         </div>
 
     </article>

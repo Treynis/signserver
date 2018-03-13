@@ -40,7 +40,6 @@ import org.signserver.cli.spi.UnexpectedCommandFailureException;
 import org.signserver.common.WorkerIdentifier;
 import org.signserver.server.cryptotokens.TokenEntry;
 import org.signserver.server.cryptotokens.TokenSearchResults;
-import static org.signserver.common.SignServerConstants.TOKEN_ENTRY_FIELDS_ALIAS;
 
 /**
  * Command for printing key aliases in a crypto token and optionally other
@@ -102,7 +101,7 @@ public class QueryTokenEntriesCommand extends AbstractAdminCommand {
         
         // allowed fields
         allowedFields = new HashSet<>();
-        allowedFields.add(TOKEN_ENTRY_FIELDS_ALIAS); // TODO: Defined in CryptoTokenHelper.TokenEntryFields
+        allowedFields.add("alias"); // TODO: Defined in CryptoTokenHelper.TokenEntryFields
     }
     
     @Override

@@ -20,8 +20,6 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.util.*;
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -33,7 +31,6 @@ import org.signserver.common.*;
 import org.signserver.server.IServices;
 import org.signserver.server.log.AdminInfo;
 import org.signserver.ejb.interfaces.WorkerSessionLocal;
-import static org.signserver.server.cryptotokens.CryptoTokenHelper.SECRET_KEY_PREFIX;
 
 /**
  * Class that uses a PKCS12 or JKS file on the file system for signing.
@@ -85,8 +82,6 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
 
     private int workerId;
     private Integer keygenerationLimit;
-    
-    private KeyStoreDelegator delegator;
 
     @Override
     public void init(int workerId, Properties properties, IServices services) throws CryptoTokenInitializationFailureException {
@@ -106,9 +101,6 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             !TYPE_INTERNAL.equals(keystoretype)) {
             throw new CryptoTokenInitializationFailureException("KEYSTORETYPE should be either PKCS12, JKS, or INTERNAL");
         }
-
-        // Check that the crypto token is not disabled
-        CryptoTokenHelper.checkEnabled(properties);
 
         // check keystore file
         if (TYPE_PKCS12.equals(keystoretype) || TYPE_JKS.equals(keystoretype)) {
@@ -184,8 +176,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             this.authenticationCode = authenticationcode.toCharArray();
         }
         this.ks = getKeystore(keystoretype, keystorepath, authenticationCode, services);
-        this.delegator = new JavaKeyStoreDelegator(this.ks);
-        
+
         entries = new HashMap<>();
 
         Enumeration<String> e = ks.aliases();
@@ -296,7 +287,6 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             Arrays.fill(authenticationCode, '\0');
         }
         this.authenticationCode = null;
-        this.delegator = null;
         return true;
     }
 
@@ -331,19 +321,50 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             final char[] authCode,
             final IServices services) throws CryptoTokenOfflineException,
             KeyStoreException {
-        return CryptoTokenHelper.testKey(this.delegator, alias, authenticationCode, "BC", signatureAlgorithm);
+        return CryptoTokenHelper.testKey(getKeyStore(), alias, authCode, "BC", signatureAlgorithm);
     }
 
     @Override
     public TokenSearchResults searchTokenEntries(final int startIndex, final int max, QueryCriteria qc, boolean includeData, Map<String, Object> params, IServices services) 
             throws CryptoTokenOfflineException, QueryException {
-        return CryptoTokenHelper.searchTokenEntries(this.delegator, startIndex, max, qc, includeData, services, authenticationCode);
+        try {
+            KeyStore keyStore = getKeyStore();
+            return CryptoTokenHelper.searchTokenEntries(keyStore, startIndex, max, qc, includeData);
+        } catch (KeyStoreException ex) {
+            throw new CryptoTokenOfflineException(ex);
+        }
     }
 
-    private void generateKeyPair(String keyAlgorithm, String keySpec, String alias, char[] authCode, Map<String, Object> params, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
+    @Override
+    public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode, Map<String, Object> params, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
+        if (keySpec == null) {
+            throw new IllegalArgumentException("Missing keyspec parameter");
+        }
+        if (alias == null) {
+            throw new IllegalArgumentException("Missing alias parameter");
+        }
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("keyAlgorithm: " + keyAlgorithm + ", keySpec: " + keySpec
+                    + ", alias: " + alias);
+        }
         try {
+
             final KeyStore keystore = getKeyStore();
-                        
+
+            // Check key generation limit, if configured
+            if (keygenerationLimit != null && keygenerationLimit > -1) {
+                final int current;
+                try {
+                    current = keystore.size();
+                    if (current >= keygenerationLimit) {
+                        throw new TokenOutOfSpaceException("Key generation limit exceeded: " + current);
+                    }
+                } catch (KeyStoreException ex) {
+                    LOG.error("Checking key generation limit failed", ex);
+                    throw new TokenOutOfSpaceException("Current number of key entries could not be obtained: " + ex.getMessage(), ex);
+                }
+            }
+            
             final KeyPairGenerator kpg = KeyPairGenerator.getInstance(keyAlgorithm, "BC");
 
             if ("ECDSA".equals(keyAlgorithm)) {
@@ -366,11 +387,11 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             chain[0] = CryptoTokenHelper.createDummyCertificate(alias, sigAlgName, keyPair, getProvider(PROVIDERUSAGE_SIGN));
             LOG.debug("Creating certificate with entry "+alias+'.');
 
-            keystore.setKeyEntry(alias, keyPair.getPrivate(), authenticationCode, chain);
+            keystore.setKeyEntry(alias, keyPair.getPrivate(), authCode, chain);
             
             // TODO: Future optimization: we don't need to regenerate if we create it right from the beginning a few lines up!
             if (params != null) {
-                CryptoTokenHelper.regenerateCertIfWanted(alias, authenticationCode, params, this.delegator, keystore.getProvider().getName());
+                CryptoTokenHelper.regenerateCertIfWanted(alias, authCode, params, keystore, keystore.getProvider().getName());
             }
             
             final OutputStream os;
@@ -408,76 +429,6 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         } catch (UnsupportedOperationException | KeyStoreException | NoSuchAlgorithmException | NoSuchProviderException | InvalidAlgorithmParameterException | NumberFormatException | OperatorCreationException | CertificateException | IOException | IllegalStateException | UnrecoverableKeyException ex) {
             LOG.error(ex, ex);
             throw new CryptoTokenOfflineException(ex);
-        }
-    }
-    
-    @Override
-    public void generateKey(String keyAlgorithm, String keySpec, String alias, char[] authCode, Map<String, Object> params, IServices services) throws CryptoTokenOfflineException, IllegalArgumentException {
-        if (keySpec == null) {
-            throw new IllegalArgumentException("Missing keyspec parameter");
-        }
-        if (alias == null) {
-            throw new IllegalArgumentException("Missing alias parameter");
-        }
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("keyAlgorithm: " + keyAlgorithm + ", keySpec: " + keySpec
-                    + ", alias: " + alias);
-        }
-        try {
-            final KeyStore keystore = getKeyStore();
-
-            // Check key generation limit, if configured
-            if (keygenerationLimit != null && keygenerationLimit > -1) {
-                final int current;
-                try {
-                    current = keystore.size();
-                    if (current >= keygenerationLimit) {
-                        throw new TokenOutOfSpaceException("Key generation limit exceeded: " + current);
-                    }
-                } catch (KeyStoreException ex) {
-                    LOG.error("Checking key generation limit failed", ex);
-                    throw new TokenOutOfSpaceException("Current number of key entries could not be obtained: " + ex.getMessage(), ex);
-                }
-            }
-
-            if (CryptoTokenHelper.isKeyAlgorithmAsymmetric(keyAlgorithm)) {
-                generateKeyPair(keyAlgorithm, keySpec, alias, authCode, params, services);
-            } else {
-                generateSecretKey(keyAlgorithm, keySpec, alias);
-            }
-        } catch (UnsupportedOperationException | KeyStoreException ex) {
-            LOG.error(ex, ex);
-            throw new CryptoTokenOfflineException(ex);
-        }
-    }
-    
-    private void generateSecretKey(String keyAlgorithm, String keySpec, String alias) throws CryptoTokenOfflineException {
-        if (keyAlgorithm.startsWith(CryptoTokenHelper.SECRET_KEY_PREFIX)) {
-            keyAlgorithm = keyAlgorithm.substring(keyAlgorithm.indexOf(SECRET_KEY_PREFIX) + SECRET_KEY_PREFIX.length());
-        }
-        OutputStream os = null;
-        try {
-            final KeyGenerator keyGen = KeyGenerator.getInstance(keyAlgorithm);
-            keyGen.init(Integer.valueOf(keySpec));
-            SecretKey secretKey = keyGen.generateKey();
-            final KeyStore keystore = getKeyStore();
-            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(authenticationCode);
-            KeyStore.SecretKeyEntry skEntry = new KeyStore.SecretKeyEntry(secretKey);
-            keystore.setEntry(alias, skEntry, protParam);
-
-            os = new FileOutputStream(new File(keystorepath));
-            keystore.store(os, authenticationCode);
-        } catch (NoSuchAlgorithmException | UnsupportedOperationException | KeyStoreException | IOException | CertificateException ex) {
-            LOG.error(ex, ex);
-            throw new CryptoTokenOfflineException(ex);
-        } finally {
-            if (os != null) {
-                try {
-                    os.close();
-                } catch (IOException ex) {
-                    LOG.error("Error closing file", ex);
-                }
-            }
         }
     }
 
@@ -538,7 +489,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
     @Override
     public boolean removeKey(final String alias, final IServices services) throws CryptoTokenOfflineException, KeyStoreException, SignServerException {
         final KeyStore keyStore = getKeyStore();
-        boolean result = CryptoTokenHelper.removeKey(this.delegator, alias);
+        boolean result = CryptoTokenHelper.removeKey(keyStore, alias);
         if (result) {
             OutputStream out = null;
             try {
@@ -607,7 +558,7 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
             final Key key =
                     keyStore.getKey(alias, authCode != null ? authCode : authenticationCode);
             
-            CryptoTokenHelper.ensureNewPublicKeyMatchesOld(this.delegator, alias, certChain.get(0));
+            CryptoTokenHelper.ensureNewPublicKeyMatchesOld(keyStore, alias, certChain.get(0));
             
             keyStore.setKeyEntry(alias, key,
                                  authCode != null ? authCode : authenticationCode,
@@ -705,5 +656,5 @@ public class KeystoreCryptoToken extends BaseCryptoToken {
         public void setPrivateKey(final PrivateKey privKey) {
             privateKey = privKey;
         }
-     }
-  }
+    }
+}

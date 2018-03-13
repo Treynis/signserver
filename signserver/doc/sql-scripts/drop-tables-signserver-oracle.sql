@@ -34,16 +34,4 @@ DROP TABLE "KEYUSAGECOUNTER";
 DROP TABLE "ARCHIVEDATA";
 
 
---
--- Drop table `KeyData`
---
-DROP TABLE "KeyData";
-
-
---
--- Drop sequence `HIBERNATE_SEQUENCE`
---
-DROP SEQUENCE "HIBERNATE_SEQUENCE";
-
-
 -- End

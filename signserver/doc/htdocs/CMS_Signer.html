@@ -60,7 +60,7 @@
     </script>
     </head>
 
-<body pageid="16222896">
+<body pageid="5286104">
 
 <div id="ht-loader">
     <noscript>
@@ -110,7 +110,7 @@
                     <a href="../"><img src="projectlogo.png"></a>
                 </h1>
                 <div class="ht-version">
-                    <p>Version: 4.3.0</p>
+                    <p>Version: 4.2.2</p>
                 </div>
             </header>
 
@@ -180,10 +180,6 @@
 
             </li>
                                         <li class="leaf">
-        <a class="ht-nav-page-link" href="Setting_up_Key_Wrapping.html">Setting up Key Wrapping</a>
-
-            </li>
-                                        <li class="leaf">
         <a class="ht-nav-page-link" href="Troubleshooting.html">Troubleshooting</a>
 
             </li>
@@ -233,10 +229,6 @@
             </li>
                                         <li class="leaf">
         <a class="ht-nav-page-link" href="Stresstest_CLI.html">Stresstest CLI</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="P11NG_CLI.html">P11NG CLI</a>
 
             </li>
                             </ul>
@@ -591,10 +583,6 @@
         <a class="ht-nav-page-link" href="SignerStatusReportWorker.html">SignerStatusReportWorker</a>
 
             </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="JackNJI11KeyWrappingCryptoWorker.html">JackNJI11KeyWrappingCryptoWorker</a>
-
-            </li>
                             </ul>
             </li>
                             </ul>
@@ -653,14 +641,6 @@
             </li>
                                         <li class="leaf">
         <a class="ht-nav-page-link" href="PKCS11CryptoToken.html">PKCS11CryptoToken</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="JackNJI11CryptoToken.html">JackNJI11CryptoToken</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="JackNJI11KeyWrappingCryptoToken.html">JackNJI11KeyWrappingCryptoToken</a>
 
             </li>
                             </ul>
@@ -839,10 +819,6 @@
             </li>
                                         <li class="leaf">
         <a class="ht-nav-page-link" href="Status_Repository_Logging.html">Status Repository Logging</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="Client_Logging.html">Client Logging</a>
 
             </li>
                             </ul>
@@ -1087,10 +1063,6 @@
         <a class="ht-nav-page-link" href="Client-Side_Hashing.html">Client-Side Hashing</a>
 
             </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="Key_Wrapping.html">Key Wrapping</a>
-
-            </li>
                             </ul>
             </li>
                                     </ul>
@@ -1132,17 +1104,17 @@
                                                                                                          <li class="shortcut"><a href="SignServer_Workers.html">SignServer Workers</a></li>
                                                                                      <li><a href="SignServer_Signers.html">SignServer Signers</a></li>
                                                             </ul>
-</div>            <h1 id="src-16221226"> <span>CMS Signer</span></h1>
+</div>            <h1 id="src-11574138"> <span>CMS Signer</span></h1>
         </header>
 
         <div id="main-content" class="wiki-content sp-grid-section" data-index-for-search="true">
 
     <p  >The CMS signer has the fully qualified class name: <strong class=" ">org.signserver.module.cmssigner.CMSSigner</strong>.    </p>
-    <div class="section section-1" id="src-16221226_id-.CMSSignerv4.3.0-Overview">
+    <div class="section section-1" id="src-11574138_id-.CMSSignerv4.2.1-Overview">
         <h1 class="heading "><span>Overview</span></h1>
     <p  >The CMS signer can sign arbitrary data and produces a CMS (RFC 3852) SignedData structure in binary format with or without the content encapsulated. Currently the signer certificate is always included.    </p>
     </div>
-    <div class="section section-1" id="src-16221226_id-.CMSSignerv4.3.0-AvailableProperties">
+    <div class="section section-1" id="src-11574138_id-.CMSSignerv4.2.1-AvailableProperties">
         <h1 class="heading "><span>Available Properties</span></h1>
     <div  class="tablewrap">
         <table class="wrapped confluenceTable">
@@ -1163,7 +1135,7 @@
         <p  >SIGNATUREALGORITHM    </p>
             </td>
                 <td  class="confluenceTd" rowspan="1" colspan="1">
-        <p  >Property specifying the algorithm used to sign the data. Default: depending on the signing key: <strong class=" ">SHA256withDSA</strong> for DSA keys, <strong class=" ">SHA256withECDSA</strong> for ECDSA keys, otherwise <strong class=" ">SHA256withRSA</strong>.    </p>
+        <p  >Property specifying the algorithm used to sign the data. Default: depending on the signing key: <strong class=" ">SHA1withDSA</strong> for DSA keys, <strong class=" ">SHA1withECDSA</strong> for ECDSA keys, otherwise <strong class=" ">SHA1withRSA</strong>.    </p>
             </td>
         </tr>
     <tr>
@@ -1278,7 +1250,7 @@
 </tbody>        </table>
             </div>
     </div>
-    <div class="section section-1" id="src-16221226_id-.CMSSignerv4.3.0-Requestparameters">
+    <div class="section section-1" id="src-11574138_id-.CMSSignerv4.2.1-Requestparameters">
         <h1 class="heading "><span>Request parameters</span></h1>
     <p  >The following meta data parameters can be specified in a request    </p>
     <div  class="tablewrap">
@@ -1323,7 +1295,7 @@
             </div>
     <p  >    </p>
     </div>
-    <div class="section section-1" id="src-16221226_id-.CMSSignerv4.3.0-Signingapre-computedhash">
+    <div class="section section-1" id="src-11574138_id-.CMSSignerv4.2.1-Signingapre-computedhash">
         <h1 class="heading "><span>Signing a pre-computed hash</span></h1>
     <p  >For background and information on how to use this mode with CMS signatures, see <a   href="Client-Side_Hashing.html">Client Side Hashing</a>.    </p>
     <p  >    </p>

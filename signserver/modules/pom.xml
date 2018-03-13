@@ -4,11 +4,11 @@
     <parent>
         <groupId>org.signserver</groupId>
         <artifactId>SignServer</artifactId>
-        <version>4.3.0-SNAPSHOT</version>
+        <version>4.2.2</version>
     </parent>
     <groupId>org.signserver</groupId>
     <artifactId>SignServer-Modules</artifactId>
-    <version>4.3.0-SNAPSHOT</version>
+    <version>4.2.2</version>
     <packaging>pom</packaging>
     <name>SignServer Modules</name>
     <properties>
@@ -40,7 +40,6 @@
         <module>SignServer-ejb-interfaces</module>
         <module>SignServer-ejb</module>
         <module>CESeCore-jars</module>
-        <module>SignServer-Compile</module>
         
         <!-- Interfaces -->
         <module>SignServer-Admin-Common</module>

@@ -60,7 +60,7 @@
     </script>
     </head>
 
-<body pageid="16222896">
+<body pageid="5286104">
 
 <div id="ht-loader">
     <noscript>
@@ -110,7 +110,7 @@
                     <a href="../"><img src="projectlogo.png"></a>
                 </h1>
                 <div class="ht-version">
-                    <p>Version: 4.3.0</p>
+                    <p>Version: 4.2.2</p>
                 </div>
             </header>
 
@@ -180,10 +180,6 @@
 
             </li>
                                         <li class="leaf">
-        <a class="ht-nav-page-link" href="Setting_up_Key_Wrapping.html">Setting up Key Wrapping</a>
-
-            </li>
-                                        <li class="leaf">
         <a class="ht-nav-page-link" href="Troubleshooting.html">Troubleshooting</a>
 
             </li>
@@ -233,10 +229,6 @@
             </li>
                                         <li class="leaf">
         <a class="ht-nav-page-link" href="Stresstest_CLI.html">Stresstest CLI</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="P11NG_CLI.html">P11NG CLI</a>
 
             </li>
                             </ul>
@@ -591,10 +583,6 @@
         <a class="ht-nav-page-link" href="SignerStatusReportWorker.html">SignerStatusReportWorker</a>
 
             </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="JackNJI11KeyWrappingCryptoWorker.html">JackNJI11KeyWrappingCryptoWorker</a>
-
-            </li>
                             </ul>
             </li>
                             </ul>
@@ -653,14 +641,6 @@
             </li>
                                         <li class="leaf">
         <a class="ht-nav-page-link" href="PKCS11CryptoToken.html">PKCS11CryptoToken</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="JackNJI11CryptoToken.html">JackNJI11CryptoToken</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="JackNJI11KeyWrappingCryptoToken.html">JackNJI11KeyWrappingCryptoToken</a>
 
             </li>
                             </ul>
@@ -839,10 +819,6 @@
             </li>
                                         <li class="leaf">
         <a class="ht-nav-page-link" href="Status_Repository_Logging.html">Status Repository Logging</a>
-
-            </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="Client_Logging.html">Client Logging</a>
 
             </li>
                             </ul>
@@ -1087,10 +1063,6 @@
         <a class="ht-nav-page-link" href="Client-Side_Hashing.html">Client-Side Hashing</a>
 
             </li>
-                                        <li class="leaf">
-        <a class="ht-nav-page-link" href="Key_Wrapping.html">Key Wrapping</a>
-
-            </li>
                             </ul>
             </li>
                                     </ul>
@@ -1135,13 +1107,13 @@
                                                                                                          <li class="shortcut"><a href="Worker_Page.html">Worker Page</a></li>
                                                                                      <li><a href="Worker_Crypto_Token_Page.html">Worker Crypto Token Page</a></li>
                                                             </ul>
-</div>            <h1 id="src-16220161"> <span>Crypto Token Generate Key Page</span></h1>
+</div>            <h1 id="src-11574134"> <span>Crypto Token Generate Key Page</span></h1>
         </header>
 
         <div id="main-content" class="wiki-content sp-grid-section" data-index-for-search="true">
 
     <p  >Generate one or more key-pairs in the crypto token.    </p>
-    <div class="section section-1" id="src-16220161_id-.CryptoTokenGenerateKeyPagev4.3.0-GenerateKey">
+    <div class="section section-1" id="src-11574134_id-.CryptoTokenGenerateKeyPagev4.2.1-GenerateKey">
         <h1 class="heading "><span>Generate Key</span></h1>
     <div  class="tablewrap">
         <table class="relative-table wrapped confluenceTable">
@@ -1170,15 +1142,11 @@
         <p  >Key Algorithm    </p>
             </td>
                 <td  class="confluenceTd" rowspan="1" colspan="1">
-        <p  >Algorithm for the key to generate. It is possible to generate Symmetric key also. Generated key type (Asymmetric or Symmetric) will depend on the provided key algorithm.    </p>
-    <p  >For Example, if RSA is provided, Asymmetric key (key pair) will be generated and in case of AES, Symmetric key (Secret key) will be generated.    </p>
+        <p  >Algorithm for the key to generate.    </p>
     <p  >Examples:    </p>
 <ul class=" "><li class=" ">    <p  ><i class=" ">RSA</i>    </p>
 </li><li class=" ">    <p  ><i class=" ">ECDSA</i>    </p>
-</li><li class=" ">    <p  ><i class=" ">AES</i>    </p>
-</li></ul>    <p  >Note: While generating secret key if provided algorithm name is not part of predefined list of known secret key algorithms, algorithm name should be prefixed with &quot;SEC:&quot;. Example: <strong class=" ">SEC:Blowfish</strong>. Currently known secret key list contains AES and DES algorithms.    </p>
-    <p  >If <a   href="JackNJI11CryptoToken.html">JackNJ11CryptoToken</a> is used, it is possible to provide algorithm name as long or hexadecimal constant value also.    </p>
-            </td>
+</li></ul>            </td>
         </tr>
     <tr>
             <td  class="confluenceTd" rowspan="1" colspan="1">
@@ -1192,9 +1160,6 @@
 <ul class=" "><li class=" ">    <p  ><i class=" ">2048</i>    </p>
 </li><li class=" ">    <p  ><i class=" ">2048 exp 0x10001</i>    </p>
 </li><li class=" ">    <p  ><i class=" ">secp256r1</i>    </p>
-</li><li class=" ">    <p  ><i class=" ">128</i>    </p>
-</li><li class=" ">    <p  ><i class=" ">168</i>    </p>
-</li><li class=" ">    <p  ><i class=" ">64</i>    </p>
 </li></ul>            </td>
         </tr>
     <tr>
@@ -1209,7 +1174,7 @@
 </tbody>        </table>
             </div>
     </div>
-    <div class="section section-1" id="src-16220161_id-.CryptoTokenGenerateKeyPagev4.3.0-Actions">
+    <div class="section section-1" id="src-11574134_id-.CryptoTokenGenerateKeyPagev4.2.1-Actions">
         <h1 class="heading "><span>Actions</span></h1>
     <div  class="tablewrap">
         <table class="wrapped confluenceTable">
