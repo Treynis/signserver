@@ -51,6 +51,17 @@ public class RequestContext implements Serializable {
     public static final String CLIENT_CERTIFICATE = "CLIENT_CERTIFICATE";
     
     /**
+     * Used to fetch the client cookies used for the request if there exists any, otherwise is
+     * 'null' returned.
+     */
+    public static final String REQUEST_COOKIES = "REQUEST_COOKIES";
+    
+    /**
+     * Allow all clients access to DSS via setting this Worker property to TRUE 
+     */
+    public static final String ALLOW_ANY = "ALLOW_ANY";
+    
+    /**
      * Used to fetch the remote IP address used by the client if there exists any, otherwise is
      * 'null' returned.
      */
@@ -78,8 +89,8 @@ public class RequestContext implements Serializable {
      * The current statistics event that a worker can use to add custom data.
      * Is null if no statistics is performed.
      */
-    public static final String STATISTICS_EVENT = "STATISTICS_EVENT";    
-        
+    public static final String STATISTICS_EVENT = "STATISTICS_EVENT";
+    
     /**
      * The transaction ID.
      * This value is set by the WorkerSessionBean but could be read by

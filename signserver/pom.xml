@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.signserver</groupId>
     <artifactId>SignServer</artifactId>
-    <version>4.4.1-SNAPSHOT</version>
+    <version>4.3.2-pk1</version>
     <packaging>pom</packaging>
     <name>SignServer</name>
     <properties>
@@ -159,12 +159,6 @@
                 <artifactId>jacknji11</artifactId>
                 <version>1.0-20180109-6d6503f</version>
             </dependency>
-
-            <dependency>
-                <groupId>org.seleniumhq.selenium</groupId>
-                <artifactId>selenium-java</artifactId>
-                <version>3.13.0</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
     
@@ -233,12 +227,6 @@
                     <groupId>org.jvnet.jax-ws-commons</groupId>
                     <artifactId>jaxws-maven-plugin</artifactId>
                     <version>2.3</version>
-                </plugin>
-
-                <plugin>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>versions-maven-plugin</artifactId>
-                    <version>2.7</version>
                 </plugin>
             </plugins>
         </pluginManagement>

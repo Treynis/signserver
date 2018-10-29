@@ -15,8 +15,11 @@ package org.signserver.module.pdfsigner;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
 
 import org.apache.log4j.Logger;
+import org.signserver.common.IllegalRequestException;
+import org.signserver.common.SignServerException;
 import org.signserver.common.WorkerConfig;
 import static org.signserver.common.SignServerConstants.DEFAULT_NULL;
 
@@ -25,10 +28,8 @@ import com.lowagie.text.Image;
 import com.lowagie.text.pdf.PdfSignatureAppearance;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import org.bouncycastle.util.encoders.Base64;
-import org.bouncycastle.util.encoders.DecoderException;
 
 /**
  * Class that holds configuration values passed to pdfsigner.
@@ -88,16 +89,16 @@ public class PDFSignerParameters {
     private Image custom_image = null;
 
     private String tsa_worker;
-    private final List<String> configErrors;
 
-    public PDFSignerParameters(int workerId, WorkerConfig config, final List<String> configErrors) {
+    public PDFSignerParameters(int workerId, WorkerConfig config)
+            throws IllegalRequestException, SignServerException {
         this.workerId = workerId;
         this.config = config;
-        this.configErrors = configErrors;
         extractAndProcessConfigurationProperties();
     }
 
-    private void extractAndProcessConfigurationProperties() {
+    private void extractAndProcessConfigurationProperties()
+            throws IllegalRequestException, SignServerException {
 
         // The reason shown in the PDF signature
         reason = config.getProperty(PDFSigner.REASON, PDFSigner.REASONDEFAULT);
@@ -159,7 +160,7 @@ public class PDFSignerParameters {
             try {
                 setPermissions = Permissions.fromSet(Arrays.asList(array), true);
             } catch (UnknownPermissionException ex) {
-                configErrors.add("Signer " + workerId + " misconfigured: " + ex.getMessage());
+                throw new SignServerException("Signer " + workerId + " missconfigured: " + ex.getMessage());
             }
         }
         // Remove permissions
@@ -188,20 +189,14 @@ public class PDFSignerParameters {
             LOG.debug("Using rectangle: " + visible_sig_rectangle);
 
             String[] rect = visible_sig_rectangle.split(",");
-
             if (rect.length < 4) {
-                configErrors.add("RECTANGLE property must contain 4 comma separated values with no spaces.");
-            } else { // Only read values when all 4 are provided otherwise ArrayIndexOutOfBoundException will be thrown
-                try {
-                    visible_sig_rectangle_llx = Integer.valueOf(rect[0]);
-                    visible_sig_rectangle_lly = Integer.valueOf(rect[1]);
-                    visible_sig_rectangle_urx = Integer.valueOf(rect[2]);
-                    visible_sig_rectangle_ury = Integer.valueOf(rect[3]);
-                } catch (NumberFormatException ex) {
-                    configErrors.add("Invalid RECTANGLE property specified: " + visible_sig_rectangle);
-                    LOG.error("Invalid RECTANGLE property specified", ex);
-                }
+                throw new IllegalRequestException(
+                        "RECTANGLE property must contain 4 comma separated values with no spaces.");
             }
+            visible_sig_rectangle_llx = Integer.valueOf(rect[0]);
+            visible_sig_rectangle_lly = Integer.valueOf(rect[1]);
+            visible_sig_rectangle_urx = Integer.valueOf(rect[2]);
+            visible_sig_rectangle_ury = Integer.valueOf(rect[3]);
 
             // custom image to use with signature
             // base64 encoded byte[]
@@ -228,49 +223,50 @@ public class PDFSignerParameters {
             if (use_custom_image) {
 
                 // retrieve custom image
-                byte[] imageByteArray = null;
+                byte[] imageByteArray;
                 if (use_image_from_base64_string) {
-                    try {
-                        imageByteArray = Base64.decode(visible_sig_custom_image_base64.getBytes());
-                    } catch (DecoderException ex) {
-                        configErrors.add("Error reading custom image base 64 encoded data: " + ex.getMessage());
-                        LOG.error("Error reading custom image base 64 encoded data", ex);
-                    }
+                    imageByteArray = Base64.decode(visible_sig_custom_image_base64.getBytes());
                 } else {
                     try {
                         imageByteArray = readFile(visible_sig_custom_image_path);
-                    } catch (IOException ex) {
-                        configErrors.add("Error reading custom image data from path specified: " + ex.getMessage());
-                        LOG.error("Error reading custom image data from path specified", ex);
+                    } catch (IOException e) {
+                        throw new SignServerException(
+                                "Error reading custom image data from path specified",
+                                e);
                     }
                 }
 
-                if (imageByteArray != null) {
-                    try {
-                        custom_image = Image.getInstance(imageByteArray);
-
-                        // If image instance is valid, continue with remaining stuff otherwise catch error
-                        visible_sig_custom_image_scale_to_rectangle = Boolean.parseBoolean(config.getProperty(PDFSigner.VISIBLE_SIGNATURE_CUSTOM_IMAGE_SCALE_TO_RECTANGLE, Boolean.toString(PDFSigner.VISIBLE_SIGNATURE_CUSTOM_IMAGE_SCALE_TO_RECTANGLE_DEFAULT)).trim());
-                        if (Boolean.toString(visible_sig_custom_image_scale_to_rectangle) != null) {
-                            LOG.debug("resize custom image to rectangle : "
-                                    + visible_sig_custom_image_scale_to_rectangle);
-                        }
-
-                        // if we are using custom image and the
-                        // VISIBLE_SIGNATURE_CUSTOM_IMAGE_SCALE_TO_RECTANGLE is set to
-                        // true resize image to fit to rectangle specified
-                        // If set to false calculate urx and ury coordinates from image
-                        if (visible_sig_custom_image_scale_to_rectangle) {
-                            resizeImageToFitToRectangle();
-                        } else {
-                            calculateUpperRightRectangleCoordinatesFromImage();
-                        }
-                    } catch (BadElementException | IOException ex) {
-                        configErrors.add("Problem constructing image from custom image data: " + ex.getMessage());
-                        LOG.error("Problem constructing image from custom image data", ex);
-                    }
+                try {
+                    custom_image = Image.getInstance(imageByteArray);
+                } catch (BadElementException e) {
+                    throw new SignServerException(
+                            "Problem constructing image from custom image data",
+                            e);
+                } catch (MalformedURLException e) {
+                    throw new SignServerException(
+                            "Problem constructing image from custom image data",
+                            e);
+                } catch (IOException e) {
+                    throw new SignServerException(
+                            "Problem constructing image from custom image data",
+                            e);
                 }
-                
+
+                visible_sig_custom_image_scale_to_rectangle = Boolean.parseBoolean(config.getProperty(PDFSigner.VISIBLE_SIGNATURE_CUSTOM_IMAGE_SCALE_TO_RECTANGLE, Boolean.toString(PDFSigner.VISIBLE_SIGNATURE_CUSTOM_IMAGE_SCALE_TO_RECTANGLE_DEFAULT)).trim());
+                if (Boolean.toString(visible_sig_custom_image_scale_to_rectangle) != null) {
+                    LOG.debug("resize custom image to rectangle : "
+                            + visible_sig_custom_image_scale_to_rectangle);
+                }
+
+                // if we are using custom image and the
+                // VISIBLE_SIGNATURE_CUSTOM_IMAGE_SCALE_TO_RECTANGLE is set to
+                // true resize image to fit to rectangle specified
+                // If set to false calculate urx and ury coordinates from image
+                if (visible_sig_custom_image_scale_to_rectangle) {
+                    resizeImageToFitToRectangle();
+                } else {
+                    calculateUpperRightRectangleCoordinatesFromImage();
+                }
             }
         }
 
@@ -288,9 +284,10 @@ public class PDFSignerParameters {
         } else if (level.equalsIgnoreCase("NOT_CERTIFIED")) {
             certification_level = PdfSignatureAppearance.NOT_CERTIFIED;
         } else {
-            configErrors.add("Unknown value for CERTIFICATION_LEVEL");
+            throw new SignServerException(
+                    "Unknown value for CERTIFICATION_LEVEL");
         }
-        if (LOG.isDebugEnabled()) {
+              if (LOG.isDebugEnabled()) {
             LOG.debug("using certification level: " + certification_level);
         }
     }

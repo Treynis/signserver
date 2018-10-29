@@ -17,7 +17,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.util.Properties;
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.bouncycastle.tsp.TimeStampResponse;
 import org.signserver.client.cli.defaultimpl.TimeStampCommand;
@@ -655,9 +654,9 @@ public class SignServerCLITest extends ModulesTestCase {
     			continue;
     		}
     		
-    		final String key = StringUtils.trim(parts[0]);
+    		final String key = parts[0].trim();
     		if ("FILENAME".equals(key)) {
-    			final String value = StringUtils.trim(parts[1]);
+    			final String value = parts[1].trim();
     			// check if log value matches file name of original PDF file
     			
     			found = "sample.pdf".equals(value);
