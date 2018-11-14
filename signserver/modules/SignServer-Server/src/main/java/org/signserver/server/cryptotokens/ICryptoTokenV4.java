@@ -271,11 +271,4 @@ public interface ICryptoTokenV4 {
      */
     boolean removeKey(String alias, IServices services) throws CryptoTokenOfflineException, 
             KeyStoreException, SignServerException;
-    
-    /**
-     * If signer requires no certificates when using this crypto token.
-     *
-     * @return True or false
-     */
-    boolean isNoCertificatesRequired();
 }

@@ -19,7 +19,6 @@ import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
 import org.apache.log4j.Logger;
-import org.bouncycastle.asn1.ASN1GeneralizedTime;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERObjectIdentifier;
@@ -116,11 +115,8 @@ public class ValidityTimeUtils {
             try {
                 final PrivateKeyUsagePeriod p = getPrivateKeyUsagePeriod(cert);
                 if (p != null) {
-                    final ASN1GeneralizedTime asn1Time = notAfter ? p.getNotAfter()
-                            : p.getNotBefore();
-                    if (asn1Time != null) {
-                        privatekeyDate = asn1Time.getDate();
-                    }
+                    privatekeyDate = notAfter ? p.getNotAfter().getDate()
+                            : p.getNotBefore().getDate();
                 }
             } catch (IOException | ParseException e) {
                 LOG.error(e);

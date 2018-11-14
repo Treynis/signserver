@@ -38,7 +38,6 @@ import org.signserver.common.RequestContext;
 import org.signserver.common.SignServerException;
 import org.signserver.server.signers.BaseSigner;
 import org.apache.log4j.Logger;
-import org.apache.xml.security.algorithms.MessageDigestAlgorithm;
 import org.signserver.common.WorkerConfig;
 import org.signserver.common.WorkerIdentifier;
 import org.signserver.ejb.interfaces.InternalProcessSessionLocal;
@@ -125,11 +124,6 @@ public class XAdESSigner extends BaseSigner {
     /** Default value to use if the worker property XADESFORM has not been set. */
     private static final String DEFAULT_XADESFORM = "BES";
     
-    private static final String DEFAULT_TSA_DIGEST_ALGORITHM = "SHA256";
-    
-    /** Worker property: TSA_DIGEST_ALGORITHM. */
-    private static final String TSA_DIGESTALGORITHM = "TSA_DIGESTALGORITHM";
-    
     private static final String CONTENT_TYPE = "text/xml";
     
     private LinkedList<String> configErrors;
@@ -138,7 +132,6 @@ public class XAdESSigner extends BaseSigner {
     private Collection<AllDataObjsCommitmentTypeProperty> commitmentTypes;
     
     private String signatureAlgorithm;
-    private String tsaDigestAlgorithm;
     
     private String claimedRoleDefault;
     private boolean claimedRoleFromUsername;
@@ -287,9 +280,6 @@ public class XAdESSigner extends BaseSigner {
         
         // Get the signature algorithm
         signatureAlgorithm = config.getProperty(SIGNATUREALGORITHM, DEFAULT_NULL);
-        
-        // Get the TSA digest algorithm
-        tsaDigestAlgorithm = config.getProperty(TSA_DIGESTALGORITHM, DEFAULT_TSA_DIGEST_ALGORITHM);
                 
         claimedRoleDefault = config.getProperty(CLAIMED_ROLE, DEFAULT_NULL);
         claimedRoleFromUsername =
@@ -514,7 +504,7 @@ public class XAdESSigner extends BaseSigner {
     }
 
     /**
-     * Implementation of {@link xades4j.providers.AlgorithmsProviderEx} using the
+     * Implemenation of {@link xades4j.providers.AlgorithmsProviderEx} using the
      * signature algorithm configured for the worker (or the default values).
      */
     private class AlgorithmsProvider extends DefaultAlgorithmsProviderEx {
@@ -553,46 +543,6 @@ public class XAdESSigner extends BaseSigner {
                 throw new UnsupportedAlgorithmException("Unsupported signature algorithm", signatureAlgorithm);
             }
         }
-
-        @Override
-        public String getDigestAlgorithmForTimeStampProperties() {
-            String result;
-
-            switch (tsaDigestAlgorithm) {
-                case "MD5":
-                case "MD-5":
-                    result = MessageDigestAlgorithm.ALGO_ID_DIGEST_NOT_RECOMMENDED_MD5;
-                    break;
-                case "SHA1":
-                case "SHA-1":
-                    result = MessageDigestAlgorithm.ALGO_ID_DIGEST_SHA1;
-                    break;
-                case "SHA224":
-                case "SHA-224":
-                    result = MessageDigestAlgorithm.ALGO_ID_DIGEST_SHA224;
-                    break;
-                case "SHA256":
-                case "SHA-256":
-                    result = MessageDigestAlgorithm.ALGO_ID_DIGEST_SHA256;
-                    break;
-                case "SHA384":
-                case "SHA-384":
-                    result = MessageDigestAlgorithm.ALGO_ID_DIGEST_SHA384;
-                    break;
-                case "SHA512":
-                case "SHA-512":
-                    result = MessageDigestAlgorithm.ALGO_ID_DIGEST_SHA512;
-                    break;
-                case "RIPEMD160":
-                case "RIPEMD-160":
-                    result = MessageDigestAlgorithm.ALGO_ID_DIGEST_RIPEMD160;
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unsupported TSA digest algorithm: " + tsaDigestAlgorithm);
-            }
-            return result;
-        }
-        
     }
     
     /**

@@ -54,7 +54,7 @@ public class PreloadedWorkerConfig {
         try {
             keyUsageLimitValue = Long.valueOf(config.getProperty(SignServerConstants.KEYUSAGELIMIT, "-1"));
         } catch (NumberFormatException ex) {
-            // Not adding here in fatarErrors as it will be handled at SignerLevel by BaseSigner           
+            fatalErrors.add("Incorrect value in worker property " + SignServerConstants.KEYUSAGELIMIT);
             keyUsageLimitValue = -1;
         }
 

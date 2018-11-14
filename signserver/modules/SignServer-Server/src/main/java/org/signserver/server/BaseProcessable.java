@@ -35,6 +35,7 @@ import javax.persistence.EntityManager;
 import org.apache.log4j.Logger;
 import org.bouncycastle.jce.ECKeyUtil;
 import org.bouncycastle.util.encoders.Hex;
+import org.cesecore.keybind.CertificateImportException;
 import org.cesecore.util.CertTools;
 import org.cesecore.util.query.QueryCriteria;
 import org.signserver.common.*;
@@ -101,17 +102,7 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
             aliasSelector.init(workerId, config, workerContext, workerEM);
         }
 
-        final String cachePrivateKeyString =
-                config.getProperty(PROPERTY_CACHE_PRIVATEKEY, Boolean.TRUE.toString());
-
-        if (Boolean.TRUE.toString().equalsIgnoreCase(cachePrivateKeyString)) {
-            cachePrivateKey = true;
-        } else if (Boolean.FALSE.toString().equalsIgnoreCase(cachePrivateKeyString)) {
-            cachePrivateKey = false;
-        } else {
-            fatalErrors.add("Illegal value for " + PROPERTY_CACHE_PRIVATEKEY +
-                            ": " + cachePrivateKeyString);
-        }
+        cachePrivateKey = Boolean.parseBoolean(config.getProperty(PROPERTY_CACHE_PRIVATEKEY, Boolean.FALSE.toString()));
     }
 
     /**
@@ -880,18 +871,13 @@ public abstract class BaseProcessable extends BaseWorker implements IProcessable
 
     /**
      * Indicates if this worker is configured to not be configured with any
-     * certificates or crypto token referenced by worker requires no
-     * certificates. This can be overridden by worker implementations to not
-     * require the user to explicitly configure this.
-     *
-     * @return True if this worker is configured to not use any certificates or
-     * crypto token referenced by worker is a crypto token not requiring
      * certificates.
+     * This can be overridden by worker implementations to not require the
+     * user to explicitly configure this.
+     * @return True if this worker is configured to not use any certificates
      */
     protected boolean isNoCertificates() {
-        boolean noCertInConfig = Boolean.parseBoolean(config.getProperty("NOCERTIFICATES", Boolean.FALSE.toString()));
-        boolean noCertificatesRequired = cryptoToken != null && cryptoToken.isNoCertificatesRequired();
-        return noCertInConfig || noCertificatesRequired;
+        return Boolean.parseBoolean(config.getProperty("NOCERTIFICATES", Boolean.FALSE.toString()));
     }
 
     @Override

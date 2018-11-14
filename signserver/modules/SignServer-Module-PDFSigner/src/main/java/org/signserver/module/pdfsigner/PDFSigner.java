@@ -180,7 +180,6 @@ public class PDFSigner extends BaseSigner {
      */
     private ASN1ObjectIdentifier tsaDigestAlgorithm;
     private String tsaDigestAlgorithmName; // passed to PdfPkcs7
-    PDFSignerParameters params;
     
     @Override
     public void init(int signerId, WorkerConfig config,
@@ -200,7 +199,6 @@ public class PDFSigner extends BaseSigner {
             if (path == null) {
                 LOG.warn("Worker[" + workerId
                         + "]: Archiving path missing");
-                configErrors.add("Archiving path not specified");
             } else if (!new File(path).exists()) {
                 LOG.warn("Worker[" + workerId
                         + "]: Archiving path does not exists: "
@@ -238,10 +236,6 @@ public class PDFSigner extends BaseSigner {
         if (config.getProperty(TSA_URL, DEFAULT_NULL) != null && config.getProperty(TSA_WORKER, DEFAULT_NULL) != null) {
             configErrors.add("Can not specify " + TSA_URL + " and " + TSA_WORKER + " at the same time.");
         }
-
-        // retrieve and preprocess configuration parameter values
-        params = new PDFSignerParameters(workerId, config, configErrors);
-
     }
 
     
@@ -292,11 +286,8 @@ public class PDFSigner extends BaseSigner {
      * signRequest to be a GenericSignRequest containing a signed PDF file.
      * 
      * @param signRequest
-     * @param requestContext
      * @return 
-     * @throws IllegalRequestException 
      * @throws SignServerException
-     * @throws CryptoTokenOfflineException
      * @see org.signserver.server.IProcessable#processData(org.signserver.common.ProcessRequest,
      *      org.signserver.common.RequestContext)
      */
@@ -318,7 +309,10 @@ public class PDFSigner extends BaseSigner {
         final ReadableData requestData = sReq.getRequestData();
 
         // Log values
-        final LogMap logMap = LogMap.getInstance(requestContext);        
+        final LogMap logMap = LogMap.getInstance(requestContext);
+
+        // retrieve and preprocess configuration parameter values
+        PDFSignerParameters params = new PDFSignerParameters(workerId, config);
 
         // Start processing the actual signature
         

@@ -19,7 +19,6 @@ import java.security.cert.CertStore;
 import java.security.cert.Certificate;
 import java.security.cert.CollectionCertStoreParameters;
 import java.util.List;
-import javax.ejb.EJBException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.log4j.Logger;
@@ -65,21 +64,16 @@ public class XAdESSignerTest extends ModulesTestCase {
     private final WorkerSession workerSession = getWorkerSession();
     private final ProcessSessionRemote processSession = getProcessSession();
 
-    private void internalSigningAndVerify(String tsaDigestAlgorithm, String acceptedTSADigestAlgorithm) throws Exception {        
+    @Test
+    public void testBasicSigningXAdESFormT() throws Exception {
+        LOG.info("testBasicSigningXAdESFormT");
         try {
 
             addTimeStampSigner(TS_ID, TS_NAME, true);
             addSigner(XAdESSigner.class.getName(), WORKER_ID, WORKER_NAME, true);
-            
             workerSession.setWorkerProperty(TS_ID, "DEFAULTTSAPOLICYOID", "1.2.3");
-            workerSession.setWorkerProperty(TS_ID, "ACCEPTEDALGORITHMS", acceptedTSADigestAlgorithm);
-            
             workerSession.setWorkerProperty(WORKER_ID, "XADESFORM", "T");
-            workerSession.setWorkerProperty(WORKER_ID, "TSA_WORKER", TS_NAME);            
-            if (tsaDigestAlgorithm != null) {
-                workerSession.setWorkerProperty(WORKER_ID, "TSA_DIGESTALGORITHM", tsaDigestAlgorithm);
-            }
-            
+            workerSession.setWorkerProperty(WORKER_ID, "TSA_WORKER", TS_NAME);
             workerSession.reloadConfiguration(TS_ID);
             workerSession.reloadConfiguration(WORKER_ID);
 
@@ -122,58 +116,6 @@ public class XAdESSignerTest extends ModulesTestCase {
         } finally {
             removeWorker(WORKER_ID);
             removeWorker(TS_ID);
-        }
-    }
-    
-    /**
-     * Tests XADES-T signing with default TSA_DIGEST_ALGORITHM algorithm.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testBasicSigningXAdESFormT_TSA_DIGEST_ALGO_Default_SHA256() throws Exception {
-        LOG.info("testBasicSigningXAdESFormT_TSA_DIGEST_ALGO_Default_SHA256");
-        internalSigningAndVerify(null, "SHA256");
-    }
-    
-    /**
-     * Tests XADES-T signing with SHA-1 TSA_DIGEST_ALGORITHM algorithm.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testBasicSigningXAdESFormT_TSA_DIGEST_ALGO_SHA1() throws Exception {
-        LOG.info("testBasicSigningXAdESFormT_TSA_DIGEST_ALGO_SHA1");
-        internalSigningAndVerify("SHA1", "SHA1");
-    }
-    
-    /**
-     * Tests XADES-T signing with SHA-512 TSA_DIGEST_ALGORITHM algorithm.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testBasicSigningXAdESFormT_TSA_DIGEST_ALGO_SHA512() throws Exception {
-        LOG.info("testBasicSigningXAdESFormT_TSA_DIGEST_ALGO_SHA512");
-        internalSigningAndVerify("SHA512", "SHA512");
-    }
-    
-    /**
-     * Tests XADES-T signing with illegal TSA_DIGEST_ALGORITHM algorithm and
-     * check if fails.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testBasicSigningXAdESFormT_Illegal_TSA_DIGEST_ALGO() throws Exception {
-        LOG.info("testBasicSigningXAdESFormT_Illegal_TSA_DIGEST_ALGO");
-        try {
-            internalSigningAndVerify("Illegal_TSA_Digest_Algo", "SHA512");
-            fail("It should have been failed");
-        } catch (EJBException ex) {
-            if (ex.getMessage() != null) { // On glassfish server, ex.getMessage() is NULL
-                assertTrue(ex.getMessage(), ex.getMessage().contains("Unsupported TSA digest algorithm"));
-            }
         }
     }
 
